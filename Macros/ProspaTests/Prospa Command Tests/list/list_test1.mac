@@ -1,0 +1,33 @@
+procedure(list_test1,verbose,delay)
+
+   a = list(100)
+   
+# Check for default names
+   for(n = 0 to 99)
+      if(a[n] != "item $n$")
+        return(0, "Invalid result for list_test1 #2")
+      endif
+   next(n)
+   
+# Check for out of bounds capture
+   e = 0
+   try
+      m = a[-101]
+   catch
+      e = e + 1
+   endtry
+   
+   try
+      m = a[100]
+   catch
+      e = e + 1
+   endtry
+   
+   if(e != 2)
+     return(0, "Invalid result for list_test1 #2")
+   endif
+
+endproc(1,"")
+
+
+

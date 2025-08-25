@@ -1,0 +1,537 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 11">
+<meta name=Originator content="Microsoft Word 11">
+<link rel=File-List href="NNLS1D_files/filelist.xml">
+<link rel=Edit-Time-Data href="NNLS1D_files/editdata.mso">
+<!--[if !mso]>
+<style>
+v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style>
+<![endif]-->
+<title>baselineCorrection</title>
+<!--[if gte mso 9]><xml>
+ <w:WordDocument>
+  <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
+  <w:ValidateAgainstSchemas/>
+  <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
+  <w:IgnoreMixedContent>false</w:IgnoreMixedContent>
+  <w:AlwaysShowPlaceholderText>false</w:AlwaysShowPlaceholderText>
+  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+ </w:WordDocument>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:LatentStyles DefLockedState="false" LatentStyleCount="156">
+ </w:LatentStyles>
+</xml><![endif]-->
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;
+	mso-font-alt:"Courier New";
+	mso-font-charset:0;
+	mso-generic-font-family:modern;
+	mso-font-format:other;
+	mso-font-pitch:fixed;
+	mso-font-signature:3 0 0 0 1 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+h1
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	mso-outline-level:1;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;
+	text-underline:single;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;
+	mso-header-margin:35.4pt;
+	mso-footer-margin:35.4pt;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 10]>
+<style>
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:"Table Normal";
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+</style>
+<![endif]-->
+</head>
+
+<body lang=EN-GB link=blue vlink=purple style='tab-interval:36.0pt'>
+
+<div class=Section1>
+
+<h1><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>NNLS1D</span></h1>
+
+<p class=MsoNormal><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>This macro
+implements the non-negative least squares algorithm of C. L. Lawson and R. J.
+Hanson (“Solving Least Squares Problems”, Prentice Hall 1974), which allows
+data exhibiting multi-exponential decay to be analysed in a fairly robust
+fashion. The macro takes x-y data and produces a spectrum of exponentials
+providing a best fit to the original data in a least squares sense. <span
+class=GramE>i.e</span>. the minimization of:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+ <v:stroke joinstyle="miter"/>
+ <v:formulas>
+  <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+  <v:f eqn="sum @0 1 0"/>
+  <v:f eqn="sum 0 0 @1"/>
+  <v:f eqn="prod @2 1 2"/>
+  <v:f eqn="prod @3 21600 pixelWidth"/>
+  <v:f eqn="prod @3 21600 pixelHeight"/>
+  <v:f eqn="sum @0 0 1"/>
+  <v:f eqn="prod @6 1 2"/>
+  <v:f eqn="prod @7 21600 pixelWidth"/>
+  <v:f eqn="sum @8 21600 0"/>
+  <v:f eqn="prod @7 21600 pixelHeight"/>
+  <v:f eqn="sum @10 21600 0"/>
+ </v:formulas>
+ <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+ <o:lock v:ext="edit" aspectratio="t"/>
+</v:shapetype><v:shape id="_x0000_i1025" type="#_x0000_t75" alt="" style='width:216.75pt;
+ height:42pt'>
+ <v:imagedata src="NNLS1D_files/image001.gif" o:href="../../NNLSHelp_files/image001.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=289 height=56
+src="NNLS1D_files/image001.gif" border=0 v:shapes="_x0000_i1025"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+class=GramE><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>where</span></span><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'> <i>S</i> is the measured data, <i>T</i>
+the possible relaxation times and <i>A</i> the relaxation time distribution or
+spectrum.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1026"
+ type="#_x0000_t75" alt="" style='width:416.25pt;height:201.75pt'>
+ <v:imagedata src="NNLS1D_files/image002.gif" o:href="../../NNLSHelp_files/image002.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=555 height=269
+src="NNLS1D_files/image002.gif" border=0 v:shapes="_x0000_i1026"><![endif]></span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><i><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>An example
+of the sort of analysis possible with the 1D NNLS routine</span></i><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><i><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>(<span
+class=GramE>run</span> the macro NNLS-&gt;generate_relax_1d_data.mac</span></i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>)</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Normally,
+least squares analysis of this kind of data set produces ambiguous results,
+because the functions being fitted (exponentials) are not orthogonal, i.e. more
+than one solution is possible. The solution also tends to contain a multitude
+of sharp peaks. The Lawson and Hanson algorithm uses a regularization function
+which seeks to find a smooth spectrum of exponentials which still satisfies the
+original data in the chi-squared sense. In addition it forces all solutions to
+be positive. Following is the modified function to be minimized:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1027" type="#_x0000_t75" alt="" style='width:342pt;height:42pt'>
+ <v:imagedata src="NNLS1D_files/image003.gif" o:href="../../NNLSHelp_files/image003.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=456 height=56
+src="NNLS1D_files/image003.gif" border=0 v:shapes="_x0000_i1027"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>The second
+term in this expression corresponds to the regularization function and is an
+expression of the sharpness of the spectral features (or the spectral curvature).
+Minimizing this expression now requires that both the chi-squared <i>and</i>
+the curvature be simultaneously minimised. The parameter <i>C</i> can be used
+to control the amount of smoothing applied to the spectrum. In the following
+discussion <i>C</i> is replaced with the parameter alpha which we refer to as
+the smoothing parameter:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1028" type="#_x0000_t75" alt="" style='width:42.75pt;height:17.25pt'>
+ <v:imagedata src="NNLS1D_files/image004.gif" o:href="../../NNLSHelp_files/image004.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=57 height=23
+src="NNLS1D_files/image004.gif" border=0 v:shapes="_x0000_i1028"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>A large value of </span><i><span
+lang=EN-NZ style='font-family:Symbol;mso-ansi-language:EN-NZ'>a </span></i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;results in spectra consisting
+of sharp peaks while a smaller </span><i><span lang=EN-NZ style='font-family:
+Symbol;mso-ansi-language:EN-NZ'>a &nbsp;</span></i><span lang=EN-NZ
+style='mso-ansi-language:EN-NZ'>produces broad peaks.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Because
+the algorithm can analyse data containing a wide range of time scales it is
+important to ensure that the data has been evenly sampled when displayed with a
+logarithmic abscissa. Failure to do this may result in invalid peaks appearing
+in the resultant &quot;spectrum&quot;.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>The macro interface:</span></i><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1029"
+ type="#_x0000_t75" alt="" style='width:415.5pt;height:227.25pt'>
+ <v:imagedata src="NNLS1D_files/image005.jpg" o:href="../../NNLSHelp_files/image005.jpg"/>
+</v:shape><![endif]--><![if !vml]><img width=554 height=303
+src="NNLS1D_files/image005.jpg" border=0 v:shapes="_x0000_i1029"><![endif]></span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>The macro
+interface window is divided into several parts. The top left corner is
+concerned with the location of the relaxation or diffusion data sets (x and y
+axes). They can be <span class=SpellE>Prospa</span> 1D <span class=GramE>files</span>,
+global vectors, or from the current 1D plot.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Before
+processing the selected data you need to specify the type of fit (<b>Relax</b>ation
+or <b>Diffus</b>ion) and enter the Fitting parameters.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Start with
+an Alpha value of 10<sup>8</sup> and a Beta value of -1.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>The
+relaxation range determines the range of T (time in seconds) or D (diffusion in
+units of 10<sup>-9</sup> m<sup>2</sup>/s) values in the spectrum and the number
+of steps calculated. This number needs to be smaller than the number of points
+in the loaded data set.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Press the
+Execute button in the NNLS fit box to calculate a spectrum.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><i><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span></i><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Press the
+undo button to restore the original data set (assuming you used the plot input
+source mode).</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span></i><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>Correct selection of the smoothing
+parameter Alpha.</span></i><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Although
+it is tempting to use large values of alpha and so get a spectrum with narrow features,
+there is a danger that this will produce spurious peaks where none existed in
+the original data. An example is shown below:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1030"
+ type="#_x0000_t75" alt="" style='width:416.25pt;height:201.75pt'>
+ <v:imagedata src="NNLS1D_files/image006.gif" o:href="../../NNLSHelp_files/image006.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=555 height=269
+src="NNLS1D_files/image006.gif" border=0 v:shapes="_x0000_i1030"><![endif]></span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><i><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>Spurious
+peaks observed in the relaxation spectrum can occur when the time domain data
+is noisy and a large Alpha value is chosen.</span></i><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>The alpha
+value should be chosen such that the chi-squared value is approximately equal
+to the sum of the variances in the original data set.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1031" type="#_x0000_t75" alt="" style='width:351.75pt;height:38.25pt'>
+ <v:imagedata src="NNLS1D_files/image007.gif" o:href="../../NNLSHelp_files/image007.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=469 height=51
+src="NNLS1D_files/image007.gif" border=0 v:shapes="_x0000_i1031"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>So an estimate of the noise level in
+the original data set is quite useful.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;
+text-align:justify'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>The next
+step in choosing alpha is to determine the chi-squared value for a range of
+alpha values. To do this set up the minimum, maximum and number of steps in the
+alpha loop section of the macro window. A range from 10<sup>5</sup> to 10<sup>10</sup>
+is shown below after normalising the<sub><!--[if gte vml 1]><v:shape id="_x0000_i1032"
+ type="#_x0000_t75" alt="" style='width:17.25pt;height:18pt'>
+ <v:imagedata src="NNLS1D_files/image008.gif" o:href="../../NNLSHelp_files/image008.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=23 height=24
+src="NNLS1D_files/image008.gif" border=0 v:shapes="_x0000_i1032"><![endif]></sub>.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1033"
+ type="#_x0000_t75" alt="" style='width:414.75pt;height:330pt'>
+ <v:imagedata src="NNLS1D_files/image009.gif" o:href="../../NNLSHelp_files/image009.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=553 height=440
+src="NNLS1D_files/image009.gif" border=0 v:shapes="_x0000_i1033"><![endif]></span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>Ideally the function <sub><!--[if gte vml 1]><v:shape
+ id="_x0000_i1034" type="#_x0000_t75" alt="" style='width:41.25pt;height:18pt'>
+ <v:imagedata src="NNLS1D_files/image010.gif" o:href="../../NNLSHelp_files/image010.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=55 height=24
+src="NNLS1D_files/image010.gif" border=0 v:shapes="_x0000_i1034"><![endif]></sub>&nbsp;value
+should be equal to the variance of the noise in the raw data.</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>In this example the simulated data
+set had noise with a variance of <sub><!--[if gte vml 1]><v:shape id="_x0000_i1035"
+ type="#_x0000_t75" alt="" style='width:75pt;height:15.75pt'>
+ <v:imagedata src="NNLS1D_files/image011.gif" o:href="../../NNLSHelp_files/image011.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=100 height=21
+src="NNLS1D_files/image011.gif" border=0 v:shapes="_x0000_i1035"><![endif]></sub>&nbsp;added.
+This occurs when <sub><!--[if gte vml 1]><v:shape id="_x0000_i1036" type="#_x0000_t75"
+ alt="" style='width:56.25pt;height:15.75pt'>
+ <v:imagedata src="NNLS1D_files/image012.gif" o:href="../../NNLSHelp_files/image012.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=75 height=21
+src="NNLS1D_files/image012.gif" border=0 v:shapes="_x0000_i1036"><![endif]></sub></span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'>This
+gives the following spectrum:<o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'>&nbsp;<o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1037" type="#_x0000_t75" alt="" style='width:398.25pt;height:315.75pt'>
+ <v:imagedata src="NNLS1D_files/image013.gif" o:href="../../NNLSHelp_files/image013.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=531 height=421
+src="NNLS1D_files/image013.gif" border=0 v:shapes="_x0000_i1037"><![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'>&nbsp;<o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'>In
+many cases the standard deviation of the original data set it not well know and
+an alternative criterion is look for a knee in the normalised<sub><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1038"
+ type="#_x0000_t75" alt="" style='width:17.25pt;height:18pt'>
+ <v:imagedata src="NNLS1D_files/image008.gif" o:href="../../NNLSHelp_files/image008.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=23 height=24
+src="NNLS1D_files/image008.gif" border=0 v:shapes="_x0000_i1038"><![endif]></span></sub><i><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>vs.</span></i><sub><span lang=EN-NZ
+style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape id="_x0000_i1039"
+ type="#_x0000_t75" alt="" style='width:12pt;height:11.25pt'>
+ <v:imagedata src="NNLS1D_files/image014.gif" o:href="../../NNLSHelp_files/image014.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=16 height=15
+src="NNLS1D_files/image014.gif" border=0 v:shapes="_x0000_i1039"><![endif]></span></sub><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'> curve. </span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'>&nbsp;<o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>The relative amplitudes of each
+exponential can be determined by finding the area under each peak in the
+spectrum. This is done automatically by the program:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>Peak Integrals</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>&nbsp;&nbsp; <span class=GramE>peak</span>
+at 0.01, integral =&nbsp; 1 (42.33%)</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>&nbsp;&nbsp; <span class=GramE>peak</span>
+at 0.05, integral = 0.59 (24.37%)</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>&nbsp;&nbsp; <span class=GramE>peak</span>
+at 0.39, integral = 0.27 (11.21%)</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+style='font-size:10.0pt;font-family:Courier'>&nbsp;&nbsp; <span class=GramE>peak</span>
+at 1.9, integral = 0.53 (22.09%)</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>From this the predicted function is:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1040" type="#_x0000_t75" alt="" style='width:252.75pt;height:18pt'>
+ <v:imagedata src="NNLS1D_files/image015.gif" o:href="../../NNLSHelp_files/image015.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=337 height=24
+src="NNLS1D_files/image015.gif" border=0 v:shapes="_x0000_i1040"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><span lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>Compare this with the original data:</span><o:p></o:p></p>
+
+<p class=MsoNormal style='mso-margin-top-alt:auto;mso-margin-bottom-alt:auto'><span
+lang=EN-NZ style='mso-ansi-language:EN-NZ'>&nbsp;</span><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='mso-margin-top-alt:auto;mso-margin-bottom-alt:
+auto;text-align:center'><sub><span lang=EN-NZ style='mso-ansi-language:EN-NZ'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1041" type="#_x0000_t75" alt="" style='width:264.75pt;height:18pt'>
+ <v:imagedata src="NNLS1D_files/image016.gif" o:href="../../NNLSHelp_files/image016.gif"/>
+</v:shape><![endif]--><![if !vml]><img width=353 height=24
+src="NNLS1D_files/image016.gif" border=0 v:shapes="_x0000_i1041"><![endif]></span></sub><o:p></o:p></p>
+
+<p class=MsoNormal style='text-align:justify'><o:p>&nbsp;</o:p></p>
+
+</div>
+
+</body>
+
+</html>

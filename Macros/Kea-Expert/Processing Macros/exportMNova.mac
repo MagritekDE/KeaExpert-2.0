@@ -1,0 +1,33 @@
+procedure(exportMnovaData, fidPlt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Get the plot object
+   fidCtrl = gPlot->getPlotObject(fidPlt)
+
+# Get the MNova path
+   res = getregistryinfo("HKEY_CLASSES_ROOT","Applications\\MestReNova.exe\\Shell\\open\\command")
+   if(res == null)
+      message("Error","MNova application not found","error")
+      return
+   endif
+   mNova = scanstr(res,"\"%1\" \"%2\"")
+
+# Get the script path (pulse program folder)
+   scriptPath = "$gData->curExpt->ppPath$\\MNova\\"
+   scriptPath = replacestr(scriptPath,"\\","/")
+
+# Get the data path
+   fidPath = gData->curExpt->dataPath
+   fidPath = replacestr(fidPath,"\\","/")
+   exptName = gData->curExpt->protocol
+
+# Open MNova using the script
+   args = "\"$scriptPath$$exptName$.qs\" -sf process,\"$scriptPath$\",\"$fidPath$\",\"$exptName$\",\"0\",\"c:/projects/reports/\""
+   exec(mNova, args)
+
+endproc()
+ 

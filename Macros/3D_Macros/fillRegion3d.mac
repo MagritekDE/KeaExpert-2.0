@@ -1,0 +1,371 @@
+################################################
+#               fillRegion.3d
+#
+# Zero all data inside or outside the currently
+# displayed region. 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+################################################
+
+procedure(fillRegion3D)
+
+   n = :windowdefinition()
+   setpar(n,7,"text","0")
+   :update_menus()
+   :set_plane()
+   :display_plane()
+   :update_region()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Fill region in 3D matrix", -1, -1, 261, 375)
+
+      # Define all controls with basic parameters
+       windowvar(reset)
+       button(1, 31, 340, 43, 26, "Fill",
+          :fill_data();)
+       radiobuttons(2, 209, 202, 20, "vertical", "inside,outside", "inside")
+       textmenu(3, 50, 56, 159, 200)
+       statictext(4, 45, 59, "right", "Output")
+       statictext(5, 204, 201, "right", "Fill inside")
+       statictext(6, 204, 221, "right", "Fill outside")
+       textbox(7, 79, 207, 51)
+       statictext(8, 72, 210, "right", "Fill value")
+       button(9, 105, 340, 43, 26, "Help",
+          :show_help();)
+       groupbox(10, "Fill and region details", 6, 181, 240, 152)
+       textbox(11, 174, 299, 46)
+       statictext(12, 140, 251, "left", "x-end")
+       textbox(13, 68, 299, 46)
+       statictext(14, 45, 32, "right", "Input")
+       groupbox(15, "Matrices", 6, 4, 240, 87)
+       textmenu(16, 50, 29, 159, 200,
+          :update_matrix();
+          :set_plane();
+          :display_plane();
+          :update_region();)
+       statictext(17, 32, 303, "left", "z-start")
+       button(18, 179, 340, 43, 26, "Exit",
+          closewindow(0);)
+       textbox(19, 174, 273, 46)
+       statictext(20, 93, 116, "left", "scan input planes")
+       statictext(21, 140, 277, "left", "y-end")
+       groupbox(22, "Scan planes", 6, 96, 240, 83)
+       slider(23, 62, 131, 135, 30, "horizontal",
+            :display_plane();)
+       statictext(24, 34, 156, "right", "xz")
+       statictext(25, 34, 136, "right", "yz")
+       statictext(26, 34, 116, "right", "xy")
+       radiobuttons(27, 39, 118, 20, "vertical", "xy,yz,xz", "xy",
+            :set_plane();
+            :display_plane();)
+       textbox(28, 69, 273, 46)
+       statictext(29, 32, 277, "left", "y-start")
+       textbox(30, 174, 247, 46)
+       statictext(31, 140, 303, "left", "z-end")
+       textbox(32, 69, 247, 46)
+       statictext(33, 32, 251, "left", "x-start")
+       radiobuttons(34, 206, 126, 20, "vertical", "in,out", "in",
+            :set_display_matrix();
+            :display_plane();)
+       button(35, 218, 30, 17, 20, "U",
+          :update_menus();
+          :set_plane();
+          :display_plane();
+          :update_region();)
+       getmessage(36,
+         :process_message();)
+       statictext(37, 234, 124, "right", "in")
+       statictext(38, 238, 144, "right", "out")
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",15)
+       setpar(n,2,"tab_number",6)
+       setpar(n,3,"tab_number",3,
+                   "menu",[""])
+       setpar(n,7,"tab_number",8)
+       setpar(n,9,"tab_number",16)
+       setpar(n,11,"tab_number",14)
+       setpar(n,13,"tab_number",13)
+       setpar(n,16,"tab_number",1,
+                   "menu",["m3d","corn_fill","corn","singlePeakFt","singlePeak","m1Ft_phased","m1Ft","m1"])
+       setpar(n,18,"tab_number",17)
+       setpar(n,19,"tab_number",12)
+       setpar(n,23,"type","float",
+                   "range",[0,29],
+                   "tab_number",5)
+       setpar(n,27,"tab_number",4)
+       setpar(n,28,"tab_number",11)
+       setpar(n,30,"tab_number",10)
+       setpar(n,32,"tab_number",9)
+       setpar(n,35,"tab_number",2)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\3D","fillregion3d.htm")
+endproc()
+
+####################################################
+# Initialise menu names
+####################################################
+
+procedure(update_menus)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(0,16,"menu",menu3d)
+      setpar(0,16,"text",menu3d[0])
+      setpar(0,3,"text",menu3d[0]+"_fill")
+   endif
+
+endproc()
+
+####################################################
+# Update output matrix name
+####################################################
+
+procedure(update_matrix)
+
+   name = getpar(0,16,"text")
+   setpar(0,3,"text",name+"_fill")
+
+endproc()
+
+####################################################
+# Specify which matrix to display
+####################################################
+
+procedure(set_display_matrix)
+
+   which = getpar(0,34,"text")
+   if(which == "in")
+      setpar(0,20,"text","scan input planes")
+   else
+      setpar(0,20,"text","scan output planes")
+   endif
+
+endproc
+
+####################################################
+# Display the slice
+####################################################
+
+procedure(display_plane)
+
+# Work out which matrix to display
+   which = getpar(0,34,"text")
+
+   if(which == "in")   
+      name = getpar(0,16,"text")
+   else
+      name = getpar(0,3,"text")
+   endif
+
+# Make sure its a valid name
+   if(name == "" | isvar(name) == 0)
+      return
+   endif
+
+# Load the data set
+   mat = alias(name,"eval") 
+  (w,h,d) = size(mat)
+
+# Load the plane parameters
+   plane = getpar(0,23,"value")
+   dir = getpar(0,27,"text")
+
+# Display the plane
+   draw2d("false")
+      (nl,mode) = contour("getargs")
+      (left,right,bottom,top) = zoom2d("getargs")
+      if(dir = "xy")
+          image(mat[~,~,plane])
+       elseif(dir = "yz")
+          image(mat[plane,~,~])
+       elseif(dir = "xz")
+          image(mat[~,plane,~])
+       endif
+      contour(nl,mode)
+       title("$name$ ($dir$ plane : $plane$)")
+       if(reset == 0)
+          zoom2d(left,right,bottom,top)
+       endif
+    draw2d("true")
+
+    reset = 0
+
+endproc()
+
+
+
+####################################################
+# Set the plane direction, plot labels and slider  
+# limits for the current data set
+####################################################
+
+procedure(set_plane)
+
+   name = getpar(0,16,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval")
+   (w,h,d) = size(mat)
+
+   planeDir = getpar(0,27,"text")
+   plane = 0
+   setpar(0,23,"value",plane)
+   if(planeDir = "xy")
+      setpar(0,23,"range",[0,d-1])
+      setpar(0,23,"tickstep",d/10)
+      xlabel("x")
+      ylabel("y")
+   elseif(planeDir = "yz")
+      setpar(0,23,"range",[0,w-1])
+      setpar(0,23,"tickstep",w/10)
+      xlabel("y")
+      ylabel("z")
+   elseif(planeDir = "xz")
+      setpar(0,23,"range",[0,h-1])
+      setpar(0,23,"tickstep",h/10)
+      xlabel("x")
+      ylabel("z")
+   endif
+
+   reset = 1
+
+endproc()
+
+####################################################
+# Fill the data with the specified value
+####################################################
+
+procedure(fill_data)
+
+   nameIn = getpar(0,16,"text")
+   nameOut = getpar(0,3,"text")
+   mode = getpar(0,2,"text")
+   fillValue = getpar(0,7,"value")
+
+   if(nameIn == "" | nameOut == "")
+      return()
+   endif
+
+   if(isvar(nameIn) == 0)
+      message("Can't complete operation","Input file does not exist","error")
+      return()
+   endif
+
+   mIn = alias(nameIn,"eval") 
+   plane = getpar(0,23,"value")
+   dir = getpar(0,27,"text")
+   (w,h,d)= size(mIn)
+
+   x0 = getpar(0,32,"value")
+   x1 = getpar(0,30,"value")
+   y0 = getpar(0,28,"value")
+   y1 = getpar(0,19,"value")
+   z0 = getpar(0,13,"value")
+   z1 = getpar(0,11,"value")
+
+   if(mode == "outside")
+      if(vartype(mIn) == "matrix3d")
+        mOut = matrix(w,h,d)+fillValue
+      else
+        mOut = cmatrix(w,h,d)+fillValue
+      endif
+      mSub = submatrix(mIn,x0,x1,y0,y1,z0,z1)
+      mOut = insert(mOut,mSub,x0,y0,z0)
+   else
+      if(vartype(mIn) == "matrix3d")
+         mSub = matrix(x1-x0+1,y1-y0+1,z1-z0+1) + fillValue
+      else
+         mSub = cmatrix(x1-x0+1,y1-y0+1,z1-z0+1) + fillValue
+      endif
+      mOut = insert(mIn,mSub,x0,y0,z0)
+   endif
+     
+
+   assign(nameOut,mOut,"global") 
+   
+   setpar(0,34,"text","out")
+   :set_display_matrix()
+   :display_plane()
+
+endproc()
+
+######################################################
+# Update region details from rectangle or zoom limits
+######################################################
+
+procedure(update_region)
+
+   (x0,y0,x1,y1) = getrect()
+    if(x0 == -1)
+      (x0,x1,y0,y1) = zoom2d("getargs")
+    endif
+   
+   plane = getpar(0,23,"value")
+   dir = getpar(0,27,"text")
+
+   nameIn = getpar(0,16,"text")
+   if(nameIn == "" | isvar(nameIn) == 0)
+      return
+   endif
+   mIn = alias(nameIn,"eval") 
+   (w,h,d)= size(mIn)
+
+   if(dir == "xy")
+      setpar(0,32,"text",x0)
+      setpar(0,30,"text",x1)
+      setpar(0,28,"text",y0)
+      setpar(0,19,"text",y1)
+      setpar(0,13,"text",0)
+      setpar(0,11,"text",d-1)
+   elseif(dir == "yz")
+      setpar(0,32,"text",0)
+      setpar(0,30,"text",w-1)
+      setpar(0,28,"text",x0)
+      setpar(0,19,"text",x1)
+      setpar(0,13,"text",y0)
+      setpar(0,11,"text",y1)
+   elseif(dir == "xz")
+      setpar(0,32,"text",x0)
+      setpar(0,30,"text",x1)
+      setpar(0,28,"text",0)
+      setpar(0,19,"text",h-1)
+      setpar(0,13,"text",y0)
+      setpar(0,11,"text",y1)
+   endif
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,36,"text")
+
+   if(src == "2D Plot")
+       :update_region()
+   endif
+
+endproc()

@@ -1,0 +1,80 @@
+###########################################################
+# Switch between stacked plot and overlapped mode
+#
+# Author: C Eccles
+# Copyright Magritek 2022-23
+#
+#
+###########################################################
+
+procedure(stackedPlotSwitch)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# For undo
+   func1d("copy plot")
+
+   p = curplot("1d")
+   tl = p->tracelist()
+   nrTraces = size(tl)
+   type = p->axes->type()
+
+   if(type == "box_y_independent") # Stacked plot
+
+      p->draw("false")
+      p->axes->type("box")
+
+      (x1,x2) = p->zoom()
+      for(k = 0 to nrTraces-1)
+         tc = p->trace(tl[k])
+         tc->yoffset(0)
+      next(k)
+      p->autorange("true")
+      p->grid->xgrid("on")
+      p->grid->ygrid("on")
+      p->grid->finexgrid("on")
+      p->grid->fineygrid("on")
+      p->zoom(x1,x2)
+      p->ylabel("Amplitude")
+      p->draw("true")
+
+   else # Not a stacked plot so try and make it one
+
+      if(nrTraces == 1)
+         return
+      endif
+
+      mn = 1e20
+      mx = -1e20
+      for(k = 0 to nrTraces-1)
+         tc = p->trace(tl[k])
+         try
+            val = eval(tc->name)
+         catch
+            val = k+1
+         endtry
+         if(val < mn); mn = val; endif;
+         if(val > mx); mx = val; endif;
+      next(k)
+      p->draw("false")
+      p->axes->type("box_y_independent")
+      p->axes->minaxisvalue(mn)
+      p->axes->maxaxisvalue(mx)
+      for(k = 0 to nrTraces-1)
+         tc = p->trace(tl[k])
+         tc->yoffset(0.9*k/(nrTraces-1)+0.05)
+      next(k)
+      p->grid->xgrid("off")
+      p->grid->ygrid("off")
+      p->grid->finexgrid("off")
+      p->grid->fineygrid("off")
+      p->ylabel("Parameter being varied")
+      p->draw("true")
+
+   endif
+
+
+endproc()

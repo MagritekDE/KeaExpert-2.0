@@ -1,0 +1,605 @@
+##############################################
+#
+# Update various Prospa preferences
+#
+##############################################
+
+procedure(ProspaPreferences)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   :initCtrls()
+   :initTab()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Prospa Preferences", -1, -1, 507, 214)
+
+      # Define all controls with basic parameters
+      windowvar(menuNameCtrl,menuFolderCtrl,macroPathCtrl,dllPathCtrl,workDirCtrl,macroDirCtrl,selected,tabCtrl,plotCopySFCtrl)
+      tab(1, 0, 10, 501, 204)
+      button(2, 10, 180, 61, 25, "Add name",
+         :addText(menuNameCtrl,"Add new menu name");)
+      button(3, 80, 180, 72, 25, "Delete name",
+         :deleteLine(menuNameCtrl);)
+      button(4, 215, 180, 62, 25, "Add folder",
+         :addFolder(menuFolderCtrl,"$appdir$\\Macros","Add a new macro folder. This can be relative to the Prospa application or an absolute path.");)
+      button(5, 285, 180, 71, 25, "Delete folder",
+         :deleteLine(menuFolderCtrl);)
+      button(6, 449, 75, 43, 25, "Update",
+         :saveMenus("menus");)
+      button(7, 410, 68, 26, 26, "",
+         if(selected == "menuName");
+         :moveMenuUp(menuNameCtrl);
+         else;
+         :moveMenuUp(menuFolderCtrl);
+         endif;)
+      button(8, 410, 103, 26, 26, "",
+         if(selected == "menuName");
+         :moveMenuDown(menuNameCtrl);
+         else;
+         :moveMenuDown(menuFolderCtrl);
+         endif;)
+      listbox(9, 15, 55, 111, 116,
+         :listBoxCallback("menuName");)
+      listbox(10, 145, 55, 255, 116,
+         :listBoxCallback("menuFolder");)
+      statictext(11, 70, 40, "center", "Menu Name")
+      statictext(12, 275, 40, "center", "Corresponding Menu Folder")
+      button(13, "ww-25", 5, 20, 20, "?",
+         help("Macros\\Core","prospaPreferences.htm");)
+      button(14, 80, 180, 72, 25, "Delete path",
+         :deleteLine(macroPathCtrl);)
+      button(15, 10, 180, 61, 25, "Add path",
+         :addFolder(macroPathCtrl,"$appdir$\\Macros","Select macro path to add to search list.  This can be relative to the Prospa application or an absolute path.");)
+      statictext(16, 69, 40, "center", "Macro Search Path")
+      listbox(17, 15, 55, 386, 116,
+         :listBoxCallback("menuName");)
+      button(18, 450, 180, 41, 25, "Close",
+         closewindow(0);)
+      button(19, 412, 103, 26, 26, "",
+         :moveMenuDown(macroPathCtrl);)
+      button(20, 412, 68, 26, 26, "",
+         :moveMenuUp(macroPathCtrl);)
+      button(21, 400, 180, 41, 25, "Save",
+         :saveMenus("macros");)
+      statictext(22, 69, 40, "center", "DLL Search Path")
+      button(23, 400, 180, 41, 25, "Save",
+         :saveMenus("dlls");)
+      button(24, 412, 68, 26, 26, "",
+         :moveMenuUp(dllPathCtrl);)
+      button(25, 412, 103, 26, 26, "",
+         :moveMenuDown(dllPathCtrl);)
+      listbox(27, 15, 55, 386, 116,
+         :listBoxCallback("menuName");)
+      button(28, 10, 180, 61, 25, "Add path",
+         :addFolder(dllPathCtrl,"$appdir$\\DLLs","Select DLL path to add to search list. This can be relative to the Prospa application or an absolute path.");)
+      button(29, 80, 180, 72, 25, "Delete path",
+         :deleteLine(dllPathCtrl);)
+      textbox(30, 85, 80, 325)
+      statictext(31, 42, 76, "center", "Working")
+      statictext(32, 42, 91, "center", "directory")
+      button(33, 416, 79, 24, 24, "...",
+         :setWorkDir();)
+      statictext(34, 42, 132, "center", "directory")
+      button(35, 416, 120, 24, 24, "...",
+         :setMacroDir();)
+      textbox(36, 85, 121, 325)
+      statictext(37, 42, 117, "center", "Macro")
+      button(38, 350, 180, 91, 25, "Update variables",
+         :updateVariables();)
+      button(40, 448, 40, 43, 25, "Reset",
+         :resetMenus();)
+      statictext(41, 91, 83, 97, 54, "center", "Scale factor to use when copying a plot to the clip-board or to an image file")
+      textbox(42, 152, 98, 40)
+      button(43, 400, 180, 41, 25, "Save",
+         :updatePlotSF();)
+      button(44, 449, 145, 43, 25, "Load",
+         :loadMenus();)
+      button(45, 449, 110, 43, 25, "Save",
+         :saveMenus("saveMenus");)
+
+     # Set other control parameters
+      setpar(n,1,"objID","tabCtrl",
+                  "inittabs",["Menus","Macros","DLLs","Favourites","Copy Plot"])
+      setpar(n,2,"tooltip","Add a name to the visible menu list.",
+                  "tabparent",[1,0])
+      setpar(n,3,"tooltip","Delete a name from the visible menu list.",
+                  "tabparent",[1,0])
+      setpar(n,4,"tooltip","Add a folder which contains macros to the menu.",
+                  "tabparent",[1,0])
+      setpar(n,5,"tooltip","Remove a macro menu folder from the list.",
+                  "tabparent",[1,0])
+      setpar(n,6,"tooltip","Update the Prospa menus using the entries in this tab.",
+                  "tabparent",[1,0])
+      setpar(n,7,"tooltip","Move the select list entry up one line.",
+                  "tabparent",[1,0])
+      setpar(n,8,"tooltip","Move the select list entry down one line.",
+                  "tabparent",[1,0])
+      setpar(n,9,"objID","menuNameCtrl",
+                  "tabparent",[1,0])
+      setpar(n,10,"objID","menuFolderCtrl",
+                  "tabparent",[1,0])
+      setpar(n,11,"tabparent",[1,0])
+      setpar(n,12,"tabparent",[1,0])
+      setpar(n,13,"tooltip","View a help file.")
+      setpar(n,14,"tooltip","Remove a macro search path from the list.",
+                  "tabparent",[1,1])
+      setpar(n,15,"tooltip","Add a macro search path to the list.",
+                  "tabparent",[1,1])
+      setpar(n,16,"tabparent",[1,1])
+      setpar(n,17,"objID","macroPathCtrl",
+                  "tabparent",[1,1])
+      setpar(n,18,"tooltip","Close this window.")
+      setpar(n,19,"tooltip","Move the select list entry down one line.",
+                  "tabparent",[1,1])
+      setpar(n,20,"tooltip","Move the select list entry up one line.",
+                  "tabparent",[1,1])
+      setpar(n,21,"tooltip","Save the search path list.",
+                  "tabparent",[1,1])
+      setpar(n,22,"tabparent",[1,2])
+      setpar(n,23,"tooltip","Save the search path list.",
+                  "tabparent",[1,2])
+      setpar(n,24,"tooltip","Move the select list entry down one line.",
+                  "tabparent",[1,2])
+      setpar(n,25,"tooltip","Move the select list entry down one line.",
+                  "tabparent",[1,2])
+      setpar(n,27,"objID","dllPathCtrl",
+                  "tabparent",[1,2])
+      setpar(n,28,"tabparent",[1,2],
+                  "tooltip","Add a directory to the DLL search path.")
+      setpar(n,29,"tabparent",[1,2],
+                  "tooltip","Remove a directory from the DLL search path.")
+      setpar(n,30,"objID","workDirCtrl",
+                  "tabparent",[1,3])
+      setpar(n,31,"tabparent",[1,3])
+      setpar(n,32,"tabparent",[1,3])
+      setpar(n,33,"tabparent",[1,3])
+      setpar(n,34,"tabparent",[1,3])
+      setpar(n,35,"tabparent",[1,3])
+      setpar(n,36,"objID","macroDirCtrl",
+                  "tabparent",[1,3])
+      setpar(n,37,"tabparent",[1,3])
+      setpar(n,38,"tabparent",[1,3],
+                  "tooltip","Update the variables with the new values.")
+      setpar(n,40,"tooltip","Load the default menus for this install.",
+                  "tabparent",[1,0])
+      setpar(n,41,"tabparent",[1,4])
+      setpar(n,42,"objID","plotCopySFCtrl",
+                  "type","float",
+                  "range",[0.1,10],
+                  "tabparent",[1,4])
+      setpar(n,43,"tabparent",[1,4],
+                   "tooltip","Save the scale factor to make it the default.")
+      setpar(n,44,"tooltip","Load a menu into this tab and update the Prospa menu as well.",
+                  "tabparent",[1,0])
+      setpar(n,45,"tooltip","Update the Prospa menus and save the menus in this tab to a file.",
+                  "tabparent",[1,0])
+
+
+
+
+     # Set other window parameters
+endproc(n)
+
+procedure(initTab)
+
+  # nr = getpar(0,1,"currenttab")
+
+  # if(nr == 0)
+      sz = size(usermenus)
+      if(sz > 0 & sz%2 == 0)
+         menuNames = list(sz/2)
+         menuFolders = list(sz/2)
+         for(k = 0 to sz/2-1)
+            menuNames[k] = usermenus[k*2]
+            menuFolders[k] = usermenus[k*2+1]
+         next(k)
+      endif
+   
+      selected = "menuFolder"
+      menuNameCtrl->list(menuNames)
+      menuFolderCtrl->list(menuFolders)
+      menuFolderCtrl->zindex(0)
+
+ #  elseif(nr == 1)
+
+      macroPath = macrosearchpath
+      macroPathCtrl->list(macroPath)
+      macroPathCtrl->zindex(0)
+
+ #  elseif(nr == 2)
+      
+      dllPath = dllsearchpath
+      dllPathCtrl->list(dllPath)
+      dllPathCtrl->zindex(0)
+
+  # elseif(nr == 3)
+
+      workDirCtrl->text(workdir)
+      macroDirCtrl->text(macrodir)
+
+ #  endif
+
+endproc()
+
+   
+procedure(initCtrls)
+
+   bak = getcwd()
+
+   cd("$getmacropath()$\\$rmext(getmacroname())$")
+   setpar(0,7,"icon","uparrow.png")
+   setpar(0,20,"icon","uparrow.png")
+   setpar(0,24,"icon","uparrow.png")
+   setpar(0,8,"icon","downarrow.png")
+   setpar(0,19,"icon","downarrow.png")
+   setpar(0,25,"icon","downarrow.png")
+   plotCopySFCtrl->text(plotscale())
+   cd(bak)
+
+endproc()
+
+
+################################################################
+#
+# Macro search path tab procedures
+#
+################################################################
+
+procedure(saveMenus,which)
+
+   if(which == "menus" | which == "saveMenus")
+
+      menuFolders = menuFolderCtrl->list
+      menuNames = menuNameCtrl->list
+
+      sz = size(menuFolders)
+   
+      if(sz == size(menuNames))
+   
+         usermenusloc = list(sz*2)
+         for(k = 0 to sz-1)
+            usermenusloc[k*2] = menuNames[k]
+            usermenusloc[k*2+1] = menuFolders[k]
+         next(k)
+   
+       # Save to a file
+         if(which == "saveMenus") 
+
+            cd(prefdir)
+            mkdir("Menus")
+            cd("Menus")
+   
+            name = getfilename("save","Enter name for this menu or cancel","menu","lst")
+            if(name == "cancel")
+               return
+            endif
+            save(name,usermenusloc)
+
+         endif
+
+       # Update the user interface
+         cd("$prefdir$\\Startup")
+         if(isfile("userMenus.lst"))
+            save("userMenus.lst",usermenusloc)
+            varstatus("usermenus","visible","readwrite","permanent")
+            assign("usermenus",usermenusloc,"global")
+            varstatus("usermenus","visible","readonly","permanent")
+            updatemainmenu()
+            if(which == "menus")
+               message("Information","Menu preferences updated","info")
+            endif
+         else
+            message("Error","Can't save menu preferences","error")
+         endif
+    
+       else
+         message("Error","List lengths are different","error")
+       endif
+
+   elseif(which == "macros")
+
+      cd("$prefdir$\\Startup")
+      if(isfile("macroSearchPath.lst"))
+         save("macroSearchPath.lst",macroPathCtrl->list)
+         varstatus("macrosearchpath","visible","readwrite","permanent")
+         assign("macrosearchpath",macroPathCtrl->list,"global")
+         varstatus("macrosearchpath","visible","readonly","permanent")
+         message("Information","Macro search-path preferences updated","info")
+      else
+         message("Error","Can't save Macro search-path preferences","error")
+      endif
+
+   elseif(which == "dlls")
+
+      cd("$prefdir$\\Startup")
+      if(isfile("dllSearchPath.lst"))
+         save("dllSearchPath.lst",dllPathCtrl->list)
+         varstatus("dllsearchpath","visible","readwrite","permanent")
+         assign("dllsearchpath",dllPathCtrl->list ,"global")
+         varstatus("dllsearchpath","visible","readonly","permanent")
+         message("Information","DLL search-path preferences updated","info")
+      else
+         message("Error","Can't save DLL search-path preferences","error")
+      endif
+
+   endif
+
+
+endproc()
+
+
+################################################################
+#
+# Load a predefined menu
+#
+################################################################
+
+procedure(loadMenus)
+
+   cd(prefdir)
+   if(isdir("Menus") == 0)
+      message("Error","No additional menus have been defined","error")
+      return
+   endif
+
+   cd("Menus")
+
+   fName = "$getcwd()$\\Select Menu"
+   name = getfilename("open","Select the new menu","Menus","lst",fName)
+
+   if(name != "cancel")
+      usermenus = load(name)
+      sz = size(usermenus)
+      if(sz > 0 & sz%2 == 0)
+         menuNames = list(sz/2)
+         menuFolders = list(sz/2)
+         for(k = 0 to sz/2-1)
+            menuNames[k] = usermenus[k*2]
+            menuFolders[k] = usermenus[k*2+1]
+         next(k)
+      endif
+
+      selected = "menuFolder"
+      menuNameCtrl->list(menuNames)
+      menuFolderCtrl->list(menuFolders)
+      menuFolderCtrl->zindex(0)
+
+     # :deleteExtraMenus()
+
+      :saveMenus("menus")
+
+   endif
+
+endproc()
+
+################################################################
+#
+# Favourites tab procedures
+#
+################################################################
+
+procedure(setWorkDir)
+
+   (dir,rel) = getfolder(workdir,"Select favourite working (data) directory","","true")
+   if(dir != "cancel")
+      if(rel == "relative")
+        dir = relpath(dir,appdir)
+      endif
+      workDirCtrl->text(dir)
+   endif
+
+endproc()
+
+
+procedure(setMacroDir)
+
+   (dir,rel) = getfolder(workdir,"Select favourite macro directory","","true")
+   if(dir != "cancel")
+      if(rel == "relative")
+        dir = relpath(dir,appdir)
+      endif
+      macroDirCtrl->text(dir)
+   endif
+
+endproc()
+
+procedure(updateVariables)
+
+   assign("workdir",workDirCtrl->text,"global")
+   assign("macrodir",macroDirCtrl->text,"global")
+   message("Information","Variables updated","info")
+
+endproc()
+
+
+
+################################################################
+#
+# Generic procedures
+#
+################################################################
+
+procedure(addText,ctrl,prompt)
+
+    lst = ctrl->list
+    indx =  size(lst) 
+    name = gettext(prompt)
+    if(name != "cancel")
+        lst = insertinlist(lst,name,indx)
+        ctrl->list(lst)
+        ctrl->zindex(indx) 
+        drawwin(0)
+    endif
+
+endproc()
+
+procedure(addFolder,ctrl,dir,prompt)
+
+    (dir,rel) = getfolder(dir,prompt,"","true")
+    lst = ctrl->list
+    if(dir != "cancel")
+        if(rel == "relative")
+           dir = relpath(dir,appdir)
+        endif
+        indx = size(lst)
+        lst = insertinlist(lst,dir,indx)
+        ctrl->list(lst)
+        ctrl->zindex(indx) 
+        drawwin(0)   
+    endif
+
+endproc()
+
+procedure(deleteLine,ctrl)
+
+    lst = ctrl->list
+    indx = ctrl->zindex
+    top = ctrl->topzindex
+    lst = rmfromlist(lst,indx)
+    ctrl->list(lst)
+    if(indx < size(lst)-1)
+       ctrl->zindex(indx)
+    else
+      ctrl->zindex(indx-1)
+    endif
+     ctrl->topzindex(top)
+    drawwin(0)
+
+endproc()
+
+procedure(moveMenuUp,ctrl)
+
+   lst = ctrl->list
+   top = ctrl->topzindex
+   indx = ctrl->zindex
+   if(indx >= 1)
+      tmp = lst[indx-1]
+      lst[indx-1] = lst[indx] 
+      lst[indx] = tmp
+      ctrl->list(lst)
+      ctrl->zindex(indx-1)  
+      if(indx-1 >= top) 
+         ctrl->topzindex(top)
+      else
+         ctrl->topzindex(indx-1)
+      endif
+      drawwin(0) 
+   endif
+     
+endproc()
+
+procedure(moveMenuDown,ctrl)
+
+      lst = ctrl->list
+      indx = ctrl->zindex
+      sz = size(lst)
+      if(indx < sz-1)
+         tmp = lst[indx+1]
+         lst[indx+1] = lst[indx] 
+         lst[indx] = tmp
+         ctrl->list(lst)
+         ctrl->zindex(indx+1)    
+         drawwin(0)
+      endif 
+
+endproc()
+
+procedure(editLine,ctrl)
+
+    path = ctrl->list
+    indx = ctrl->zindex
+    txt = ctrl->text
+    lst = ctrl->list
+
+    txt = gettext("Edit name/path",txt,20)
+    if(txt != "cancel")
+       lst[indx] = txt
+       ctrl->list(lst)
+       ctrl->zindex(indx)  
+       path = insertinlist(path,txt,indx)
+    endif
+
+endproc()
+
+procedure(listBoxCallback,name)
+          
+   if(parentCtrl->event == "double_click_down")
+      :editLine(parentCtrl)
+   else
+      selected = name
+   endif
+
+endproc()
+
+procedure(deleteExtraMenus)
+
+  cd("$prefdir$\\startup")
+  for(k = 1 to 10)
+    if(isfile("userMenus$k$.lst"))
+       rmfile("userMenus$k$.lst")
+    endif
+  next(k)
+
+endproc()
+
+procedure(resetMenus)
+
+  if(query("Warning","This will reset the main menu to its default state.\rContinue?") == "no")
+     return
+  endif
+
+   bak = getcwd()
+   cd("$appdir$\\preferences\\startup")
+   if(isfile("userMenus.lst"))
+      varstatus("usermenus","hidden","readwrite")
+      usermenusloc = load("userMenus.lst")
+#      for(k = 1 to 10)
+#         if(isfile("userMenus$k$.lst"))
+#            usermenusloc = usermenusloc + load("userMenus$k$.lst")  
+#         endif
+#      next(k)
+      assign("usermenus",usermenusloc,"global")
+      varstatus("usermenus","hidden","readonly")
+      :initTab()
+      :saveMenus("menus")
+   endif
+
+# Copy to the preferences folder
+   srcDir = "$appdir$\\preferences\\startup"
+   dstDir = "$prefdir$\\startup"
+   copyfile("$srcDir$\\userMenus.lst","$dstDir$\\userMenus.lst")
+#   for(k = 1 to 10)
+#      fileName = "userMenus$k$.lst"
+#      cd(dstDir)
+#      if(isfile(fileName))
+#         rmfile(fileName)
+#      endif
+#      cd(srcDir)
+#      if(isfile(fileName))
+#         copyfile("$srcDir$\\$fileName$","$dstDir$\\$fileName$")
+#      endif   
+#   next(k)  
+
+endproc()
+
+procedure(updatePlotSF)
+
+   if(checkcontrols(0) == "error")
+     return
+   endif
+   sf = plotCopySFCtrl->value
+   plotscale(sf)
+   cd("$prefdir$\\Startup")
+   printtofile("CopyPlot.mac")
+   pr("plotscale($sf$)\n")
+   closeprint()
+   message("Information","Copy scale factor updated","info")
+
+endproc()

@@ -1,0 +1,114 @@
+################################################
+#            removeVariables.2d
+#
+# Interatively remove 2D matrix variables.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+################################################
+
+procedure(removeVariables1d)
+
+   n = :windowdefinition()
+   :updateWindow()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Remove 2D variables", -1, -1, 325, 178)
+
+      # Define all controls with basic parameters
+       listbox(1, 12, 29, 230, 136)
+       statictext(2, 117, 8, "center", "Matrices to remove")
+       button(3, 259, 55, 52, 33, "Remove One",
+          :removeOne();)
+       button(4, 260, 137, 52, 27, "Exit",
+          closewindow(0);)
+       button(5, 260, 99, 52, 27, "Update",
+          :updateWindow();)
+       button(6, 259, 11, 52, 33, "Remove All",
+          :removeAll();)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Update the window with the current 2D matrices
+####################################################
+
+procedure(updateWindow)
+
+   menu2d = matrixlist(2)
+   s = size(menu2d)
+   if(s > 0)
+      varlist = list(s)
+      for (k = 0 to s-1)
+         v = eval(menu2d[k])
+         (w,h) = size(v)
+         if(vartype(v) == "matrix2d")
+            varlist[k] = menu2d[k] + " - $w$ x $h$ real points"
+         else
+            varlist[k] = menu2d[k] + " - $w$ x $h$ complex points"
+         endif
+      next(k)
+      setpar(0,1,"list",varlist)
+   else
+     setpar(0,1,"list",[""])
+   endif
+
+endproc()
+
+####################################################
+# Remove all the 2D variables
+####################################################
+
+procedure(removeAll)
+
+   varList = getpar(0,1,"list")
+
+   if(varList != null)
+      result = query("Warning","Are you sure you want to remove all variables?")
+      if(result == "yes")
+         s = size(varList)
+         name = list(1)
+         for(k = 0 to s-1)
+            name[0] = scanstr(varList[k],"%1 *")
+            rmvar(name[0])
+         next(k)  
+         :updateWindow()
+      endif
+   else
+      message("Warning","No variables to remove")
+   endif
+
+endproc()
+
+####################################################
+# Remove one of the 2D variables
+####################################################
+
+procedure(removeOne)
+
+   name = list(1)
+   str = getpar(0,1,"text")
+   if(str != null)
+      name[0] = scanstr(str,"%1 *") 
+      result = query("Warning","Are you sure you want to remove matrix '$name[0]$'?")
+      if(result == "yes")
+         rmvar(name[0])
+         :updateWindow()
+      endif
+   else
+      message("Warning","No variable selected")
+   endif
+
+endproc()

@@ -1,0 +1,91 @@
+############################################################
+#  
+# Generates a table controlled z-shim output
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
+               "b1Freq1H",        "1H frequency (MHz)",        "tb",  "freq";
+               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
+               "startShim",       "Shim initial value",        "tb",  "float,[-32768,32767]";
+               "endShim",         "Shim final value",          "tb",  "float,[-32768,32767]";
+               "shimSteps",       "Nr. steps",                 "tb",  "integer,[2,1000]";
+               "stepDur",         "Step time (us)",            "tb",  "integer,[6,1000]";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime"]
+
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts    = nrPnts",
+                    "a90Amp       = 90Amplitude1H",
+                    "d90Dur       = pulseLength1H",
+                    "tGrad        = linspace(startShim,endShim,shimSteps)",
+                    "nGradSteps   = size(tGrad)",
+                    "dStep        = stepDur-5.15", # Compensates for loop delays
+                    "totPnts      = nrPnts",
+                    "totTime      = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+## Pulse sequence
+
+   initpp(dir)              # Define compile directory and clear parameter list
+
+   pulse(1,a90Amp,p1,d90Dur)
+
+   setindex(tGrad,0)
+   loop("l1",nGradSteps)
+      shim16(0,tGrad)
+      delay(dStep)
+      incindex(tGrad,1)
+   endloop("l1")
+   shim16(0,0)
+
+   acquire("overwrite",nDataPnts)   # Acquire FID
+
+   lst = endpp(1)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,1,2,3;   # p1 : Pulse phase
+                 0,1,2,3]   # pA : Acquire phase
+
+
+endproc(lst,groups,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par = ["rxGain        = $modelPar->rxGain$",
+          "pulseLength1H = $PulseLength_1H$",
+          "90Amplitude1H = $PowerLevel_1H$",
+          "b1Freq1H      = $Frequency_1H$",
+          "b1Freq13C     = $Frequency_X$"]
+
+endproc(par)

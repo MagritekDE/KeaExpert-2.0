@@ -1,0 +1,29 @@
+###################################################
+#                 real2d.mac
+#
+# Take the real part of the current 2D data
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+procedure(real2d)
+
+# Get the 2D plot data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+      message("Information","No 2D plot data!")
+      return
+   endif
+
+   (w,h) = size(m)
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(real(m),x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+   message("Operation completed","Real part displayed")
+
+endproc()
+

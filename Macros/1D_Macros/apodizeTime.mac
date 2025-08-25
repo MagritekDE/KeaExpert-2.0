@@ -1,0 +1,165 @@
+####################################################
+#                      apodize1d.mac
+#
+# Apply an apodization function to the current 1D
+# time domain data set 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+###################################################
+
+
+procedure(apodize1d)
+
+   n = :windowdefinition()
+   setpar(n,3,"list",["none","exponential","sinebell","sinebell2","gauss","gaussdeconv"])
+   setpar(n,2,"value",0)
+   setpar(n,7,"value",0)
+   setpar(n,3,"text","none")
+   showwindow(n)
+   :select_filter()
+   :update_data()
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apodize 1D Time Domain Data", -1, -1, 350, 131)
+
+      # Define all controls with basic parameters
+       windowvar(lwNar,lwBrd,xOrig,yOrig,N)
+       statictext(1, 234, 46, "left", "0")
+       slider(2, 133, 44, 100, 20, "horizontal",
+            :apply_filter();)
+       listbox(3, 22, 28, 76, 86,
+          if(getpar(0,3,"event") == "single_click_down");
+          :apply_filter();
+          endif;)
+       statictext(4, 234, 89, "left", "0")
+       groupbox(5, "Filters", 5, 4, 111, 123)
+       button(6, 293, 55, 44, 27, "Help",
+          :load_help();)
+       slider(7, 133, 87, 100, 20, "horizontal",
+            :apply_filter();)
+       button(8, 292, 95, 45, 27, "Exit",
+          closewindow(0);)
+       statictext(9, 211, 28, "right", "Broadening")
+       groupbox(10, "Adjust line-width", 122, 4, 163, 123)
+       statictext(11, 205, 74, "right", "Narrowing")
+       button(12, 293, 15, 44, 27, "Update",
+          :update_data();)
+
+     # Set other control parameters
+       setpar(n,2,"type","float",
+                   "range",[0,100])
+       setpar(n,7,"type","float",
+                   "range",[0,100])
+       setpar(n,8,"mode","cancel")
+
+endproc(n)
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(load_help)
+   help("Macros\\1D","apodizeTime.htm")
+endproc()
+
+
+#####################################################################
+# Load the current data set
+#####################################################################
+
+procedure(update_data)
+
+   (xOrig,yOrig) = getplotdata("1d")
+   N = size(xOrig)
+
+endproc()
+
+#####################################################################
+# Determine an expression for the chosen filter
+#####################################################################
+
+procedure(select_filter)
+
+   fltStr = getpar(0,3,"text")
+
+   if(fltStr == "none")
+      flt = "matrix(N)+1"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "exponential")
+      flt = "exp(-abs(x-p1)*p2)"
+      broad = "true"; narrow = "false"
+      lwBrd = "p2/(del*pi)"; lwNar = "0"
+   elseif(fltStr == "sinebell")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "sinebell2")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))^2"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "gauss")
+      flt = "exp(-(x-p1)^2*p2^2)"
+      lwBrd = "1.66*p2/(pi*del)"; lwNar = "0"
+      broad = "true"; narrow = "false"
+   elseif(fltStr == "gaussdeconv")
+      flt = "exp((x-p1)*p3-(x-p1)^2*p2^2)"
+      broad = "true"; narrow = "true"
+      lwBrd = "1.66*p2/(pi*del)"; lwNar = "p3/(pi*del)"
+   endif
+
+# Enable/disable the controls based on choice
+   setpar(0,2,"enable",broad)
+   setpar(0,9,"enable",broad)
+   setpar(0,7,"enable",narrow)
+   setpar(0,11,"enable",narrow)
+
+endproc(flt)
+
+#####################################################################
+# Apply the chosen filter
+#####################################################################
+
+procedure(apply_filter)
+
+   if(N == 0)
+      return()
+   endif
+
+   if(maths:is_not_power2(N))
+      message("Error","Data set length must be a power of 2");
+      return()
+   endif
+
+   x = [0:1:N-1]
+   flt = :select_filter()
+
+   p1 = 0
+   p2 = getpar(0,2,"value")/N
+   p3 = getpar(0,7,"value")/(2*N)
+   del = xOrig[1] - xOrig[0]
+
+   setpar(0,1,"text","$eval(lwBrd),1.3g$")
+   setpar(0,4,"text","$eval(lwNar),1.3g$")
+   fltDat = eval(flt)
+
+   draw1d("false")
+      (txt,lx,ly,x1v,x2v) = 1dpar:get()
+      yFlt = yOrig.*fltDat
+      plot(xOrig,yFlt)
+    #  plot(xOrig,fltDat)
+      1dpar:set(txt,lx,ly,x1v,x2v)
+   draw1d("true")
+
+endproc()

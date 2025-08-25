@@ -1,0 +1,47 @@
+########################################################
+#
+# This pulse sequence sets the gradient controller to 
+# the predefined shim values.
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq1H",     "B1 Frequency (MHz)",     "tb", "freq";
+               "repTime",      "Repetition time (ms)",   "tb", "reptime";
+               "gradstab",     "Shim settle delay (ms)", "tb", "ldelay";
+               "offsetShim",   "Offset shim value",      "tb",  "float,[-32768,32768]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["w1 = gradstab*1000.0-acqTime*1000.0",
+                    "n1 = nrPnts",
+                    "n2 = offsetShim",  # offset shim value
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the parameters groups and order
+   groups = ["Pulse_sequence","Acquisition","Processing_Display_Std","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   shim16(15,n2)  # Offset shim
+   wait(w1)
+   acquire("overwrite",n1)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0;
+                0] 
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)

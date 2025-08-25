@@ -1,0 +1,31 @@
+# Limits the phase range from -180 to 180
+
+procedure(phaseRangeLimit)
+
+   plt = curplot("1d")
+   plt->draw("false")
+   (x,y) = plt->getdata()
+   trc = curtrace()
+   sz = size(y)
+
+   off = 0
+
+   for(k = 0 to sz-1)
+      if(y[k] <= -180)
+         off = trunc((y[k]-180)/360)  
+         y[k] = y[k]-off*360
+      endif
+      if(y[k] > 180)
+         off = trunc((y[k]+180)/360)  
+         y[k] = y[k]-off*360
+      endif
+
+   next(k)
+
+   plt->plot(x,y,"color",[255,0,0])
+   plt->title("Phase response")
+   plt->xlabel("Frequency (MHz)")
+   plt->ylabel("Phase (degrees)")
+   plt->draw("true")
+
+endproc()

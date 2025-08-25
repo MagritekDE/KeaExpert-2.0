@@ -1,0 +1,70 @@
+procedure(MakeBlackAndWhite,dim)
+
+   n = :windowdefinition(dim)
+   windowvar(wvDim)
+   wvDim = dim
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition,dim)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Make $caseset(dim,\"upper\")$ subplot black and white", -1, -1, 300, 91, "resizable")
+
+      # Define all controls with basic parameters
+       button(1, 20, 20, 81, 51, "Appy to current subplot",:setToBW(curplot(wvDim)))
+       button(2, 110, 20, 81, 51, "Appy to all subplots",:applyAll())
+       button(3, 200, 20, 81, 51, "Close",closewindow(0))
+
+     # Set other control parameters
+endproc(n)
+
+procedure(applyAll)
+
+   pp = curPlot()->parent()
+   (w,h) = pp->size()
+   for(y = 1 to h)
+      for(x = 1 to w)
+         pd = pp->subplot(x,y)
+         :setToBW(pd)
+      next(x)
+   next(y)
+
+endproc()
+   
+procedure(setToBW,rg)
+
+   rg->draw("false")
+   rg->axes->axescolor([0,0,0])
+   rg->axes->fontcolor([0,0,0])
+   rg->title->color([0,0,0])
+   rg->xlabel->color([0,0,0])
+   rg->ylabel->color([0,0,0])
+   rg->bordercolor([255,255,255])
+   rg->bkgcolor([255,255,255])
+   rg->grid->color([160,160,160])
+   rg->grid->finecolor([220,220,220])
+
+   if(rg->dim =="1d")
+      tl = rg->tracelist()
+      for(k = 0 to size(tl)-1)
+         tc = rg->trace(tl[k])
+         tc->realcolor([0,0,0])
+         tc->imagcolor([128,128,128])
+         tc->realstyle(0)
+         tc->imagstyle(1)
+         tc->symbolcolor([0,0,0])
+      next(k)
+   endif
+   
+   rg->draw("true")
+
+   tracepref("realcolor",[0,0,0])
+   tracepref("imagcolor",[128,128,128])
+   tracepref("realstyle",0)
+   tracepref("imagstyle",1)
+   tracepref("symbolcolor",[0,0,0])
+
+endproc()

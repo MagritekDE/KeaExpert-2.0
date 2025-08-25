@@ -1,0 +1,366 @@
+#############################################################
+# Allow the user to calibrate a 2D spectrum by selecting a 
+# point on the plot and specifying ppm values.
+#############################################################
+
+
+procedure(CalibrateSpectrum2D)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Under construction
+   message("Information","This processing function is currently unavailable.\rPlease use the calibration scripts in the Setup menu.","info")
+   return
+
+   parent = guiwinnr()
+   (f2Center,f1Center) = :getCenterFreq()
+
+   if(f1Center == null & f2Center == null)
+      message("error","Can't calibrate if both axes are in Hz","error")
+      return 
+   endif
+   n = :windowdefinition()
+   windowvar(wvOrigf2Center,wvOrigf1Center,wvOrigf2Freq,wvOrigf1Freq,wvParent)
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   wvOrigf2Center = f2Center
+   wvOrigf1Center = f1Center
+   wvOrigf2Freq = f2Freq
+   wvOrigf1Freq = f1Freq
+   wvParent = parent
+   assignctrls(n)
+   :initialise(f2Center,f1Center)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calibrate 2D spectrum", -1, -1, 468, 149)
+
+      # Define all controls with basic parameters
+      button(1, 382, 14, 67, 34, "Select peak to calibrate",
+         :selectPeak();)
+      button(2, 382, 63, 67, 34, "Reset to original",
+         f2OffsetCtrl->text(0);
+         f1OffsetCtrl->text(0);
+         f2RefPPMCtrl->text(0);
+         f1RefPPMCtrl->text(0);
+         :updatePlot())
+      button(3, 382, 111, 67, 29, "Close",
+          closewindow(0))
+      textbox(4, 100, 36, 51)
+      statictext(5, 175, 39, "right", "ppm")
+      statictext(6, 60, 34, 70, 27, "center", "f2 of selected peak")
+      textbox(7, 270, 36, 50)
+      statictext(8, 345, 39, "right", "ppm")
+      statictext(9, 230, 34, 70, 27, "center", "f1 of selected peak")
+      textbox(10, 100, 66, 51)
+      statictext(11, 60, 63, 63, 27, "center", "f2 origin offset")
+      statictext(12, 175, 69, "right", "ppm")
+      textbox(13, 270, 66, 51)
+      statictext(14, 230, 63, 63, 27, "center", "f1 origin offset")
+      statictext(15, 345, 69, "right", "ppm")
+      button(16, 40, 111, 112, 29, "Save to proc.par",
+         :saveToProcPar();)
+      button(17, 219, 111, 112, 29, "Save globally",
+         :saveGlobally();)
+      groupbox(18, "Parameters", 9, 9, 353, 92)
+
+     # Set other control parameters
+      setpar(n,4,"objID","f2RefPPMCtrl",
+                  "valueID","xRefPPM",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,7,"objID","f1RefPPMCtrl",
+                  "valueID","yRefPPM",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,10,"objID","f2OffsetCtrl",
+                  "valueID","f2Offset",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,13,"objID","f1OffsetCtrl",
+                  "valueID","f1Offset",
+                  "type","float",
+                  "range",[-1000,1000])
+
+     # Set other window parameters
+endproc(n)
+
+#############################################################
+# Returns the central frequency in ppm of the current plot
+# If the plot is in Hz mode then convert to ppm first
+#############################################################
+
+procedure(getCenterFreq)
+
+   cp = curplot("2d")
+
+   if(cp->axes->xppmscale == "false")
+      togglePPM_Hz_XY(1)
+   endif
+
+   (m,xr,yr) = cp->getdata()
+
+   oldXCenter = null
+   oldYCenter = null
+
+   if(cp->axes->xdirection() == "reversed")
+     oldXCenter = (xr[0]+xr[1])/2 # Central frequency
+   endif
+
+   if(cp->axes->ydirection() == "reversed")
+     oldYCenter = (yr[0]+yr[1])/2 # Central frequency  
+   endif
+
+endproc(oldXCenter,oldYCenter)
+
+
+#############################################################
+# Get the NMR (B1) frequencies from the UI
+#############################################################
+
+procedure(getNMRFrequencies)
+
+   assignlist(getctrlvalues(wvParent))
+
+   (n2,n1) = scanstr(nucleus,"%1-%2")
+   f1 = eval("b1Freq$n1$")
+   f2 = eval("b1Freq$n2$")
+
+   if(n1 == n2)
+      f1 = null
+   endif
+
+endproc(f2,f1)
+
+
+#############################################################
+# Intialise the window interface
+#############################################################
+
+procedure(initialise,oldf2Center,oldf1Center)
+
+   if(oldf2Center == null)
+      f2RefPPMCtrl->enable("false")
+      f2OffsetCtrl->text("0")
+   else
+      f2OffsetCtrl->text(oldf2Center)
+   endif
+
+   if(oldf1Center == null)
+      f1RefPPMCtrl->enable("false")
+      f1OffsetCtrl->text("0")
+   else
+      f1OffsetCtrl->text(oldf1Center)
+   endif
+
+   f2OffsetCtrl->enable("false")
+   f1OffsetCtrl->enable("false")
+   f2RefPPMCtrl->text("0")
+   f1RefPPMCtrl->text("0")
+
+endproc()
+
+#############################################################
+# Select a peak, calculate the new offset and update the plot
+#############################################################
+
+procedure(selectPeak)
+
+   if(checkcontrols(0) == "error")
+      return
+   endif
+
+   xOff = f2OffsetCtrl->value()
+   yOff = f1OffsetCtrl->value()
+   (f2Select,f1Select) = getxy("cross","value")
+
+   if(wvOrigf2Center != null)
+      f2RefPPM = f2RefPPMCtrl->value()
+      f2OffsetCtrl->text(xOff+(f2RefPPM-f2Select))
+   endif
+
+   if(wvOrigf1Center != null)
+      f1RefPPM = f1RefPPMCtrl->value()
+      f1OffsetCtrl->text(yOff+(f1RefPPM-f1Select))
+   endif
+
+   :updatePlot()
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par
+#############################################################
+
+procedure(saveToProcPar)
+
+   f2Offset = f2OffsetCtrl->value()
+   f1Offset = f1OffsetCtrl->value()
+   :saveReference(f2Offset,f1Offset,"local")
+   sendmessage("Macro","offset update")
+   closewindow(0)
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par and ucsNMR.par
+#############################################################
+
+procedure(saveGlobally)
+
+   f2Offset = f2OffsetCtrl->value()
+   f1Offset = f1OffsetCtrl->value()
+   :saveReference(f2Offset,f1Offset,"global")
+   sendmessage("Macro","offset update")
+   closewindow(0)
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par and also 
+# ucsNMR.par if saveMode is global.
+#############################################################
+
+procedure(saveReference, f2Ref, f1Ref, saveMode)
+
+   (nucf2,nucf1) = :getNuclei()
+
+   bak = getcwd()
+
+   if(saveMode == "global")
+      b1FreqGlobal = null
+      (b1Freqf2,b1Freqf1) = :getNMRFrequencies()
+      if(b1Freqf1 != null)
+         b1Freqf1 = b1Freqf1 + (wvOrigf1Center-f1Ref)*b1Freqf1/1e6
+         b1FreqGlobal = ["b1Freq$nucf1$ = $b1Freqf1$"]
+      endif
+      b1Freqf2 = b1Freqf2 + (wvOrigf2Center-f2Ref)*b1Freqf2/1e6
+      b1FreqGlobal = b1FreqGlobal + ["b1Freq$nucf2$ = $b1Freqf2$"]
+
+     # Update common parameter file with the new frequency
+      dir = "$prefdir$\\SpinsolveParameters\\Common"
+      if(isdir(dir))
+         cd(dir)
+         file = "$gData->specID$Common.par"
+         if(isfile(file))
+            par = load(file)
+            newlst = mergelists(b1FreqGlobal,par)
+            save(file,sortlist(newlst))
+         else
+            print("\n   Missing common parameter file '$file$'\n")
+            return
+         endif
+      endif
+   endif
+
+# Save to procpar temp list
+   calparLocal = list(0)
+
+   if(wvOrigf2Center != null)
+     calparLocal = calparLocal + ["f2PPMOffset = $f2Ref$"]
+   endif
+
+   if(wvOrigf1Center != null)
+     calparLocal = calparLocal + ["f1PPMOffset = $f1Ref$"]
+   endif
+
+   path = curplot("2d")->filepath
+   if(isdir(path))
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         par = load(file)
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         par = load(file)
+      else
+         file = "proc_temp.par"
+         par = null
+      endif  
+
+     newlst = mergelists(calparLocal,par)
+     save("proc_temp.par",sortlist(newlst))
+   endif
+
+   cd(bak)
+
+endproc()
+
+#############################################################
+# Get the current nuclei based on the experiment parameters
+#############################################################
+
+procedure(getNuclei)
+
+   assignlist(getctrlvalues(wvParent),"list","list",["nucleus"])
+   try
+      (nucf2,nucf1) = scanstr(nucleus,"%1-%2")
+   catch
+      nucf1 = nucleus
+      nucf2 = nucleus
+   endtry
+
+endproc(nucf2,nucf1)
+
+#############################################################
+# Redraw the plot with the new central frequency
+#############################################################
+
+procedure(updatePlot)
+
+   newf2Center = f2OffsetCtrl->value
+   newf1Center = f1OffsetCtrl->value
+
+   cp = curplot("2d")
+   obj = cp->parent
+   s = obj->uservar
+
+   (m,xAxisRange,yAxisRange) = cp->getdata()
+
+   oldf2Center = (xAxisRange[0]+xAxisRange[1])/2 # Central x frequency
+   oldf1Center = (yAxisRange[0]+yAxisRange[1])/2 # Central y frequency
+
+   (nr,mode) = cp->contour()
+   map = cp->cmap()
+   xr = cp->axes->xrange()
+   yr = cp->axes->yrange()
+   tl = cp->title->text
+   xlab = cp->xlabel->text
+   ylab = cp->ylabel->text
+   (x1,x2,y1,y2) = cp->zoom()
+
+   s->modified = 1
+   obj->uservar(s)
+
+   if(cp->axes->xdirection() == "reversed")
+      xAxisRange = xAxisRange+(newf2Center-oldf2Center)
+   endif
+
+   if(cp->axes->ydirection() == "reversed")
+      yAxisRange = yAxisRange+(newf1Center-oldf1Center)
+   endif
+
+   cp->draw("false")
+   cp->cmap(map)
+   cp->image(m,xAxisRange,yAxisRange)
+   cp->contour(nr,mode)
+   cp->axes->xrange(xr)
+   cp->axes->yrange(yr)
+   cp->xlabel(xlab)
+   cp->ylabel(ylab)
+   cp->zoom(x1,x2,y1,y2)
+   cp->title(tl)
+
+   cp->draw("true")
+
+
+endproc()
+

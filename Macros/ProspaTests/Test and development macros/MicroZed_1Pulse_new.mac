@@ -1,0 +1,460 @@
+procedure(MicroZed_1Pulse)
+
+   :loadPlotPref()
+   n = :windowdefinition()
+   windowvar(comNr,id,wvWinNr)
+   wvWinNr = n
+   comNr = "com7"
+   setwindowpar(n,"exit_procedure",":exitProcedure()")
+   :loadParameters()
+   setwindowpar(n,"titleupdate","false")
+   showwindow(n)
+   pr("")
+   
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("MicroZed 1Pulse", -1, -1, 737, 800, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(id,txtEd)
+      statictext(1, 111, 34, "right", "B1 Freq (MHz):")
+      textbox(2, 120, 30, 61)
+      statictext(3, 111, 64, "right", "Pulse amplitude (dB):")
+      textbox(4, 120, 60, 61)
+      statictext(5, 111, 94, "right", "Pulse duration (us):")
+      textbox(6, 120, 90, 61)
+      statictext(7, 111, 164, "right", "Dwell-time (us):")
+      textbox(8, 120, 160, 61)
+      statictext(9, 111, 194, "right", "Number of points:")
+      textbox(10, 120, 190, 61)
+      editor(11, 350, 10, "ww-360", 401)
+      button(12, 280, 20, 61, 31, "WritePP",
+         id = thread(":writePP");)
+      button(13, 280, 70, 61, 31, "Reset",
+         try;
+         cancelsyncio(id);
+         closeserial(comNr);
+         catch;
+         endtry;
+         :enableControls("enable");)
+      button(14, 210, 20, 61, 31, "Open PP",
+         :openPulseprogram;)
+      button(15, 210, 70, 61, 31, "Save PP",
+         :savePulseprogram;)
+      cli(16, 11, 230, 331, 180)
+      plot1d(17, 10, 430, "ww-20", "wh-442")
+      button(100, 210, 120, 61, 31, "Run",
+         id = thread(":runExperiment");)
+      button(101, 210, 170, 61, 31, "Read PP",
+         id = thread(":readPP");)
+      button(102, 280, 120, 61, 31, "Read Data",
+         id = thread(":readData");)
+      button(103, 280, 170, 61, 31, "Close",
+             :exit_procedure())
+
+     # Set other control parameters
+      setpar(n,2,"valueID","b1Freq")
+      setpar(n,4,"valueID","pulseAmp")
+      setpar(n,6,"valueID","pulseLength")
+      setpar(n,8,"valueID","dwellTime")
+      setpar(n,10,"valueID","nrPnts")
+      setpar(n,11,"objID","txtEd")
+      setpar(n,16,"objID","cli1")
+      setpar(n,17,"objID","plot1")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(exit_procedure)
+
+   try;
+   cancelsyncio(id);
+   closeserial(comNr);
+   catch;
+   endtry;
+   :saveParameters();
+
+   if(getwindowpar(wvWinNr,"mainWindow") == "true")
+      exit()
+   else
+      closewindow(wvWinNr)
+   endif
+
+endproc()
+
+
+procedure(loadParameters)
+
+   parDir = "$prefdir$\\MicroZedParameters\\Experiments\\1Pulse"
+   if(isdir(parDir))
+      cd(parDir)
+      lst = load("1Pulse.par")
+      setctrlvalues(0,lst)
+   endif
+
+endproc()
+
+procedure(saveParameters)
+
+   cd(prefdir)
+   mkdir("MicroZedParameters")
+   cd("MicroZedParameters")
+   mkdir("Experiments")
+   cd("Experiments")
+   mkdir("1Pulse")
+   cd("1Pulse")
+   lst = getctrlvalues(0)
+   save("1Pulse.par",lst)
+
+endproc()
+
+procedure(runExperiment)
+
+   :enableControls("disable")
+   ACQUIRE = 0x30000
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   txt = txtEd->text()
+   pp = :getlines(txt)
+   (width,height) = size(pp)
+   
+   DDSFword = round((b1Freq * 2^32d)/1000d)       
+   DRPFword = round((b1Freq * 2^32d)/1000d)*10d    
+
+   txFreq1  = single((DDSFword & 0xFFFF0000)/(2^16))   # AD9910 Tx frequency   
+   txFreq2 = single((DDSFword & 0x0000FFFF))
+
+   rxFreq1 = single((DRPFword & 0xFFFF0000)/(2^16))  # FPGA Rx frequency  
+   rxFreq2 = single((DRPFword & 0x0000FFFF)) 
+
+   acqTime = nrPnts*dwellTime*1000
+
+   N=4
+   M=2 
+   dec1 = 100*dwellTime
+   (truncDec1, Bmax1) = lib_fpga:Calc_Bmax(N,M,dec1)
+ #  truncDec1 = truncDec1
+  # pr truncDec1
+   pp[2,15] = dec1;
+   pp[2,16] = truncDec1
+   pp[2,50] = txFreq1;
+   pp[2,51] = txFreq2;
+   pp[2,52] = rxFreq1;
+   pp[2,53] = rxFreq2;
+
+   pp[2,65] = pulseAmp
+   pp[2,66] = 0;
+   pp[2,67] = txFreq1;
+   pp[2,68] = txFreq2;
+   
+   pp[2,71] = nrPnts;
+   pp[1,74] = nrPnts+ACQUIRE;
+   
+   pp[0,75] = (2640000+2*acqTime)/5
+   pp[0,76] = (2650000+2*acqTime)/5
+   pp[0,77] = (2700000+2*acqTime)/5
+  
+# Print out the pulse program
+   for(k = 0 to height-1)
+      print("\n$k,3d$:   $pp[0,k],8d$   $pp[1,k],05X$   $pp[2,k],05X$")
+   next(k)
+
+# Send it to the microzed
+   :writePP(pp)
+
+# Run the pulse program
+   serialmode("sync")  
+   
+   try
+      closeserial(comNr)
+   catch
+   endtry
+
+   openserial(comNr,115200,8,"none","1")
+
+   writeserial(comNr,"runPP\r")
+
+   if(readserial(comNr,"\r") == "runPP")
+
+       pr "\n   Experiment started"
+
+       writeserial(comNr,"ok\r")
+       pr readserial(comNr,"\r")
+       pr "\n   Experiment finished"
+
+       writeserial(comNr,"ok\r")
+
+   endif
+
+   closeserial(comNr)
+
+
+   time(0)
+# Read back the data
+   data = :readData()
+   pr "\n   Data transfer time = $time()$"
+
+   tAxis = linspace(0,acqTime/1000,nrPnts)
+   plt = plot1->multiplot(1,1)
+   plt->draw("false")
+   plt->plot(tAxis,data)
+   plt->xlabel("Time (\G(m)s)")
+   plt->ylabel("Amplitude (raw)") 
+   plt->title("MicroZed acquired FID")
+   plt->draw("true")
+
+   #print("\nRun finished\n")
+
+   :enableControls("enable")
+
+endproc()
+
+
+procedure(readPP)
+
+   :enableControls("disable")
+
+   serialmode("sync")  
+   
+   try
+      closeserial(comNr)
+   catch
+   endtry
+
+   openserial(comNr,115200,8,"none","1")
+
+   writeserial(comNr,"readPP\r")
+   txt = "Index    Time   Address  Value\n\n"
+   if(readserial(comNr,"\r") == "readPP")
+       writeserial(comNr,"ok\r")
+       str = readserial(comNr,"\r")
+       sz = eval(scanstr(str,"size = %1"))
+       writeserial(comNr,"ok\r")
+       inLoop = 0
+       for(k = 0 to sz-1)
+          str = readserial(comNr,"\r")
+          tm = eval(scanstr(str,"time = %1"))   
+          writeserial(comNr,"ok\r")
+  
+          str = readserial(comNr,"\r")
+          adrs = eval(scanstr(str,"address = %1"))
+          writeserial(comNr,"ok\r")
+
+          str = readserial(comNr,"\r")
+          value = eval(scanstr(str,"value = %1")) 
+          writeserial(comNr,"ok\r")
+
+          if(adrs == 0x40000)
+              inLoop = 1
+          elseif(adrs == 0x50000)
+              inLoop = 0
+          endif
+
+          if(inLoop)
+             txt = txt + "$k,3d$:   $tm,7d$   $adrs,05X$   $value,05X$\n"
+          else
+             txt = txt + "$k,3d$:   $tm,7d$   $adrs,05X$   $value,05X$\n"
+          endif
+
+      next(k)  
+      txtEd->text(txt) 
+          
+   endif
+
+   closeserial(comNr)
+      
+   pr ("\nPulse program read\n")
+
+   :enableControls("enable")
+
+endproc()
+
+
+
+procedure(writePP, pp)
+
+   if(nrArgs == 0)
+      txt = txtEd->text()
+      pp = :getlines(txt)
+   endif
+
+   (width,height) = size(pp)
+
+   serialmode("sync")  
+   
+   try
+      closeserial(comNr)
+   catch
+   endtry
+
+   openserial(comNr,115200,8,"none","1")
+
+   writeserial(comNr,"writePP\r")
+   inLoop = 0
+   if(readserial(comNr,"\r") == "writePP")
+
+       writeserial(comNr,"$height$\r")
+       readserial(comNr,"\r")
+
+       for(k = 0 to height-1)
+
+          if(pp[1,k] == 0x50000)
+              inLoop = 0
+          endif
+          if(inLoop)
+             writeserial(comNr,"$round(pp[0,k])/5$\r")
+          else
+             writeserial(comNr,"$round(pp[0,k])/5+200$\r")
+          endif
+          if(pp[1,k] == 0x40000)
+              inLoop = 1
+          endif
+          readserial(comNr,"\r")
+          writeserial(comNr,"$pp[1,k]$\r")
+          readserial(comNr,"\r")
+          writeserial(comNr,"$pp[2,k]$\r")
+          readserial(comNr,"\r")
+      next(k)  
+
+     pr "\n   Pulse program written"
+          
+   endif
+
+   closeserial(comNr)
+      
+
+endproc()
+
+# Read pulse program lines in text ignoring first line and also blank lines
+# Returns a 3 by N matrix with time, address and value in each row.
+
+procedure(getlines,txt)
+
+  cnt = 2
+  lst = list(0)
+  while(1)
+
+      line = getline(txt,cnt)
+      if(line == null)
+         exitwhile
+      endif
+      if(line != "")
+         lst = lst + ["$line$"]
+      endif
+      cnt = cnt + 1
+
+   endwhile()
+
+   sz = size(lst)
+   mOut = matrix(3,sz)
+   for(k = 0 to sz-1)
+      line = parse(lst[k]," ")
+      mOut[0,k] = eval(line[1])
+      mOut[1,k] = eval("0x"+line[2])
+      mOut[2,k] = eval("0x"+line[3])
+   next(k)
+
+endproc(mOut)
+  
+
+# Read nrPnts of complex data back from address 500
+
+procedure(readData)
+
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   data = cmatrix(nrPnts)
+
+   startAddress = 500
+
+   serialmode("sync")  
+   
+   try
+      closeserial(comNr)
+   catch
+   endtry
+
+   openserial(comNr,115200,8,"none","1")
+
+   writeserial(comNr,"readData\r")
+
+   if(readserial(comNr,"\r") == "readData")
+       writeserial(comNr,"$startAddress$\r")
+       readserial(comNr,"\r")
+       writeserial(comNr,"$nrPnts$\r")
+       readserial(comNr,"\r")
+
+       for(k = 0 to nrPnts-1)
+          writeserial(comNr,"ok\r")
+          rData = eval(readserial(comNr,"\r"))
+          writeserial(comNr,"ok\r")
+          iData = eval(readserial(comNr,"\r"))
+          data[k] = rData + j*iData
+       next(k)
+
+   endif
+
+   closeserial(comNr)
+
+      
+endproc(data)
+
+procedure(savePulseprogram)
+
+   file = getfilename("save","Save pulse program","Text files","txt")
+   txt = txtEd->text()
+   save(file,txt)
+
+endproc()
+
+procedure(openPulseprogram)
+
+   file = getfilename("open","Open pulse program","Text files","txt")
+   txt = load(file)
+   txtEd->text(txt)
+
+endproc()
+
+procedure(enableControls, mode)
+
+   win = getobj(0)
+   ctrls = win->ctrllist()
+   for(k = 0 to size(ctrls)-1)     
+      if(mode == "enable")
+         setpar(0,ctrls[k],"enable","true")
+      else
+         setpar(0,ctrls[k],"enable","false")
+      endif
+   next(k)
+   setpar(0,13,"enable","true")
+
+endproc()
+
+
+##################################################################
+# Load the plot preferences so the plot inherit the correct 
+# colour scheme
+##################################################################
+
+procedure(loadPlotPref)
+
+# Load the plot preferences
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      plotPreferences() 
+      tracePreferences() 
+   catch
+   endtry
+   cd(bak)
+
+endproc()
+

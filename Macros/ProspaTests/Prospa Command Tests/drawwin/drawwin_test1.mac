@@ -1,0 +1,30 @@
+procedure(drawwin_test1,verbose,delay)
+
+   n = window("drawwin test", 100, 100, 200, 200)
+   button(1, 74, 58, 40, 20, "button")
+   showwindow(n)
+
+   setwindowpar(n,"title","drawwin missing")
+
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      pause(0.005)
+   next (theta)
+
+   setwindowpar(n,"title","drawwin included")
+
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      drawwin(n)
+      pause(0.005)
+   next (theta)
+
+  closewindow(n)
+ 
+endproc(1,"")

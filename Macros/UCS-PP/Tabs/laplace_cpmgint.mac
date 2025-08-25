@@ -1,0 +1,63 @@
+procedure(laplace_cpmgint)
+
+   n = window("Laplace CPMG-Int", -1, -1, 573, 130)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+
+procedure(definecontrols,n)
+
+      # Define all controls with basic parameters
+       statictext(1, 133, 21, "right", "Filter time domain")
+       checkbox(2, 141, 22, "no,yes", "no",
+            fn = findobj(0,"name","filter");
+            ucsCtrl:enableControls(fn+1,fn+3,fn);)
+       statictext(3, 50, 52, "right", "Filter")
+       textmenu(4, 57, 48, 98, 200)
+       button(5, 164, 48, 22, 22, "...",
+          filters();)
+       statictext(6, 133, 84, "right", "Time magnitude")
+       checkbox(7, 141, 85, "no,yes", "no")
+       statictext(8, 303, 31, "right", "Exponential fit")
+       statictext(9, 303, 49, "right", "Bi-exponential fit")
+       statictext(10, 303, 67, "right", "Inverse Laplace fit")
+       statictext(11, 303, 85, "right", "No fit")
+       radiobuttons(12, 308, 33, 18, "vertical", "exp,biexp,nnls,none", "exp",
+            fn = findobj(0,"name","fitType");
+            ucsCtrl:enableControls(fn+1,fn+8,fn,3);)
+       statictext(13, 414, 17, "center", "Relaxation range (ms)")
+       statictext(14, 402, 43, "right", "Minimum")
+       textbox(15, 409, 38, 43)
+       statictext(16, 402, 68, "right", "Maximum")
+       textbox(17, 409, 65, 43)
+       statictext(18, 539, 27, "right", "Smoothing")
+       statictext(19, 538, 41, "right", "parameter")
+       textbox(20, 493, 60, 44)
+
+     # Set other control parameters
+       setpar(n,2,"name","filter")
+       setpar(n,4,"name","filterType",
+                   "menu",[""])
+       setpar(n,7,"name","timeMag")
+       setpar(n,12,"name","fitType")
+       setpar(n,15,"name","x_minimum")
+       setpar(n,17,"name","x_maximum")
+       setpar(n,20,"name","alpha")
+
+endproc(20, "processing+display")
+
+##########################################################
+# Procedure to update state GUI based on certain variables
+# this will appear as part of the tab button procedure
+##########################################################
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","filter");
+   ucsCtrl:enableControls(fn+1,fn+3,fn);
+   fn = findobj(0,"name","fitType");
+   ucsCtrl:enableControls(fn+1,fn+8,fn,3);
+
+endproc()

@@ -1,0 +1,18 @@
+procedure(mkdir_test1,verbose,delay)
+
+   cd(getmacropath())
+   mkdir("test")
+   mkdir("test\\test2")
+
+   if(isdir("test") == 0)
+     return(0, "Invalid result for: mkdir_test1 #1")
+   endif 
+
+   if(isdir("test\\test2") == 0)
+     return(0, "Invalid result for: mkdir_test1 #2")
+   endif 
+   
+   rmdir("test\\test2")
+   rmdir("test")
+
+endproc(1,"")

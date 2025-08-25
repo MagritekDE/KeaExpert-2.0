@@ -1,0 +1,42 @@
+###################################################################################
+# Switch on a 16 channel or Ultra shim.
+#
+#    shim16(channel, amplitude)
+#
+#    channel : 0 - 15
+#    amplitude : 16 bit signed integer
+#
+#    Duration = 2 us
+#
+###################################################################################
+
+procedure(shim16, channel=0, amplitude=0)
+
+   if(wvFX3Info->mode == "run")
+
+      amplitude = double(round(amplitude))
+      channel = double(channel)
+   
+   # Make the pulse sequence entry
+      cmd = 0x0E000000 | :tohex(channel, 16)
+      value = 0x00100000 | :tohex(amplitude, 16) | ((channel%4)*2^16)
+   
+      ps = [200d, cmd, value]
+    
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(amplitude)
+
+   endif
+
+endproc()
+
+
+procedure(tohex, value, exponent)
+
+   result = (value + (2d^exponent)) % (2d^exponent)
+
+endproc(result)

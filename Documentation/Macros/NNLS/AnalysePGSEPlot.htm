@@ -1,0 +1,505 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>The NNLS analysis</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin-top:24.0pt;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:0cm;
+	margin-bottom:.0001pt;
+	page-break-after:avoid;
+	font-size:14.0pt;
+	font-family:"Cambria","serif";
+	color:#365F91;}
+h2
+	{mso-style-link:"Heading 2 Char";
+	margin-top:12.0pt;
+	margin-right:0cm;
+	margin-bottom:3.0pt;
+	margin-left:0cm;
+	page-break-after:avoid;
+	font-size:14.0pt;
+	font-family:"Arial","sans-serif";
+	font-style:italic;}
+h3
+	{mso-style-link:"Heading 3 Char";
+	margin-top:12.0pt;
+	margin-right:0cm;
+	margin-bottom:3.0pt;
+	margin-left:0cm;
+	page-break-after:avoid;
+	font-size:13.0pt;
+	font-family:"Arial","sans-serif";}
+p.MsoFooter, li.MsoFooter, div.MsoFooter
+	{mso-style-link:"Footer Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.Heading2Char
+	{mso-style-name:"Heading 2 Char";
+	mso-style-link:"Heading 2";
+	font-family:"Cambria","serif";
+	color:windowtext;
+	font-weight:bold;}
+span.Heading3Char
+	{mso-style-name:"Heading 3 Char";
+	mso-style-link:"Heading 3";
+	font-family:"Cambria","serif";
+	color:windowtext;
+	font-weight:bold;}
+span.FooterChar
+	{mso-style-name:"Footer Char";
+	mso-style-link:Footer;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+ /* Page Definitions */
+ @page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 89.85pt 72.0pt 89.85pt;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ>
+
+<div class=WordSection1>
+
+<h1 style='margin-top:0cm;background:#FF6600'><a name="_Toc279751947"><span
+style='font-size:20.0pt;color:black'>NNLS – AnalysePGSEPlot</span></a></h1>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>This
+macro provides an interface for inverting 1D PGSE diffusion data sets using
+non-negative least squares analysis. Data can currently only be analysed which
+has been collected using the 2D DT2 experiment. In this case the data will be a
+column from this result. Later variants will also support the PGSE and PGSTE 1D
+experiments. </span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<h3><span lang=EN-GB>Self-Diffusion spectra</span></h3>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>When a
+single self diffusion coefficient is present it is sufficient to use simple
+non-linear (or linearised) fits. However when there is a range or spectrum of
+diffusion coefficients a different approach must be taken. The non-negative
+least square inverse Laplace algorithm provides this functionality.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<h3><span lang=EN-GB>Non-negative least square analysis</span></h3>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Unlike the
+Fourier transform which converts uniquely between time and frequency domain
+data, the inverse Laplace problem, which moves between time domain and, in this
+case, diffusion constant space, is ill-defined, meaning there are a number of
+solutions all of which fit the original data equally well. The best fit is usually
+a series of short, well-defined spectral peaks. However this often does not
+make sense from a physical point of view – a continuous range of </span><span
+style='color:black'>diffusion coefficients</span><span lang=EN-GB> is more
+likely. For this reason we should choose a solution which gives spectral lines
+which are as broad as possible, consistent with a good fit and the noise level
+in the original data: i.e. noisy data should produce broader lines than a data
+set with high SNR, reflecting the increased uncertainty.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>In this document we will use the
+integrated columns from a DT2 experiment performed on a Berea rock sample
+saturated with a diesel+brine mixture: </p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=554
+height=249 id="Picture 1" src="AnalysePGSEPlot_files/image001.jpg"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>This data set
+consists of 64 points linearly spaced with pulsed gradient amplitude ranging
+from 0.0078 to 0.5 T/m. Each point is the integral of 1 CPMG echo consisting of
+a number of complex data points. The overall 2D spectrum (and therefore this
+column) has been automatically phased so that the imaginary part (light color)
+is zero and the real part (darker color) is maximised. The functional form is
+to plot <i>A</i> <i>vs</i> <i>g</i> (the gradient). For a single diffusion
+component <i>D</i> this is:</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><span
+style='position:relative;top:6.0pt'><img width=216 height=25
+src="AnalysePGSEPlot_files/image002.png"></span>,</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>where </span><span
+lang=EN-GB style='font-family:Symbol'>D</span><span lang=EN-GB> is the gradient
+separation and </span><i><span lang=EN-GB style='font-family:Symbol'>d</span></i><span
+lang=EN-GB> is the gradient duration.</span></p>
+
+<h3><span lang=EN-GB>The Lawson and Hanson NNLS analysis</span></h3>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Start by
+selecting the data to be analysed by clicking on it with the mouse (it is
+assumed that it has been loaded into a 1D plot window). Then start the
+AnalysePGSEPlot macro which is found in the NNLS menu. The following window
+will appear.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=557
+height=331 src="AnalysePGSEPlot_files/image003.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Next choose the analysis method. We will
+start with the Lawson and Hanson (<i>L&amp;H</i>) option and <i>gradient</i>
+options</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=213 height=120 src="AnalysePGSEPlot_files/image004.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Following this
+enter the PGSE parameters used when collecting this data set. These correspond
+to the time between gradient pulses (large delta or DELTA) and the duration of
+the gradient pulses (small delta or delta). Units are in milliseconds. There is
+also the option for a pulse ramp time which also contributes to the gradient
+pulse integral.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=133 height=113 src="AnalysePGSEPlot_files/image005.png"></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Finally set the
+minimum and maximum relaxation time values to the data set limits (i.e. the
+echo time and the maximum reordered time. One hundred relaxation steps are
+usually sufficient. Choose a smoothing parameter of 1 and 200 points to analyse
+(note that the latter parameter is currently ignored as all points are
+considered).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=202 height=115 src="AnalysePGSEPlot_files/image006.png">          <img
+width=151 height=115 src="AnalysePGSEPlot_files/image007.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Press the Calculate spectrum button</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=150 height=128 src="AnalysePGSEPlot_files/image008.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>This generates a
+number of different graphs:</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=559
+height=331 src="AnalysePGSEPlot_files/image009.jpg"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB> Top left is the
+diffusion spectrum, top right the cumulative sum of this spectrum, bottom left
+the residuals of the multi-exponential fit with the original data set, and
+bottom left the statistics of these residuals along with the noise statistics
+of the imaginary part of the original data set.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The smoothing
+parameter can be chosen by starting with a large value (larger means a smoother
+curve) – say 10 and then decreasing by factors of 10 until the standard
+deviation (SD) of the residuals matches the ideal value (shown in the lower
+left corner of the window and equal to the standard deviation of the data
+noise). In reality this may not be possible and the SD may reach a plateau
+which is larger or smaller than the ideal – this depends on the noise statistics.
+In this case you can run the &quot;Calculate smoothing curve&quot; to determine
+the optimal value:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=259 height=118 src="AnalysePGSEPlot_files/image010.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=549 height=233 src="AnalysePGSEPlot_files/image011.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>In this </span>case
+the standard deviation of the residuals starts to rise at a smoothing parameter
+of about 0.5. The knee point is defined as the smoothing value at which the
+slope of the log-log chi-squared plot is 0.1 and is often a good choice for the
+smoothing factor. Above this the standard deviation is greater that the plateau
+region. The effect of extreme<span style='font-family:Symbol'> </span>smoothing
+values is shown below:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=549
+height=233 src="AnalysePGSEPlot_files/image012.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i>smoothing =5, SD =
+25</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=549
+height=233 src="AnalysePGSEPlot_files/image013.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB>smoothing
+= 0.4</span>, SD=18</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=549
+height=233 src="AnalysePGSEPlot_files/image014.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i>smoothing = 0.02,
+SD =18</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Small smoothing factors give too many
+features while the reverse is too smooth and the fit is poorer (although not
+too bad in this case).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>In addition to
+the smoothing curve and the standard deviation ratio you should also look at
+the residuals curve and statistics. In the residuals plot there should not be
+any significant oscillations and most of the residuals should fall inside the
+two blue horizontal lines - these correspond to ± 2.5 standard deviations of
+the sample data noise.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=549
+height=233 src="AnalysePGSEPlot_files/image015.png"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The statistics curves should lie on top of
+each other and should look Gaussian in shape (although this requires more data
+points than we have here)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=364
+height=209 src="AnalysePGSEPlot_files/image016.png"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Oscillations in the residuals curve or
+misplaced statistics curves are often produced if the smoothing value is too
+high:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=553
+height=216 src="AnalysePGSEPlot_files/image017.jpg"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB>Setting
+the smoothing  value to 20 results in a non-zero average value .</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>There is a temptation with PGSE
+measurements to try and determine spectral values outside the measured range.
+This should be avoided as it will often give spurious peaks which have no
+physical significance. </span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<h3><a name="_Toc279751948"><span lang=EN-GB>The Lexus Analysis</span></a></h3>
+
+<p class=MsoNormal><b><i><span lang=EN-GB>&nbsp;</span></i></b></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>An alternative
+method is called &quot;Lexus&quot; and is an enhanced version of the
+Butler-Reed-Dawson algorithm. This technique also has the advantage of
+providing logarithmic binning on data points. As a consequence of this only 50
+to 200 “points to analyse” are required. The Lexus algorithm will often produce
+better results at short relaxation times than the L&amp;H method so it is worth
+trying both.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=551 height=357 src="AnalysePGSEPlot_files/image018.jpg"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>There are two
+methods for calculating the spectrum. The first called &quot;Weight&quot; uses
+a parameter of the same name to determine the spectral smoothing. Larger Weight
+values result in broader peaks. In this sense if works like the smoothing
+parameter in the Lawson and Hanson method. The second method &quot;SNR&quot;
+automatically adjusts the Weight parameter until the standard deviation of the
+residuals is close to the original data. The closeness is defined by the
+parameter RSig. 1.02 is the recommended value. This technique is similar to
+using the smoothing curve in the L&amp;H method but generally a lot quicker and
+can often result in fewer artefacts. If you obtain the message</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=269
+height=159 id="Picture 5" src="AnalysePGSEPlot_files/image019.png"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>then try
+adjusting the parameters until a valid solution is produced (sometimes a change
+of the algorithm URF/Asymp will help).</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Typically the
+L&amp;H and Lexus methods give similar results if the parameters are carefully
+chosen:</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=543
+height=216 src="AnalysePGSEPlot_files/image020.jpg"></p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<h3><a name="_Toc366572924">Peak integration</a></h3>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>Spectral peaks can be integrated to find their contribution
+to the overall signal.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>First choose the “Select a rectangular region” option from
+     the View menu. The cursor will change to show a square. (^R)</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>Next draw a rectangle around the peak to integrate.</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>Finally select the integrate peak option from the
+     Calculate menu (^P)</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=507
+height=213 src="AnalysePGSEPlot_files/image021.png"></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The integral (in microvolts and as a percentage of total)
+and location will be displayed in the status bar.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=267
+height=29 src="AnalysePGSEPlot_files/image022.png"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,139 @@
+procedure(MappingAndGrids,dim)
+
+   curplot(dim)
+   n = :windowdefinition()
+   assignctrls(n)
+   :initialise(dim)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Mapping and grids", -1, -1, 431, 162)
+
+      # Define all controls with basic parameters
+       groupbox(1, "Log or linear axes", 10, 14, 111, 137)
+       groupbox(2, "Grid", 130, 14, 232, 137)
+       radiobuttons(3, 35, 40, 20, "vertical", "lin,log", "lin",:updateXMapping())
+       radiobuttons(4, 36, 95, 20, "vertical", "lin,log", "lin",:updateYMapping())
+       statictext(5, 57, 39, "left", "Linear x")
+       statictext(6, 56, 60, "left", "Log x")
+       statictext(7, 56, 95, "left", "Linear y")
+       statictext(8, 56, 115, "left", "Log y")
+       button(9, 370, 85, 45, 31, "Exit",closewindow(0))
+       button(10, 370, 30, 45, 31, "Help")
+       checkbox(11, 150, 40, "off,on", "off",:updateGrid())
+       checkbox(12, 150, 65, "off,on", "off",:updateGrid())
+       checkbox(13, 150, 90, "off,on", "off",:updateGrid())
+       checkbox(14, 150, 115, "off,on", "off",:updateGrid())
+       statictext(15, 175, 40, "left", "x grid")
+       statictext(16, 175, 65, "left", "y grid")
+       statictext(17, 175, 90, "left", "Fine x grid")
+       statictext(18, 175, 115, "left", "Fine y grid")
+       colorbox(19, 255, 50, 22, 22, [255,0,0],:updateGridColor())
+       colorbox(20, 255, 95, 22, 22, [255,0,0],:updateFineGridColor())
+       statictext(21, 285, 55, "left", "Grid color")
+       statictext(22, 285, 100, "left", "Fine grid color")
+
+     # Set other control parameters
+       setpar(n,3,"objID","xLogLin")
+       setpar(n,4,"objID","yLogLin")
+       setpar(n,11,"objID","xGrid")
+       setpar(n,12,"objID","yGrid")
+       setpar(n,13,"objID","fineXGrid")
+       setpar(n,14,"objID","fineYGrid")
+       setpar(n,19,"objID","gridColor")
+       setpar(n,20,"objID","fineGridColor")
+
+endproc(n)
+
+procedure(initialise, dim)
+
+   gd = curplot()->grid
+   ax = curplot()->axes
+
+   xGrid->text(gd->xgrid)
+   yGrid->text(gd->ygrid)
+   fineXGrid->text(gd->finexgrid)
+   fineYGrid->text(gd->fineygrid)
+   gridColor->color(gd->color)
+   fineGridColor->color(gd->finecolor)
+   xLogLin->text(ax->xmapping)
+   yLogLin->text(ax->ymapping)
+
+   if(dim == "2d")
+      xLogLin->enable("false")
+      yLogLin->enable("false")
+      setwindowpar(0,"title","2D grids")
+   endif
+      
+
+endproc()
+
+
+procedure(updateGrid)
+
+   gd = curplot()->grid
+   gd->xgrid(xGrid->text)
+   gd->ygrid(yGrid->text)
+   gd->finexgrid(fineXGrid->text)
+   gd->fineygrid(fineYGrid->text)
+
+endproc()
+
+procedure(updateGridColor)
+
+   gd = curplot()->grid
+   col = getcolor(gd->color())
+   if(col != null)
+      gd->color(col)
+      gridColor->color(col)
+   endif
+
+endproc()
+
+procedure(updateFineGridColor)
+
+   gd = curplot()->grid
+   col = getcolor(gd->finecolor())
+   if(col != null)
+      gd->finecolor(col)
+      fineGridColor->color(col)
+   endif
+
+endproc()
+
+procedure(updateXMapping)
+
+  ax = curplot()->axes
+
+  (x,y) = curplot()->getdata()
+
+  if(min(x) > 0)
+     ax->xmapping(xLogLin->text)
+   else
+     message("Error","x axis contains values <= 0","error")
+     xLogLin->text("lin")
+     return
+   endif
+
+endproc()
+
+procedure(updateYMapping)
+
+  ax = curplot()->axes
+
+  (x,y) = curplot()->getdata()
+
+  if(min(y) > 0)
+     ax->ymapping(yLogLin->text)
+   else
+     message("Error","y axis contains values <= 0","error")
+     yLogLin->text("lin")
+     return
+   endif
+
+endproc()

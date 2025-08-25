@@ -1,0 +1,58 @@
+
+procedure(spTest)
+
+   plotviewversion(2)
+
+   N = 100
+   M = 20
+   m = noise(N,M)
+   xAxis = [0:N-1]
+   (w,h) = size(m)
+   for(k = 0 to h-1)
+
+   :stackedPlot(curplot("1d"),m,k,[-10,110],xAxis,[1,100],"log","Test","xLabel","yLabel")
+
+   next(k)
+
+endproc()
+
+
+
+procedure(stackedPlot, p,  mat, num, xrange, xAxis, yrange, mapping, spTitle, spXlabel, spYlabel)
+
+
+   (w,h) = size(mat)
+  # p = plt->subplot(1,1)
+   p->draw("false")
+   mx = abs(max(real(mat)))
+   mn = abs(min(real(mat)))
+   if(mn > mx)
+     mx = mn
+   endif
+   mx = mx*50
+   if(num == 1)
+      p->hold("on")
+   endif
+   n = p->plot(xAxis,mat[~,num])
+   tc = p->trace(n)
+   tc->xoffset(0.3*num/(w-1))
+   tc->yoffset(0.9*num/(h-1)+0.05)
+   r = num*255/(h-1)
+   b = 255-r
+   tc->color([r,0,b])
+   if(num == h-1)
+      p->hold("off")
+   endif
+
+   p->title(spTitle)
+   p->xlabel(spXlabel)
+   p->ylabel(spYlabel)
+   p->showimag("false")
+   p->zoom(xrange[0],xrange[-1],0,mx)
+   p->axes->type("box_y_independent")
+   p->axes->ymapping(mapping)
+   p->axes->minaxisvalue(yrange[0])
+   p->axes->maxaxisvalue(yrange[-1])
+   p->draw("true")
+
+endproc()

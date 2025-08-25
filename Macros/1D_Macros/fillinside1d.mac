@@ -1,0 +1,184 @@
+###################################################
+#            fillinside1d.mac
+#
+# Fill data inside specified region
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+
+procedure(fillRegion1D)
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y)
+   setpar(n,7,"text","0")
+   :update_window()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the interface window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Fill region inside 1D plot", -1, -1, 294, 154)
+
+      # Define all controls with basic parameters
+       windowvar(reset)
+       button(1, 8, 118, 49, 25, "Fill",
+          :fill_data();)
+       radiobuttons(2, 18, 43, 20, "vertical", "inside,outside", "inside")
+       button(3, 118, 118, 49, 25, "Undo",
+          :undo();)
+       groupbox(4, "Fill region and value", 125, 4, 155, 103)
+       statictext(5, 98, 42, "right", "Inside region")
+       statictext(6, 106, 62, "right", "Outside region")
+       textbox(7, 190, 76, 57)
+       statictext(8, 180, 78, "right", "Value")
+       button(9, 173, 118, 49, 25, "Help",
+          :show_help();)
+       groupbox(10, "Fill method", 6, 4, 111, 103)
+       statictext(12, 156, 53, "left", "x-end")
+       button(18, 228, 118, 49, 25, "Exit",
+          closewindow(0);)
+       textbox(30, 190, 49, 57)
+       textbox(32, 191, 23, 57)
+       statictext(33, 154, 27, "left", "x-start")
+       button(34, 63, 118, 49, 25, "Update",
+          :update_window();)
+       getmessage(35,:process_message();)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",5,"mode","default")
+       setpar(n,2,"tab_number",1)
+       setpar(n,7,"tab_number",2)
+       setpar(n,9,"tab_number",7)
+       setpar(n,18,"tab_number",8)
+       setpar(n,30,"tab_number",4)
+       setpar(n,32,"tab_number",3)
+       setpar(n,34,"tab_number",6)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\1D","fillinside1d.htm")
+endproc()
+
+####################################################
+# Initialise region limits
+####################################################
+
+procedure(update_window)
+
+# Get the 1D data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Get rectangle or current region
+   (x0,y0,x1,y1) = getrect()
+   if(x0 == -1)
+     (x0,x1) = zoom1d("getargs")
+   endif
+   setpar(0,32,"text",x0)
+   setpar(0,30,"text",x1)
+
+endproc()
+
+####################################################
+# Initialise region limits
+####################################################
+
+procedure(fill_data)
+
+# Get the 1D data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Save the vectors for undo operation
+   wv_x = x
+   wv_y = y
+
+# Record the current 1D plot state
+   (txt,lx,ly,x1v,x2v) = 1dpar:get()
+
+# Get the region to zero
+   x0 = getpar(0,32,"value")
+   x1 = getpar(0,30,"value")
+   (x0,x1) = findindex(x,x0,x1)
+
+# Get the GUI parameters
+   mode = getpar(0,2,"text")
+   fillValue = getpar(0,7,"value")
+
+# Fill it
+   if(mode = "outside")
+      if(vartype(y) == "matrix1d")
+        mOut = matrix(w)+fillValue
+      else
+        mOut = cmatrix(w)+fillValue
+      endif
+      mSub = submatrix(y,x0,x1)
+      mOut = insert(mOut,mSub,x0)
+   else
+      if(vartype(y) == "matrix1d")
+         mSub = matrix(x1-x0+1) + fillValue
+      else
+         mSub = cmatrix(x1-x0+1) + fillValue
+      endif
+      mOut = insert(y,mSub,x0)
+   endif
+   
+# Draw the updated plot  
+  draw1d("false")     
+      plot(x,mOut)
+      1dpar:set(txt,lx,ly,x1v,x2v)
+   draw1d("true")
+
+
+endproc()
+
+####################################################
+# Restore the plot stored before last fill
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,x1,x2) = 1dpar:get()
+   draw1d("false")
+      plot(wv_x,wv_y)
+      1dpar:set(txt,lx,ly,x1,x2)
+   draw1d("true")
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,35,"text")
+
+   if(src == "1D Plot")
+      :update_window()
+   endif
+
+endproc()

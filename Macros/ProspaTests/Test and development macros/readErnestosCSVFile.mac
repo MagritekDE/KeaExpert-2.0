@@ -1,0 +1,42 @@
+# Read the data from a file and simplify delimiters
+cd("C:\\Users\\CraigEccles\\Projects\\Prospa\\Macros\\Test and development macros\\Ernestos CSV File")
+data = load("U4 B6 Daisy 1-30 v. 30.csv","text")
+data = replacestr(data,";",",")
+data = replacestr(data,",,,"," ")
+(firstLine,data) = scanstr(data,"%1\n%2") # Remove first line
+
+# Count the number of lines with the same number of entries as row 2
+n = 0
+line = getline(data,0)
+lineData = parse(line,",")
+nrCols = size(lineData)
+while(1)
+   line = getline(data,n)
+   if(line == null)
+     exitwhile
+   endif
+   lineData = parse(line,",")
+   if(size(lineData) != nrCols)
+      exitwhile
+   endif
+   n = n + 1
+endwhile
+nrRows = n
+
+# Copy these entries into a 2D matrix
+m = matrix(nrCols,nrRows)
+for(y = 0 to nrRows-1)
+   line = getline(data,y)
+   lineData = parse(line,",")
+   for(x = 0 to nrCols-1)
+      m[x,y] = eval(lineData[x])
+   next(x)
+next(y)
+
+# Display the data
+image(m)
+
+
+
+
+

@@ -1,0 +1,109 @@
+###########################################################
+# Scale all traces so they match the point selected on one
+# trace.
+#
+# Author: C Eccles
+# Copyright Magritek 2023
+#
+###########################################################
+
+procedure(toggleIntegrateMode)
+
+   win = curwin()
+   n = win->winnr 
+   m = 1
+
+   if(getpar(n,m+31,"visible") == "false")
+
+      win->draw("false")  
+   
+      for(k = m+19 to m+32)
+         if(isobj(n,k))
+            setpar(n,k,"visible","true")
+         endif
+      next(k)
+   
+      setpar(n,m,"region",[m+32,-2,-3,-4])
+   
+      adjustctrls(n)
+
+      n = curwin()->winNr
+      pp = getobj(n,1)
+      func1d("multiplot 2*1")
+      pt1 = pp->subplot(1,1)
+      pt2 = pp->subplot(1,2)
+      pt1->rmlines()
+      pt2->rmlines()
+      pt2->clear()
+ 
+      win->draw("true") 
+
+   # Add the fit functions
+      funcList = ["Name|Function",
+                  "Linear|y = p1*x + p2",
+                  "Exponential|y = p1*exp(-x/p2)",
+                  "T1IR|y = p1*(1-2*exp(-x/p2))",
+                  "Sine|y = p1*sin(x*p2+p3)",
+                  "Cosine|y = p1*cos(x*p2+p3)",
+                  "PGSE|y = p1*exp(-(del*gamma*x)^2*p2*(DEL-del/3))"]
+      fitList->nrcolumns(2)
+      fitList->list(funcList)
+      fitList->color([0,255,128,0])
+      fitList->colwidth([0.5,0.5])
+
+      import("integrateClass.mac",getmacropath(),"window")
+      assign("wvInt", class("integrateClass:init"), "window")
+  
+      if(:isstackedplot(pt1))
+         setpar(0,1,"menubar",[12,13,14,15,16,17,18])
+         setwindowpar(0,"menubar",[12,13,14,15,16,17,18])
+      else
+         message("Warning","Not a stacked plot!","info")
+      endif
+
+   else
+
+      win->draw("false")  
+      
+      for(k = m+19 to m+32)
+         if(isobj(n,k))
+            setpar(n,k,"visible","false")
+         endif
+      next(k)
+   
+      n = curwin()->winNr
+      pp = getobj(n,1)
+      func1d("multiplot 1*1")
+      pt1 = pp->subplot(1,1)
+
+      setpar(n,m,"region",[-1,-2,-3,-4])
+   
+      adjustctrls(n)
+   
+      if(:isstackedplot(pt1))
+         setpar(0,1,"menubar",[12,13,14,15,16,17,18])
+         setwindowpar(0,"menubar",[12,13,14,15,16,17,18])
+      else
+         setpar(0,1,"menubar",[12,13,14,15,16,34,18])
+         setwindowpar(0,"menubar",[12,13,14,15,16,34,18])
+      endif
+
+      win->draw("true")
+
+   endif
+
+
+endproc()
+
+# Check is a plot contains multiple traces
+procedure(isstackedplot, plt)
+
+   lst = plt->tracelist()
+   if(size(lst) > 1)
+      return(1)
+   else
+      return(0)
+   endif
+   
+endproc()
+

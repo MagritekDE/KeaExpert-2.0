@@ -1,0 +1,10 @@
+#define APPLICATION_NAME "Prospa"
+#define APPICON "prospa.ico"
+//#define VERSION_SPECIAL "SpinsolveTester"
+#define VERSION_SPECIAL "Normal"
+
+//#define APPICON "spinsolve.ico"
+//#define APPLICATION_NAME "SpinsolveExpert"
+//#define APPLICATION_NAME "SpinsolveUtilities"
+//#define APPLICATION_NAME "SpinsolveCompiler"
+//#define APPLICATION_NAME "SpectrometerUtilities"

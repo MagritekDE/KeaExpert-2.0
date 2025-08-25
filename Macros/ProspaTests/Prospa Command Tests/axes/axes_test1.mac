@@ -1,0 +1,68 @@
+procedure(axes_test1,verbose,delay)
+   
+   curplot("1d")
+   clear("plot")
+   t = [0:1000]/1000*50*pi
+   x = 100*cos(t).*exp(-t/10)
+   y = 100*sin(t).*exp(-t/10)
+   plot(x,y)
+   
+   # Change distance between ticks
+   for m = 1 to 10
+      axes("axescolor",[0,0,0], 
+           "fontcolor",[0,0,0],  
+           "fontsize",10,           
+           "xtickspacing",m, 
+           "ytickspacing",m,
+           "xticksperlabel",5, 
+           "yticksperlabel",5)
+      pause(delay)
+   next(m)
+   
+   # Change the number of ticks between labels
+   for m = 1 to 10
+      axes("axescolor",[0,0,0], 
+           "fontcolor",[0,0,0],  
+           "fontsize",10,           
+           "xtickspacing",5, 
+           "ytickspacing",5,
+           "xticksperlabel",m, 
+           "yticksperlabel",m)
+      pause(delay)
+   next(m)
+   
+   
+   # Change the axes font size
+   for m = 1 to 10
+      axes("axescolor",[0,0,0], 
+           "fontcolor",[0,0,0],  
+           "fontsize",m*2,           
+           "xtickspacing",5, 
+           "ytickspacing",5,
+           "xticksperlabel",5, 
+           "yticksperlabel",5)
+      pause(delay)
+   next(m)
+   
+   # Change the axes font size
+   for m = 1 to 30
+      axes("xrange",[-m*10,m*10], 
+           "yrange",[-m*10,m*10],  
+           "fontsize",10)          
+      pause(delay)
+   next(m)
+   
+   # Change the axes font size
+   for m = 4 to 20
+      axes("smticksize",m/2, 
+           "lgticksize",m,
+           "xtickspacing",5, 
+           "ytickspacing",5,
+           "xticksperlabel",5, 
+           "yticksperlabel",5)       
+      pause(delay)
+   next(m)
+
+   axes("autoscale","true") 
+
+endproc(1,"")

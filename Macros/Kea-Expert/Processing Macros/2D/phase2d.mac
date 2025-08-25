@@ -1,0 +1,221 @@
+##########################################################
+#                   phase2d.mac
+#
+# Phase a 2D data set either using a fixed phase
+# or automatically on a row by row basis
+#
+# Version history
+#
+# V1.0 - released with Prospa V2.1
+# V1.1 - keeps scale and labels intact when interpolating
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek 2006-7
+#
+###########################################################
+
+procedure(phase2d)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xscale,wv_yscale)
+   setpar(0,7,"text","0")
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Phase Rows/Columns", -1, -1, 320, 131)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mat,wv_xscale,wv_yscale)
+       groupbox(1, "", 6, 1, 298, 77)
+       button(2, 249, 88, 53, 33, "Exit",
+          closewindow(0);)
+       button(3, 129, 88, 53, 33, "Undo",
+          :undo();)
+       button(4, 9, 88, 53, 33, "Auto phase",
+          :auto_phase_data();)
+       button(5, 69, 88, 53, 33, "Fixed phase",
+          :fixed_phase_data();)
+       button(6, 189, 88, 53, 33, "Help",
+          :showHelp();)
+       textbox(7, 105, 34, 42)
+       statictext(8, 31, 29, "left", "Fixed phase")
+       radiobuttons(9, 197, 35, 20, "vertical", "rows,cols", "rows")
+       statictext(10, 191, 34, "right", "rows")
+       statictext(11, 191, 53, "right", "cols")
+       statictext(12, 201, 15, "center", "Phase")
+       statictext(13, 27, 47, "left", "shift (degrees)")
+       statictext(14, 272, 15, "center", "Method")
+       statictext(15, 258, 53, "right", "min")
+       statictext(16, 258, 34, "right", "max")
+       radiobuttons(17, 267, 35, 20, "vertical", "maximise,minimise", "maximise")
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",6)
+       setpar(n,4,"tab_number",3)
+       setpar(n,5,"tab_number",4)
+       setpar(n,6,"tab_number",5)
+       setpar(n,7,"tab_number",2)
+
+endproc(n)
+
+ 
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+   help("Macros\\2D","phase2d.htm")
+endproc()
+
+####################################################
+# Auto-phase data
+####################################################
+
+procedure(auto_phase_data)
+
+# Get the data
+   (m,xaxis,yaxis) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(m)
+
+# Get data type - should be complex
+   type = vartype(m)
+   if( type != "cmatrix2d")
+      message("Error","Data to be phased must be complex")
+      return
+   endif
+
+# Make a backup for undo command
+   wv_mat = m
+   wv_xscale = xaxis
+   wv_yscale = yaxis
+
+# Get phase direction
+   dir = getpar(0,9,"text")
+
+# Save the current 2D plot view parameters
+   (txt,lx,ly,nc,mode,x1v,x2v,y1v,y2v,xm,ym,xd,yd) = 2dpar:get()
+
+# Get maximum value
+   mVal = max(real(m))
+
+# Get autophase method
+   method = getpar(0,17,"text")
+
+# Phase rows #################
+   if(dir == "rows")
+      title("Select one side of peak")
+      x1 = getxy("vert")
+      title("Select other side of peak")
+      x2 = getxy("vert")
+      title("Phasing ...")
+   
+   # Swap if chosen in wrong order
+      if(x1 > x2)
+         swapvar(x1,x2)
+      endif
+
+   # Autophase the data
+      for(y = 0 to h-1)
+         p0 = autophase(m[~,y],x1,x2,method)*pi/180
+         m[~,y] = m[~,y]*exp(-i*p0)
+      next(y)
+
+# Phase cols ####################
+   else
+
+      title("Select one side of peak")
+      y1 = getxy("horiz")
+      title("Select other side of peak")
+      y2 = getxy("horiz")
+      title("Phasing ...")
+   
+   # Swap if chosen in wrong order
+      if(y1 > y2)
+         swapvar(y1,y2)
+      endif
+   
+   # Autophase the data
+      for(x = 0 to w-1)
+         p0 = autophase(m[x,~]',y1,y2,method)*pi/180
+         m[x,~] = m[x,~]*exp(-i*p0)
+      next(x)
+
+   endif
+
+# Display the result
+   draw2d("false")
+   image(m,xaxis,yaxis)
+   2dpar:set(txt,lx,ly,nc,mode,x1v,x2v,y1v,y2v,xm,ym,xd,yd)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Auto-phase data
+####################################################
+
+procedure(fixed_phase_data)
+
+# Get name and size of input matrix
+   curplot("2d")
+   (mIn,x,y) = getplotdata("2d")
+   (txt,lx,ly,nc,mode,x1v,x2v,y1v,y2v,xm,ym,xd,yd,cm) = 2dpar:get()
+   (w,h) = size(mIn)
+   if(w == 0)
+      message("Error","No 2D data loaded")
+      return
+   endif 
+   p0 = getpar(0,7,"value")/180*pi
+   dir = getpar(0,9,"text")
+
+# Make a backup for undo command
+   wv_mat = mIn
+   wv_xscale = x
+   wv_yscale = y
+
+# Phase data #################
+   if(dir == "rows")
+      for(y1 = 0 to h-1)
+         mIn[~,y1] = mIn[~,y1]*exp(i*p0)
+      next(y1)
+   else
+      for(x1 = 0 to w-1)
+         mIn[x1,~] = mIn[x1,~]*exp(i*p0)
+      next(x1)
+   endif
+
+# Display the result
+   draw2d("false")
+   image(mIn,x,y)
+   2dpar:set(txt,lx,ly,nc,mode,x1v,x2v,y1v,y2v,xm,ym,xd,yd,cm)
+   draw2d("true")   
+
+endproc()
+
+####################################################
+# Restore the matrix before last phase
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat,wv_xscale,wv_yscale)
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()

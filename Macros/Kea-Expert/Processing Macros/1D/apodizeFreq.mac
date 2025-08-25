@@ -1,0 +1,338 @@
+#########################################################
+#                      apodizeFreq.mac
+#
+# Apply an apodization function to the current 1D
+# data frequency domain data set 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005-2025
+# 
+# History:
+#  Feb 2015 - added cosinebell and cosinebell2
+#  Feb 2020 - fixed broadening range to 5 Hz
+#             works with PPM scale now
+#  Jan 2023 - added overlays or filter and original
+#             fid and spectrum.
+#  Mar 2025 - adding broadening and narrowing ranges
+#
+##########################################################
+
+
+procedure(apodizeFreq, fidPlotName, specPltName)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   n = :windowdefinition()
+   if(nrArgs == 2)
+      windowvar(wvFidPlt,wvSpecPlt)
+      wvFidPlt = gPlot->getPlotObject(fidPlotName)
+      wvSpecPlt = gPlot->getPlotObject(specPltName)
+   else
+      windowvar(wvFidPlt,wvSpecPlt)
+      wvSpecPlt = curplot("1d")
+      wvFidPlt = null
+   endif
+
+   import("maths.mac","$appdir$\\Macros\\CoreMacros","window")
+
+   setpar(n,3,"list",["none","exponential","sinebell","sinebell2",
+                     "cosinebell","cosinebell2","gauss","gaussdeconv"])
+   setpar(n,2,"value",0)
+   setpar(n,7,"value",0)
+   setpar(n,3,"text","none")
+   setpar(n,12,"tooltip","Update the spectrum with the apodization result")
+   setpar(n,13,"text",5)
+   setpar(n,14,"text",5)
+   :select_filter()
+   :update_data()
+   setwindowpar(n,"exit_procedure",":restoreTraces()")
+   showwindow(n)
+
+endproc()
+
+#####################################################################
+# Apply the chosen filter
+#####################################################################
+
+procedure(apply_filter)
+
+   if(N == 0)
+      return()
+   endif
+
+   if(maths:is_not_power2(N))
+      message("Error","Data set length must be a power of 2");
+      return()
+   endif
+
+   x = [0:1:N-1]
+   flt = :select_filter()
+
+   p1 = 0
+   p2 = getpar(0,2,"value")/N
+   p3 = getpar(0,7,"value")/N
+
+   if(isPPMScale == "true")
+      xOrig = xOrig*b1Freq
+   endif
+
+   maxBrdLW = getpar(0,13,"value") # Maximum broadening linewidth in Hz
+   maxNarLW = getpar(0,14,"value") # Maximum narrowing linewidth in Hz
+   del = xOrig[1] - xOrig[0]
+   p2 = p2*maxBrdLW*pi/(100*del)
+   p3 = p3*maxNarLW*pi/(100*del)
+
+   if(isPPMScale == "true")
+      xOrig = xOrig/b1Freq
+   endif
+
+   setpar(0,1,"text","$eval(lwBrd),1.1f$ Hz")
+   setpar(0,4,"text","$eval(lwNar),1.1f$ Hz")
+   filter = eval(flt)
+
+   wvSpecPlt->draw("false")
+   (x1,x2,y1,y2) = wvSpecPlt->zoom()
+   trcList = wvSpecPlt->traceList()
+   if(size(trcList) == 1)
+      (x,y) = wvSpecPlt->getdata()
+      wvSpecPlt->hold("on")
+      fid = ift(ftshift((yOrig)))
+      spec = ftshift(ft(fid.*filter))
+      n = wvSpecPlt->plot(xOrig,spec,"color",[0,128,0])
+      wvSpecPlt->hold("off")
+   elseif(size(trcList) == 2)
+      trc0 = wvSpecPlt->trace(0)
+      trc0->color([236,146,130])
+      trc1 = wvSpecPlt->trace(1)
+      fid = ift(ftshift((yOrig)))
+      spec = ftshift(ft(fid.*filter))
+      trc1->setdata(struct(xOrig,spec))
+      trc0->name("Original spectrum")
+      trc1->name("Apodized spectrum")
+   endif
+   wvSpecPlt->zoom(x1,x2,y1,y2)
+   wvSpecPlt->draw("true")
+
+   if(wvFidPlt != null)
+      wvFidPlt->draw("false")
+      trcList = wvFidPlt->traceList()
+      if(size(trcList) == 1)
+         (x,y) = wvFidPlt->getdata()
+         wvFidPlt->hold("on")
+         wvFidPlt->plot(x,filter*max(real(y)),"color",[255,0,0])
+         wvFidPlt->plot(x,filter.*real(y),"color",[0,128,0])
+         wvFidPlt->hold("off")
+      elseif(size(trcList) == 3)
+         trc0 = wvFidPlt->trace(0)
+         trc0->color([236,146,130])
+         trc1 = wvFidPlt->trace(1)
+         trc2 = wvFidPlt->trace(2)
+         trc0->name("Original FID")
+         trc1->name("Apodize function")
+         trc2->name("Apodized FID")
+         (x,y0) = trc0->getdata()
+         y1 = filter*max(real(y0))
+         trc1->setdata(struct(x,y1))
+         y2 = filter.*real(y0)
+         trc2->setdata(struct(x,y2))
+      endif
+      wvFidPlt->draw("true")
+   endif
+
+endproc()
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(load_help)
+   help("Macros\\1D","apodizeFreq.htm")
+endproc()
+
+###########################################################
+# Make sure the current plots are reset
+###########################################################
+
+procedure(restoreTraces)
+
+   try
+      if(wvFidPlt != null)
+         trcFID = wvFidPlt->tracelist
+         if(size(trcFID) == 3)
+            wvFidPlt->rmtrace(1)
+            wvFidPlt->rmtrace(2)
+            wvFidPlt->trace(0)->color([165,47,25])
+         endif
+      endif
+   
+      trcSpec = wvSpecPlt->tracelist
+      if(size(trcSpec) == 2)
+         wvSpecPlt->rmtrace(1)
+         wvSpecPlt->trace(0)->color([165,47,25])
+      endif
+   catch
+      pr lasterror()
+   endtry
+   
+endproc()
+
+#####################################################################
+# Determine an expression for the chosen filter
+#####################################################################
+
+procedure(select_filter)
+
+   fltStr = getpar(0,3,"text")
+
+   if(fltStr == "none")
+      flt = "matrix(N)+1"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "exponential")
+      flt = "exp(-abs(x-p1)*p2)"
+      broad = "true"; narrow = "false"
+      lwBrd = "p2*N/pi*del"; lwNar = "0"
+   elseif(fltStr == "cosinebell")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "cosinebell2")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))^2"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "sinebell")
+      flt = "sin(pi*(x-p1)/(N-p1))"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "sinebell2")
+      flt = "sin(pi*(x-p1)/(N-p1))^2"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "gauss")
+      flt = "exp(-(x-p1)^2*p2^2)"
+      lwBrd = "1.66*p2*N/pi*del"; lwNar = "0"
+      broad = "true"; narrow = "false"
+   elseif(fltStr == "gaussdeconv")
+      flt = "exp((x-p1)*p3-(x-p1)^2*(p2/1.66)^2)"
+      broad = "true"; narrow = "true"
+      lwBrd = "p2*N/pi*del"; lwNar = "p3*N/pi*del"
+   endif
+
+# Enable/disable the controls based on choice
+   setpar(0,2,"enable",broad)
+   setpar(0,9,"enable",broad)
+   setpar(0,7,"enable",narrow)
+   setpar(0,11,"enable",narrow)
+
+
+endproc(flt)
+
+
+#####################################################################
+# Load the current data set
+#####################################################################
+
+procedure(update_data)
+
+# Get the b1Freq (as windowvar) from UI/acqu.par
+   b1Freq = ucsUtilities:find1DFreqFromUI()
+   if(b1Freq == null)
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+# Get the data - save as window variables
+   cp = curplot("1d")
+   (xOrig,yOrig) = cp->trace(0)->getdata()
+   isPPMScale = cp->axes->xppmscale
+   N = size(xOrig)
+
+# Make accessing 1dpar fast
+   import("1dpar.mac","$appdir$\\Macros\\coreMacros","window")
+
+
+endproc()
+
+###########################################################
+# Update the spectrum with the new apodized trace
+###########################################################
+
+procedure(updateTraces)
+
+   if(wvFidPlt != null)
+      trcFID = wvFidPlt->tracelist
+      if(size(trcFID) == 3)
+         wvFidPlt->rmtrace(1)
+         wvFidPlt->rmtrace(2)
+         wvFidPlt->trace(0)->color([165,47,25])
+      endif
+   endif
+
+   trcSpec = wvSpecPlt->tracelist
+   if(size(trcSpec) == 2)
+      trc = wvSpecPlt->trace(1)
+      (x,y) = trc->getdata()
+      trc = wvSpecPlt->trace(0)
+      trc->name("Apodized spectrum")
+      trc->setdata(struct(x,y))
+      wvSpecPlt->rmtrace(1)
+      wvSpecPlt->trace(0)->color([165,47,25])
+   endif
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   parentWin = gView->wn
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apodize 1D Frequency Domain Data", -1, -1, 486, 138)
+      windowvar(N,yOrig,xOrig,lwBrd,lwNar,parWinNr,b1Freq,isPPMScale)
+
+      # Define all controls with basic parameters
+      windowvar(N,yOrig,xOrig,lwBrd,lwNar,parWinNr,b1Freq,isPPMScale,wvFidPlt,wvSpecPlt)
+      statictext(1, 296, 46, "left", "0.7 Hz")
+      slider(2, 165, 44, 130, 20, "horizontal",
+           :apply_filter();)
+      listbox(3, 23, 28, 119, 86,
+         if(getpar(0,3,"event") == "single_click_down");
+         :apply_filter();
+         endif;)
+      statictext(4, 296, 89, "left", "0.0 Hz")
+      groupbox(5, "Filters", 9, 4, 146, 123)
+      button(6, 419, 55, 45, 27, "Help",
+         :load_help();)
+      slider(7, 165, 87, 130, 20, "horizontal",
+           :apply_filter();)
+      button(8, 419, 95, 45, 27, "Exit",
+        # :restoreTraces();
+         closewindow(0);)
+      statictext(9, 243, 28, "right", "Broadening")
+      groupbox(10, "Adjust line-width", 164, 4, 238, 123)
+      statictext(11, 237, 74, "right", "Narrowing")
+      button(12, 419, 15, 45, 27, "Update",
+         :updateTraces();)
+      textbox(13, 350, 41, 40)
+      textbox(14, 350, 85, 40)
+
+     # Set other control parameters
+      setpar(n,2,"type","float",
+                  "range",[0,100])
+      setpar(n,7,"type","float",
+                  "range",[0,100])
+      setpar(n,8,"mode","cancel")
+      setpar(n,12,"tooltip","Update the spectrum with the apodization result")
+      setpar(n,13,"tooltip","The max. broadening in Hz")
+      setpar(n,14,"tooltip","The max. narrowing in Hz")
+
+ 
+endproc(n)

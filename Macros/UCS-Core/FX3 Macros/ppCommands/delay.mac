@@ -1,0 +1,33 @@
+###################################################################################
+# Add a delay to the sequence
+#
+#   delay(duration)
+#
+#   duration ... duration in us.
+#
+#   Note that the maximum delay is 20 s
+#
+###################################################################################
+
+procedure(delay, duration)
+
+   if(wvFX3Info->mode == "run")
+   
+      ps = [round(duration*100d), 0x09000000, 0] # Add a delay command
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+      gSeq->psInfo->command = gSeq->psInfo->command + ["delay,$duration$,$args[0]$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(duration)
+
+   endif
+
+endproc()
+

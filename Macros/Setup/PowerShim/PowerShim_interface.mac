@@ -1,0 +1,126 @@
+procedure(status)
+
+endproc("readonly")
+
+procedure(interfaceDescription)
+
+   interface = [
+      "nmrDiv","NMR parameters","dv", "", "",
+      "nucleus","Nucleus","tb","readonly_string","",
+      "b1Freq1H","B1 Frequency (MHz)","tb","double","[1,400]",
+      "repTime","Repetition time (ms)","tb","float","[1,1e+008]",
+      "shimDelay","Shim delay (ms)","tb","float","[0.001,10000]",
+      "90Amplitude1H","Pulse amplitude (dB)","tb","float","[-85,0]",
+      "pulseLength1H","Pulse length (us)","tb","float","[0.5,1000]",
+      "shiftPoints","Points to shift","tb","integer","[1,1e8]",
+      "peakPositionPPM","Peak position (ppm)","tm","float","[\"4.74\",\"7.26\"]",
+      "ctrlDiv","Shim control","dv", "", "",
+      "startMethod","Shim start mode","rb","string","18,last,database,factory,loaded,zero,Last Expert Shim,Last Standard Shim,Factory Shims,Loaded Shims,Zero Shims",
+      "phase1Steps","Phase 1 steps","tb","integer","[0,200]",
+      "phase2Steps","Phase 2 steps","tb","integer","[0,200]",
+      "phase3Steps","Phase 3 steps","tb","integer","[0,1000]",
+      "phase4Steps","Phase 4 steps","tb","integer","[0,1000]",
+      "shimDiv","Shim values","dv", "", "",
+      "loadShims","Load shims","bt","string","loadCurrentShims()",
+      "saveShims","Save shims","bt","string","saveCurrentShims()",
+      "zeroShims","Zero shims","bt","string","zeroCurrentShims()",
+      "xshim","x shim","tb","float","[-32678,32767]",
+      "yshim","y shim","tb","float","[-32678,32767]",
+      "zshim","z shim","tb","float","[-32678,32767]",
+      "z2shim","z2 shim","tb","float","[-32678,32767]",
+      "zxshim","zx shim","tb","float","[-32678,32767]",
+      "zyshim","zy shim","tb","float","[-32678,32767]",
+      "xyshim","xy shim","tb","float","[-32678,32767]",
+      "x2y2shim","x2-y2 shim","tb","float","[-32678,32767]",
+      "z3shim","z3 shim","tb","float","[-32678,32767]",
+      "z2xshim","z2x shim","tb","float","[-32678,32767]",
+      "z2yshim","z2y shim","tb","float","[-32678,32767]",
+      "zxyshim","zxy shim","tb","float","[-32678,32767]",
+      "zx2y2shim","z(x2-y2) shim","tb","float","[-32678,32767]",
+      "x3shim","x3 shim","tb","float","[-32678,32767]",
+      "y3shim","y3 shim","tb","float","[-32678,32767]",
+      "acquDiv","Acquisition","dv", "", "",
+      "rxGain","Receiver gain","tm","integer","[\"-20\",\"-17\",\"-14\",\"-11\",\"-8\",\"-5\",\"-2\",\"1\",\"4\",\"7\",\"10\",\"13\",\"16\",\"19\",\"22\",\"25\",\"28\",\"31\",\"34\",\"37\",\"40\",\"43\",\"46\",\"49\",\"52\",\"55\",\"58\",\"61\",\"64\",\"67\",\"70\"]",
+      "rxChannel","Receiver channel","tm","string","[\"1H\",\"13C\",\"15N\",\"19F\",\"29Si\",\"31P\",\"X\"]",
+      "rxPhase","Receiver phase","tb","float","[-360,360]",
+      "nrPnts","Number of points","tm","integer","[\"4\",\"8\",\"16\",\"32\",\"64\",\"128\",\"256\",\"512\",\"1024\",\"2048\",\"4096\",\"8192\",\"16384\",\"32768\"]",
+      "dwellTime","Dwell time (us)","tm","float","[\"0.5\",\"1\",\"2\",\"5\",\"10\",\"20\",\"50\",\"100\",\"200\",\"500\",\"1000\",\"2000\"]",
+      "nrScans","Number of scans","tb","float","[1,1e8]",
+      "flatFilter","Flat filter","cb","string","no,yes",
+      "accumulate","Accumulate data","cb","string","no,yes",
+      "usePhaseCycle","Phase cycle","cb","string","no,yes",
+      "bandwidth","Bandwidth (kHz)","tb","float","",
+      "acqTime","Acquisition time (ms)","tb","float","",
+      "procDiv","Processing","dv", "", "",
+      "zf","Zero fill factor?","tm","integer","[\"1\",\"2\",\"4\",\"8\",\"16\"]",
+      "filter","Apodisation filter?","cb","string","no,yes",
+      "filterType","Filter type","tm","string","[\"none\",\"exponential\",\"sinebellsquared\"]",
+      "fdPhaseCorr","Freq. domain phasing","tm","string","[\"autophase\",\"mag\",\"none\"]",
+      "dispDiv","Display","dv", "", "",
+      "usePPMScale","Use ppm scale?","cb","string","no,yes",
+      "dispRangeMinPPM","Minimum ppm value","tb","float","[-2000,2000]",
+      "dispRangeMaxPPM","Maximum ppm value","tb","float","[-2000,2000]",
+      "dispRange","Display range (Hz)","tb","float","[0,2e6]",
+      "fileDiv","Files","dv", "", "",
+      "saveData","Save data?","cb","string","false,true"]
+
+
+endproc(interface)
+
+
+#####################################################
+# Organise plots for running and loading experiments
+# Each row has quoted plot names separated by a semicolon
+# Allowable plot names are ptx or imx. (x = 1,2 ...)
+# Can have up to 6 plots for 1D 4 for 2D.
+#####################################################
+
+procedure(plot_run_layout)
+
+   layout = ["pt1","pt2";
+             "pt3"]
+
+endproc(layout)
+
+
+procedure(plot_load_layout)
+
+   layout = ["pt1","pt2";"pt3"]
+
+endproc(layout)
+
+#####################################################
+# Defines the controls which will appear to the 
+# right of the plots below the default conrols.
+# If 'null' is returned or this proceudre is missing
+# then only default controls will be added.
+#####################################################
+
+
+procedure(processing_controls)
+
+   layout = ["buttonLabel = \"SNR\"",      "plotName = \"pt1\"",
+                "macroToRun = \"snrSpectrum()\"";
+             "buttonLabel = \"FT\"",       "plotName = \"pt1\"",
+                "macroToRun = \"apodizeNTransform(\\\"pt1\\\",\\\"pt2\\\")\"";
+             "buttonLabel = \"Phase\"",    "plotName = \"pt2\"",
+                "toolTip = \"Phase complex data.\"",
+                "macroToRun = \"manualPhase1DSpecial()\"";
+             "buttonLabel = \"Apodize\"",  "plotName = \"pt2\"", 
+                "macroToRun = \"apodizeFreq()\"";
+             "buttonLabel = \"SNR\"",      "plotName = \"pt2\"",
+                "macroToRun = \"snrSpectrum()\"";
+             "buttonLabel = \"ppm/Hz\"",   "plotName = \"pt2\"",
+                "macroToRun = \"togglePPM_Hz(1)\"";
+             "buttonLabel = \"Set ref\"",  "plotName = \"pt2\"",
+                "macroToRun = \"calibrateXAxis()\"";
+             "buttonLabel = \"MNova\"",    "plotName = \"pt1\"",
+                "macroToRun = \"exportMNova(\\\"pt1\\\")\"";
+             "buttonLabel = \"Picking\"",  "plotName = \"pt2\"",
+                "macroToRun = \"PeakPicking(\\\"pt2\\\")\"";
+             "buttonLabel = \"Integ.\"",   "plotName = \"pt2\"",
+                "macroToRun = \"PeakIntegration(\\\"pt2\\\")\""]
+
+endproc(layout)
+
+

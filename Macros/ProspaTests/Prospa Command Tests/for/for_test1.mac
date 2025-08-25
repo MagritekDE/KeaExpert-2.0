@@ -1,0 +1,83 @@
+# for function test
+procedure(for_test1,verbose,delay)
+
+
+   # Basic operation of loop
+   m = matrix(10)
+   for (x = 0 to 9)
+     m[x] = x
+   next(x) 
+   if(m != [0:9])
+      return(0, "Invalid result: for() basic loop operation")
+   endif
+   if(verbose)
+      pr "      Valid test: for() basic loop operation\n"  
+   endif
+   
+   # +ve step size
+   m = matrix(5)
+   c = 0
+   for (x = 0 to 9 step 2)
+     m[c] = x
+     c = c + 1
+   next(x) 
+   if(m != [0:2:9])
+      return(0, "Invalid result: for() +ve step size")
+   endif
+   if(verbose)
+      pr "      Valid test: for() +ve step size\n"  
+   endif
+   
+   # -ve step size
+   m = matrix(5)
+   c = 0
+   for (x = 9 to 0 step -2)
+     m[c] = x
+     c = c + 1
+   next(x) 
+   if(m != [9:-2:0])
+      return(0, "Invalid result: for() -ve step size")
+   endif
+   if(verbose)
+      pr "      Valid test: for() -ve step size\n"  
+   endif
+   
+   # end < start
+   c = 0
+   for (x = 0 to -1)
+     c = c + 1
+   next(x) 
+   if(c != 0)
+      return(0, "Invalid result: for() end < start")
+   endif
+   if(verbose)
+      pr "      Valid test: for() end < start\n"  
+   endif
+   
+   # end = start
+   c = 0
+   for (x = 1 to 1)
+     c = c + 1
+   next(x) 
+   if(c != 1)
+      return(0, "Invalid result: for() end = start")
+   endif
+   if(verbose)
+      pr "      Valid test: for() end = start\n"  
+   endif
+   
+   # exitfor
+   for (x = 0 to 100)
+     if (x == 50)
+       exitfor
+     endif
+   next(x)
+   if(x != 50)
+      return(0, "Invalid result: for() exitfor")
+   endif
+   if(verbose)
+      pr "      Valid test: for() exitfor\n"  
+   endif
+
+
+endproc(1,"")

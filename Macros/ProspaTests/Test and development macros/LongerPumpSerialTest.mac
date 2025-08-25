@@ -1,0 +1,58 @@
+try
+closeserial("COM4")
+catch;endtry
+
+status = "off"
+speed = 10.2 #speed in rpm
+direction = "cw"
+
+# Convert speed to a number from 0 to 1000
+code = hex(speed*10)
+
+# Start of command string
+cmd1 = [0xE9,0x01,0x06,0x57,0x4a]
+
+# Pad codes E8 and E9 with 00 and 01 if
+# they arrear in the speed code
+byte1 = code[[0:1]]
+byte2 = code[[2:3]]
+if(byte2 == "E8")
+  cmd2 = [eval("0x$byte1$"),0xE8,0x00]
+elseif(byte2 == "E9")
+  cmd2 = [eval("0x$byte1$"),0xE8,0x01]
+else
+  cmd2 = [eval("0x$byte1$"),eval("0x$byte2$")]
+endif
+# Join the speed to the control codes
+cmd = join(cmd1,cmd2)
+
+if(status == "on")
+   cmd = join(cmd,[0x01])
+else
+   cmd = join(cmd,[0x00])
+endif
+
+# Add direction
+if(direction == "cw")
+   cmd = join(cmd,[0x00])
+else
+   cmd = join(cmd,[0x01])
+endif
+
+# Take xor off all but first entry
+exor = 0
+for(k = 1 to size(cmd)-1 step 1)
+  exor = xor(exor,cmd[k])
+next(k)
+
+# Add the exclusive or result
+cmd = join(cmd,[exor])
+pr hex(cmd)
+
+openserial("COM4",1200,8,"even","1")
+writeserial("COM4",cmd)
+#pause(1)
+#res = readserial("COM4","vector")
+#pr hex(strtoascii(res))
+
+closeserial("COM4")

@@ -1,0 +1,139 @@
+##############################################
+# Toggle the frequency axes of spectra 
+# between PPM and Hertz for a 1D spectrum
+# Use the current plot if plt is not defined
+##############################################
+
+procedure(togglePPM_Hz, updateLabel=0, plt=null)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   if(plt == null)
+      cp = curplot("1d")
+   else
+      cp = gPlot->getPlotObject(plt)
+   endif
+
+   obj = cp->parent
+
+   b1Freq = 0.0
+
+   try
+
+      b1Freq = ucsUtilities:find1DFreqFromUI()
+
+      if(b1Freq == null)
+         message("Error","Nucleus not defined","error")
+         return
+      endif
+
+      cp->draw("false")
+
+       tcIds = cp->tracelist()
+       (xp,yp) = cp->trace(0)->getdata()
+       sz = size(xp)
+       nrTc = size(tcIds)
+       x = matrix(sz,nrTc)
+       y = cmatrix(sz,nrTc)
+       tcSz = matrix(nrTc)
+       tcCol = matrix(6,nrTc)
+       tcWidth = matrix(nrTc)
+       ylab = cp->ylabel->text
+       tl = cp->title->text
+       (x1,x2,y1,y2) = cp->zoom()
+
+     # Record the trace data
+       for(k = 0 to nrTc-1)
+         (xt,yt) = cp->trace(k)->getdata()
+         tcSz[k] = size(xt)
+         x[0:tcSz[k]-1,k] = xt
+         y[0:tcSz[k]-1,k] = yt
+         tcCol[~,k] = cp->trace(k)->color()
+         tcWidth[k] = cp->trace(k)->tracewidth()
+       next(k)
+
+     # Record any line data
+       lineInfo = cp->getlines()
+
+     # Record any text data
+       textInfo = cp->gettext()
+
+     # Draw the data back again with the reverse scale (Hz/ppm)
+      cp->hold("off")
+      cp->rmlines()
+      cp->rmtext()
+
+      for(k = 0 to nrTc-1)
+ 
+         if(cp->axes->xppmscale== "true")
+   
+            xt = b1Freq/1*linspace(x[0,k],x[tcSz[k]-1,k],tcSz[k])
+            colr = tcCol[0:2,k]
+            coli = tcCol[3:5,k]
+            cp->plot(xt,y[[0:tcSz[k]-1],k],"realcolor",colr,"imagcolor",coli,"tracewidth",tcWidth[k])
+            cp->hold("on")
+         else
+            xt = 1/b1Freq*linspace(x[0,k],x[tcSz[k]-1,k],tcSz[k])
+            colr = tcCol[0:2,k]
+            coli = tcCol[3:5,k]
+            cp->plot(xt,y[[0:tcSz[k]-1],k],"realcolor",colr,"imagcolor",coli,"tracewidth",tcWidth[k])
+            cp->hold("on")
+         endif
+
+      next(k)
+
+      if(cp->axes->xppmscale == "true")
+         x1 = x1*b1Freq/1
+         x2 = x2*b1Freq/1
+
+         for(k = 0 to size(lineInfo)-1)
+            lineInfo[k]->x0 = lineInfo[k]->x0*b1Freq/1
+            lineInfo[k]->x1 = lineInfo[k]->x1*b1Freq/1
+         next(k)
+
+         for(k = 0 to size(textInfo)-1)
+            textInfo[k]->x = textInfo[k]->x*b1Freq/1
+         next(k)
+         cp->axes->xppmscale("false")
+         cp->axes->xdirection("reversed")
+         cp->xlabel("Frequency (Hz)")
+         if(updateLabel)
+            parentCtrl->label("PPM")
+         endif
+      else
+         x1 = x1*1/b1Freq
+         x2 = x2*1/b1Freq
+         for(k = 0 to size(lineInfo)-1)
+            lineInfo[k]->x0 = lineInfo[k]->x0*1/b1Freq
+            lineInfo[k]->x1 = lineInfo[k]->x1*1/b1Freq
+         next(k)
+         for(k = 0 to size(textInfo)-1)
+            textInfo[k]->x = textInfo[k]->x*1/b1Freq
+         next(k)
+         cp->axes->xppmscale("true")
+         cp->axes->xdirection("reversed")
+         cp->xlabel("Frequency (ppm)")
+         if(updateLabel)
+            parentCtrl->label("Hz")
+         endif
+      endif
+      if(lineInfo != null)
+         cp->addlines(lineInfo)
+      endif
+      if(textInfo != null)
+         cp->addtext(textInfo)
+      endif
+      cp->zoom(x1,x2,y1,y2)
+      cp->ylabel(ylab)
+      cp->title(tl)
+      cp->draw("true")
+      cp->hold("off")
+
+   catch
+      pr lasterror()
+   endtry
+
+endproc()

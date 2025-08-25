@@ -1,0 +1,77 @@
+#####################################################################
+# This example script flashes LEDs connected to the FTDI-TTL
+# controller.
+#####################################################################
+
+procedure(ttlControlTest, parameters=null) 
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift")) # Display this file
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else # Add the experiment with interface
+      if(parameters == null)
+         parameters = ["nrSteps  = 100", 
+                       "ledDelay = 1"]
+      endif
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+########################################################
+# Specifies the user interface to display when
+#  item selected in history list. 
+########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["nrSteps", "Number of steps",         "tb", "integer",  "",
+                 "ledDelay","On duration for LED (s)", "tb", "float",  ""]
+   plotLayout = ["pt1"]
+   procLayout = list(0)
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+###########################################################
+# This will step through the 8 TTL outputs for nrSteps 
+# switching on each in turn and then reset the outputs to zero.
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   # Executable to run to control FTDI TTL controller
+   exe = "$appdir$\\Spinsolve special programs\\TTLController\\SpinsolveTTL.exe"
+   
+   # Blink all LEDs mounted on AD0-AD7 (note output only here)
+   k = 0
+   for(k = 0 to nrSteps-1)
+    
+     n = k%8
+     b = 2^n
+     execandwait(exe,"FTDIMagritek001 output $hex(b)$ 0xFF")
+     k = k + 1
+     pause(ledDelay)
+   
+   next(k)
+
+   execandwait(exe,"FTDIMagritek001 output 0x00 0xFF")
+
+endproc()
+
+########################################################
+# Return expected experiment duration in seconds. This 
+# is done by requesting the parameters for each 
+# experiment and using this to define the duration.
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   d = nrSteps*ledDelay
+
+endproc(d)

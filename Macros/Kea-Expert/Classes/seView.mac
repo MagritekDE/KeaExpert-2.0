@@ -1,0 +1,3843 @@
+###########################################################
+# View class for KeaExpert
+#
+# Contains procedures for defining the Expert
+# user interface. Also contains code for 
+# handling the experiment history list; both
+# loading it from experiment folders and 
+# handling callbacks from user interactions.
+# In addition a number of miscellaneous 
+# procedures handle other user interactions.
+#
+# V2.00.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+# History
+   self->checkForStdSWExpt          = "seView:checkForStdSWExpt"
+   self->historyCallback            = "seView:historyCallback"
+   self->loadHistoryList            = "seView:loadHistoryList"
+   self->renameExperiments          = "seView:renameExperiments"
+   self->removeFoldersFromHistory   = "seView:removeFoldersFromHistory"
+   self->historyMenuCallback        = "seView:historyMenuCallback"
+   self->drawNDropHistory           = "seView:drawNDropHistory"
+
+# Connection
+   self->checkUSBConnection         = "seView:checkUSBConnection"
+
+# Modify UI
+   self->disableControls            = "seView:disableControls"
+   self->dragNDrop                  = "seView:dragNDrop"
+   self->enableControls             = "seView:enableControls"
+   self->exitProcedure              = "seView:exitProcedure"
+   self->getUIVersion               = "seView:getUIVersion"
+   self->loadPar                    = "seView:loadPar"
+   self->set1DColors                = "seView:set1DColors"
+   self->set2DColors                = "seView:set2DColors"
+   self->makeSplashScreen           = "seView:makeSplashScreen"
+   self->savePar                    = "seView:savePar"
+   self->toggleBatchMode            = "seView:toggleBatchMode"
+   self->toggleProgressGroup        = "seView:toggleProgressGroup"
+   self->toggle1DLegend             = "seView:toggle1DLegend"
+   self->selectInterface            = "seView:selectInterface"
+
+# Make UI
+   self->addNewPPPath               = "seView:addNewPPPath"
+   self->addPPMenus                 = "seView:addPPMenus"
+   self->addTestMenus               = "seView:addTestMenus"
+   self->defineBatchPanel           = "seView:defineBatchPanel"
+   self->defineCLI                  = "seView:defineCLI"
+   self->defineDividers             = "seView:defineDividers"
+   self->defineExperimentControl    = "seView:defineExperimentControl"
+   self->defineFileControls         = "seView:defineFileControls"
+   self->defineGraph                = "seView:defineGraph"
+   self->defineHistoryPanel         = "seView:defineHistoryPanel"
+   self->defineMainWindow           = "seView:defineMainWindow"
+   self->defineMenus                = "seView:defineMenus"
+   self->defineParameterPanel       = "seView:defineParameterPanel"
+   self->definePostProcessing       = "seView:definePostProcessing"
+   self->defineStatusAndViewPanel   = "seView:defineStatusAndViewPanel",
+   self->makeUI                     = "seView:makeUI"
+
+# General callbacks
+   self->changeViewDate             = "seView:changeViewDate"
+   self->changeBasePath             = "seView:changeBasePath"
+   self->copyAllPlots               = "seView:copyAllPlots"
+   self->findLock                   = "seView:findLock"
+   self->gotoExptFolder             = "seView:gotoExptFolder"
+   self->openDataFolder             = "seView:openDataFolder"
+   self->openFirmwareUpdater        = "seView:openFirmwareUpdater"
+   self->openPPEditor               = "seView:openPPEditor"
+   self->openViewer                 = "seView:openViewer"
+   self->openNoteEditor             = "seView:openNoteEditor"
+   self->makeShortcut               = "seView:makeShortcut"
+   self->showProcedures             = "seView:showProcedures"
+   self->processMessages            = "seView:processMessages"
+   self->readAcqPar                 = "seView:readAcqPar"
+   self->reloadDataSet              = "seView:reloadDataSet"
+   self->renameProtocols            = "seView:renameProtocols"
+   self->searchHistory              = "seView:searchHistory"
+   self->selectCurrentHistoryEntry  = "seView:selectCurrentHistoryEntry"
+   self->showExperimentHelp         = "seView:showExperimentHelp"
+   self->showReleaseNotes           = "seView:showReleaseNotes"
+   self->toggleLinesAndText         = "seView:toggleLinesAndText"
+   self->removeLinesAndText         = "seView:removeLinesAndText"
+   self->updateProjectPath          = "seView:updateProjectPath"
+   self->viewAcqParameters          = "seView:viewAcqParameters"
+   self->viewHelp                   = "seView:viewHelp"
+   self->dividerHelp                = "seView:dividerHelp"
+
+   self->variableList = "============================================="
+
+# UI dimensions
+   self->historyWidth      = 290       # Some groups of controls rely
+   self->parameterWidth    = 285       # on these parameters to know
+   self->fileControlHeight = 100       # where they will be placed and they
+   self->progressHeight    = 84        # may not have been generated yet.
+   self->progressLength    = 131       # length of progress bar
+
+# Other
+   self->historyLoading = 0            # A flag to prevent selecting the history entries too fast
+   self->nrGraphs       = 20           # The number of 1D and 2D plots to make
+   self->nr1DPlots      = 10            # The number of 1D plots to make
+   self->dirList        = list(0)      # History list directories
+   self->uiMode         = "normal"     # Allow for different display options (e.g. view mode)
+   
+# Window re-layout variables
+   self->userCtrlMaxRng      = [1,199]    # Maximium user controls range 
+   self->staticMaxRng        = [200,499]  # Maximium static controls range
+   self->menuMaxRng          = [500,699]  # Maximum menus range 
+   self->staticCtrlRange     = [-1,-1]    # Actual range of static controls (Updated in makeUI)
+   self->userMenusRange      = [-1,-1]    # Actual control number range of user-define menus
+
+   self->IsMaximised         = "normal"   # Startup state: maximized or normal
+   self->displayMode         = "normal"   # How the UI is organised
+   self->nrDefaultExptMenus  = 5          # Number of default menus after user supplied list
+
+   self->batchRange          = [-1,-1]    # Range of controls in batch group
+   self->lastBatchDividerPos = "wh*0.4"
+   self->tester              = 0          # Is this the tester or full expert version
+
+# Initialise member variables
+   self->cn = 0                        # Control number counter
+   self->wn = 0                        # Main window number
+   self->projectPathBak = ""           # Backup of project path
+
+# Version
+   self->versionNr = "2.02.10"   # Program version number
+   (self->coreTitle, self->tester, self->icon) = expertName(self->versionNr)  # Title/tester/icon
+
+endproc()
+
+
+###########################################################
+# Adds a new directory to the pp search path and to the
+# macro search path
+###########################################################
+
+procedure(addNewPPPath, self, location)
+
+   baseDir = getbasedir(location)
+   gData->addToPPSearchPath(location)
+ # Add the new folder to the macro search path if new
+   if(getlistindex(macrosearchpath,location) == -1)
+      newSearchPath = macrosearchpath + location
+      varstatus("macrosearchpath","visible","readwrite","permanent")
+      assign("macrosearchpath",newSearchPath,"global")
+      varstatus("macrosearchpath","visible","readonly","permanent")
+   endif
+
+endproc()
+
+
+###########################################################
+# Adds the pulse programs stored in the pref
+# file 'pulseProgramMenus.mac' to menus. 
+# Format is a list of pulse-program group 
+# folder names and the corresponding menu title 
+# using this format:
+#
+# pulse_program_group_path|menu_name
+#
+# Those standard pulse program groups( e.g 
+# Kea-NMR, Kea-MRI etc) have their base path 
+# abbreviated as <standard_experiments>
+#
+# 'cnt' is the current control counter
+###########################################################
+
+procedure(addPPMenus, self, cnt)
+
+   addedMenus = 0
+   bak = getcwd()
+   cd(prefdir)
+   if(isdir("KeaParameters"))
+      cd("KeaParameters")
+      if(isfile("pulseProgramMenus.mac"))
+         try
+           # Read the saved menu list
+            escapechar("false")
+            ppMenus = pulseProgramMenus()
+            sz = size(ppMenus)
+           # Scan the menu list line by line
+            for(k = 0 to sz-1)
+               (location, menuName) = scanstr(ppMenus[k],"%1|%2")
+               baseDir = getbasedir(location)
+             # Is the menu in the standard macro path or is an explict path given
+               if(issubstr(location,"<standard_experiments>"))
+                  location = "$appdir$\\Macros\\$baseDir$"
+               else
+                  gData->addToPPSearchPath(location)
+                  location2 = "$location$\\*"
+                # Add the new folder to the macro search path if new
+                  if(getlistindex(macrosearchpath,location2) == -1)
+                     newSearchPath = macrosearchpath + location2
+                     varstatus("macrosearchpath","visible","readwrite","permanent")
+                     assign("macrosearchpath",newSearchPath,"global")
+                     varstatus("macrosearchpath","visible","readonly","permanent")
+                  endif 
+               endif
+               # Add the user defined menu to the menu list
+               if(menuName != "")
+                  menu(cnt, menuName, "user folder menu", "") # Need to use following command to set the folder as this
+                  setpar(self->wn,cnt,"procedure",location) #  only works with global variables like $appdir$
+                  cnt = cnt + 1
+                  addedMenus = 1
+               endif
+            next(k)  
+            escapechar("true")
+         catch
+            pr lasterror()
+         endtry
+      endif
+   endif 
+   cd(bak) 
+
+
+# First time so add default experiment menus based on the instrument
+   if(addedMenus == 0)
+   
+      location = "$appdir$\\Macros\\Kea-NMR"
+      locationName = "<standard_experiments>\\Macros\\Kea-NMR"
+      menuName = "Kea-NMR"
+      menu(cnt, menuName, "user folder menu", "")  
+      setpar(self->wn,cnt,"procedure",location)
+      defaultList = ["$locationName$|$menuName$"]
+      cnt = cnt + 1
+
+      cd(prefdir)
+      mkdir("KeaParameters")
+      cd("KeaParameters")
+      if(isfile("pulseProgramMenus.mac"))
+         try
+            oldList = pulseProgramMenus()
+            newList = oldList + defaultList
+            sz = size(newList)
+            printtofile("pulseProgramMenus.mac")
+            pr("procedure(pulseProgramMenus)\n")
+            if(sz >= 2)
+               pr ("\n   menuList = [\"$newList[0]$\",\n")
+               for(k = 1 to sz-2)
+                  pr("               \"$newList[k]$\",\n")  
+               next(k)
+               pr("               \"$newList[-1]$\"]\n")  
+            elseif(sz == 1)
+               pr("\n   menuList = [\"$newList[0]$\"]\n")  
+            else
+               pr("\n   menuList = null\n")    
+            endif  
+            pr("\nendproc(menuList)\n")
+            closeprint()
+         catch
+            closeprint()
+            pr lasterror()
+         endtry
+      else
+         printtofile("pulseProgramMenus.mac")
+         pr("procedure(pulseProgramMenus)\n")
+         pr("\n   menuList = $defaultList$\n") 
+         pr("\nendproc(menuList)\n")
+         closeprint()
+      endif
+
+   endif 
+ 
+   gDebug->pr("Added pulse-program menus and hidden paths")
+
+endproc(cnt)
+
+procedure(addTestMenus, self, cnt)
+
+   location = "$appdir$\\Macros\\ProtonTest"
+   locationName = "<standard_experiments>\\Macros\\ProtonTest"
+   menuName = "Proton-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+   location = "$appdir$\\Macros\\FluorineTest"
+   locationName = "<standard_experiments>\\Macros\\FluorineTest"
+   menuName = "Fluorine-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+   location = "$appdir$\\Macros\\CarbonTest"
+   locationName = "<standard_experiments>\\Macros\\CarbonTest"
+   menuName = "Carbon-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+   location = "$appdir$\\Macros\\XChannelTest"
+   locationName = "<standard_experiments>\\Macros\\XChannelTest"
+   menuName = "XChannel-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+   location = "$appdir$\\Macros\\LockTest"
+   locationName = "<standard_experiments>\\Macros\\LockTest"
+   menuName = "Lock-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+   location = "$appdir$\\Macros\\HardwareTest"
+   locationName = "<standard_experiments>\\Macros\\HardwareTest"
+   menuName = "Hardware-Test"
+   menu(cnt, menuName, "user folder menu", "")  
+   setpar(self->wn,cnt,"procedure",location)
+   defaultList = ["$locationName$|$menuName$"]
+   cnt = cnt + 1
+
+endproc(cnt)
+
+###########################################################
+# The experiment (project) base-path has been changed
+# from the dropdown menu so update the history list
+###########################################################
+
+procedure(changeBasePath, self)
+
+   newBasePath = gView->projPathCtrl->text
+
+   if(newBasePath == "clear")
+      if(query("Warning","This will delete all save base-path strings from menu - proceed?") == "no")
+         gView->projPathCtrl->text(gView->projectPathBak)
+         return
+      endif
+      gView->projPathCtrl->menu(["clear"])
+      gView->projPathCtrl->text("")
+      gData->projectPaths = list(0)
+      return
+   endif
+
+   try
+      gView->loadHistoryList()
+      pr "\n   Info: '$newBasePath$' is the new experiment base-path\n"
+   catch
+      dirList = getdirlist(newBasePath)
+      if(size(dirList) > 0)
+         message("Error","'Data path' is not a valid KeaExpert project folder","error")
+      endif
+   endtry
+
+## Try and load the selected data set
+   try
+      entry = gData->dataFolderToHistoryName(newBasePath)
+      exptName = gParam->convertHistoryToFileName(entry)
+      idx = getlistindex(gView->history->list,entry)
+      if(idx != -1)
+         gBatch->currentBatchExpt = ""
+         gExpt->loadExistingDataSet(exptName,gData->curHistoryPath,idx)
+         gView->history->zindex(idx)
+      endif
+   catch
+   endtry
+
+   gView->projectPathBak = newBasePath   
+
+
+endproc()
+
+
+###########################################################
+# Change the history date, but skip empty days
+###########################################################
+
+procedure(changeViewDate, self, mode)
+                    
+   if(gData->datePath == "")
+      return
+   endif
+
+   dayspermonth = [0,31,28,31,30,31,30,31,31,30,31,30,31]
+
+   (yearStr,monthStr,dayStr) = scanstr(gData->datePath,"%1\\%2\\%3")
+
+   year = eval(yearStr)
+   month = eval(monthStr)
+   day = eval(dayStr)
+
+   if(year%4 == 0 & year%100 != 0)
+      dayspermonth[2] = 29
+   endif
+
+   if(mode == "day+")
+      day = day+1
+      if(day > dayspermonth[month])
+         day = 1
+         month = month + 1
+         if(month > 12)
+            month = 1
+            year = year + 1
+         endif
+      endif
+      dir = 1
+   elseif(mode == "day-")
+      day = day-1
+      if(day == 0)
+         month = month - 1
+         if(month == 0)
+            month = 12
+            year = year - 1
+            day = dayspermonth[12]
+         else
+            day = dayspermonth[month]
+         endif
+      endif   
+      dir = -1
+   elseif(mode == "month+")
+      month = month + 1
+      if(month > 12)
+         month = 1
+         year = year + 1
+      endif
+      if(day > dayspermonth[month])
+         day = dayspermonth[month]
+      endif
+      dir = 1
+   elseif(mode == "month-")
+      month = month - 1
+      if(month == 0)
+         month = 12
+         year = year - 1
+         if(day > dayspermonth[month])
+            day = dayspermonth[month]
+         endif
+      endif
+      dir = -1
+   elseif(mode == "year+")
+      year = year + 1
+      if(year > 2099)
+         year = 2099
+      endif
+      dir = 1
+   elseif(mode == "year-")
+      year = year - 1
+      if(year < 2000)
+         year = 2000
+      endif
+      dir = -1
+   endif
+
+# Make sure we are not in the future
+   curDate = getdate("yyyy-mm-dd")
+   (curYear, curMonth, curDay) = scanstr(curDate,"%1-%2-%3")
+   curYear = eval(curYear)
+   curMonth = eval(curMonth)
+   curDay = eval(curDay)
+
+   curDaysTot = sum(dayspermonth[0:curMonth-1])+curDay
+   newDaysTot = sum(dayspermonth[0:month-1])+day
+
+# Check is we are in the future
+   if((year > curYear) |  ((year == curYear) & (newDaysTot > curDaysTot)))
+      year = curYear
+      month = curMonth
+      day = curDay
+   endif
+
+# The next date
+   gData->datePath = "$year$\\$month,02d$\\$day,02d$"
+   exptPath = "$self->projPathCtrl->text$\\$gData->datePath$"
+   cnt = 0
+
+# Now see if there is data here - if not move forward or backward in time until we find something
+   if(dir == 1)
+
+   # Search forward for the next date with data (or at least a folder)
+      while(not(isdir(exptPath)))
+   
+         day = day + 1
+         if(day > dayspermonth[month])
+            month = month + 1
+            day = 1
+            if(month > 12)
+               month = 1
+               year = year + 1
+            endif
+         endif
+
+         newDaysTot = sum(dayspermonth[0:month-1])+day
+
+      # Check if we not in the future
+         if((year > curYear) |  ((year == curYear) & (newDaysTot > curDaysTot)))
+            year = curYear
+            month = curMonth
+            day = curDay
+            gData->datePath = "$year$\\$month,02d$\\$day,02d$"
+            exptPath = "$self->projPathCtrl->text$\\$gData->datePath$"
+            exitwhile()
+         endif
+   
+         gData->datePath = "$year$\\$month,02d$\\$day,02d$"
+         exptPath = "$self->projPathCtrl->text$\\$gData->datePath$"
+         cnt = cnt + 1
+         if(cnt%10 == 0) # Speed up the print-out
+            readableDate = gData->convertDate(gData->datePath,"readable")
+            self->historyLabel->label("Experiment history for $readableDate$") 
+         endif
+   
+      endwhile()
+  
+   else
+
+   # Search backward for the last date with data (or at least a folder)
+
+      while(not(isdir(exptPath)))
+   
+         day = day - 1
+         if(day < 1)
+            month = month - 1
+            if(month < 1)
+               month = 12
+               year = year - 1
+            endif
+            day = dayspermonth[month]
+         endif
+   
+      # Check if earlier than 1/1/2020
+         if(year < 2020)
+            year = 2020
+            month = 1
+            day = 1
+            gData->datePath = "$year$\\$month,02d$\\$day,02d$"
+            exptPath = "$self->projPathCtrl->text$\\$gData->datePath$"
+            exitwhile()
+         endif
+   
+         gData->datePath = "$year$\\$month,02d$\\$day,02d$"
+         exptPath = "$self->projPathCtrl->text$\\$gData->datePath$"
+         cnt = cnt + 1
+         if(cnt%10 == 0) # Speed up the print-out
+            readableDate = gData->convertDate(gData->datePath,"readable")
+            self->historyLabel->label("Experiment history for $readableDate$") 
+         endif 
+
+      endwhile()
+
+   endif
+  
+ # Display the data in the history list along with the date
+   self->dirList = list(0)
+   if(isdir(exptPath))
+      self->loadHistoryList()
+   else
+      self->history->list(list(0))
+      readableDate = gData->convertDate(gData->datePath,"readable")
+      self->historyLabel->label("Experiment history for $readableDate$ (no data)")
+      pr("\n   No data found - date limit reached\n")
+   endif
+
+endproc()
+
+###########################################################
+# Check to see if the folder contains a standard software
+# experiment based on the folder name
+###########################################################
+
+procedure(checkForStdSWExpt, self, entry)
+
+   try
+      (date,timeStamp,protocol,suffix) = scanstr(entry,"%1-%2-%3-%4")
+   catch
+     pr lasterror()
+     return(null,null,null,null)
+   endtry
+
+endproc(date,timeStamp,protocol,suffix)
+
+
+###########################################################
+# Check for a connection to spectrometer and 
+# update the title.
+###########################################################
+
+procedure(checkUSBConnection, self)
+
+   if(gData->specID == "Simulator")
+      setwindowpar(self->wn,"title","$self->coreTitle$ - Simulator Mode")
+   else
+      if(gData->specParameters != null)     
+         name = gData->specID
+         connected = gData->connected
+         if(connected == 0)
+            name = "No connection"
+         endif
+      else
+         name = "No connection"
+      endif
+      if(name == "Invalid version")
+         setwindowpar(self->wn,"title","$self->coreTitle$ - Invalid or no DSP parameter block?")
+      elseif(name = "No connection")
+         setwindowpar(self->wn,"title","$self->coreTitle$ - No connection (view mode)")
+      else
+         setwindowpar(self->wn,"title","$self->coreTitle$ - $name$ ($gData->procType$)")
+      endif
+      gDebug->pr("Check USB connection")
+   endif
+
+endproc()
+
+########################################################
+# Copy total plot region to the clipboard
+########################################################
+
+procedure(copyAllPlots, self)
+
+   minX = 1e30
+   minY = 1e30
+   maxX = -1e30
+   maxY = -1e30
+   startCtrlNr = gView->g1->ctrlNr
+   endCtrlNr = gView->g10->ctrlNr
+   for(k = startCtrlNr to endCtrlNr)
+      if(getpar(0,k,"visible") == "true")
+         x1 = getpar(0,k,"x")
+         y1 = getpar(0,k,"y")
+         x2 = x1 + getpar(0,k,"width")
+         y2 = y1 + getpar(0,k,"height")
+         if(x1 < minX); minX = x1; endif;
+         if(y1 < minY); minY = y1; endif;
+         if(x2 > maxX); maxX = x2; endif;
+         if(y2 > maxY); maxY = y2; endif;
+      endif
+   next(k)
+
+   savewindow(0,"clipboard",[minX,minY,maxX,maxY],"noframe")
+
+endproc()
+
+###########################################################
+# Define the batch panel.
+#
+# This is where a number of experiments can be planned
+# and then run. 
+###########################################################
+
+procedure(defineBatchPanel, self)
+
+# Add batch history
+   xoff = 0
+   self->batchRange[0] = self->cn
+   self->batchLabel = groupbox(self->cn, "Experiment batch", xoff+10,10,self->historyWidth,"rh-20")
+   self->batch = listbox(self->cn+1, xoff+20,30,self->historyWidth-61,"rh-50",gBatch->batchCallback())
+   nld = self->batchDiv->objnr
+   setpar(0,self->cn,"region",[-1,-2,-3,nld])
+   setpar(0,self->cn+1,"region",[-1,-2,-3,nld],"tag","enabled",
+                       "menu",self->batchMenuNr,
+                       "multilineselection","true",
+                       "nrcolumns",2,"colwidth",[0.50,0.50])
+
+   self->cn = self->cn + 2
+
+# Add control buttons on the right
+   xoff = self->historyWidth-34
+   yoff = 51
+   button(self->cn,   xoff, yoff,     36, 25, "Add",
+      gBatch->addProtocol())
+   self->upDateParametersButton = button(self->cn+1, xoff, yoff+30,  36, 25, "Update",
+      gBatch->updateProtocol())
+   button(self->cn+2, xoff, yoff+60,  36, 25, "Up",
+      gBatch->moveProtocolUp())
+   button(self->cn+3, xoff, yoff+90,  36, 25, "Down",
+      gBatch->moveProtocolDown())
+   button(self->cn+4, xoff, yoff+120, 36, 25, "Copy",
+      gBatch->copyProtocol())
+#   button(self->cn+5, xoff, yoff+150, 36, 25, "Copy Several",
+#      gBatch->copySeveralProtocols())
+   button(self->cn+5, xoff, yoff+150, 36, 25, "Rename",
+      gBatch->renameProtocol())
+   button(self->cn+6, xoff, yoff+180, 36, 25, "Remove",
+      gBatch->removeProtocol())
+   self->batchRange[1] = self->cn+6
+
+# Update the button icons
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\BitMaps")
+   setpar(0,self->cn+0,"icon","add.png","tooltip","Add a protocol from the parameter list.")
+   setpar(0,self->cn+1,"icon","check.png","tooltip","Update the modified parameter list.")
+   setpar(0,self->cn+2,"icon","uparrow.png","tooltip","Move a protocol up in the list.")
+   setpar(0,self->cn+3,"icon","downarrow.png","tooltip","Move a protocol down in the list.")
+   setpar(0,self->cn+4,"icon","duplicate.png","tooltip","Duplicate protocol(s).")
+   setpar(0,self->cn+5,"icon","rename.png","tooltip","Change the protocol comment(s).")
+   setpar(0,self->cn+6,"icon","cross.png","tooltip","Remove the selected protocol(s).")
+
+   cd(bak)
+     
+   self->cn = self->cn + 7
+
+   gDebug->pr("Batch panel created")
+
+endproc()
+
+###########################################################
+# Define the CLI ensuring it is ready for 
+# data entry.
+###########################################################
+
+procedure(defineCLI, self)
+
+   xoff = 0
+   width = self->historyWidth + 10 + self->parameterWidth
+   self->cli = cli(self->cn, xoff+10,10,width,"rh-45")
+   ncd = self->cliDiv->objnr
+   setpar(0,self->cn,"region",[-1,-2,ncd,-4],
+                     "menubar",self->cliMenu,
+                     "tag","enabled",
+                     "active","true",
+                     "statusbox",self->editStatusCtrl->ctrlnr)
+   self->cn = self->cn + 1
+   pr("")
+
+   gDebug->pr("CLI created")
+
+endproc()
+
+###########################################################
+# Define the divider above the CLI
+###########################################################
+
+procedure(defineDividers, self, xPos, yPos)
+
+   widthBD = self->historyWidth
+   widthCD = self->historyWidth + 10 +  self->parameterWidth
+   self->batchDiv = divider(self->cn, 10, "wh*0.4", widthBD, 5,"horizontal")
+   self->cliDiv = divider(self->cn+1, 10, "wh*0.75", widthCD, 5,"horizontal")
+   setpar(0,self->cn,"region",[-1,-2,-3,-4],
+                   #  "limits",[310,10125], # See toggleBatchMode as well
+                     "limits",[277,10125], # See toggleBatchMode as well
+                     "tag","enabled")
+   #                   "active","true")
+   setpar(0,self->cn+1,"region",[-1,-2,-3,-4],
+                       "limits",[440,10022],
+                       "tag","enabled")
+  #                    "active","true")
+   self->cn = self->cn + 2
+
+   gDebug->pr("Main window dividers created")
+
+endproc()
+
+###########################################################
+# Add the experiment control group defining
+# the Run, Complete and Abort buttons and also
+# the base directory location and file label.
+# This group of controls is moved by the CLI 
+# divider.
+###########################################################
+#
+#procedure(defineExperimentControl, self)
+#
+#   width = self->parameterWidth
+#   self->fileControlHeight = 100
+#   height = self->fileControlHeight 
+#   xOff = 10 + self->historyWidth + 10
+#   yOff = 10
+#   ncd = self->cliDiv->objnr
+#
+#   groupbox(self->cn,"Experiment control",xOff,10,width,135)
+#   setpar(0,self->cn,"color",[0,0,255])
+#
+#   statictext(self->cn+1,xOff+50,31,70,31,"center","Experiment\rbase-path:")
+#
+#   self->projPathCtrl = textbox(self->cn+2,xOff+85,35,width-125,20)
+#   setpar(0,self->cn+2,"name","projectPath")
+#
+#   button(self->cn+3, xOff+width-35, 35, 21, 21, "...",gView->updateProjectPath())
+#   setpar(0,self->cn+3,"tooltip","Select experiment folders to view or base-path")
+#
+#   statictext(self->cn+4,xOff+50,63,65,30,"center","Current\rfile comment:")
+#
+#   self->sampleNameCtrl = textmenu(self->cn+5,xOff+85,67,width-175,100)
+#   setpar(0,self->cn+5,"name","sampleName")
+#
+#   self->exptModeCtrl = checkbox(self->cn+6, xOff+width-32, 70, "history,batch", "history",
+#                        gView->toggleBatchMode())
+#   statictext(self->cn+7,xOff+width-55,63,35,30,"center","Batch\rmode:")
+#
+#   self->runButton = button(self->cn+8, xOff+20, 108, 70, 23, "Run",gExpt->runExperiment())
+#   self->completeButton = button(self->cn+9, xOff+width/2-35, 108, 70, 23, "Complete",
+#                                 assignlock("wvExpStatus","finish","window");
+#                                 gView->graphLabel->label("Please wait - phase cycle completing ..."))
+#   self->abortButton = button(self->cn+10, xOff+width-90, 108, 70, 23, "Abort",
+#                              assignlock("wvExpStatus","stop","window");
+#                              gView->graphLabel->label("Please wait - experiment aborting ..."))
+#   setpar(0,self->cn+9,"tag","toggle","active","true")
+#
+#   setpar(0,self->cn+10,"tag","toggle","active","true")
+#
+#   for(k = 0 to 10)
+#      setpar(0,self->cn+k,"region",[-1,-2,-3,ncd])
+#   next(k)
+#
+#   self->cn = self->cn + 11
+#
+#   gDebug->pr("Experiment controls (Run/Complete/Abort) created")
+#
+#endproc()
+
+procedure(defineExperimentControl, self)
+
+   width = self->parameterWidth
+   self->fileControlHeight = 100
+   height = self->fileControlHeight 
+   xOff = 10 + self->historyWidth + 10
+   yOff = 10
+   ncd = self->cliDiv->objnr
+
+   groupbox(self->cn,"Experiment control",xOff,"rh-145",width,135)
+   setpar(0,self->cn,"color",[0,0,255])
+
+   statictext(self->cn+1,xOff+50,"rh-124",70,30,"center","Experiment\rbase-path:")
+
+   self->projPathCtrl = textmenu(self->cn+2,xOff+85,"rh-120",width-125,20,gView->changeBasePath)
+   setpar(0,self->cn+2,"name","projectPath","menubar",gView->textEditMenu)
+
+   button(self->cn+3, xOff+width-35, "rh-120", 21, 21, "...",gView->updateProjectPath())
+   setpar(0,self->cn+3,"tooltip","Select experiment folders to view or base-path")
+
+   statictext(self->cn+4,xOff+50,"rh-92",65,30,"center","Current\rfile comment:")
+
+   self->sampleNameCtrl = textmenu(self->cn+5,xOff+85,"rh-88",width-175,100)
+   setpar(0,self->cn+5,"name","sampleName","menubar",gView->textEditMenu,
+            "tooltip","Comment to appear when running experiments in history mode.")
+
+   self->exptModeCtrl = checkbox(self->cn+6, xOff+width-32, "rh-85", "history,batch", "history",
+                        gView->toggleBatchMode())
+   setpar(0,self->cn+6, "tooltip","Toggle between batch and history mode experiments.")
+   statictext(self->cn+7,xOff+width-55,"rh-92",35,30,"center","Batch\rmode:")
+
+   self->runButton = button(self->cn+8, xOff+20, "rh-47", 70, 23, "Run", gExpt->runExperiment())
+
+   self->completeButton = button(self->cn+9, xOff+width/2-35, "rh-47", 70, 23, "Complete",
+                                 assignlock("wvExpStatus","finish","window");
+                                 assignlock("wvExpStatus2","batchContinue","window");
+                                 if(iskeypressed("shift"));
+                                    assignlock("wvExpStatus2","batchEnd","window");
+                                 endif;
+                                 gView->graphLabel->label("Please wait - phase cycle completing ..."))
+   self->abortButton = button(self->cn+10, xOff+width-90, "rh-47", 70, 23, "Abort",
+                              assignlock("wvExpStatus","stop","window");
+                              gView->graphLabel->label("Please wait - experiment aborting ..."))
+
+   setpar(0,self->cn+8, "tooltip","Run the experiment displayed in the parameter list.")
+
+   setpar(0,self->cn+9,"tag","toggle","active","true",
+            "tooltip","Complete the current phase cycle and save the collected data.")
+
+   setpar(0,self->cn+10,"tag","toggle","active","true",
+            "tooltip","Stop the experiment and don't save it.")
+
+   for(k = 0 to 10)
+      setpar(0,self->cn+k,"region",[-1,-2,-3,ncd])
+   next(k)
+
+   self->cn = self->cn + 11
+
+   gDebug->pr("Experiment controls (Run/Complete/Abort) created")
+
+endproc()
+
+###########################################################
+# Define the graph layout.
+#
+# This includes 6 1D plots and 4 2D plots. Externally they 
+# can be access with the window variable gx or the class 
+# variable gView->gx where x ranges from 1 to 10.
+###########################################################
+
+procedure(defineGraph, self)
+
+   self->plotXOffset = 10 + self->historyWidth + 10 +  self->parameterWidth + 10
+   self->plotYOffset = 10 + self->progressHeight + 6
+   self->plotWOffset = self->plotXOffset + 10
+   self->plotHOffset = 139-5
+   experimentLabelCtrl = groupbox(self->cn, "Collected data", self->plotXOffset, self->plotYOffset, "ww-$self->plotWOffset$", "wh-$self->plotHOffset$")
+   self->graphLabel = experimentLabelCtrl
+   setpar(0,self->cn,"region",[-1,-2,-3,-4],
+                     "tag","enabled")
+
+   self->cn = self->cn + 1
+
+   # Add the 1D graphs
+   for(k = 1 to self->nr1DPlots)
+
+      pltCtrl = plot1d(self->cn, self->plotXOffset+10, self->plotYOffset+21, "ww-$self->plotWOffset+100$","wh-$self->plotHOffset+30$")
+      name = "self->g$k$"
+      assign(name,pltCtrl,"local")
+      setpar(0,self->cn,"region",[-1,-2,-3,-4],
+                        "objID","g$k$",
+                        "menubar",self->graphMenu,
+                        "tag","enabled",
+                        "traceMenu",self->traceMenuNr,
+                        "titleMenu",self->title1DMenuNr,
+                        "labelMenu",self->label1DMenuNr,
+                        "bkgMenu",self->bkg1DMenuNr,
+                        "axesMenu",self->axes1DMenuNr,
+                        "statusbox",self->statusCtrl->ctrlnr)
+      self->cn = self->cn + 1
+
+   next(k)
+
+   # Add the 2D graphs
+   for(k = self->nr1DPlots+1 to self->nrGraphs)
+
+      pltCtrl = plot2d(self->cn, self->plotXOffset+10, self->plotYOffset+21, "ww-$self->plotWOffset+100$","wh-$self->plotHOffset+30$")
+
+      name = "self->g$k$"
+      assign(name,pltCtrl,"local")
+      setpar(0,self->cn,"region",[-1,-2,-3,-4],
+                        "objID","g$k$",
+                        "menubar",self->imageMenu,
+                        "tag","enabled",
+                        "titleMenu",self->title2DMenuNr,
+                        "labelMenu",self->label2DMenuNr,
+                        "bkgMenu",self->bkg2DMenuNr,
+                        "axesMenu",self->axes2DMenuNr,
+                        "statusbox",self->statusCtrl->ctrlnr)
+      self->cn = self->cn + 1
+   next(k)
+
+# Add a temporary hidden 1D plot (for loading data)
+   self->gTemp = plot1d(self->cn+1, 0, 0, 100, 100) 
+   self->gTemp->visible("false")
+   self->cn = self->cn + 1
+
+# Define scrollwheel and arrow action
+   plotviewversion(3)
+
+# Define 2D colormap
+   cmap(rainbow)
+
+   gDebug->pr("$self->nrGraphs$ graphs created")
+
+endproc()
+
+###########################################################
+# Define the history panel.
+#
+# This is where previous experiments are listed and
+# can be viewed. (By clicking on the entry) 
+###########################################################
+
+procedure(defineHistoryPanel, self)
+
+   xoff = 0
+
+   self->historyLabel = groupbox(self->cn, "Experiment history", xoff+10,10,self->historyWidth,"rh-20")
+   self->history = listbox(self->cn+1, xoff+20,30,self->historyWidth-20,"rh-70",gView->historyCallback())
+
+   self->stepHistory = button(self->cn+2, xoff+20, "rh-36", 40, 21, "Day-",gView->changeViewDate("day-"))
+   button(self->cn+3, xoff+64,  "rh-36", 40, 21, "Day+",gView->changeViewDate("day+"))
+   button(self->cn+4, xoff+108, "rh-36", 45, 21, "Month-",gView->changeViewDate("month-"))
+   button(self->cn+5, xoff+157, "rh-36", 45, 21, "Month+",gView->changeViewDate("month+"))
+   button(self->cn+6, xoff+206, "rh-36", 40, 21, "Year-",gView->changeViewDate("year-"))
+   button(self->cn+7, xoff+250, "rh-36", 40, 21, "Year+",gView->changeViewDate("year+"))
+
+   nbd = self->batchDiv->objnr
+   ncd = self->cliDiv->objnr
+
+   setpar(0,self->cn,"region",[-1,-2,nbd,ncd])
+
+   setpar(0,self->cn+1,"region",[-1,-2,nbd,ncd],"tag","enabled",
+                       "menu",self->historyMenuNr)
+                       # "tooltip","Lists the experiments in the history folder")
+ 
+   if(gData->getFolderHierarchy() == "date") # Date not shown as in group box label
+      setpar(0,self->cn+1,"nrcolumns",3,"colwidth",[0.20,0.40,0.40],
+                       "multilineselection","true")
+
+   else # Flat mode - need to show date
+      setpar(0,self->cn+1,"nrcolumns",4,"colwidth",[0.16,0.16,0.34,0.34],
+                       "multilineselection","true")
+   endif
+
+   setpar(0,self->cn+2,"region",[-1,-2,nbd,ncd])
+   setpar(0,self->cn+3,"region",[-1,-2,nbd,ncd])
+   setpar(0,self->cn+4,"region",[-1,-2,nbd,ncd])
+   setpar(0,self->cn+5,"region",[-1,-2,nbd,ncd])
+   setpar(0,self->cn+6,"region",[-1,-2,nbd,ncd])
+   setpar(0,self->cn+7,"region",[-1,-2,nbd,ncd])
+
+   self->cn = self->cn + 8
+
+   gDebug->pr("History panel created")
+
+endproc()
+
+
+###########################################################
+# Define the main window
+#
+# Also defines the message callback and status box at the bottom
+# of the window.
+# This is the window which contains all other controls.
+# The window may be accessed using the class variable
+# gView->mainWin or via its window number gView->wn
+# The number of controls in the window is recorded by the
+# entry gView->cn
+###########################################################
+
+procedure(defineMainWindow, self, width, height, cn, uiTitle)
+
+   n = window("Main window", -1, -1, width, height, "resizable","mainWin")
+   getmessage(cn,if(isvar("gView"));
+                   gView->processMessages();
+                 endif;)
+   self->messageNr = cn
+   self->statusCtrl = statusbox(cn+1,"ww/3","ww*0.6667","ww-45","-1")
+   self->editStatusCtrl = statusbox(cn+2,"ww-50","ww","-1")
+   setpar(n, cn+2,"syntaxWindow","")
+
+   setwindowpar(n,"sizelimits",[1355,10000,500,10000])
+   setwindowpar(n,"exit_procedure","gView->exitProcedure")
+   setwindowpar(n,"titleupdate","false")
+   setwindowpar(n,"title",uiTitle)
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"statusbox",self->statusCtrl->ctrlnr)
+   setwindowpar(n,"dragndropproc","gView->dragNDrop")
+
+   gDebug->pr("Main window created (width, height) = ($width$,$height$)")
+
+   self->mainWin = getobj(n)
+   self->wn = n
+
+endproc(n, cn+3)
+
+###########################################################
+# Make the menus. This defines all the menus which will appear
+# in the main window. Some menus relating to the pulse programs
+# are user definable. It is also possible to drag and drop
+# new menus.
+###########################################################
+
+procedure(defineMenus, self)
+
+   fileNr = self->cn
+   if(gData->productionMode == "true")
+      menu(fileNr,"&File",
+                            "Menu Help",  help("Macros\\Kea-Expert","FileMenu.htm"),
+                            "Separator", ,
+                            "Select experiment folders or base path ...\tCtrl+Shift+E",gView->updateProjectPath(),
+                            "Search history ...\tCtrl+Shift+F",gView->searchHistory(),
+                            "Rename experiment folders ...",gView->renameProtocols(),
+                            "Open current data folder\tCtrl+Shift+X",gView->openDataFolder(),
+                            "Open notes editor\tCtrl+Shift+N",gView->openNoteEditor(1),
+                            "Import KeaExpert data folders ...",gData->importExpertData(),
+                            "Separator", ,
+                            "Open application folder", exec("explorer",appdir),
+                            "Open user preferences folder", exec("explorer",prefdir),
+                            "Open user working directory", exec("explorer",evalsubexp(workdir)),
+                            "Separator", ,
+                            "Open KeaExpert preferences ...\tCtrl+Shift+K",KeaPreferences(),
+                            "Open Kea firmware dialog ...\tCtrl+Shift+F",gView->openFirmwareUpdater(),
+                            "Open Kea parameter dialog ...\tCtrl+Shift+D",KeaParameterUpdater(),
+                            "Select Kea ...",SelectKea(),
+                            "Separator", ,
+                            "Save all plots\tCtrl+S",gPlot->saveAllPlots(),
+                            "Separator", ,
+                            "Make a desktop shortcut",gView->makeShortcut(),
+                            "Separator", ,
+                            "Quit application ...\tCtrl+Q", gView->exitProcedure())
+   elseif(gData->permissions->canOverWriteDefaultPar == "no")
+      menu(fileNr,"&File",
+                            "Menu Help",  help("Macros\\Kea-Expert","FileMenu.htm"),
+                            "Separator", ,
+                            "Select experiment folders or base path ...\tCtrl+Shift+E",gView->updateProjectPath(),
+                            "Search history ...\tCtrl+Shift+F",gView->searchHistory(),
+                            "Rename experiment folders ...",gView->renameProtocols(),
+                            "Open current data folder\tCtrl+Shift+X",gView->openDataFolder(),
+                            "Open notes editor\tCtrl+Shift+N",gView->openNoteEditor(1),
+                            "Import KeaExpert data folders ...",gData->importExpertData(),
+                            "Separator", ,
+                            "Open application folder", exec("explorer",appdir),
+                            "Open user preferences folder", exec("explorer",prefdir),
+                            "Separator", ,
+                            "Open KeaExpert preferences ...\tCtrl+Shift+K",KeaPreferences(),
+                            "Open Kea firmware dialog ...\tCtrl+Shift+F",gView->openFirmwareUpdater(),
+                            "Open Kea parameter dialog ...\tCtrl+Shift+D",KeaParameterUpdater(),
+                            "Select Kea ...",SelectKea(),
+                            "Separator", ,
+                            "Save all plots\tCtrl+S",gPlot->saveAllPlots(),
+                            "Separator", ,
+                            "Make a desktop shortcut",gView->makeShortcut(),
+                            "Separator", ,
+                            "Quit application ...\tCtrl+Q", gView->exitProcedure())
+
+   else
+      menu(fileNr,"&File",
+                            "Menu Help",  help("Macros\\Kea-Expert","FileMenu.htm"),
+                            "Separator", ,
+                            "Select experiment folders or base path ...\tCtrl+Shift+E",gView->updateProjectPath(),
+                            "Search history ...\tCtrl+Shift+F",gView->searchHistory(),
+                            "Rename experiment folders ...",gView->renameProtocols(),
+                            "Open current data folder\tCtrl+Shift+X",gView->openDataFolder(),
+                            "Open notes editor\tCtrl+Shift+N",gView->openNoteEditor(1),
+                            "Import KeaExpert data folders ...",gData->importExpertData(),
+                            "Separator", ,
+                            "Open application folder", exec("explorer",appdir),
+                            "Open preferences folder", exec("explorer",prefdir),
+                            "Separator", ,
+                            "Save current parameters to pulse-program defaults file ...",gParam->saveToDefaults(),
+                            "Copy 'user' parameter-visibility to 'minimum' ...",gParam->saveMinimumVisibility(),
+                            "Separator", ,
+                            "Open KeaExpert preferences ...\tCtrl+Shift+K",KeaPreferences(),
+                            "Open Kea firmware dialog ...\tCtrl+Shift+F",gView->openFirmwareUpdater(),
+                            "Open Kea parameter dialog ...\tCtrl+Shift+D",KeaParameterUpdater(),
+                            "Select Kea ...",SelectKea(),
+                            "Separator", ,
+                            "Save all plots\tCtrl+S",gPlot->saveAllPlots(),
+                            "Separator", ,
+                           # "Recache macros",KeaExpertInterface:recacheMacros(),
+                            "Make a desktop shortcut",gView->makeShortcut(),
+                            "Separator", ,
+                            "Quit application ...\tCtrl+Q", gView->exitProcedure())
+   endif
+
+   cliNr = fileNr + 1
+   menuk(cliNr,"&Edit",
+                "Menu Help", "",  help("Macros\\Kea-Expert","EditPlotMenu.htm"),
+                "Separator", , ,
+                "Undo\tCtrl+Z","",funccli("undo"),
+                "Separator", , , 
+                "Cut\tCtrl+X","",funccli("cut"),
+                "Copy\tCtrl+C","",funccli("copy"),
+                "Paste\tCtrl+V","",funccli("paste"),
+                "Separator", , , 
+                "Clear CLI\tCtrl+K","",clear("cli"),
+                "Show procedures\tCtrl+M","",gView->showProcedures())
+
+   setpar(0,cliNr,"tag","enabled")
+
+   textEditNr = cliNr + 1
+   self->textEditNr = textEditNr
+   menuk(textEditNr,"&Edit",
+                "Undo\tCtrl+Z","",functextedit("undo"),
+                "Separator", , ,
+                "Cut\tCtrl+X","",functextedit("cut"),
+                "Copy\tCtrl+C","",functextedit("copy"),
+                "Paste\tCtrl+V","",functextedit("paste"),
+                "Separator", , ,
+                "Select all\tCtrl+A","",functextedit("select all"),
+                "Clear control\tCtrl+K","",functextedit("clear all"),
+                "Separator", , ,
+                "Clear CLI","", clear("cli"))
+
+   plotEditNr = textEditNr + 1
+   menuk(plotEditNr,"&Edit",
+                "Menu Help","",  help("Macros\\Kea-Expert","EditPlotMenu.htm"),
+                "Separator", , ,
+                "Copy plot\tCtrl+C","", func1d("copy plot"),
+                "Copy all plots\tCtrl+Shift+C","", gView->copyAllPlots(), 
+                "Paste plot\tCtrl+V","", func1d("paste plot"),
+                "Separator", , ,
+                "Edit plot parameters ...\tCtrl+P","", PlotParameters("Colors"),
+                "&Edit plot trace settings ...\tCtrl+T","", modifyTraceParameters(),
+                "Separator", , ,
+                "Set dark plot colors ...",    "", gView->set1DColors("darkMode"),
+                "Set light plot colors ...",   "", gView->set1DColors("lightMode"),
+                "Set default plot colors ...", "", gView->set1DColors("defaultMode"),
+                "Separator", , ,
+                "Clear CLI\tCtrl+K","", clear("cli"))
+
+   setpar(0,plotEditNr,"tag","enabled")
+
+   imageEditNr = plotEditNr + 1
+   menuk(imageEditNr,"&Edit",
+                "Menu Help","",  help("Macros\\Kea-Expert","EditPlotMenu.htm"),
+                "Separator", , ,
+                "Copy plot\tCtrl+C","", func2d("copy plot"),
+                "Copy all plots\tCtrl+Shift+C","", gView->copyAllPlots(), 
+                "Separator", , ,
+                "Edit image parameters ...\tCtrl+P","", ImageParameters("Colors"),
+                "Separator", , ,
+                "Set dark plot colors ...",    "", gView->set2DColors("darkMode"),
+                "Set light plot colors ...",   "", gView->set2DColors("lightMode"),
+                "Separator", , ,
+                "Clear CLI\tCtrl+K","", clear("cli"))
+
+   setpar(0,imageEditNr,"tag","enabled")
+
+   scale1DNr = imageEditNr + 1
+   menu(scale1DNr, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+             "Reduce vertical\tShift+down", func1d("reduce vertical"),
+             "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+             "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+   setpar(0,scale1DNr,"tag","enabled")
+
+   move1DNr = scale1DNr + 1
+   menu(move1DNr, "Move", "Move up\tCtrl+up", func1d("move down"),
+             "Move down\tCtrl+down", func1d("move up"),
+             "Move right\tCtrl+right", func1d("move right"),
+             "Move left\tCtrl+left", func1d("move left"))
+   setpar(0,move1DNr,"tag","enabled")
+
+   scale2DNr = move1DNr + 1
+   menu(scale2DNr, "Scale", "Enlarge vertical\tShift+up", func2d("enlarge vertical"),
+             "Reduce vertical\tShift+down", func2d("reduce vertical"),
+             "Enlarge horizontal\tShift+right", func2d("enlarge horizontal"),
+             "Reduce horizontal\tShift+left", func2d("reduce horizontal"))
+
+   move2DNr = scale2DNr + 1
+   menu(move2DNr, "Move", "Move up\tCtrl+up", func2d("move up"),
+             "Move down\tCtrl+down", func2d("move down"),
+             "Move right\tCtrl+right", func2d("move right"),
+             "Move left\tCtrl+left", func2d("move left"))
+
+   self->axes1DMenuNr = move2DNr + 1
+   menu(self->axes1DMenuNr, "axesMenu", "Axes font", PlotParameters("Axes"),
+           "Axes range", PlotParameters("Range"),
+           "Tick and label spacing ...", PlotParameters("Ticks"),
+           "Log/lin mapping", PlotParameters("Mapping"),
+           "Grids", PlotParameters("Grid"))
+
+   self->axes2DMenuNr = self->axes1DMenuNr + 1
+   menu(self->axes2DMenuNr, "axesMenu",  "Axes font", ImageParameters("Axes"),
+           "Tick and label spacing ...", ImageParameters("Ticks"),
+           "Grids", ImageParameters("Grid"),
+           "Mapping", ImageParameters("Mapping"),
+           "Axes range", ImageParameters("Range"))
+
+   self->traceMenuNr = self->axes2DMenuNr + 1
+   menu(self->traceMenuNr, "traceMenu", "Modify trace and symbols ...\tCtrl+T", modifyTraceParameters(),
+              "Copy trace data to vector ...\tShift+V", copy1DtoMatrix(),
+              "Copy current trace data to new 1D window ...\tCtrl+N", copy1DtoNewWin:current(),
+              "Copy all trace data to new 1D window ...\tCtrl+N", copy1DtoNewWin:all(),
+              "Separator", ,
+              "Toggle lines and text visibility", gView->toggleLinesAndText(), 
+              "Remove lines and text from plot", gView->removeLinesAndText(), 
+              "Separator", "",
+              "Remove data set", func1d("remove current data"))
+
+   self->title1DMenuNr = self->traceMenuNr + 1
+   menu(self->title1DMenuNr, "titleMenu", "Modify title ...", PlotParameters("Title"))
+
+   self->label1DMenuNr = self->title1DMenuNr + 1
+   menu(self->label1DMenuNr, "labelMenu", "Modify labels ...", PlotParameters("Labels"))
+
+   self->title2DMenuNr = self->label1DMenuNr + 1
+   menu(self->title2DMenuNr, "titleMenu", "Modify title ...", ImageParameters("Title"))
+
+   self->label2DMenuNr = self->title2DMenuNr + 1
+   menu(self->label2DMenuNr, "labelMenu", "Modify labels ...", ImageParameters("Labels"))
+
+
+   self->bkg1DMenuNr = self->label2DMenuNr + 1
+   menu(self->bkg1DMenuNr, "bkgMenu1D", "Display vector ...", displayVectors(),
+              "Keep this region, remove others", func1d("remove other subplots"),
+              "Remove all data from region", func1d("remove all data"))
+
+   self->bkg2DMenuNr = self->bkg1DMenuNr + 1
+   menu(self->bkg2DMenuNr, "bkgMenu2D", "Copy plot data to matrix ...\tCtrl+K", Copy2DToMatrix(),
+              "Display matrix ...\tCtrl+D",displayMatrix(),
+              "Copy image new 2D window ...\tCtrl+Shift+C", copy2DtoNewWin(),
+              "Separator", "",
+              "Keep this region, remove others", func2d("remove other subplots"),
+              "Remove all data from region", func2d("remove current data"))
+
+   self->batchMenuNr = self->bkg2DMenuNr + 1
+   menu(self->batchMenuNr, "menu", "Edit comment(s) ...",  gBatch->batchMenuCallback("edit comment"),
+                                   "Add simple loop ...",  gBatch->batchMenuCallback("add simple loop"),
+                                   "Add array loop ...",   gBatch->batchMenuCallback("add array loop"))
+
+   self->historyMenuNr = self->batchMenuNr + 1
+   if(gData->permissions->canOverTrashData == "no") 
+      menu(self->historyMenuNr, "menu", "Edit comment(s) ...",                gView->historyMenuCallback("edit comment"),
+                                        "Edit current pulse program ...",     gView->historyMenuCallback("edit pulse-program"),
+                                        "View or edit experiment notes ...",  gView->historyMenuCallback("edit notes"),
+                                        "View acquisition parameters ...",    gView->historyMenuCallback("view parameters"),
+                                        "Open data folder ...",               gView->historyMenuCallback("open data folder"),
+                                        "Move incomplete entry to trash ...", gView->historyMenuCallback("delete entry"),
+                                        "Analyse data set(s) ...",            1DPlotAnalyser(multiTraceLoad="true"))
+   else
+      menu(self->historyMenuNr, "menu", "Edit comment(s) ...",                gView->historyMenuCallback("edit comment"),
+                                        "Edit current pulse program ...",     gView->historyMenuCallback("edit pulse-program"),
+                                        "View or edit experiment notes ...",  gView->historyMenuCallback("edit notes"),
+                                        "View acquisition parameters ...",    gView->historyMenuCallback("view parameters"),
+                                        "Open data folder ...",               gView->historyMenuCallback("open data folder"),
+                                        "Move data to trash ...",             gView->historyMenuCallback("delete entry"),
+                                        "Analyse data set(s) ...",            1DPlotAnalyser(multiTraceLoad="true"))
+
+   endif
+
+   plotViewNr = self->historyMenuNr + 1
+   self->plotViewNr = plotViewNr
+   menuk(plotViewNr, "&View",
+              "Menu Help", "",help("Macros\\Kea-Expert","ViewMenu.htm"),
+              "Separator", , ,
+              "Show &data under cursor\tCtrl+D", "display_data", func1d("display data"),
+              "&Select a rectangular region\tCtrl+R","select_region", func1d("select region"),
+              "&Move plot\tCtrl+M","drag_plot", func1d("drag plot"),
+              "Separator", , ,
+              "&Select and zoom a region\tCtrl+Drag", "zoom_region",nop ,
+              "&Zoom a region\tCtrl+Z", "zoom_region",func1d("zoom region"),
+              "Show &last region\tCtrl+L", "show_last", func1d("last region"),
+              "Display &all data\tCtrl+A", "display_all", func1d("full region"),
+              "Separator", , ,
+              "Show legend", "show_legend", gView->toggle1DLegend(),
+              "Separator", , ,
+              "Set plot layout","",gPlot->setPlotLayout(),
+              "Toggle multi/single-plot view\tCtrl+V","",gPlot->setPlotView(1,"toggle_view"),
+              "Next plot in single-plot view\tCtrl+Shift+N","",gPlot->setPlotView(1,"switch_plots"),
+              "Separator", , ,
+              "Display &real part\tCtrl+Shift+R", "show_real", func1d("toggle real"),
+              "Display &imaginary part\tCtrl+Shift+I", "show_imaginary", func1d("toggle imaginary"),
+              "Separator", , ,
+              "Pull_right", "", scale1DNr,
+              "Pull_right", "", move1DNr)
+   setpar(0,plotViewNr,"name","plot_view_menu") 
+
+   imageViewNr = plotViewNr + 1
+   menuk(imageViewNr, "&View",
+              "Menu Help", "", help("Macros\\Kea-Expert","ViewMenu.htm"),
+              "Separator", , ,
+              "Show &data under cursor\tCtrl+D", "display_data", func2d("display data"),
+              "&Select a rectangular region\tCtrl+R","select_region", func2d("select region"),
+              "&Move plot\tCtrl+M","drag_plot", func2d("drag plot"),
+              "Select row data\tCtrl+Shift+H", "select_row", func2d("select row"),
+              "Select column data\tCtrl+Shift+V", "select_column", func2d("select column"),
+              "Separator", , ,
+              "&Select and zoom a region\tCtrl+Drag", "zoom_region",nop ,
+              "&Zoom a region\tCtrl+Z", "zoom_region",func2d("zoom region"),
+              "Show &last region\tCtrl+L", "show_last", func2d("last region"),
+              "Display &all data\tCtrl+A", "display_all", func2d("full region"),
+              "Separator", , ,
+              "Set plot layout","",gPlot->setPlotLayout(),
+              "Toggle multi/single-plot view\tCtrl+V","",gPlot->setPlotView(2,"toggle_view"),
+              "Next plot in single-plot view\tCtrl+Shift+N","",gPlot->setPlotView(2,"switch_plots"),
+              "Separator", , ,
+              "Pull_right", "", scale2DNr,
+              "Pull_right", "", move2DNr)
+
+   setpar(0,imageViewNr,"name","image_view_menu") 
+
+   experimentNr = imageViewNr + 1
+   self->experimentNr = experimentNr
+   menuk(experimentNr, "&Experiment",
+                "Menu Help", "",   help("Macros\\Kea-Expert","ExperimentMenu.htm"),
+                "Separator", , ,
+                "Run experiment ...\tCtrl+Alt+R", "", gExpt->runExperiment(),
+                "Separator", , ,
+                "Edit current protocol ...\tCtrl+Shift+P", "", gView->openPPEditor(),
+                "Open pulse program editor ...\tCtrl+Alt+P", "", PulseProgramCompiler(gView->wn),
+                "Separator", , ,
+                "Visualize sequence (compact)\t", "", DrawPulseSequence("new"), 
+                "Visualize sequence\tCtrl+Alt+V", "", DrawPulseSequence2("new"), 
+                "Separator", , ,
+                "Save parameters to run later\tCtrl+Alt+S", "", gExpt->runExperiment(saveExpt=1),
+                "Estimate experiment time\tCtrl+Alt+T", "", gExpt->getExptDuration(display=1),
+                "Separator", , ,
+                "Edit parameter visibility ...\tCtrl+Shift+V", "editParVis",gParam->toggleParameterVisibility(),
+                "Separator", , ,
+                "Show minimum parameter entries", "minParKey",gParam->modifyParameterDisplay("minimum"),
+                "Show all parameter entries", "allParKey",gParam->modifyParameterDisplay("all"),
+                "Show user defined parameter entries", "userParKey",gParam->modifyParameterDisplay("userdefined"),
+                "Separator", , ,
+                "&Check for duplicate names", "", gExpt->checkForDuplicates(),
+                "Separator", , ,
+                "&List parameters", "", gParam->listCurrentParameters())
+
+   scriptNr = experimentNr + 1
+   menu(scriptNr, "&Scripts",
+                "Menu Help",     help("Macros\\Kea-Expert","ScriptsMenu.htm"),
+                "Separator", ,
+                "Edit script template", gBatch->makeNewScript(), 
+                "Window designer", designer(),
+                "Separator", , 
+                "user macro menu", "$appdir$\\Macros\\UserScripts")
+
+   windowsNr = scriptNr + 1
+   menu(windowsNr, "&Windows",
+                "Menu Help",     help("Macros\\Kea-Expert","WindowsMenu.htm"),
+                "Separator",,
+                "Open new editor\tCtrl+E", EditorWin(),
+                "Open new 1D Plot\tCtrl+1",Plot1DWin(),
+                "Open new 2D Plot\tCtrl+2",Plot2DWin(),
+                "Open new 3D Plot\tCtrl+3",Plot3DWin(),
+                "Separator", ,
+                "Show/Hide temp windows...\tF2",funcProspa("show/hide windows"),
+                "Show next window\tCtrl+Tab", shownextwindow(0),
+                "Show last window\tCtrl+Shift+Tab", showlastwindow(0),
+                "windows menu", "windows")
+
+   divider1Nr = windowsNr + 1
+   menu(divider1Nr, "|")
+
+# Add pulse program menus (special case for the Kea Tester)
+   if(self->tester)
+      divider2Nr = self->addTestMenus(divider1Nr+1)
+   else
+      divider2Nr = self->addPPMenus(divider1Nr+1)
+   endif
+   menu(divider2Nr, "|")
+
+   batchNr = divider2Nr + 1
+   menu(batchNr, "Batch",
+             "Menu Help",     help("Macros\\Kea-Expert","BatchMenu.htm"),
+             "Separator",,
+             "Clear batch ...",   gBatch->clearBatchList(),
+             "New batch ...",     gBatch->newBatchList(),
+             "Load batch ...",    gBatch->loadBatchList(),
+             "Save batch as ...", gBatch->saveBatchList(),
+             "Rename batch ...",  gBatch->renameBatchList(),
+             "View batch folder", gBatch->viewBatchFolder(),
+             "Separator",,
+             "Add Waits before batch protocols ...",  AddBatchWaits(),
+             "Remove Waits from batch list ...",       RemoveBatchWaits(),
+             "Change comments in batch list ...",      ChangeBatchComments(),
+             "Change parameter in batch list ...",      ChangeBatchParameter(),
+             "Separator",,
+             "user macro menu", "$appdir$\\Macros\\BatchCommands")
+
+   specialNr = batchNr + 1
+   menu(specialNr, "Samples", 
+             "Menu Help",     help("Macros\\Kea-Expert","SamplesMenu.htm"),
+             "Separator",,
+             "Sample control ...", SampleControl())
+
+   divider3Nr = specialNr + 1
+   menu(divider3Nr, "|")
+
+   helpNr = divider3Nr + 1
+   if(self->tester)
+      menu(helpNr, "&Help", "View user manual\tCtrl+Shift+H", gView->viewHelp("manual"),
+                 "Separator", ,
+                 "About KeaTester", aboutKeaExpert("KeaTester"))
+   else
+      menu(helpNr, "&Help", "View user manual\tCtrl+Shift+H", gView->viewHelp("manual"),
+                 "View programming guide\tCtrl+Shift+G", gView->viewHelp("programming"),
+                 "View experiment help\tCtrl+H", gView->viewHelp("experiment"),
+                 "Separator", ,
+                 "Display release notes", gView->showReleaseNotes(),
+                 "Separator", ,
+                 "About KeaExpert", aboutKeaExpert("KeaExpert"))
+   endif
+
+
+
+# Define the matrices which list the menus numbers which will appear when different controls
+# are selected.
+
+   if(divider2Nr-1 >= divider1Nr+1)
+      self->exptMenu = join([divider1Nr+1:divider2Nr-1],[divider2Nr, batchNr, specialNr, divider3Nr,helpNr])
+   else
+      self->exptMenu = ([divider2Nr, batchNr, specialNr, divider3Nr,helpNr])
+   endif
+
+   self->textEditCoreMenu   = [fileNr, textEditNr, plotViewNr, experimentNr, scriptNr, windowsNr, divider1Nr]
+   self->cliCoreMenu   = [fileNr, cliNr, plotViewNr, experimentNr, scriptNr, windowsNr, divider1Nr]
+   self->graphCoreMenu = [fileNr, plotEditNr, plotViewNr, experimentNr, scriptNr, windowsNr, divider1Nr]
+   self->imageCoreMenu = [fileNr, imageEditNr, imageViewNr, experimentNr, scriptNr, windowsNr, divider1Nr]
+
+   self->textEditMenu = join(self->textEditCoreMenu, self->exptMenu)
+   self->cliMenu      = join(self->cliCoreMenu,      self->exptMenu)
+   self->graphMenu    = join(self->graphCoreMenu,    self->exptMenu)
+   self->imageMenu    = join(self->imageCoreMenu,    self->exptMenu)
+
+   gDebug->pr("Main window menus created")
+
+   self->cn = helpNr + 1
+
+endproc()
+
+###########################################################
+# Add the experiment parameters group.
+#
+# This contains a scrollable panel which lists all the adjustable
+# parameters for the current experiment.
+###########################################################
+
+procedure(defineParameterPanel, self)
+
+   width = self->parameterWidth
+   xOff = 10 + self->historyWidth + 10
+   yOff = 10
+   ncd = self->cliDiv->objnr
+   self->parameterXOff = xOff
+   self->parameterYOff = yOff
+
+   self->exptParameterLabel = groupbox(self->cn,"Experiment parameters",xOff,yOff,width,"rh-160")
+   setpar(0,self->cn,"color",[0,0,255],
+                     "region",[-1,-2,-3,ncd])
+
+   self->exptPanel = panel(self->cn+1,xOff+10,yOff+20,width-15,"rh-190")
+   setpar(0,self->cn+1,"tag","enabled",
+                       "active","true",
+                       "region",[-1,-2,-3,ncd])
+
+   self->cn = self->cn + 2
+
+   gDebug->pr("Parameter panel created")
+
+endproc()
+
+###########################################################
+# Define the post processing panel
+#
+# This panel will contain the post processing controls for the 
+# current experiment. Intially it is empty
+###########################################################
+
+procedure(definePostProcessing, self)
+
+   self->postProcessingPanel = panel(self->cn,"ww-90",121,76,"wh-163")
+
+   self->cn = self->cn + 1
+
+   gDebug->pr("Post processing panel created")
+
+endproc()
+
+
+###########################################################
+# Define the progress, status and view controls 
+#
+# The progress controls show how far through an experiment we
+# are. The status controls indicate the spectrometer status 
+# (running, waiting 
+###########################################################
+
+procedure(defineStatusAndViewPanel, self)
+
+# Progress controls #####################################
+   self->progressHeight = 84
+   self->progressWidth = 369
+   xoff = 10 + self->historyWidth + 10 +  self->parameterWidth + 10
+   yoff = 10
+
+   self->progressGroupCtrl = groupbox(self->cn, "Progress", xoff,yoff,self->progressWidth,self->progressHeight)
+
+   statictext(self->cn+1, xoff+55, yoff+25, "right", "Scan:")
+   curScanCtrl = statictext(self->cn+2, xoff+60, yoff+25, "left", "0")
+  # statictext(self->cn+3, xoff+85, yoff+50, "right", "Current SNR:")
+  # statictext(self->cn+4, xoff+90, yoff+50, "left", "-")
+   timeLabel = statictext(self->cn+5, xoff+124, yoff+25, "left", "Estimated remaining experiment time:")
+   remTimeCtrl = statictext(self->cn+6, xoff+312, yoff+25, "left", "00:00:00")
+   expTimeCtrl = statictext(self->cn+7, xoff+312, yoff+50, "left", "00:00:00")
+   batchProgressCtrl = progressbar(self->cn+8, xoff+173, yoff+23, self->progressLength, 17, "horizontal")
+   progressCtrl = progressbar(self->cn+9, xoff+173, yoff+48, self->progressLength, 17, "horizontal")
+   statictext(self->cn+10,  xoff+168, yoff+25, "right", "Batch:")
+   progressExptNameCtrl = statictext(self->cn+11,  xoff+168, yoff+50, "right", "Progress:")
+
+   setpar(0,self->cn+8,"range",[0,self->progressLength])
+   setpar(0,self->cn+9,"range",[0,self->progressLength])
+   setpar(0,self->cn+8,"visible","false")
+   setpar(0,self->cn+8,"visible","false")
+   setpar(0,self->cn+10,"visible","false")
+
+   self->cn = self->cn+12
+
+# Status controls #####################################
+   xoff = xoff + self->progressWidth + 10
+   yoff = 10
+   self->statusWidth = 200
+   self->statusHeight = 84
+   groupbox(self->cn, "Status", xoff, yoff, self->statusWidth, self->statusHeight)
+   ppStatus = colorbox(self->cn+1, xoff+19, yoff+26, 16, 16, [255,255,255,255])
+   self->ppStatus = ppStatus
+   setpar(0,self->cn+1,"tooltip","Experiment Status Indicator\rGreen: running\rBlue: processing\rYellow: waiting")
+   rxOverflow = colorbox(self->cn+2, xoff+19, yoff+48, 16, 16, [255,255,255,255])
+   self->rxOverflow = rxOverflow
+   setpar(0,self->cn+2,"tooltip","Receiver Overflow Indicator\rRed: overflow")
+   statictext(self->cn+3, xoff+40, yoff+28, "left", "Experiment")
+   statictext(self->cn+4, xoff+40, yoff+50, "left", "Rx overflow")
+   lockStatus = colorbox(self->cn+5, xoff+110, yoff+26, 16, 16, [255,255,255,255])
+   self->lockStatus = lockStatus
+   setpar(0,self->cn+5,"tooltip","Lock status\rGreen: locked\rYellow: checking\rRed: not locked")
+   tempStatus = colorbox(self->cn+6, xoff+110, yoff+48, 16, 16, [255,255,255,255])
+   self->tempStatus = tempStatus
+   setpar(0,self->cn+6,"tooltip","Green: within spec\rYellow: checking\rRed: out of spec")
+   statictext(self->cn+7, xoff+130, yoff+28, "left", "Lock")
+   statictext(self->cn+8, xoff+130, yoff+50, "left", "Temperature")
+   self->cn = self->cn +9
+
+# View controls #####################################
+   xoff = xoff + self->statusWidth + 10
+   yoff = 10
+   self->viewHeight = 84
+   groupbox(self->cn, "View", xoff, yoff, "ww-1204", self->viewHeight)
+   self->enlargePlotCtrl = button(self->cn+1, xoff+49, yoff+20, 37, 25, "Enlarge",
+      gPlot->togglePlotSizes();)
+   self->plotCycleCtrl = button(self->cn+2, xoff+10, yoff+48, 37, 25, "View",
+      gPlot->setPlotView(0,"switch_plots");)
+   self->plotViewCtrl = button(self->cn+3, xoff+10, yoff+20, 37, 25, "View All",
+      gPlot->setPlotView(0,"toggle_view");)
+   button(self->cn+4, xoff+49, yoff+48, 37, 25, "Help",
+      if(iskeypressed("alt"));
+         gView->viewHelp("programming");
+      elseif(iskeypressed("shift"));
+         gView->viewHelp("experiment");
+      else;
+         gView->viewHelp("manual");
+      endif;)
+   self->fixCtrl = button(self->cn+5, xoff+88, yoff+48, 37, 25, "Restore",
+      if(query("Restore interface","This will restore a disabled interface\rafter a crash.\r\rContinue?") == "yes");
+         gExpt->cleanupAfterExpt();
+      endif;)
+   button(self->cn+6, xoff+88, yoff+20, 37, 25, "Viewer", gView->openViewer())
+
+   setpar(0,self->cn+1,"active","true","tag","enabled",
+                        "tooltip","Enlarge plot region")
+   setpar(0,self->cn+2,"active","true","tag","enabled",
+                       "tooltip","Cycle between plot regions")
+   setpar(0,self->cn+3,"active","true","tag","enabled",
+                       "tooltip","View all plots")
+   setpar(0,self->cn+4,"active","true","tag","enabled",
+                       "tooltip","View user manual.\rHold shift key to view current experiment help.\rHold alt key to view programming manual")
+   setpar(0,self->cn+5,"active","true","tag","enabled",
+                        "tooltip","Restore interface after fault")
+   setpar(0,self->cn+6,"active","true","tag","enabled",
+                        "tooltip","Open Expert viewer")
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\BitMaps")
+  # setpar(0,507,"y",99,"width",25,"height",22,"icon","open.png")
+  # setpar(0,504,"y",49,"width",25,"height",22,"icon","open.png")
+  # setpar(0,519,"x",249,"width",40,"icon","uparrow.png")
+  # setpar(0,520,"x",249,"width",40,"icon","downarrow.png")
+  # setpar(0,515,"x",249,"width",40,"icon","cross.png")
+  # setpar(0,514,"x",249,"width",40,"icon","add.png")
+  # setpar(0,516,"x",249,"width",40,"icon","duplicate.png")
+  # setpar(0,517,"x",249,"width",40,"icon","rename.png")
+  # setpar(0,512,"x",562,"width",25,"icon","update.png")
+  # setpar(0,518,"icon","update.png")
+   setpar(0,self->cn+1,"icon","expand_plots.png")
+   setpar(0,self->cn+2,"icon","switch_plot_view.png")
+   setpar(0,self->cn+3,"icon","select_one_plot.png")
+   setpar(0,self->cn+4,"icon","help.png")
+   setpar(0,self->cn+5,"icon","restore.png")
+   setpar(0,self->cn+6,"icon","viewer.png")
+  # setwindowpar(0,"icon","expert.ico")
+   cd(bak)
+   self->cn = self->cn + 7
+
+   gDebug->pr("Status, progress and view panel created")
+
+endproc()
+
+
+###########################################################
+# Disable certain controls during an experiment.
+# The control tag determines this behaviour.
+# 'enabled' means the control is always enabled
+# 'toggle' means it is enabled when others are disabled.
+#
+# 1D plots have limited active functionality when disabled
+###########################################################
+
+procedure(disableControls, self)
+
+   lst = getobj(0)->ctrllist()
+   for(k = 0 to size(lst)-1)
+      obj = getobj(0,lst[k])
+      tag = obj->tag
+      if(tag != "enabled")
+         if(tag == "toggle")
+            obj->enable("true")
+         else
+            obj->enable("false")
+         endif
+      endif
+
+      if(obj->objtype == "plot1d")
+         obj->subplot(1,1)->limitfunc("true")
+         obj->active("true")
+      endif
+
+      if(obj->objtype == "plot2d")
+         obj->enable("false")
+      endif
+
+   next(k)
+   gDebug->pr("Disable controls")
+
+endproc()
+
+
+###########################################################
+# Display help for the controls in a parameter divider
+###########################################################
+
+procedure(dividerHelp, self, callback)
+
+   bak = getcwd()
+   dir = "$appdir$\\Macros\\UCS-PP\\Tabs\\AlternateInterface"
+   name = "$callback$Interface"
+   proc = "help"
+   if(isproc(dir,name,proc)) # Search in tab folder
+      proc = "$name$:$proc$"
+      cd(dir)
+      proc()
+   else # Try searching in pulse program folder
+      name = "$gData->curExpt->protocol$ParHelp"
+      dir = gData->curExpt->ppPath 
+      proc = "$callback$"
+      if(isproc(dir,name,proc))
+         proc = "$name$:$proc$"
+         cd(dir)
+         proc()
+      else
+         print("No help for these controls\n")
+      endif
+   endif
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Control drag and drop onto the main window
+#
+# Support for history and main menu is included. 
+#
+# History list dragNdrop:
+# Dropping a data folder on the history list will display 
+# this folder and all other data folders in this directory
+# in the history list switching to different hierarchy
+#
+# Main menu dragNdrop:
+# Add a new pulse program menu by dropping a folder containing
+# one or more experiment subfolders onto the user interface
+#
+# This menu will be added to the user defined menus until
+# the program is restarted and then they will just become 
+# part of the normal menu list.
+###########################################################
+
+procedure(dragNDrop, self, path, file, ext, objNr)
+
+# Check for a folder
+   if(not(isdir(path)))
+      message("Error","Should be a folder containing a number of pulse program subfolders","error")
+      return
+   endif
+
+# Check for drag and onto other items
+# History listbox drag and drop
+   if(self->history->objnr() == eval(objNr))
+      self->drawNDropHistory(path, file, ext)
+      return()
+   endif
+
+# Otherwise its a new menu
+   gView->mainWin->draw("false")
+
+   try
+   
+   # Get the control number for the menu
+      if(gView->userMenusRange[1] == -1)
+         cnt = gView->userMenusRange[0]
+      else
+         cnt = gView->userMenusRange[1]+1
+      endif
+
+   # Add to the pp and macro search paths
+      self->addNewPPPath(path)
+
+   # Define the new menus
+      seteditwin(gView->wn,"fast")
+      menuName = getbasedir(path)
+      menu(cnt, menuName, "user folder menu", "") # Need to use following command as this only works with global variables like $appdir$
+      setpar(gView->wn,cnt,"procedure","$path$")
+      seteditwin(-gView->wn,"fast")
+
+   # Add this menu to the different control lists
+      gView->userMenusRange[1] = cnt 
+      m = gView->exptMenu
+
+      if(size(m) > gView->nrDefaultExptMenus)
+         gView->exptMenu = join(m[0:-(gView->nrDefaultExptMenus+1)],[cnt])
+      else
+         gView->exptMenu = [cnt]
+      endif 
+
+      gView->exptMenu     = join(gView->exptMenu,m[-(gView->nrDefaultExptMenus):-1])
+      gView->cliMenu      = join(gView->cliCoreMenu, gView->exptMenu)
+      gView->graphMenu    = join(gView->graphCoreMenu, gView->exptMenu)
+      gView->imageMenu    = join(gView->imageCoreMenu, gView->exptMenu)      
+      gView->textEditMenu = join(gView->textEditCoreMenu, gView->exptMenu)
+
+   # Update the menubars for the controls
+      for(k = 1 to gView->nr1DPlots)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->graphMenu)
+      next(k)
+      for(k = gView->nr1DPlots+1 to gView->nrGraphs)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->imageMenu)
+      next(k)
+      gView->cli->menubar(gView->cliMenu)
+
+
+    # Update the textbox and textmenu menus
+      n = gView->mainWin->winNr
+      ctrls = getobj(n)->ctrllist
+      for(k = 0 to size(ctrls)-1)
+         type = getobj(n,ctrls[k])->ctrltype
+         if(type == "text menu" | type == "text box")
+            setpar(n,ctrls[k],"menubar",gView->textEditMenu)
+         endif
+      next(k)
+  
+   # Update the main menubar
+      setwindowpar(gView->wn,"menubar",gView->graphMenu)
+
+   catch
+
+      pr lasterror()
+      return
+
+   endtry
+
+   gView->mainWin->draw("true")
+
+# Append the new menu to the existing list stored in 'pulseProgramMenus.mac'
+   cd(prefdir)
+   mkdir("KeaParameters")
+   cd("KeaParameters")
+   if(isfile("pulseProgramMenus.mac"))
+      try
+         oldList = pulseProgramMenus()
+         newList = oldList + ["$path$|$menuName$"]
+         sz = size(newList)
+         printtofile("pulseProgramMenus.mac")
+         pr("procedure(pulseProgramMenus)\n")
+         if(sz >= 2)
+            pr ("\n   menuList = [\"$newList[0]$\",\n")
+            for(k = 1 to sz-2)
+               pr("               \"$newList[k]$\",\n")  
+            next(k)
+            pr("               \"$newList[-1]$\"]\n")  
+         elseif(sz == 1)
+            pr("\n   menuList = [\"$newList[0]$\"]\n")  
+         else
+            pr("\n   menuList = null\n")    
+         endif  
+         pr("\nendproc(menuList)\n")
+         closeprint()
+      catch
+         closeprint()
+         pr lasterror()
+      endtry
+   else
+      printtofile("pulseProgramMenus.mac")
+      pr("procedure(pulseProgramMenus)\n")
+      pr("\n   menuList = [\"$path$|$menuName$\"]\n")  
+      closeprint()
+   endif
+
+endproc()
+
+###########################################################
+# If a data folder has been dropped in the history list  
+# then display it. 
+###########################################################
+
+procedure(drawNDropHistory, self, path, file, ext)
+
+# Check for a valid data folder
+   if(file != "")
+      return
+   endif
+   if(not(isdir(path)))
+      return
+   endif  
+   if(not(gData->isValidDataFolder(path)))
+      pr "\n   Error: '$path$' is not a valid data folder\n"
+      return
+   endif
+
+# Make the folder hierarchy flat
+   gData->preferences->folderHierarchy = "flat"
+
+# Also in the preferences file
+   pref = ucsFiles:loadPref()
+   pref = setlistvalue(pref,"folderHierarchy","\"flat\"")
+   ucsFiles:savePref(pref)
+
+# Update the history list with the new data folders
+   path = getparentpath(path)
+   self->updateProjectPath(path)
+
+endproc()
+
+###########################################################
+# Enable controls following an experiment.
+#
+# The control tag determines this behaviour.
+# 'enabled' means the control is always enabled
+# 'toggle' means it is disabled when others are enabled.
+#
+# 1D plots have full active functionality when enabled.
+###########################################################
+
+procedure(enableControls, self)
+
+  # Enable/disable buttons based on their tags
+   lst = getobj(0)->ctrllist()
+   for(k = 0 to size(lst)-1)
+      obj = getobj(0,lst[k])
+      tag = obj->tag
+      if(tag == "toggle" | tag == "disabled")
+         obj->enable("false")
+      else
+         obj->enable("true")
+      endif
+
+      if(obj->objtype == "plot1d")
+         obj->subplot(1,1)->limitfunc("false")
+         obj->active("true")
+      endif
+
+      if(obj->objtype == "plot2d")
+         obj->enable("true")
+      endif
+
+   next(k)
+
+  # Disable the day/month/year control buttons
+   if(gData->preferences != null)
+      if(gData->getFolderHierarchy() == "flat")
+         gView->historyLabel->label("Experiments in base-path") 
+         start = gView->stepHistory->ctrlnr()
+         for(k = start to start + 6)
+            setpar(gView->wn,k,"enable","false")
+         next(k)
+      endif
+   endif
+
+   gDebug->pr("Enable controls")
+   
+endproc()
+
+###########################################################
+# What to do when exiting the main window
+###########################################################
+
+procedure(exitProcedure, self)
+
+# Check to see if an experiment is running
+   if(gExpt->exptRunning)
+      message("Warning","An experiment is running - please stop it first","info")
+      return
+   endif
+
+# Confirmation dialog
+   if(gData->connected == 0)
+      if(query("Warning","Do you really want to exit KeaExpert Viewer?") == "no")
+         return
+      endif
+   else
+      if(query("Warning","Do you really want to exit KeaExpert?") == "no")
+         return
+      endif
+   endif
+
+# Save the window parameters
+   self->savePar()
+
+# Save the spectrometer parameters if connected
+   if(gData->connected)
+      try
+         specPar = KeaParameterUpdater:readSpecPar(null,2,1)
+         KeaParameterUpdater:saveKeaParameters(specPar)
+      catch
+      endtry
+   endif
+
+# Exit the periodic check loop
+   gExpt->stopChecking()
+
+# Exit if this is the main window
+   if(getwindowpar(0,"mainwindow") == "true")
+   # Remove all cached macro procedures
+     rmcachedmacros("global")
+     rmcachedmacros("window")
+      if(exit(0) == "cancel")
+         return
+      endif
+   endif
+
+endproc()
+
+###########################################################
+# Call the FindLock experiment
+###########################################################
+
+procedure(findLock, self)
+
+   gExpt->stopChecking()
+   gExpt->prepareToRunExpt()
+   gLock->findLock()
+   gExpt->cleanupAfterExpt()
+   gExpt->startPeriodicChecks()
+
+endproc()
+
+##############################################
+# Find the folder for the specified 
+# experiment 'expt' and move into it
+##############################################
+
+procedure(gotoExptFolder, self, expt)
+
+   dir = gData->findPP(expt)
+  # cd("$dir$\\..")
+
+endproc()
+
+
+###########################################################
+# The history control has been selected or enter has been
+# pressed.
+# Selection displays the experimental parameters and results.
+# Enter allows the experiment suffix (comment) to be updated.
+# Note; doesn't allow reaccess until the existing command 
+# has been completed (by usng the historyLoading flag.)
+###########################################################
+
+procedure(historyCallback, self)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   if(self->historyLoading == 0)
+      evt = parentCtrl->event
+      self->historyLoading = 1
+      if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow")
+         if(parentCtrl->text != null & not(iskeypressed("shift")))
+            exptName = gParam->convertHistoryToFileName(parentCtrl->text)
+            gBatch->currentBatchExpt = ""
+            gExpt->loadExistingDataSet(exptName,gData->curHistoryPath,parentCtrl->zindex)
+            self->openNoteEditor()
+            gExpt->exptSource = "history"
+            sendmessage("mainWindow","newExperimentSelected")
+         endif
+      elseif(evt == "enter_pressed")
+         if(parentCtrl->text != null)
+            gView->openPPEditor()
+         endif
+#      elseif(evt == "double_click_down") # Missed for large data sets
+#         self->renameExperiments()
+      endif
+      self->historyLoading = 0
+   endif
+
+endproc()
+
+###########################################################
+# Come here if a menu option is selected in the history list
+###########################################################
+
+procedure(historyMenuCallback, self, operation)
+
+   if(gData->curExpt != null)
+      if(operation == "delete entry")
+         self->removeFoldersFromHistory()
+      elseif(operation == "edit pulse-program")
+         self->selectCurrentHistoryEntry()
+         self->openPPEditor()
+      elseif(operation == "edit comment")
+         self->renameExperiments()
+      elseif(operation == "open data folder")
+         self->selectCurrentHistoryEntry()
+         self->openDataFolder()
+      elseif(operation == "edit notes")
+         self->openNoteEditor(1)
+      elseif(operation == "view parameters")
+         self->viewAcqParameters()
+
+      endif
+   endif
+
+endproc()
+
+###########################################################
+# Load the experiment names in the current 
+# project folder path into the history list
+###########################################################
+
+procedure(loadHistoryList, self)
+
+# Move into the experiment folder
+   dir = self->projPathCtrl->text
+
+   if(dir == "")
+      return(0)   
+   endif
+   if(not(isdir(dir)))
+      message("Error","Invalid directory '$dir$'","error")
+      return(0)
+   endif
+   cd(dir)
+
+
+ # Update the date and date label
+   if(gData->getFolderHierarchy() == "flat")
+
+      gView->historyLabel->label("Experiments in base-path") 
+      gData->curHistoryPath = dir 
+
+     # Disable the day/month/year control buttons
+      start = gView->stepHistory->ctrlnr()
+      for(k = start to start + 6)
+         setpar(gView->wn,k,"enable","false")
+      next(k)
+   else
+
+     # Enable the day/month/year control buttons
+      start = gView->stepHistory->ctrlnr()
+      for(k = start to start + 6)
+         setpar(gView->wn,k,"enable","true")
+      next(k)
+
+   endif
+
+
+# Check if we want to use the date hierachy
+   if(gData->getFolderHierarchy() == "date")
+
+      self->history->nrcolumns(3)
+      self->history->colwidth([0.20,0.40,0.40])
+      mode = "date"
+
+   # Move to the date path if it exists
+      if(gData->datePath != "")
+         if(isdir("$dir$\\$gData->datePath$"))
+            dir = "$dir$\\$gData->datePath$"
+            cd(dir)
+         else
+            self->history->list(list(0))
+            readableDate = gData->convertDate(gData->datePath,"readable")
+            self->historyLabel->label("Experiment history for $readableDate$ (no data)")
+           return(0)
+         endif
+      endif
+
+   else # Simple flat folder structure
+
+      self->history->nrcolumns(4)
+      self->history->colwidth([0.19,0.19,0.31,0.31])
+      mode = "flat"
+
+   endif
+
+# Get the list of experiments sorting by time and name 
+# (all dates are the same)
+   exptList = sortlist(getdirlist("."),"reverse")
+   sz = size(exptList)
+   historyList = list(0)
+
+# Loop over all potential experiment folders 
+# extracting the ones with valid contents
+   historyList = list(1)
+   iconList = list(1)
+   self->dirList = list(1)
+   if(mode == "date")
+      historyList[0] = "Time|Protocol|Comment"
+   else
+      historyList[0] = "Date|Time|Protocol|Comment"
+   endif
+   iconList[0] = "blank"
+   self->dirList[0] = "title"
+   newIcon = "blank"
+
+   if(sz > 0)
+
+      for(k = 0 to sz-1) # Loop over expt folders
+
+         entry = exptList[k]  
+         cd(entry)
+         files = getfilelist(".")
+         dirs = getdirlist(".")
+         if(issubstr(files,"acqu.par"))
+            f1 = issubstr(files,".pt1")
+            f2 = issubstr(files,".pt2")
+            f3 = issubstr(files,"data.1d")
+            f4 = issubstr(files,"data.2d")
+            d1 = 0
+            if(size(dirs) > 0) # Check for numbered subfolders
+               for(k = 0 to size(dirs)-1)
+                  if(isinteger(dirs[k]))
+                     d1 = d1 + 1
+                  endif
+               next(k)
+            endif 
+            if((f1+f2) > 0 & (f3+f4) == 0)
+               newIcon = "full_ucs2"
+            elseif((f1+f2) > 0 & (f3+f4) > 0)
+               newIcon = "full_ucs4"
+            elseif((f1+f2) == 0 & (f3+f4) > 0)
+               newIcon = "spinsolve"
+            elseif(d1 > 0)
+               newIcon = "full_ucs5"
+            else
+               newIcon = "full_ucs1"
+            endif
+            (acqPar,isStd) = self->readAcqPar()
+
+            if(isStd) # Standard software experiment?
+  
+               dateStamp = acqPar->startTime[2:9]
+               dateStamp = replacestr(dateStamp,"-","")
+               timeStamp = acqPar->startTime[11:18]
+               timeStamp = replacestr(timeStamp,":","") 
+               protocol  = acqPar->Protocol
+               comment   = acqPar->Sample
+               if(mode == "date")
+                  historyList = historyList + "$timeStamp$|$protocol$|$comment$"
+               else
+                  historyList = historyList + "$dateStamp$|$timeStamp$|$protocol$|$comment$"
+               endif
+               iconList = iconList + newIcon
+               self->dirList = self->dirList + getcwd()
+   
+            else # Expert data?
+   
+               try
+                  (date,timeStamp,protocol,comment) = scanstr(entry,"%1-%2 %3 (%4)")
+                  if(mode == "date")
+                     historyList = historyList + "$timeStamp$|$protocol$|$comment$"
+                  else
+                     historyList = historyList + "$date$|$timeStamp$|$protocol$|$comment$"
+                  endif
+                  iconList = iconList + newIcon
+                  dateStamp = date
+                  self->dirList = self->dirList + getcwd()
+               catch
+               endtry
+
+            endif
+
+         else # No acqu.par file - check for batch boundary
+
+            try
+               (date,timeStamp,protocol,comment) = scanstr(entry,"%1-%2 %3 (%4)")
+               if(protocol == "BatchStart" | protocol == "BatchAborted" | protocol == "BatchEnd" | protocol == "BatchExited")
+                  if(mode == "date")
+                     historyList = historyList + "$timeStamp$|$protocol$|$comment$"
+                  else
+                     historyList = historyList + "$date$|$timeStamp$|$protocol$|$comment$"
+                  endif
+                  iconList = iconList + "blank"
+                  dateStamp = date
+                  self->dirList = self->dirList + getcwd()
+               endif
+            catch               
+            endtry
+
+         endif  
+   
+         cd("..")
+    
+      next(k)
+
+   endif
+
+# Update the history list
+   sz = size(historyList)
+   if(sz > 1) # Valid entries found
+      
+      self->history->draw("false")
+      self->history->list(historyList)
+      self->history->color([0,0,128,0])
+      self->history->icons(iconList)
+
+   # Color the entries if necessary
+      for(k = 1 to sz-1)
+         txt = historyList[k]
+         if(gData->getFolderHierarchy() == "date")
+            (timeStamp, protocol) = scanstr(txt,"%1|%2|*")
+         else
+            (dateStamp, timeStamp, protocol) = scanstr(txt,"%1|%2|%3|*")
+         endif
+
+         if(protocol == "BatchStart" | protocol == "BatchEnd" | protocol == "BatchAborted" | protocol == "BatchExited")
+             self->history->color([k,0,200,0])
+         else
+             self->history->color([k,0,0,0])
+         endif
+      next(k)
+      self->history->draw("true")
+   else
+      self->history->list(historyList)
+   endif
+
+
+ # Update the date and date label
+   if(gData->getFolderHierarchy() == "date")
+
+      if(sz > 1)
+         if(dateStamp != null)
+            gData->curHistoryDate = dateStamp
+            gData->curHistoryPath = dir 
+            readableDate = gData->convertDate(dateStamp,"readable")
+            self->historyLabel->label("Experiment history for $readableDate$")
+         else
+            self->historyLabel->label("Experiment history")
+         endif
+   
+      else # No valid entries found
+        # self->history->list(list(0))
+         readableDate = gData->convertDate(gData->datePath,"readable")
+         self->historyLabel->label("Experiment history for $readableDate$ (no data)")
+      endif
+
+   endif
+
+endproc(1)
+
+###########################################################
+# Load the window GUI parameters from the preferences 
+# folder. Controls the window position and layout as well
+# as loading the sample names and experiment base-paths.
+# Returns the current experiment name if defined
+###########################################################
+
+procedure(loadPar, self)
+
+   bak = getcwd()
+   dir = "$prefdir$\\KeaParameters"
+   experimentName = ""
+
+   if(iskeypressed("shift") == 0 |  # Allow the user to load with just defaults
+      iskeypressed("control") == 0) # by holding down shift and control keys
+   
+      if(isdir(dir))
+         cd(dir)
+
+         try
+            if(isfile("Expert2Interface.par"))
+
+            # Load the UI parameters
+               par = load("Expert2Interface.par")
+               if(par != null)
+                  assignlist(par)
+                  setctrlvalues(0,par)
+               else
+                  message("Warning!","Parameter file 'Expert2Interface.par' has been corrupted - ignoring","warning")
+               endif
+               if(isvar("maximized"))
+                  if(maximized == "true")
+                     self->IsMaximised = "maximized"
+                  endif
+               endif  
+
+             # Adjust the CLI divider position
+               if(isvar("cliDividerPosition"))
+                  if(isfloat(cliDividerPosition))
+                     self->cliDiv->yexp("wh*0.8")
+                  else
+                     self->cliDiv->yexp(cliDividerPosition)
+                  endif
+               endif
+   
+             # Adjust the Batch divider position
+               if(isvar("batchDividerPosition"))
+                  if(isfloat(batchDividerPosition))
+                     self->batchDiv->yexp("wh*0.4")
+                  else
+                     self->batchDiv->yexp(batchDividerPosition)
+                  endif
+               endif  
+   
+            # Set the window dimensions   
+               setwindowpar(0,"dimensions",dimensions)  
+           
+            # Set the project base-paths menu list
+               if(isfile("projectPaths.par"))
+                  gData->projectPaths = load("projectPaths.par")
+                  gView->projPathCtrl->menu(gData->projectPaths + ["clear"])
+               endif
+
+            # Update the project folder text field
+               if(isvar("projectPath"))
+                  gView->projPathCtrl->text(projectPath)
+                  gView->projectPathBak = projectPath   
+               endif
+   
+            # Update the last date path
+               if(isvar("datePath"))
+                  gData->datePath = datePath
+               endif
+   
+            # Update the experiment mode (normal/batch)
+               if(isvar("exptMode"))
+                  self->exptModeCtrl->text(exptMode)
+                  self->toggleBatchMode()
+               endif
+   
+            # Set batch folder
+               if(isvar("batchPath"))            
+                  gBatch->batchFolder = batchPath
+               endif
+
+            # Load the batch list
+               gBatch->loadLastList()
+  
+            else
+               self->toggleBatchMode()
+            endif 
+   
+         # Load the sample names
+            cd(dir)
+   
+            if(isfile("sampleNames.par"))
+               gData->sampleNames = load("sampleNames.par") 
+               filledEntries = list(0)
+               names = gData->sampleNames
+               if(size(names) == 20)
+                  for(k = 0 to 19)
+                     if(names[k] != "--------")
+                        filledEntries = filledEntries + names[k]
+                     endif
+                  next(k)
+                  if(size(filledEntries) > 0)
+                     gView->sampleNameCtrl->menu(filledEntries)
+                     gView->sampleNameCtrl->zindex(0)
+                     gSample->sampleList = filledEntries
+                  endif
+               else
+                  print("\n   Invalid sampleNames parameter list - ignoring\n")
+               endif
+            endif
+
+         # Update the sample name (comment)
+            if(isvar("sampleName"))
+               gView->sampleNameCtrl->text(sampleName)
+            endif
+
+         catch
+            pr lasterror()
+         endtry
+
+      endif
+
+   endif
+
+# If project paths are undefined
+   if(gData->projectPaths == list(0))
+      gData->projectPaths = [gView->projectPathBak]
+      gView->projPathCtrl->menu(gData->projectPaths + ["clear"])
+   endif
+
+   cd(bak)
+
+endproc(experimentName)
+
+###########################################################
+# Make a desktop shortcut to this interface
+###########################################################
+
+procedure(makeShortcut, self)
+
+   linkPath = "$desktop$\\KeaExpert.lnk";
+   execPath = "$appdir$\\Prospa.exe";
+   arguments = "\"$appdir$\\Macros\\Kea-Expert\\KeaExpertInterface.pex\"";
+   iconSrc = "$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps\\$self->icon$"
+   iconDst = "$prefdir$\Icons\\$self->icon$"
+   workingDir = "$appdir$\Macros"
+   mkdir("$prefdir$\Icons")
+   copyfile(iconSrc,iconDst)
+   makelink(linkPath, execPath, arguments, iconDst, workingDir)
+   
+endproc()
+
+
+###########################################################
+# Define and display the splash screen
+###########################################################
+
+procedure(makeSplashScreen, self, pexDir, width, height, show)
+
+   bak = getcwd()
+   x = -1
+   y = -1
+   cd("$prefdir$\\KeaParameters")
+   if(isfile("Expert2Interface.par"))
+   # Load the UI parameters to get the screen location
+      par = load("Expert2Interface.par")
+      if(par != null)
+         assignlist(par)
+         if(dimensions[0] < 0)
+            x = dimensions[0]
+            y = dimensions[1]
+         endif
+      endif
+   endif
+   n = window("$self->coreTitle$",x,y,width,height)
+   picture(1, 0, 0,width,height)
+   cd(pexDir)
+   setpar(n,1,"file","splash.jpg")
+   cd("$gData->pexDir$\\Other Macros\\BitMaps")
+   setwindowpar(n,"icon",self->icon)
+   if(show == "normal")
+      showwindow(n)
+   endif
+   cd(bak)
+
+endproc(n)
+
+
+###########################################################
+# Make all elements of the user interface
+#
+# Normal (static) controls are in the range 200-499
+# User defined controls are in the range 1-199
+# Menu numbers are in the range 500-699
+# Post processing controls are in the range 700-999
+# Parameter controls start at 1000
+###########################################################
+
+procedure(makeUI, self, uiTitle)
+
+   (n,cn) = self->defineMainWindow(width=1347, height=750,self->staticMaxRng[0],uiTitle)
+   self->cn = self->menuMaxRng[0] 
+   self->defineMenus()
+   self->userMenusRange = [self->cn,-1]
+   self->cn = cn 
+   self->defineDividers(xPos=0.20, yPos=0.6)
+   self->defineBatchPanel()
+   self->defineHistoryPanel()
+   self->defineParameterPanel()
+   self->defineExperimentControl()
+   self->staticCtrlRange = [self->staticMaxRng[0],self->cn-1]
+   self->defineCLI()
+   self->defineStatusAndViewPanel()
+   self->defineGraph()
+   self->definePostProcessing()
+   self->enableControls()
+
+   setwindowpar(n,"menubar",self->graphMenu)
+
+endproc(n)
+
+###########################################################
+# Open the current experiment in a Windows Explorer dialog
+###########################################################
+
+procedure(openDataFolder, self)
+
+# Work out the folder
+   if(gData->curExpt != null)
+      try
+         dataDir = gData->curExpt->dataPath
+         if(isdir(dataDir))
+            exec("explorer","\"$dataDir$\"")
+         else
+            message("Error","The following data folder was not found:\r\r'$dataDir$'")
+         endif
+      catch
+         message("Error","No current experiment defined")
+      endtry
+   else
+      message("Error","No current experiment defined")
+   endif
+
+endproc()
+
+###########################################################
+# Open the firmware updater based on spectrometer type
+###########################################################
+
+procedure(openFirmwareUpdater, self)
+
+   if(gData->procType == "FX3")
+     cd("$appdir$\\Macros\\UCS-Update\\FX3_FW")
+     KeaFirmwareUpdaterFX3()
+   elseif(gData->procType == "DSP")
+     cd("$appdir$\\Macros\\UCS-Update\\DSP_FW")
+     KeaFirmwareUpdaterDSP()
+   else
+      message("Error","Not connected to a spectrometer","error")
+   endif
+
+endproc()
+
+
+###########################################################
+# Display the experiment note editor
+###########################################################
+
+procedure(openNoteEditor, self, makeNew=0)
+
+   n = findwin("name","Experiment Notes")
+   if(n == -1)
+      if(makeNew)
+          self->noteWin = noteEditor()
+          getobj(self->noteWin)->name("Experiment Notes")
+      else
+         return(1)
+      endif
+   else
+       self->noteWin = n
+   endif
+
+   if(gData->curExpt != null)
+      try
+         dataDir = gData->curExpt->dataPath
+         cd(dataDir)
+         edObj = getobj(self->noteWin,1)
+        # Save any changes
+         proc = "$getobj(self->noteWin)->macroName$:saveText"
+         proc(self->noteWin)
+         if(isfile("Experiment-Notes.txt"))
+            edObj->text(load("Experiment-Notes.txt"))
+         else
+            edObj->text("")
+         endif
+
+         edObj->pathname(dataDir)
+         edObj->filename("Experiment-Notes.txt")
+         edObj->showsyntaxcoloring ("false")
+         edObj->showsyntaxdescription("false")
+         edObj->wordwrap("true")
+
+      catch
+         pr lasterror()
+      endtry
+   endif
+
+endproc(1)
+
+###########################################################
+# Open the current experiment in the pulse
+# program editor/compiler or protocol editor
+###########################################################
+
+procedure(openPPEditor, self)
+
+# Check for existance of files to edit
+   curExpt = gData->curExpt
+   if(curExpt->ppPath == null)
+      message("Error","No files exist for the selected protocol","error")
+      return
+   endif 
+
+# Open the editor
+   if(size(curExpt) > 0)
+      protocolBasePath = getbasepath(curExpt->ppPath)
+      bak = getcwd()
+      if(curExpt->type == "protocol")
+         cd("$appdir$\\Macros\\Kea-Expert\\Other Macros")
+         ProtocolEditor(self->wn, protocolBasePath, curExpt->protocol)
+      elseif(curExpt->type == "experiment")
+         PulseProgramCompiler(self->wn, gData->ppLocations, protocolBasePath, curExpt->protocol)
+      else    
+         if(isfile("$curExpt->ppPath$\\$curExpt->protocol$.mac"))
+            EditorWin()
+            cd(curExpt->ppPath)
+            ed("$curExpt->protocol$.mac")
+         endif
+      endif
+      cd(bak)
+   else
+      PulseProgramCompiler(self->wn, gData->ppLocations, "", "")
+   endif
+
+endproc()
+
+###########################################################
+# Generate a disconnected instance of Expert for viewing
+# collected data, modifying batches or working on p.p.
+###########################################################
+
+procedure(openViewer, self)
+
+# Save the UI so the viewer will look the same as the main program
+   self->savePar()
+# Open a new instance of Expert as the viewer
+   app = "\"$appdir$\\Prospa.exe\""
+   mac = "\"$appdir$\\Macros\\Kea-Expert\\KeaExpertInterface.pex\""
+   arg1 = "\"viewer,$gData->specID$\""
+   args = mac + " " + arg1
+   exec(app,args)
+
+endproc()
+
+###########################################################
+# Process messages from inside Prospa or
+# from other controls
+###########################################################
+
+procedure(processMessages, self)
+
+  (src,cmd) = getpar(self->wn,self->messageNr,"text")
+   callingwin = getpar(self->wn,self->messageNr,"source")
+   parentwin = self->wn
+
+# Plot call backs from main interface
+   if(parentwin == callingwin)
+      if(src == "1D Plot" & cmd == "SelectPlot")
+         gProc->showProcessingControls(1)
+      elseif(src == "2D Plot" & cmd == "SelectImage")
+         gProc->showProcessingControls(2)
+      endif
+   endif
+
+# See if other Prospa windows are open - don't reconnect 
+   if((gData->procType == "") & (isappopen("KeaExpert")))
+      return
+   endif
+
+# USB connected or disconnected
+   if(src == "USBChanged")
+
+      if((cmd == "FX3_Kea_Connected" | cmd == "FX3_Kea_Disconnected"))
+
+         if(gData->connected & gData->procType == "DSP")
+            return
+         endif
+
+         if(cmd == "FX3_Kea_Disconnected")
+            gData->connected = 0
+            setwindowpar(self->wn,"title","$self->coreTitle$ - No connection")
+            return
+         endif
+
+         # If this is another Kea connecting then ignore
+         if(gData->connected)
+            return
+         endif
+
+         # Currently no connection so connect to first Kea found
+         # (this might not be the ideal behaviour if there is more than one)
+         gData->connected = 0
+         gFX3->port = -1
+         fx3close()
+
+         # Get the number of Keas connected
+         n = fx3count()
+         # Open the first found
+         for(k = 0 to n-1)
+            try
+               fx3open(k)
+               gFX3->port = fx3setport()
+               exitfor
+            catch
+            endtry
+         next(k)
+
+        # If a Kea is found load the factory defaults and the common parameters
+         if(gFX3->port != -1)
+            gData->procType = "FX3"
+            gData->loadFactoryDefaults()
+            gData->commonPar = struct(ucsFiles:loadCommonPar())
+            gData->getPreferences(0)
+            name = gData->specParameters->SystemID
+            usedll("fx3PPRun.dll")
+            searchdlls("true")
+            fx3setport(gFX3->port)
+         else
+            gFX3->port = -1
+            gData->procType = ""
+            gData->specID = "NoConnection"
+            name = ""
+         endif
+
+         if(name == "Invalid version")
+            setwindowpar(self->wn,"title","$self->coreTitle$ - Invalid or no FX3 parameter block?")
+         elseif(name = "")
+            setwindowpar(self->wn,"title","$self->coreTitle$ - No connection")
+         else
+            setwindowpar(self->wn,"title","$self->coreTitle$ - $name$ (FX3)")
+            gData->connected = 1
+            gData->sseOpen = 0
+         endif
+
+      elseif((cmd == "DSP_Connected" | cmd == "DSP_Disconnected"))
+
+         if(gData->connected & gData->procType == "FX3")
+            return
+         endif
+
+         if(cmd == "DSP_Disconnected")
+            gData->connected = 0
+            setwindowpar(self->wn,"title","$self->coreTitle$ - No connection")
+            return
+         else
+            if(gExpt->usbError == 1)
+               gExpt->usbError = 0
+               gData->connected = 1
+               name = gData->specParameters->SystemID
+               type = gData->specParameters->HardwareCapWord
+               setwindowpar(self->wn,"title","$self->coreTitle$ - $name$ (DSP-$type$)")
+               return
+            endif
+         endif
+
+         # If this is another Kea connecting then ignore
+         if(gData->connected)
+            return
+         endif
+
+         try
+            gData->procType = "DSP"
+            dspread("x",0,1)
+            gData->loadFactoryDefaults()
+            gData->loadSetLockShimCode()
+            gData->commonPar = struct(ucsFiles:loadCommonPar())
+            gData->getPreferences(0)
+            usedll("UCSPPRun.dll")
+            searchdlls("true")
+            name = gData->specParameters->SystemID
+            type = gData->specParameters->HardwareCapWord
+         catch
+            name = ""
+            gData->procType = ""
+            gData->specID = "NoConnection"
+         endtry
+
+         if(name == "Invalid version")
+            setwindowpar(self->wn,"title","$self->coreTitle$ - Invalid or no DSP parameter block?")
+         elseif(name = "")
+            setwindowpar(self->wn,"title","$self->coreTitle$ - No connection")
+         else
+            setwindowpar(self->wn,"title","$self->coreTitle$ - $name$ (DSP-$type$)")
+            gData->connected = 1
+         endif
+      endif
+   endif
+
+# Abort or escape pressed
+   if(src == "Macro" & (cmd == "Abort" | cmd == "Escape"))
+      self->ppStatus->color([255,255,255,255])
+      self->enableControls()
+      ftdiclose()
+      assignlock("wvExpStatus","stop","window")
+      assignlock("wv_lock_exp","false","window")
+   endif
+
+endproc()
+
+#####################################################
+# Get the acquisition parameters and see if this
+# is an expert or a standard software data set
+#####################################################
+
+procedure(readAcqPar, self)
+
+   no = "no"
+   yes = "yes"
+   try
+      lst = load("acqu.par")
+      lst = fixlist(lst) # Fix unescaped embedded strings
+      par = struct(lst)
+      isStd = isvar("par->Spectrometer")
+      isExpert = isvar("par->specID")
+      if(not(isStd) & not(isExpert))
+         par->specID = "???"
+      endif
+   catch
+      return(null,0)
+   endtry
+
+endproc(par,isStd)
+
+###########################################################
+# This has the same function as clicking on the top data
+# set in the history list. It reloads the data which is there
+###########################################################
+
+procedure(reloadDataSet, self, idx=1)
+
+   gExpt->ppRunning = 0
+   gView->enableControls()
+   gView->history->zindex(idx)
+   gExpt->loadExistingDataSet()
+
+endproc()
+
+###########################################################
+# Remove the experiment folder(s) from the history list. 
+###########################################################
+
+procedure(removeFoldersFromHistory, self)
+
+# See if this is a single or multiple selection
+   selection = gView->history->selection
+   if(selection[0] < 0)
+      selection[0] = gView->history->zindex
+      selection[1] = gView->history->zindex
+   endif
+
+# Check for selection reversal (bottom to top)
+   if(selection[0] > selection[1])
+      temp = selection[0]
+      selection[0] = selection[1]
+      selection[1] = temp
+      reverse = 1
+   else
+      reverse = 0
+   endif
+
+# Loop over the selected experiments deleting empty folders and prompting for others
+   bak = getcwd()
+   entries = gView->history->list
+   curIdx = gView->history->index()
+   removed = 0
+
+   if(gData->permissions->canOverTrashData == "yes") 
+      if(query("Warning","You are about to move data set(s) to trash\r\rContinue?") == "no")    
+         return
+      endif
+   endif
+
+   for(idx = selection[0] to selection[1])
+     # Text from list for this index
+      entry = entries[idx]
+
+     # Determine the experiment folder name parameters for this entry
+      if(gData->getFolderHierarchy() == "date")
+         (timeStamp, protocol, comment) = scanstr(entry,"%1|%2|%3")
+         dateStamp = gData->curExpt->dateStamp 
+      else # Flat hierarcy
+         (dateStamp, timeStamp, protocol, comment) = scanstr(entry,"%1|%2|%3|%4")
+      endif
+
+     # Determine the folder location
+      dataDir = "$gData->curHistoryPath$\\$dateStamp$-$timeStamp$ $protocol$ ($comment$)"
+      exptFolder = getbasedir(dataDir)
+      parentFolder = getparentpath(dataDir)
+      cd(parentFolder)
+
+     # If data is present then remove it (given permission)
+      dataPresent = gData->isDataPresent(exptFolder)
+
+      if(dataPresent)
+         if(gData->permissions->canOverTrashData == "yes") 
+            pr("\n   Moved folder '$getbasedir(dataDir)$' to trash\n")
+            rmfolder(dataDir)
+            removed = removed + 1
+         else
+            message("Error","Cannot remove experiment '$exptFolder$'\rPermission not given and data is present.","error")
+         endif
+      else
+         pr("\n   Moved folder '$getbasedir(dataDir)$' to trash\n")
+         rmfolder(dataDir)
+         removed = removed + 1
+      endif
+
+   next(idx)
+
+   cd(bak)
+
+# Index to use after deletion
+   idx = selection[0] - 1  
+
+# Reset multiple selections and reload the history list
+   self->history->selection([-1,-1])
+   if(removed == 0)
+      gView->history->index(curIdx)
+   else
+      self->loadHistoryList()
+      entries = self->history->list
+      if(size(entries) > 0)
+         if(idx > 0 & idx < size(entries))
+           self->history->zindex(idx)
+         else
+           self->history->zindex(0)
+         endif
+      endif
+   endif
+ 
+
+endproc()
+
+###########################################################
+# Remove the lines and text from a plot
+###########################################################
+
+procedure(removeLinesAndText, self)
+ 
+   if(query("Warning","This will permanently delete all lines and text from this plot. Continue?") == "yes")
+      curplot("1d")->rmlines()
+      curplot("1d")->rmtext()
+   endif
+
+endproc()
+
+
+###########################################################
+# Rename the selected experiment(s) comment(s)
+# and update the folder name(s)
+###########################################################
+
+procedure(renameExperiments, self)
+
+# See if this is a single or multiple selection
+   selection = gView->history->selection
+   if(selection[0] < 0)
+      selection[0] = gView->history->zindex
+      selection[1] = gView->history->zindex
+   endif
+
+# Check for selection reversal (bottom to top)
+   if(selection[0] > selection[1])
+      temp = selection[0]
+      selection[0] = selection[1]
+      selection[1] = temp
+      reverse = 1
+   else
+      reverse = 0
+   endif
+
+# Get the new comment for this experiment
+# Single selection take comment from folder
+# while multiple selection take UI comment
+   commentList =  gView->sampleNameCtrl->menu()
+   if(selection[1] > selection[0])
+      defaultComment = gView->sampleNameCtrl->text
+      newComment = gettext("New comments for selected experiments",defaultComment,50,commentList)
+      if(newComment == "cancel")
+         return
+      endif
+   else
+      assignstruct(gData->curExpt)
+      newComment = gettext("New comment",suffix,20,commentList)
+      if(newComment == "cancel")
+         return
+      endif   
+   endif
+
+# Check for a valid comment
+   if(issubstr(newComment,",") | issubstr(newComment,"(") | issubstr(newComment,")") | not(isvalidfilename(newComment)))
+      message("Error","The comment cannot include the following symbols:\r ( ) , < > : \" / \ | ? *","error")
+      return
+   endif
+
+# Loop over the selected experiments changing their folder comment
+   bak = getcwd()
+   entries = gView->history->list
+   for(idx = selection[0] to selection[1])
+
+     # Text from list for this index
+      entry = entries[idx]
+
+     # Determine the experiment folder name parameters for this entry
+      if(gData->getFolderHierarchy() == "date")
+         (timeStamp, protocol, comment) = scanstr(entry,"%1|%2|%3")
+         dateStamp = gData->curExpt->dateStamp 
+      else # Flat hierarcy
+         (dateStamp, timeStamp, protocol, comment) = scanstr(entry,"%1|%2|%3|%4")
+      endif
+
+      oldDataPath = "$gData->curHistoryPath$\\$dateStamp$-$timeStamp$ $protocol$ ($comment$)"
+      newDataPath = "$gData->curHistoryPath$\\$dateStamp$-$timeStamp$ $protocol$ ($newComment$)"
+
+      try
+         if(isdir(gData->curHistoryPath))
+            cd(gData->curHistoryPath)
+            movefile(oldDataPath,newDataPath)
+         endif
+
+        if(idx == selection[0])
+           gData->curExpt->dataPath = newDataPath
+           gData->curExpt->suffix = newComment
+         endif
+      catch
+         message("Error","Couldn't change the name of folder:\r\r'$oldDataPath$'","error")
+      endtry
+
+   next(idx)
+
+# Refresh the history list to show the new names
+   self->loadHistoryList()
+
+# Reselect the first selection
+   if(reverse)
+      self->history->zindex(selection[1])
+   else
+      self->history->zindex(selection[0])
+   endif
+
+# Update the comment in the parameter list groupbox label
+   label = gView->exptParameterLabel->label() 
+   try
+      (protocol, comment, rest) = scanstr(label,"%1 (%2) %3")  
+   catch
+      (protocol, rest) = scanstr(label,"%1 %2")  
+   endtry
+   gView->exptParameterLabel->label("$protocol$ ($newComment$) $rest$")
+
+# Remove the multi-select view
+   gView->history->selection([-1,-1])
+ 
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Rename the protocol for all experiments in the 
+# current base-path. Useful if a pulse program has been 
+# renamed.
+###########################################################
+
+procedure(renameProtocols, self)
+
+   startDir = gView->projPathCtrl->text
+   
+# Get the old and new protocol names
+   (oldName, newName) = RenameDialog("","","Enter old and new protocol names")
+
+# Do some checks
+   if(oldName == "cancel")
+      return
+   endif
+
+   if(oldName == newName)
+      pr("Protocol names must be different\n")
+      return
+   endif
+
+   if(not(isvalidfilename(newName)))
+      pr("New name not a valid filename\n")
+      return
+   endif    
+
+# Rename the files with protocol names matching 'oldName'
+   cnt = 0
+   if(gData->getFolderHierarchy() == "date")
+      print("\n   --- Renamed experiment folders ---\n\n")
+      if(isdir(startDir))
+         cd(startDir)
+         yearList = getdirlist(".")
+         for(year = 0 to size(yearList)-1) # Loop over year
+            dir = yearList[year]
+            cd(dir)
+            monthList = getdirlist(".")
+            for(month = 0 to size(monthList)-1) # Loop over months
+               dir = monthList[month]
+               cd(dir)
+               dayList = getdirlist(".")      
+               for(day = 0 to size(dayList)-1) # Loop over days
+                  dir = dayList[day]
+
+                  cd(dir)
+                  experimentList = getdirlist(".") 
+   
+                  for(expt = 0 to size(experimentList)-1) # Loop over experiments
+
+                     exptFolder = experimentList[expt]
+
+                     try
+
+                        (dateStamp,timeStamp,protocol,comment) = scanstr(exptFolder,"%1-%2 %3 (%4)")
+                        if(protocol == oldName)
+                           newFolder = "$dateStamp$-$timeStamp$ $newName$ ($comment$)"
+                           print("   $exptFolder$ => $newFolder$\n")
+                           movefile(exptFolder,newFolder)
+                           cnt = cnt + 1
+                        endif
+                     catch
+                        pr ("Invalid experiment folder name : $exptFolder$\n")
+                        pr ("\nParent folder:")
+                        pr experimentList
+                     endtry
+      
+                  next(expt)
+                  cd("..")
+               next(day)
+               cd("..")
+            next(month)
+            cd("..")
+         next(year)
+      endif
+
+   else # Flat history hierarchy
+
+      print("\n Flat folder hierarchy protocol name change not supported yet\n\n")
+      return
+
+#      cd(startDir)
+#      experimentList = getdirlist(".") 
+#
+#      for(expt = 0 to size(experimentList)-1) # Loop over experiments
+#
+#         exptFolder = experimentList[expt]
+#        (dateStamp,timeStamp,protocol,comment) = scanstr(exptFolder,"%1-%2 %3 (%4)")
+#         print(protocol)
+#         cd("..")
+#      next(expt)
+
+   endif
+
+# Reload the history list in case of name changes
+   self->loadHistoryList()
+   print("\n\n   Number of renamed experiment folders = $cnt$\n")
+
+endproc()
+
+###########################################################
+# Save the window GUI parameters to the 
+# preferences folder and the experiment
+# list to the batch file folder.
+###########################################################
+
+procedure(savePar, self)
+
+   bak = getcwd()
+   lst = getctrlvalues(0,"list","range",[0,999])
+
+# Make sure the divider position is not a constant
+   cliDivYexp = self->cliDiv->yexp()
+   if(isfloat(cliDivYexp))
+      cliDivYexp = "wh*0.8"
+   endif
+
+# Make sure the divider position is not a constant
+   batchDivYexp = self->batchDiv->yexp()
+   if(isfloat(batchDivYexp))
+      batchDivYexp = "wh*0.4"
+   endif
+
+# Get the experiment name (comment)
+   exptName = self->history->text
+   if(exptName == null| self->history->zindex == 0)
+      exptName = ""
+   endif
+
+# Make a list to save to preferences
+   dir = "$prefdir$\\KeaParameters"
+   mkdir(dir)
+   cd(dir)
+   lst =  lst + ["dimensions = $getwindowpar(0,\"dimensions\")$",
+                 "maximized = \"$getobj(0)->maximized$\"",
+                 "cliDividerPosition = \"$cliDivYexp$\"",
+                 "batchDividerPosition = \"$batchDivYexp$\"",
+                 "experimentName = \"$exptName$\"",
+                 "exptMode = \"$self->exptModeCtrl->text$\"",
+                 "datePath = \"$gData->datePath$\"",
+                 "batchPath = \"$gBatch->batchFolder$\""]
+
+   save("Expert2Interface.par",lst) # Don't sort it can't handle large strings as in ppFolders
+
+# Save the project path list
+   if(gData->projectPaths != null)
+      save("projectPaths.par",gData->projectPaths)
+   endif
+
+# Save the batch list
+   gBatch->saveCurrentList()
+
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Display a search history dialog
+###########################################################
+
+procedure(searchHistory, self)
+
+   result = searchHistory(self->wn)
+
+endproc()
+
+###########################################################
+# If multiple lines are selected in the history list
+# then remove them and select the curret line
+###########################################################
+
+procedure(selectCurrentHistoryEntry, self)
+
+# Remove multiple selection in history list
+   selection = gView->history->selection
+   if(selection[0] != -1)
+      idx = selection[0]
+      gView->history->selection([-1,-1])
+      gView->history->zindex(idx)
+   endif
+
+endproc()
+
+
+###########################################################
+# Change the visibility of various controls based on 
+# display mode
+###########################################################
+
+procedure(selectInterface, self, mode)
+
+   if(mode == "normal")
+
+      for(k = gView->staticCtrlRange[0] to gView->staticCtrlRange[1])
+         if(gView->exptModeCtrl->text == "history")
+            if(k < gView->batchRange[0] | k > gView->batchRange[1])
+               setpar(self->wn,k,"visible","true")
+            endif
+            gView->batchDiv->visible("false")
+         else
+            setpar(self->wn,k,"visible","true")
+         endif
+      next(k)
+
+   else # userDefined
+
+      for(k = gView->staticCtrlRange[0] to gView->staticCtrlRange[1])
+         setpar(self->wn,k,"visible","false")
+      next(k)
+
+   endif
+
+   wvDisplayMode = mode
+
+endproc()
+
+#####################################################
+# Load some predefined colors and preferences for 
+# the current and subsequent new 1D plots.
+#####################################################
+
+procedure(set1DColors, self, scheme)
+
+   bak = getcwd()
+   schemeFolder = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1D\\View"
+   proc = "$scheme$:allPlots"
+   if(isdir(schemeFolder))
+      cd(schemeFolder)
+      proc()
+   endif
+   cd(bak)
+
+endproc()
+
+#####################################################
+# Load some predefined colors and preferences for 
+# the current and subsequent new 1D plots.
+#####################################################
+
+procedure(set2DColors, self, scheme)
+
+   bak = getcwd()
+   schemeFolder = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\2D\\View"
+   proc = "$scheme$:allPlots"
+   if(isdir(schemeFolder))
+      cd(schemeFolder)
+      proc()
+   endif
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Display help for protocol
+###########################################################
+
+procedure(showExperimentHelp, self, protocol, locations)
+
+   if(nrArgs == 2)
+      locations = gData->ppLocations
+   endif
+
+   if(isproc(gData->curExpt->ppPath,protocol,"helpInfo"))
+       proc = "$protocol$:helpInfo"
+      (base,type) = proc()
+      arg2 = "$protocol$.htm"
+      if(sendtoprospa("Prospa Help Viewer Application","Macros\\$base$","$arg2$") == 0)
+         app = "\"$appdir$\\Prospa.exe\""
+         mac = "\"$appdir$\\Macros\\coreMacros\\prospahelpviewer.pex\""
+         arg1 = "\"Macros\\$base$\""
+         args = mac + " " + arg1 + " " + "\"$arg2$\""
+         exec(app,args)
+      endif
+      return(0)
+   endif
+
+   for(k = 0 to size(locations)-1)
+      base = getbasedir(locations[k])
+      dir = "$appdir$\\Documentation\\Macros\\$base$"
+      if(isfile("$dir$\\$protocol$.htm"))
+         arg2 = "$protocol$.htm"
+         if(sendtoprospa("Prospa Help Viewer Application","Macros\\$base$","$arg2$") == 0)
+            app = "\"$appdir$\\Prospa.exe\""
+            mac = "\"$appdir$\\Macros\\coreMacros\\prospahelpviewer.pex\""
+            arg1 = "\"Macros\\$base$\""
+            args = mac + " " + arg1 + " " + "\"$arg2$\""
+            exec(app,args)
+         endif
+         return(0)
+      endif
+   next(k)
+
+endproc(1)
+
+###########################################################
+# List all the procedures in a class or a macro
+###########################################################
+
+procedure(showProcedures,self)
+
+   cc = curcli()
+   name = cc->getmacroname()
+   if(name != null)
+      (path,macroName) = findmacro(name)
+      if(path != null)
+         procs = getprocnames(path,macroName)
+         procs = sortlist(procs)
+         item = selectItemFromList(procs,"Select procedure from list")
+         if(item != null)
+            cc->inserttext(item+"()")
+            cc->insertoffset(-2)
+            cc->showsyntax("")
+            cc->insertoffset(1)
+            setfocus(cc->winNr,cc->objNr)
+         endif
+      else
+         print("\n  Macro/Class '$name$' not found\n")
+      endif
+   endif
+
+endproc()
+
+###########################################################
+# Display the Expert release notes
+###########################################################
+
+procedure(showReleaseNotes, self)
+
+   bak = getcwd()
+   if(isfile("$appdir$\\KeaExpert release notes.pdf"))
+      cd(appdir)
+      exec("KeaExpert release notes.pdf")
+   elseif(isfile("$appdir$\\PDF Documentation\\KeaExpert release notes.pdf"))
+      cd("$appdir$\\PDF Documentation")
+      exec("KeaExpert release notes.pdf")
+   elseif(isfile("$appdir$\\PDFs\\KeaExpert release notes.pdf"))
+      cd("$appdir$\\PDFs")
+      exec("KeaExpert release notes.pdf")
+   endif
+
+   cd(bak)
+
+endproc()
+
+###########################################################
+# The data project path has been changed
+###########################################################
+
+procedure(toggle1DLegend, self)
+
+   if(curplot("1d")->showlegend() == "true")
+      curplot("1d")->showlegend("false")
+   else
+      curplot("1d")->showlegend("true")
+   endif
+
+endproc()
+
+###########################################################
+# Toggle between history and batch mode
+###########################################################
+
+procedure(toggleBatchMode, self)
+
+   mode = self->exptModeCtrl->text
+
+   if(mode == "history") # Hide all batch controls
+
+   # Check for modifcation
+      if(gParam->parChangedFlag) 
+         if(query("Warning","A parameter has been modified in a batch experiment.\rDo you want to update the acqu.par file before\rswitching to history mode?") == "yes")
+            gBatch->updateProtocol()
+         else
+            gBatch->updateProtocol(update=0)
+         endif
+      endif
+
+      self->lastBatchDividerPos = self->batchDiv->yexp()  
+      for(k = self->batchRange[0] to self->batchRange[1])
+         setpar(0,k,"visible","false")
+      next(k)
+      self->batchDiv->limits([0,10125])
+      self->batchDiv->y(-3)
+      self->batchDiv->visible("false")
+      self->runButton->label("Run")
+      self->abortButton->tooltip("Stop the experiment and don't save it.")
+      self->runButton->tooltip("Run the experiment displayed in the parameter list.")
+      self->completeButton->tooltip("Complete the current phase cycle and save the collected data.")
+
+      remTimeCtrl->text("--:--")
+      self->toggleProgressGroup(mode)
+      adjustctrls(0)
+
+   else # Batch mode
+
+      for(k = self->batchRange[0] to self->batchRange[1])
+         setpar(0,k,"visible","true")
+      next(k)
+
+      self->batchDiv->limits([277,10125])
+     # self->batchDiv->limits([310,10125])
+      if(isfloat(self->lastBatchDividerPos))
+         self->lastBatchDividerPos = "wh*0.4"
+      endif
+      self->batchDiv->yexp(self->lastBatchDividerPos)
+      self->batchDiv->visible("true")
+      self->runButton->label("Run Batch")
+      self->abortButton->tooltip("Stop the experiment, don't save it and exit the batch.")
+      self->runButton->tooltip("Run the experiments displayed in the batch list. Hold the shift key down to just run the selected experiments.")
+      self->completeButton->tooltip("Complete the current phase cycle and save the data. If the shift key is held down then exit the batch, otherwise move onto the next experiment.")
+      remTimeCtrl->text("")
+      batchProgressCtrl->value(0)
+      self->toggleProgressGroup(mode)
+      adjustctrls(0)
+   endif
+
+endproc()
+
+###########################################################
+# Toggle the display of lines and text in a plot
+###########################################################
+
+procedure(toggleLinesAndText, self)
+ 
+   curplot("1d")->draw("false")
+   if(curplot("1d")->showlines() == "true")
+     curplot("1d")->showlines("false")
+     curplot("1d")->showtext("false")
+   else
+     curplot("1d")->showlines("true")
+     curplot("1d")->showtext("true")
+   endif
+   curplot("1d")->draw("true")
+
+endproc()
+
+###########################################################
+# Set the contents of the progress group of controls 
+# depending on whether in history or batch mode.
+###########################################################
+
+procedure(toggleProgressGroup, self, mode)
+
+   cn = self->progressGroupCtrl->ctrlNr
+
+   if(mode == "history")
+
+      setpar(0,cn+5,"visible","true")
+      setpar(0,cn+8,"visible","false")
+      setpar(0,cn+10,"visible","false")
+      setpar(0,cn+11,"text","Progress:")
+
+   else # Batch
+
+      setpar(0,cn+5,"visible","false")
+      setpar(0,cn+8,"visible","true")
+      setpar(0,cn+10,"visible","true")
+      setpar(0,cn+11,"text","Experiment progress:")
+
+   endif
+
+endproc()
+
+###########################################################
+# The data project path has been changed, update the 
+# history list based on the folder hierarchy mode
+###########################################################
+
+procedure(updateProjectPath, self, suppliedPath=null)
+
+# Get the current path 
+   bak = getcwd()
+
+   if(suppliedPath == null)
+
+      dir = self->projPathCtrl->text()
+
+   # Ask what sort of folder heirarchy is required
+      hierarchy = SelectDataStorageHierarchy()
+      if(hierarchy == "cancel")
+         return
+      endif
+
+   # If different from the current setting then change it in the preferences
+      if(hierarchy != gData->getFolderHierarchy())
+
+         pref = ucsFiles:loadPref()
+         pref = setlistvalue(pref,"folderHierarchy","\"$hierarchy$\"")
+         ucsFiles:savePref(pref)
+         gData->preferences->folderHierarchy = hierarchy
+
+      endif
+
+   # Prompt for the new path
+      prompt = "For a new experiment select the base path. To view an existing experiment select the experiment folder or its parent."
+      if(isdir(dir))
+         dir = getfolder(dir,prompt)
+      else
+         dir = getfolder(".",prompt)
+      endif
+      if(dir == "cancel")
+         cd(bak)
+         return
+      endif
+   
+      selectedDir = dir
+
+   # Check if we are in a data folder - need to be one up then
+      cd(dir)
+      if(isfile("acqu.par") | isfile("spectrum.1d")) # Some std experiments don't have acqu.par
+         cd("..")
+         dir = getcwd()
+      endif
+
+   else
+
+      dir = suppliedPath
+
+   endif
+
+# Get the base directory and date path (if in 'date' mode)
+   if(gData->getFolderHierarchy() == "date")
+      (baseDir, datePath) = gData->extractDatePathFromDir(dir)
+   else
+      baseDir = dir
+   endif
+
+# Check for valid base directory
+   if(not(isdir(baseDir)))
+      message("Error","Please select a valid base directory.","error")
+      return
+   endif
+
+# Check for valid date-path directory
+   if(gData->getFolderHierarchy() == "date")
+
+      if(datePath != "" & not(gData->isValidDatePath(datePath)))
+         message("Error","Please select a folder containing data or a day folder\rcontaining multiple data sets e.g. 2020\09\23.","error")
+         return
+      endif
+   
+     # If only the parent directory is given make the current date path
+      if(datePath = "")
+         datePath = gExpt->getPathInfo()
+         mkdir("$baseDir$\\$datePath$")
+         cd("$baseDir$\\$datePath$")
+      endif
+      gData->datePath = datePath
+
+   else # Flat folder
+      gData->datePath = ""
+   endif
+
+# Add the new entry to the current project path menu if new
+   found = 0
+   for(k = 0 to size(gData->projectPaths)-1)
+      if(gData->projectPaths[k] == baseDir)
+         found = 1
+      endif
+   next(k)
+   if(found == 0)
+      gData->projectPaths = gData->projectPaths + [baseDir] 
+   endif
+
+# Save the menu
+   self->projPathCtrl->menu(gData->projectPaths + ["clear"])
+
+# Save the path
+   self->projPathCtrl->text(baseDir)
+   self->projectPathBak = baseDir
+
+   try
+      gView->loadHistoryList()
+      pr "\n   Info: '$baseDir$' is the new experiment base-path\n"
+   catch
+      dirList = getdirlist(baseDir)
+      if(size(dirList) > 0)
+         message("Error","'Data path' is not a valid KeaExpert project folder","error")
+      endif
+   endtry
+
+## Try and load the selected data set
+   try
+      entry = gData->dataFolderToHistoryName(selectedDir)
+      exptName = gParam->convertHistoryToFileName(entry)
+      idx = getlistindex(gView->history->list,entry)
+      if(idx != -1)
+         gBatch->currentBatchExpt = ""
+         gExpt->loadExistingDataSet(exptName,gData->curHistoryPath,idx)
+         gView->history->zindex(idx)
+      endif
+   catch
+   endtry
+
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Display the acquisition parameters
+###########################################################
+
+procedure(viewAcqParameters, self)
+
+   if(gData->curExpt != null)
+      try
+         bak = getcwd()
+         dataDir = gData->curExpt->dataPath
+         cd(dataDir)
+
+         if(not(isfile("acqu.par")))
+            message("Information","No acqu.par file present in this folder","info")
+            cd(bak)
+            return
+         endif
+
+         n = editorWin()
+         edObj = getobj(n,1)
+         setwindowpar(n,"titleupdate","false")
+         dataDir = gData->curExpt->dataPath
+         cd(dataDir)
+         setwindowpar(n,"title",dataDir+"\\acqu.par")
+         escapechar("false")
+         edObj->text(load("acqu.par","text"))
+         escapechar("true")
+         edObj->pathname(dataDir)
+         edObj->filename("acqu.par")
+         edObj->showsyntaxcoloring ("false")
+         edObj->showsyntaxdescription("false")
+         edObj->readonly("true")
+         edObj->wordwrap("true")
+         cd(bak)
+      catch
+         pr lasterror()
+         cd(bak)
+      endtry
+   endif
+
+endproc()
+
+###########################################################
+# Show help for the program
+###########################################################
+
+procedure(viewHelp, self, whichHelp)
+
+
+   if(gExpt->ppRunning("Silent")) # Open a new version of Prospa to show the help
+
+      if(whichHelp == "manual")
+
+         arg2 = "KeaExpert - User Manual.htm"
+         if(sendtoprospa("Prospa Help Viewer Application","Macros\\Kea-Expert","$arg2$") == 0)
+            app = "\"$appdir$\\Prospa.exe\""
+            mac = "\"$appdir$\\Macros\\coreMacros\\prospahelpviewer.pex\""
+            arg1 = "\"Macros\\Kea-Expert\""
+            args = mac + " " + arg1 + " " + "\"$arg2$\""
+            exec(app,args)
+         endif
+
+      elseif(whichHelp == "programming")
+
+         if(gData->procType == "FX3")
+            arg2 = "Pulse Programming Guide (FX3).htm"
+         else
+            arg2 = "Pulse Programming Guide (DSP).htm"
+         endif
+
+         if(sendtoprospa("Prospa Help Viewer Application","Macros\\Pulse Programming","$arg2$") == 0)
+            app = "\"$appdir$\\Prospa.exe\""
+            mac = "\"$appdir$\\Macros\\coreMacros\\prospahelpviewer.pex\""
+            arg1 = "\"Macros\\Pulse Programming\""
+            args = mac + " " + arg1 + " " + "\"$arg2$\""
+            exec(app,args)
+         endif
+
+      elseif(whichHelp == "experiment")
+         lst = gData->ppLocations
+         protocol = gData->curExpt->protocol
+         if(self->showExperimentHelp(gData->curExpt->protocol, gData->ppLocations))
+            bak = getcwd()
+            cd(gData->curExpt->ppPath)
+            txt = load("$gData->curExpt->protocol$.mac","text")
+            txt =  scanstr(txt,"%1procedure*")
+            pr("\n\n$txt$")
+            cd(bak)
+         endif
+      endif
+
+   else # Just idling so open the manual locally
+
+      if(whichHelp == "manual")
+         help("Macros\\Kea-Expert","KeaExpert - User Manual.htm")
+
+      elseif(whichHelp == "programming")
+
+         if(gData->procType == "FX3")
+            help("Macros\\Pulse Programming","Pulse Programming Guide (FX3).htm")
+         else
+            help("Macros\\Pulse Programming","Pulse Programming Guide (DSP).htm")
+         endif
+
+      elseif(whichHelp == "experiment")
+         if(isproc(gData->curExpt->ppPath,"$gData->curExpt->protocol$.mac","helpInfo"))
+             proc = "$gData->curExpt->protocol$:helpInfo"
+            (base,type,section) = proc()
+            help("Macros\\$base$","$type$.htm#$section$")
+
+#            arg2 = "$type$.htm"
+#            if(sendtoprospa("Prospa Help Viewer Application","Macros\\$base$","$arg2$") == 0)
+#               app = "\"$appdir$\\Prospa.exe\""
+#               mac = "\"$appdir$\\Macros\\coreMacros\\prospahelpviewer.pex\""
+#               arg1 = "\"Macros\\$base$\""
+#               args = mac + " " + arg1 + " " + "\"$arg2$#$section$\""
+#               exec(app,args)
+#            endif
+            return
+         endif
+
+         lst = gData->ppLocations
+         protocol = gData->curExpt->protocol
+         for(k = 0 to size(lst)-1)
+            base = getbasedir(lst[k])
+            dir = "$appdir$\\Documentation\\Macros\\$base$"
+            if(isfile("$dir$\\$protocol$.htm"))
+               help("Macros\\$base$","$protocol$.htm")
+               exitfor
+            endif
+         next(k)
+         bak = getcwd()
+         cd(gData->curExpt->ppPath)
+         txt = load("$gData->curExpt->protocol$.mac","text")
+         txt =  scanstr(txt,"%1procedure*")
+         pr("\n\n$txt$")
+         cd(bak)
+      endif
+
+   endif
+
+endproc()

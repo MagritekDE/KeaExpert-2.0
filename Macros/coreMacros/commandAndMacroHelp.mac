@@ -1,0 +1,368 @@
+# Display the Prospa help viewer.
+# There are two ways of accessing this macro
+# By 
+procedure(CommandAndMacroHelp,dir,cmd)
+
+   (x,y,w,h) = :loadwinpos()
+   n = :windowdefinition(x,y,w,h)  
+   windowvar(wv_dir)
+
+   if(nrArgs == 1)
+      :loadCommand(dir)
+   elseif(nrArgs == 2)
+      :loadCommand(dir,rmext(cmd))
+   else
+      :loadCommand("InternalCommands")
+   endif
+   setwindowpar(n,"exit_procedure",
+         ":savewinpos();closewindow(0);")
+   showwindow(n)
+
+endproc()
+
+# Define the window
+# Do not change the window name since this is used by Prospa
+# when displaying help.
+procedure(windowdefinition,x,y,w,h)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Command and Macro Help", x,y,w,h,"resize")
+
+      # Define all controls with basic parameters
+       windowvar(wv_dir,wv_group)
+       htmlbox(1, 286, 6, "ww-292", "wh-13")
+       listbox(2, 106, 30, 170, 234,
+          :loadHelp();)
+       listbox(3, 14, 30, 82, 234,
+          :updateHelpList();)
+       button(4, 201, 335, 62, 33, "Close",
+          :savewinpos();
+          closewindow(0);)
+       button(5, 24, 335, 62, 33, "Back",
+          :goback();)
+       statictext(6, 63, 12, "right", "Menu")
+       statictext(7, 160, 12, "center", "Macro")
+       button(8, 93, 335, 62, 33, "Forward",
+          :gofwd();)
+       getmessage(9,
+         :process_message();)
+       groupbox(10, "", 14, 272, 262, 112)
+       radiobuttons(11, 114, 285, 20, "vertical",
+                    "internal,external", "internal",
+                    :selectHelpType();)
+       statictext(12, 134, 284, "left", "Internal commands")
+       statictext(13, 134, 303, "left", "External commands")
+       statictext(14, 81, 292, "right", "List help for:")
+
+       menu(15,"Edit","Copy\tCtrl+C",setpar(0,1,"copyselection","");)
+
+       setwindowpar(n,"menu",[15])
+
+     # Set other control parameters
+endproc(n)
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 400; h = 400
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("htmlhelp.par"))
+      lst = load("htmlhelp.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("htmlhelp.par",lst)
+
+endproc()
+
+procedure(updateHelpList)
+
+   if(wv_dir == "InternalCommands")
+      :updateInternalCmdList()
+   else
+      :updateMacroList()
+   endif
+
+endproc()
+
+# Update the command list based on the command group selection
+procedure(updateMacroList)
+
+  dir = getpar(0,3,"text")
+  wv_dir = dir
+  bak = getcwd()
+  cd(dir)
+
+
+  if(isfile("helplist.lst"))
+     lst = load("helplist.lst")
+     s = size(lst)
+     icons = matrix(s)+16
+
+     for(k = 0 to s-1)
+        if(lst[k] == "SPACE")
+           icons[k] = -1
+           lst[k] = "----------------------------------------------"
+        endif
+     next(k)
+     
+     setpar(0,2,"list",lst)
+     setpar(0,2,"icons",icons)
+     setpar(0,2,"index",1)
+
+  else
+
+     lst = getfilelist(".")
+     s = size(lst)
+     if(s > 0)
+        for(k = 0 to size(lst)-1)
+           lst[k] = rmext(lst[k])
+        next(k)
+      
+        setpar(0,2,"list",sortlist(lst))
+        setpar(0,2,"icons",matrix(size(lst))+16)
+        setpar(0,2,"index",1)
+      endif
+
+   endif
+
+   cd(bak)
+
+endproc()
+
+# Set the macro menu list
+procedure(updateMenuList)
+
+  cd(appdir + "\\Documentation\\Help Files")
+  menus = sortlist(getdirlist("."))
+  menus = rmfromlist(menus,"InternalCommands")
+
+  setpar(0,3,"list",menus)
+  setpar(0,3,"icons",matrix(size(menus))+15)
+
+endproc()
+
+# Load command based on list selection
+procedure(loadHelp)
+
+   dir = appdir + "\\Documentation\\Help Files\\$wv_dir$\\"
+   event = getpar(0,2,"event")
+   file = getpar(0,2,"text") 
+
+   if(event == "single_click_down" | event == "enter_pressed")
+      if(file != "----------------------------------------------")
+         file = dir + file + ".htm"
+         setpar(0,1,"url",file)
+      endif
+   endif
+
+endproc()
+
+###############################
+# Load a specific command
+###############################
+
+procedure(loadCommand,dir,cmd)
+
+   if(dir == "InternalCommands")
+      wv_dir = dir
+      setpar(0,6,"text","Group")
+      setpar(0,7,"text","Command")
+      setpar(0,11,"text","internal")
+      :updateCmdGroupList()
+      setpar(0,3,"text","All")
+      :updateInternalCmdList()
+   else
+      wv_dir = dir
+      setpar(0,6,"text","Menu")
+      setpar(0,7,"text","Macro")
+      setpar(0,11,"text","external")
+      :updateMenuList()
+      try
+      setpar(0,3,"text",dir)
+      catch
+         message("Error","Help folder '$dir$' not found","error")
+         return
+      endtry
+      :updateMacroList()
+   endif
+
+   if(nrArgs == 1)
+      lst = getpar(0,2,"list")
+      cmd = lst[0]
+   endif
+
+   try
+      setpar(0,2,"text",cmd)
+   catch
+      message("Error","Command or macro '$cmd$' not found","error")
+      return
+   endtry
+   dir = appdir + "\\Documentation\\Help Files\\" + dir + "\\"
+   file = dir + cmd + ".htm"
+   setpar(0,1,"url",file)
+
+endproc()
+
+# Go to the last reference
+procedure(goback)
+
+   setpar(0,1,"goback","")
+
+endproc()
+
+# Go to the next reference
+procedure(gofwd)
+
+   setpar(0,1,"goforward","")
+
+endproc()
+
+# Prospa has sent a message to load help for a command
+procedure(process_message)
+
+   (src,cmd) = getpar(0,9,"text")
+   if(src == "HelpViewer")
+      try
+         (dir,cmd) = scanstr(cmd,"%1:%2")
+         :loadCommand(dir,rmext(cmd))
+      catch
+         :loadCommand("InternalCommands",rmext(cmd)) 
+      endtry  
+   endif
+
+endproc()
+
+procedure(testit)
+
+  pr "\n" 
+   cmds = getpar(0,2,"list")
+
+  for(k = 0 to size(cmds)-1)
+     pr ("k = $k$\r")
+     :loadCommand(cmds[k])
+   next(k)
+
+# for(k = 0 to size(cmds)-1)
+#     pr ("k = $k$\r")
+#    lst = listcom()
+#    setpar(0,2,"text",lst[k])
+# next(k)
+
+
+endproc()
+
+# Set the command group list
+procedure(updateCmdGroupList)
+
+  groups = ["All","1D","2D","3D","Files","Fourier","Math","GUI",
+            "Lists","Macros","Matrices","Misc","Trig","Variables"]
+  setpar(0,3,"list",groups)
+  setpar(0,3,"icons",matrix(size(groups))+15)
+
+endproc()
+
+# Update the command list based on the command group selection
+procedure(updateInternalCmdList)
+
+  groupList = getpar(0,3,"text")
+  
+  if(groupList == "All")
+     lst = listcom()
+   elseif(groupList == "1D")
+     lst = ["axes","clear1d","curtrace","curplot","draw1d",
+              "getplotdata","getplotstate","getx","grid","hold",
+              "load","loadplotmode","mulitplot","plot","plotpref",
+              "setplotstate","title","tracepref","xlabel","ylabel","zoom1d"]    
+   elseif(groupList == "2D")
+     lst = ["axes","autorange","circle","clear2d","cmap","draw2d",
+              "getdatarange","getplotdata","getplotstate","getxy","grid","image",
+              "imagerange","load","loadplotmode","mulitplot","rectangle",
+              "setplotstate","showcmap","title","tracepref","vectorplot",
+              "xlabel","ylabel","zoom2d"]   
+   elseif(groupList == "3D")
+     lst = ["axis3d","axispar3d","axes3d","bkgcolor3d","box3d","clear3d","clip3d",
+            "clip3dstatus","cmap3d","color3d","cylinder","datarange3d","depthcue",
+            "depthcuerange","draw3d","isosurf","light3d","lines3d","linewidth3d",
+            "plane3d","pref3d","rotate3d","scale3d","segments3d",
+            "shift3d","showcmap3d","sphere","surf2d","textsize3d",
+            "viewdistance"]  
+   elseif(groupList == "Files")
+     lst = ["cd","export1d","export1dpar","export2d","export2dpar","fileinfo","getbasedir",
+            "getcwd","getext","getfolder","getmacroname","getmacropath","import1d",
+            "import1dpar","import2d","import2dpar","import3d","import3dpar","isdir",
+            "isfile","load","ls","mkdir","pathnames","printtofile","pwd","relpath",
+            "rmext","rmfile","save","setcwd","setfolder","simplifydir"]   
+   elseif(groupList == "Fourier")
+     lst = ["ft","ftshift","hft","ift","rft"]     
+   elseif(groupList == "Math")
+     lst = ["abs","conj","eval","evalsubexp","exp","factorial","frac","log10",
+            "loge","log2","hex","integfunc","inv","mag","noise","not","phase",
+            "realtostr","rand","round","sqrt","trunc"]  
+   elseif(groupList == "GUI")
+     lst = ["activatewindow","assignlist","button","checkbox","checkcontrols","colorbox",
+            "closedialog","closewindow","distobj","drawobj","edit","enablecontrol","findobj",
+            "geteditwin","getwindowpar","hidewindow","keepontop","listbox","mkobj","mkparlist",
+            "movewindow","getpar","groupbox","guiwinnr","progressbar","radiobuttons","savelayout", 
+            "seteditwin","setpar","selectobj","setwindowpar","showcmap","showcursor","showdialog",    
+            "showobjects","showwindow","slider","statusbox","statictext","textbox","textmenu",    
+            "window"]  
+   elseif(groupList == "Lists")
+     lst = ["assignlist","getctrlvalues","getlistindex","getlistvalue","getsublist","insertinlist",
+            "ispar","list","listbox","load","mergelists","mkparlist","rmfromlist",
+            "rmprefix","save","setctrlvalues","setlistvalue","sortlist"]
+   elseif(groupList == "Macros")
+     lst = ["else","elseif","enablecontrol","endif","endproc","endwhile",
+            "exitfor","exitwhile","for","if","procedure","return","while"]  
+   elseif(groupList == "Matrices")
+     lst = ["closearray","cmatrix","diag","imag","identity","insert",
+            "integvector","join","linvec","matrix","matrixdim","matrixlist","max",      
+            "min","outer","real","reflect","reshape","rotate","shift",      
+            "size","submatrix","sum","trans","trac","zerofill"]   
+   elseif(groupList == "Misc")
+     lst = ["bell","clear","closeprint","exec","exit","geteditwin","getcolor"
+            "getfilename","getrect","help","helpviewer","listcom","listdlls","message",      
+            "memory","pause","pr","printtofile","query","sound","time",      
+            "rmrect","unloaddlls","windowmargins"] 
+   elseif(groupList == "Strings")
+     lst = ["errorstr","issubstr","parse","scanstr","size","submatrix","realtostr"
+            "replacestr","rmsubstr"]  
+   elseif(groupList == "Trig")
+     lst = ["acos","asin","atan","cos","cosh","sin","sinh","tan","tanh"]        
+   elseif(groupList == "Variables")
+     lst = ["alias","assign","isvar","retvar","rmvar","swapvar","uniquename","varlist","varstatus",        
+            "vartype","windowvar"]        
+   endif
+
+  setpar(0,2,"list",sortlist(lst))
+  setpar(0,2,"icons",matrix(size(lst))+16)
+  setpar(0,2,"index",1)
+
+endproc()
+
+procedure(selectHelpType)
+
+   type = getpar(0,11,"text")
+   if(type == "internal")
+      :loadCommand("InternalCommands")
+   else
+      :loadCommand("1D")
+   endif
+
+
+endproc()

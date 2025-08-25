@@ -1,0 +1,23 @@
+# Modified a single point on the current trace
+
+procedure(modify_point)
+
+
+  plt = curplot("1d")
+  m = plt->trace(0)->ebararray()
+  (x,y)= plt->trace(0)->getdata()
+   (txt,lx,ly,xleft,xright) = 1dpar:get() 
+   p = getx()
+   ind = findindex(x,p)
+   newPntTxt = gettext("Enter new value for point","$y[ind]$")
+   if(newPntTxt != "cancel")
+      y[ind] = eval(newPntTxt)
+      plt->plot(x,y)
+      if(m != null)
+         plt->trace(0)->ebararray(m)   
+      endif 
+   endif
+   1dpar:set(txt,lx,ly,xleft,xright)
+  
+
+endproc()

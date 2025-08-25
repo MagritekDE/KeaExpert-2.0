@@ -1,0 +1,521 @@
+############################################################
+# Generate a relaxation map from a complex 2D or 3D 
+# matrix which is relaxation weighted in 1 dimension
+############################################################
+
+procedure(makeRelaxMap)
+
+   n = :windowdefinition()
+   menu3d = matrixlist(2+4)
+   setpar(n,2,"menu",menu3d)
+   showwindow(n)
+   if(size(menu3d) >= 1)
+      if(isvar("curmatrix_3d") == 1)
+        :load_control_values(curmatrix_3d)
+         setpar(n,2,"text",curmatrix_3d)
+      elseif(isvar("curmatrix_2d") == 1)
+        :load_control_values(curmatrix_2d)
+         setpar(n,2,"text",curmatrix_2d)
+      else
+        :load_control_values(menu3d[0])
+         setpar(n,2,"index",1)
+      endif
+   endif
+
+
+endproc()
+
+############################################################
+# Define window
+############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate relaxation map", -1, -1, 385, 266)
+
+      # Define all controls with basic parameters
+       statictext(1, 46, 31, "left", "Input matrix")
+       textmenu(2, 107, 27, 85, 200,
+          name = getpar(0,2,"text");
+          :clear_controls();
+          :load_control_values(name);)
+       statictext(3, 15, 57, "left", "2D relaxation map")
+       statictext(4, 22, 86, "left", "2D intensity map")
+       textbox(5, 107, 55, 72)
+       textbox(6, 107, 84, 72)
+       statictext(7, 2, 201, "left", "Calculation threshold")
+       textbox(8, 107, 199, 52)
+       textbox(9, 107, 170, 52)
+       statictext(10, 24, 173, "left", "Maximum %error")
+       radiobuttons(11, 226, 32, 20, "vertical", "T2,vd,ir", "T2")
+       statictext(12, 248, 30, "left", "T2 variable TE")
+       statictext(13, 51, 115, "left", "Time array")
+       textbox(14, 107, 113, 257)
+       button(15, 221, 197, 53, 29, "Exit",
+          :save_control_values(getpar(0,2,"text"));
+          closewindow(0);)
+       button(16, 221, 158, 53, 29, "Calculate",
+          :save_control_values(getpar(0,2,"text"));
+          :calc();)
+       statusbox(17)
+       statictext(18, 248, 51, "left", "T1 variable TD")
+       statictext(19, 248, 72, "left", "T1 inversion recovery")
+       textmenu(20, 107, 142, 52, 200)
+       statictext(21, 30, 145, "left", "Relaxation axis")
+       button(22, 289, 197, 54, 28, "Help",
+          :showhelp();)
+       groupbox(23, "Type of experiment", 202, 6, 161, 97)
+       button(24, 289, 158, 53, 29, "1D View",
+          trackcursor("2d","cross",":view1d");)
+       groupbox(25, "", 202, 137, 161, 104)
+
+     # Set other control parameters
+       setpar(n,2,"name","matrixFT",
+                   "menu",[""])
+       setpar(n,5,"name","relaxMap")
+       setpar(n,6,"name","intensMap")
+       setpar(n,8,"name","threshold")
+       setpar(n,9,"name","maxErr")
+       setpar(n,11,"name","relaxType")
+       setpar(n,14,"name","timeArray")
+       setpar(n,20,"name","relaxAxis",
+                   "menu",["x","y","z"])
+
+endproc(n)
+
+############################################################
+# Display help file
+############################################################
+
+procedure(showhelp)
+   help("Macros\\NMRI","makeRelaxMap.htm")
+endproc()
+
+procedure(clear_controls)
+   setpar(0,2,"text","")
+   setpar(0,5,"text","")
+   setpar(0,6,"text","")
+   setpar(0,14,"text","")
+   setpar(0,20,"text","")
+   setpar(0,9,"text","")
+   setpar(0,8,"text","")
+   setpar(0,11,"value",1)
+endproc
+
+############################################################
+# Choose type of calculation
+############################################################
+
+procedure(calc)
+
+   relaxType = getpar(0,11,"text")
+
+   if(relaxType == "T2")
+      :calc_T2()
+   else 
+      :calc_T1()
+   endif
+
+endproc()
+
+############################################################
+# Variable delay and inversion recovery T1 calculation
+############################################################
+
+procedure(calc_T1)
+
+# Extract the gui parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+   time_array = eval(timeArray)
+   mat = alias(matrixFT,"eval")
+   (w,h,d) = size(mat)
+   error = maxErr/100
+   dim = (w>1)+(h>1)+(d>1)
+
+# Process 3D T1 relaxation data
+   if(dim == 3)
+      if(relaxAxis == "x")
+      # Process every row
+         int = matrix(h,d)
+         relax = matrix(h,d)
+         for(z = 0 to d-1)
+            for(y = 0 to h-1)
+               v = mat[~,y,z]
+               if(v[w-1] > threshold)
+                  (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,relaxType ,0,"no")
+                  if(T1 > 0 & T1Err/T1 < error)
+                     int[y,z] = E0
+                     relax[y,z] = T1
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(relax)
+              title("Relax Map (tier = $z$)")
+              draw2d("true")
+            endif
+         next(z)
+      elseif(relaxAxis == "y")
+      # Process every column
+         int = matrix(w,d)
+         relax = matrix(w,d)
+         for(z = 0 to d-1)
+            for(x = 0 to w-1)
+               v = mat[x,~,z]'
+               if(v[h-1] > threshold)
+                  (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,relaxType ,0,"no")
+                  if(T1 > 0 & T1Err/T1 < error)
+                     int[x,z] = E0
+                     relax[x,z] = T1
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(relax)
+              title("Relax Map (tier = $z$)")
+              draw2d("true")
+            endif
+         next(z)
+      elseif(relaxAxis == "z")
+      # Process every tier
+         int = matrix(w,h)
+         relax = matrix(w,h)
+         for(y = 0 to h-1)
+            for(x = 0 to w-1)
+               v = mat[x,y,~]
+               if(v[d-1] > threshold)
+                  (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,relaxType ,0,"no")
+                  if(T1 > 0 & T1Err/T1 < error)
+                     int[x,y] = E0
+                     relax[x,y] = T1
+                  endif
+               endif
+            next(x)
+            if(y%10 == 0)
+              setpar(0,17,"text","Processing row $y$")
+              draw2d("false")
+              image(relax)
+              title("Relax Map (row = $y$)")
+              draw2d("true")
+            endif
+         next(y)
+      endif # relaxAxis
+      draw2d("false")
+         image(relax)
+         title("Relax Map")
+      draw2d("true")
+      assign(getpar(0,5,"text"),relax,"global")
+      assign(getpar(0,6,"text"),int,"global")
+
+# Process 2D T1 relaxation data
+   else 
+      if(relaxAxis == "x")
+         int = matrix(h)
+         relax = matrix(h)
+         for(y = 0 to h-1)
+            v = mat[~,y]
+            if(v[w-1] > threshold)
+               (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,relaxType ,0,"no")
+               if(T1 > 0 & T1Err/T1 < error)
+                  int[y] = E0
+                  relax[y] = T1
+               endif
+            endif
+         next(x)
+      else
+         int = matrix(w)
+         relax = matrix(w)
+         for(x = 0 to w-1)
+            v = mat[x,~]'
+            if(v[h-1] > threshold)
+               (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,relaxType ,0,"no")
+               if(T1 > 0 & T1Err/T1 < error)
+                  int[x] = E0
+                  relax[x] = T1
+               endif
+            endif
+         next(x)
+      endif
+
+    # Display the result
+      draw1d("false");
+      plot(relax)
+      title("Relaxation Map")
+      draw1d("true");
+    # Make the output matrices global
+      assign(getpar(0,5,"text"),relax,"global")  
+      assign(getpar(0,6,"text"),int,"global")
+
+   endif # Dimensions
+
+   setpar(0,17,"text","Finished, time = $time()$")
+
+endproc()
+
+#####################################################
+# Variable echo time T2 calculation
+#####################################################
+
+procedure(calc_T2)
+time(0)
+# Extract the gui parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+   time_array = eval(timeArray)
+   mat = alias(matrixFT,"eval")
+   (w,h,d) = size(mat)
+   error = maxErr/100
+   dim = (w>1)+(h>1)+(d>1)
+
+# Process 3D velocity data
+   if(dim == 3)
+      if(relaxAxis == "x")
+      # Process every row
+         i2d = matrix(h,d)
+         r2d = matrix(h,d)
+         for(z = 0 to d-1)
+            for(y = 0 to h-1)
+               v = mat[~,y,z]
+               if(v[0] > threshold)
+                  (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v,0,"no")
+                  if(T2 > 0 & T2Err/T2 < error)
+                     i2d[y,z] = E0
+                     r2d[y,z] = T2
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(r2d)
+              title("Relax Map (row = $z$)")
+              draw2d("true")
+            endif
+         next(y)
+       elseif(relaxAxis == "y")  
+      # Process every column
+         i2d = matrix(w,d)
+         r2d = matrix(w,d)
+         for(z = 0 to d-1)
+            for(x = 0 to w-1)
+               v = mat[x,~,z]
+               if(v[0] > threshold)
+                  (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v',0,"no")
+                  if(T2 > 0 & T2Err/T2 < error)
+                     i2d[x,z] = E0
+                     r2d[x,z] = T2
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(r2d)
+              title("Relax Map (tier = $z$)")
+              draw2d("true")
+            endif
+         next(z)
+      else
+      # Process every tier
+         i2d = matrix(w,h)
+         r2d = matrix(w,h)
+         for(y = 0 to h-1)
+            for(x = 0 to w-1)
+               v = mat[x,y,~]
+               if(v[0] > threshold)
+                  (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v,0,"no")
+                  if(T2 > 0 & T2Err/T2 < error)
+                     i2d[x,y] = E0
+                     r2d[x,y] = T2
+                  endif
+               endif
+            next(x)
+            if(y%10 == 0)
+              setpar(0,17,"text","Processing row $y$")
+              draw2d("false")
+              image(r2d)
+              title("Relax Map (row = $y$)")
+              draw2d("true")
+            endif
+         next(y)
+      endif # axis
+      draw2d("false")
+         image(r2d)
+         title("Relax Map")
+      draw2d("true")
+      assign(getpar(0,5,"text"),r2d,"global")
+      assign(getpar(0,6,"text"),i2d,"global")
+# Process 1D T2 relaxation data
+   else 
+      if(relaxAxis == "x")
+         int = matrix(h)
+         relax = matrix(h)
+         for(y = 0 to h-1)
+            v = mat[~,y]
+               if(v[0] > threshold)
+                  (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v,0,"no")
+                  if(T2 > 0 & T2Err/T2 < error)
+                  int[y] = E0
+                  relax[y] = T2
+               endif
+            endif
+         next(x)
+      else
+         int = matrix(w)
+         relax = matrix(w)
+         for(x = 0 to w-1)
+            v = mat[x,~]'
+               if(v[0] > threshold)
+                  (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v,0,"no")
+                  if(T2 > 0 & T2Err/T2 < error)
+                  int[x] = E0
+                  relax[x] = T2
+               endif
+            endif
+         next(x)
+      endif
+    # Display the result
+      draw1d("false");
+      plot(relax)
+      title("Relaxation Map")
+      draw1d("true");
+    # Make the output matrices global
+      assign(getpar(0,5,"text"),relax,"global")  
+      assign(getpar(0,6,"text"),int,"global")
+   endif # dimensions
+
+endproc()
+
+############################################################
+# Interactively view relaxation curve at coordinates (x,y)
+############################################################
+
+procedure(view1d,horiz,vert)
+
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+   time_array = eval(timeArray)
+
+   if(isvar(matrixFT) == 0)
+      message("Information","No 3D matrix loaded")
+      return
+   endif
+
+   m3d = alias(matrixFT,"eval")
+   (w,h,d) = size(m3d)
+
+# Get data vector based on diffusion axis
+   if(relaxAxis == "x")
+      sz = w
+      v = m3d[~,horiz,vert]
+   elseif(relaxAxis == "y")
+      sz = h
+      v = m3d[horiz,~,vert]'
+   else   
+      sz = d
+      v = m3d[horiz,vert,~]
+   endif
+
+   if(relaxType == "T2")
+       if(v[0] > threshold)
+          (fitV,E0,T2,E0err,T2Err) = t2fit(time_array,v,0,"no")
+          draw1d("false")
+            plot(time_array,v,"symbolcolor",[255,0,0],"symbolshape","opencircle","tracetype","none")
+            hold("on")
+            plot(time_array,fitV,"tracecolor",[255,255,0],"symbolshape","none","tracetype","lines")
+            title("T_(2) = ($T2,0.4g$ \N(177) $T2Err,0.2g$) ms") 
+            xlabel("Echo time (ms)") 
+            ylabel("Echo amplitude") 
+          draw1d("true")
+          hold("off")
+       endif
+   elseif (relaxType == "vd")
+       if(v[sz-1] > threshold)
+          (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,"vd",0,"no")
+          draw1d("false")
+            plot(time_array,v,"symbolcolor",[255,0,0],"symbolshape","opencircle","tracetype","none")
+            hold("on")
+            plot(time_array,fitV,"tracecolor",[255,255,0],"symbolshape","none","tracetype","lines")
+            title("T_(1) = ($T1,0.4g$ \N(177) $T1Err,0.2g$) ms") 
+            xlabel("Echo time (ms)") 
+            ylabel("Echo amplitude") 
+          draw1d("true")
+          hold("off")
+       endif
+    elseif (relaxType == "ir")
+       if(v[sz-1] > threshold)
+          abortonerror("false")
+          (fitV,E0,T1,E0err,T1Err) = t1fit(time_array,v,"ir",0,"no")
+          abortonerror("true")
+          draw1d("false")
+            plot(time_array,v,"symbolcolor",[255,0,0],"symbolshape","opencircle","tracetype","none")
+            hold("on")
+            plot(time_array,fitV,"tracecolor",[255,255,0],"symbolshape","none","tracetype","lines")
+            title("T_(1) = ($T1,0.4g$ +- $T1Err,0.4g$) ms") 
+            xlabel("Echo time (ms)") 
+            ylabel("Echo amplitude") 
+          draw1d("true")
+          hold("off") 
+       endif
+    endif
+
+endproc()
+
+
+#######################################################
+# Update the control values using a parameter list
+# or if not present use values from the current matrix
+#######################################################
+
+procedure(load_control_values,  matrixName)
+
+   parlistName = matrixName + "_pl"
+   if(isvar(parlistName))
+      parlist = eval(parlistName)
+      setctrlvalues(0,parlist)
+      assign("parlist_win", parlist, "window")
+   endif
+
+   dim = matrixdim(eval(matrixName))
+
+   if(dim == 2)
+      setpar(0,3,"text","1D relaxation map")
+      setpar(0,4,"text","1D intensity map")
+      setpar(0,20,"menu",["x","y"])
+      setpar(0,20,"text","y")
+      setpar(0,24,"enable","false")
+   else
+      setpar(0,3,"text","2D relaxation map")
+      setpar(0,4,"text","2D intensity map")
+      setpar(0,20,"menu",["x","y","z"])
+      setpar(0,20,"text","z")
+      setpar(0,24,"enable","true")
+   endif
+
+endproc()
+
+#######################################################
+# Save the current parameters with this data set
+#######################################################
+
+procedure(save_control_values, matrixName)
+
+# Make the current matrix the output matrix 	
+   assign("curmatrix",matrixName,"global");
+# Save the current parameters with this data set
+   parlist = getctrlvalues(0)
+   if(isvar("parlist_win"))
+      parlist = mergelists(parlist,parlist_win)
+   endif
+   assign(matrixName+"_pl",parlist, "global");
+
+endproc()
+
+

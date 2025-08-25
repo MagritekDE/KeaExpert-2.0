@@ -1,0 +1,118 @@
+###################################################
+#            baselinecorrect1d.mac
+#
+# Select a region of noise in a 1D data set and use
+# the average value to apply a simple offset.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+
+procedure(baselineCorrect1D)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y)
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Baseline correction 1D", -1, -1, 275, 52)
+
+      # Define all controls with basic parameters
+       button(1, 11, 13, 53, 25, "Correct",
+          :apply_correction();)
+       button(2, 203, 13, 53, 25, "Exit",
+          closewindow(0);)
+       button(3, 139, 13, 53, 25, "Help",
+          :show_help();)
+       button(4, 75, 13, 53, 25, "Undo",
+          :undo();)
+
+     # Set other control parameters
+       setpar(n,1,"mode","default")
+
+endproc(n)
+
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(show_help)
+   help("Macros\\1D","baselinecorrection.htm")
+endproc()
+
+
+####################################################
+# Apply the baseline correction
+####################################################
+
+procedure(apply_correction)
+
+# Get the 1D data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Save the vectors for undo operation
+   wv_x = x
+   wv_y = y
+
+# Record the current 1D plot state
+   (txt,lx,ly,x1v,x2v) = 1dpar:get()
+
+# Select baseline and correct
+   if(w > 0)
+     # Collect baseline
+      curplot("1d")
+      title("select left side of noise")
+      x1 = getx("index")
+      title("select right side of noise")
+      x2 = getx("index")
+      if(x1 > x2)
+         swapvar(x1,x2)
+      endif
+      yn = submatrix(y,x1,x2,0,0) 
+     # Subtract baseline from original
+      yc = y - sum(yn)/(x2-x1+1) 
+     # Plot the result
+      draw1d("false")     
+         plot(x,yc)
+         1dpar:set(txt,lx,ly,x1v,x2v)
+      draw1d("true")
+   endif
+
+endproc()
+
+####################################################
+# Restore the vector stored before last correction
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly) = 2dpar:get()
+   draw1d("false")
+      plot(wv_x,wv_y)
+      1dpar:set(txt,lx,ly)
+   draw1d("true")
+
+endproc()

@@ -1,0 +1,93 @@
+####################################################
+# Setup the profile for a ramped pulse
+#
+# waltzdecpulse(channel, ampdB, phaseValue, duration)
+#
+#   channel: 1/2
+#   amplitude: desired maximum amplitude in dB (not used)
+#   phaseValue: 16 bit phase value or table
+#   duration: equivalent square pulse length
+#
+#   Duration is 3 us + duration + 2 us (fixed phase)
+####################################################
+
+procedure(waltzdecpulse, channel, ampdB, phaseValue, duration)
+
+   if(wvFX3Info->mode == "run")
+
+     # Select the parameters according to the channel
+      if(channel == 1)
+         gateTTL        = 0x04000
+         gateAndRFTTL   = 0x04008
+         FPGA_DDS_Pro1  = 0x118F
+         FPGA_DDS_CFR1  = 0x1180
+         FPGA_DDS_POW   = 0x1188
+      else
+         gateTTL        = 0x00100
+         gateAndRFTTL   = 0x00102
+         FPGA_DDS_Pro1  = 0x128F
+         FPGA_DDS_CFR1  = 0x1280
+         FPGA_DDS_POW   = 0x1288
+      endif
+      FPGA_Sync = 0x80
+
+      d1 = trunc(((duration*50)-100)/256) & 0xFF
+      d2 = (trunc(((duration*50)-100)*256) & 0xFF00) | 0x05
+      d3 =  duration*100+200 # Time for complete pulse including ramps
+
+      phaseType = vartype(phaseValue)
+
+      # Get the pulse gate overhead duration (typically 5 us)  
+      pgo = wvFX3Info->pref->pgo*100
+ 
+      if(phaseType == "matrix1d") # Duration is 3 us + duration + 2 us
+
+             # Set pulse duration (between ramps) and phase from table
+         ps = [20d,      FPGA_DDS_Pro1,  d1,                                   # Set pulse duration (high byte)
+               20d,      FPGA_DDS_Pro1,  d2,                                   # Set pulse duration (low byte)
+               20d,      FPGA_DDS_Pro1,  0x0000004, 
+               40d,      FPGA_DDS_Pro1,  0x0000001,       # Was 100                     # Ramp mode
+               20d,      0x00006084,     phaseValue[0]-1,                      # Set SRAM address to &table[0]
+               20d,      0x01006086,     1,                                    # Dummy read
+               20d,      0x01006086,     1,                                    # Read table index
+               20d,      0x00006084,     0x01000000,                           # Set SRAM address to &table[index]
+               20d,      0x01006086,     1,                                    # Dummy read
+               20d,      0x01006086,     1,                                    # Read amplitude value at table[index]
+               50d,      FPGA_DDS_POW,   0x01000000,    # Was 50                       # Write phase to DDS
+             # Trigger RAM pulse 
+               15d,      FPGA_Sync,     0x0000010, # Force DDS to output shaped pulse waveform    
+               15d,      FPGA_Sync,     0x0000000, 
+               d3,       0x09000000,    0x0000000] # Wait for pulse duration
+
+      else # Duration is 3 us + duration + 2 us
+
+             # Set pulse duration (between ramps) and phase
+         ps = [20d,      FPGA_DDS_Pro1,  d1, # Set pulse duration (high byte)
+               20d,      FPGA_DDS_Pro1,  d2, # Set pulse duration (low byte) & end address 20
+               20d,      FPGA_DDS_Pro1,  0x0000004,  # Start addr 16
+               100d,     FPGA_DDS_Pro1,  0x0000001,  # Ramp mode
+               100d,     FPGA_DDS_POW,   phaseValue, # Set phase
+             # Trigger RAM pulse 
+               20d,      FPGA_Sync,     0x0000010, # Force DDS to output shaped pulse waveform    
+               20d,      FPGA_Sync,     0x0000000, 
+               d3,       0x09000000,    0x0000000] # Wait for pulse duration
+
+      endif
+
+           
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      pgo = 5
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + pgo + duration + 2 + 1 # TODO
+      gSeq->psInfo->command = gSeq->psInfo->command + ["rampedrfpulse,$channel$,$ampdB$,$duration$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(ampdB, phaseValue, duration)
+
+   endif
+
+endproc()

@@ -1,0 +1,1457 @@
+###############################################
+# Dialog to modify control parameters
+# user passes window number and control number
+###############################################
+
+procedure(enterobjectinfo,win,obj)
+
+   type =  getpar(win,obj,"type")
+
+   if(type == "static text")
+      n = :define_stext_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_stext()
+      showdialog(n)
+   elseif(type == "button")
+     n = :define_button_dialog(obj)
+      assignctrls(0)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_button()
+      showdialog(n)
+   elseif(type == "color box")
+     n = :define_colorbox_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_colorbox()
+      showdialog(n)
+   elseif(type == "check box")
+     n = :define_checkbox_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_checkbox()
+      showdialog(n)
+   elseif(type == "divider")
+     n = :define_divider_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_divider()
+      showdialog(n)
+   elseif(type == "radio button")
+     n = :define_radiobutton_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_radiobutton()
+      showdialog(n)
+   elseif(type == "slider")
+     n = :define_slider_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_slider()
+      showdialog(n)
+   elseif(type == "list box")
+     n = :define_general2_dialog("List box parameters (control $obj$)")
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_general2()
+      showdialog(n)
+   elseif(type == "progress bar")
+     n = :define_progressbar_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      assignctrls(0)
+      wv_win = win
+      wv_obj = obj
+      :init_slider()
+      showdialog(n)
+   elseif(type == "group box")
+      n = :define_general1_dialog("Group box parameters (control $obj$)")
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_general1()
+      showdialog(n)
+   elseif(type == "text box")
+      n = :define_textbox_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_textbox()
+      showdialog(n)
+   elseif(type == "text menu")
+     n = :define_general2_dialog("Text menu parameters (control $obj$)")
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_general2()
+      showdialog(n)
+   elseif(type == "status box")
+     n = :define_statusbox_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_statusbox()
+      showdialog(n)
+   elseif(type == "updown control")
+     n = :define_updown_dialog(obj)
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_updown()
+      showdialog(n)
+   else
+      n = :define_general1_dialog("Control parameters (control $obj$)")
+      setwindowpar(n,"type","dialog")
+      wv_win = win
+      wv_obj = obj
+      :init_general1()
+      showdialog(n)
+   endif
+
+
+endproc()
+
+###############################################
+# Define the static text modification dialog
+###############################################
+
+procedure(define_stext_dialog,parentCtrl)
+
+   n = window("Static text parameters (control $parentCtrl$)", -1, -1, 281, 242-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_obj,wv_win)
+       groupbox(1, "Location and size", 5, 3, 201, 58)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 133, 31, "right", "top")
+       textbox(5, 140, 27, 46)
+       groupbox(6, "Text and justification", 5, 67, 201, 87)
+       statictext(7, 45, 93, "right", "text")
+       textbox(8, 52, 89, 132)
+       statictext(9, 35, 125, "right", "left")
+       statictext(10, 95, 125, "right", "centre")
+       statictext(11, 155, 125, "right", "right")
+       radiobuttons(12, 40, 126, 60, "horizontal", "left,centre,right", "right")
+       groupbox(13, "Object identification", 5, 159, 201, 53)
+       statictext(14, 45, 183, "right", "name")
+       textbox(15, 52, 180, 132)
+       button(16, 216, 30, 53, 31, "Apply",
+          :apply_stext();)
+       button(17, 216, 93, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(18, 216, 156, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,5,"tab_number",2)
+       setpar(n,8,"tab_number",3)
+       setpar(n,12,"tab_number",4)
+       setpar(n,15,"tab_number",5)
+       setpar(n,16,"mode","default",
+                   "tab_number",6)
+       setpar(n,17,"tab_number",7)
+       setpar(n,18,"tab_number",8,
+                   "mode","cancel")
+
+endproc(n)
+
+###############################################
+# Define the button modification dialog
+###############################################
+
+procedure(define_button_dialog,parentCtrl)
+
+   n = window("Button parameters (control $parentCtrl$)", -1, -1, 281, 282)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Location and size", 4, 3, 201, 87)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 130, 32, "right", "width")
+       textbox(5, 139, 27, 46)
+       statictext(6, 45, 61, "right", "top")
+       textbox(7, 52, 58, 46)
+       statictext(8, 130, 61, "right", "height")
+       textbox(9, 139, 58, 46)
+       groupbox(10, "Button label", 5, 94, 201, 57)
+       statictext(11, 59, 120, "right", "label")
+       textbox(12, 65, 116, 119)
+       groupbox(13, "Button mode", 6, 156, 201, 57)
+       statictext(14, 54, 180, "right", "normal")
+       statictext(15, 114, 180, "right", "default")
+       statictext(16, 174, 180, "right", "abort")
+       radiobuttons(17, 57, 182, 60, "horizontal", "normal,default,abort", "normal")
+       groupbox(18, "Object identification", 6, 218, 201, 59)
+       statictext(19, 59, 244, "right", "object ID")
+       textbox(20, 65, 240, 119)
+       button(21, 214, 32, 53, 31, "Apply",
+          :apply_button();)
+       button(22, 214, 95, 53, 31, "Apply +  Close",
+          :apply_button();
+          :close();)
+       button(23, 214, 158, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(24, 215, 221, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1,
+              "objID","tbLeft")
+       setpar(n,5,"tab_number",2,
+              "objID","tbWidth")
+       setpar(n,7,"tab_number",3,
+              "objID","tbTop")
+       setpar(n,9,"tab_number",4,
+              "objID","tbHeight")
+       setpar(n,12,"tab_number",5,
+             "objID","tbLabel")
+       setpar(n,17,"tab_number",6,
+             "objID","rbMode")
+       setpar(n,20,"tab_number",7,
+             "objID","tbObj")
+       setpar(n,21,"mode","default",
+                  "tab_number",8)
+       setpar(n,22,"tab_number",9)
+       setpar(n,23,"tab_number",10)
+       setpar(n,24,"mode","cancel",
+                  "tab_number",11)
+
+endproc(n)
+
+###############################################
+# Define the colorbox modification dialog
+###############################################
+
+procedure(define_colorbox_dialog,parentCtrl)
+
+ 
+   n = window("Colorbox parameters (control $parentCtrl$)", -1, -1, 281, 245-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Location and size", 4, 3, 201, 87)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 130, 32, "right", "width")
+       textbox(5, 139, 27, 46)
+       statictext(6, 45, 61, "right", "top")
+       textbox(7, 52, 58, 46)
+       statictext(8, 130, 61, "right", "height")
+       textbox(9, 139, 58, 46)
+       groupbox(10, "Default colour", 5, 94, 201, 57)
+       colorbox(12,52,116,20,20,[255,0,0],
+                col = getcolor(getpar(0,12,"color"));
+                setpar(0,12,"color",col);)
+       groupbox(13, "Object identification", 6, 158, 201, 53)
+       statictext(14, 45, 182, "right", "name")
+       textbox(15, 52, 179, 132)
+       button(16, 214, 31, 53, 31, "Apply",
+          :apply_colorbox();)
+       button(17, 214, 93, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(18, 215, 155, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,5,"tab_number",2)
+       setpar(n,7,"tab_number",3)
+       setpar(n,9,"tab_number",4)
+       setpar(n,15,"tab_number",6)
+       setpar(n,16,"tab_number",7,
+                   "mode","default")
+       setpar(n,17,"tab_number",8)
+       setpar(n,18,"tab_number",9,
+                   "mode","cancel")
+
+
+endproc(n)
+
+###############################################
+# Define the statusbox modification dialog
+###############################################
+
+procedure(define_statusbox_dialog,parentCtrl)
+
+
+   n = window("Status box parameters (control $parentCtrl$)", -1, -1, 223, 137-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Object identification", 5, 7, 197, 57)
+       statictext(2, 45, 31, "right", "name")
+       textbox(3, 52, 28, 132)
+       button(4, 14, 72, 53, 31, "Apply",
+          :apply_statusbox();)
+       button(5, 81, 72, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(6, 148, 72, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,4,"tab_number",2)
+       setpar(n,4,"mode","default")
+       setpar(n,5,"tab_number",3)
+       setpar(n,6,"tab_number",4,
+                  "mode","cancel")
+
+
+endproc(n)
+
+###############################################
+# Define the radiobutton modification dialog
+###############################################
+
+procedure(define_radiobutton_dialog,parentCtrl)
+
+   n = window("Radio button parameters (control $parentCtrl$)", -1, -1, 281, 289-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_obj,wv_win)
+       groupbox(1, "Orientation and location ", 5, 3, 201, 108)
+       radiobuttons(2, 22, 40, 20, "vertical", "horizontal,vertical", "horizontal")
+       statictext(3, 87, 39, "right", "horizontal")
+       statictext(4, 76, 60, "right", "vertical")
+       textbox(5, 110, 25, 46)
+       textbox(6, 110, 52, 46)
+       textbox(7, 110, 79, 47)
+       statictext(8, 161, 28, "left", "left")
+       statictext(9, 161, 55, "left", "top")
+       statictext(10, 161, 83, "left", "spacing")
+       groupbox(11, "Options", 5, 116, 201, 79)
+       statictext(12, 37, 141, "center", "options")
+       textbox(13, 63, 137, 129)
+       statictext(14, 54, 166, "right", "default")
+       textbox(15, 63, 163, 60)
+       groupbox(16, "Object identification", 5, 203, 201, 53)
+       statictext(17, 45, 227, "right", "name")
+       textbox(18, 52, 224, 132)
+       button(19, 216, 42, 53, 31, "Apply",
+          :apply_radiobutton();)
+       button(20, 216, 115, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(21, 216, 188, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1)
+       setpar(n,3,"name","name")
+       setpar(n,4,"name","name")
+       setpar(n,5,"tab_number",2)
+       setpar(n,6,"tab_number",3)
+       setpar(n,7,"tab_number",4)
+       setpar(n,8,"name","name")
+       setpar(n,9,"name","name")
+       setpar(n,10,"name","name")
+       setpar(n,12,"name","name")
+       setpar(n,13,"tab_number",5)
+       setpar(n,14,"name","name")
+       setpar(n,15,"tab_number",6)
+       setpar(n,16,"mode","default")
+       setpar(n,18,"tab_number",7)
+       setpar(n,19,"tab_number",8)
+       setpar(n,19,"mode","default")
+       setpar(n,20,"tab_number",9)
+       setpar(n,21,"tab_number",10,
+                   "mode","cancel")
+
+endproc(n)
+
+###############################################
+# Define the general control modification dialog
+###############################################
+
+procedure(define_general1_dialog,dialog_name)
+
+   n = window(dialog_name, -1, -1, 281, 245-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Location and size", 4, 3, 201, 87)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 130, 32, "right", "width")
+       textbox(5, 139, 27, 46)
+       statictext(6, 45, 61, "right", "top")
+       textbox(7, 52, 58, 46)
+       statictext(8, 130, 61, "right", "height")
+       textbox(9, 139, 58, 46)
+       groupbox(10, "Text/label", 5, 94, 201, 57)
+       statictext(11, 45, 120, "right", "text")
+       textbox(12, 52, 116, 132)
+       groupbox(13, "Object identification", 6, 158, 201, 53)
+       statictext(14, 45, 182, "right", "name")
+       textbox(15, 52, 179, 132)
+       button(16, 214, 31, 53, 31, "Apply",
+          :apply_general1();)
+       button(17, 214, 93, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(18, 215, 155, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,5,"tab_number",2)
+       setpar(n,7,"tab_number",3)
+       setpar(n,9,"tab_number",4)
+       setpar(n,12,"tab_number",5)
+       setpar(n,15,"tab_number",6)
+       setpar(n,16,"tab_number",7,
+                   "mode","default")
+       setpar(n,17,"tab_number",8)
+       setpar(n,18,"tab_number",9,
+                   "mode","cancel")
+
+
+endproc(n)
+
+
+###############################################
+# Define the check box modification dialog
+###############################################
+
+procedure(define_checkbox_dialog,parentCtrl)
+
+   n = window("Checkbox parameters (control $parentCtrl$)", -1, -1, 281, 242-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Location and size", 5, 3, 201, 58)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 133, 31, "right", "top")
+       textbox(5, 140, 27, 46)
+       groupbox(6, "States", 5, 67, 201, 87)
+       statictext(7, 75, 101, "right", "unchecked")
+       textbox(8, 86, 97, 60)
+       statictext(9, 75, 126, "right", "checked")
+       textbox(10, 86, 122, 60)
+       groupbox(11, "Object identification", 5, 159, 201, 53)
+       statictext(12, 45, 183, "right", "name")
+       textbox(13, 52, 180, 132)
+       button(14, 216, 30, 53, 31, "Apply",
+          :apply_checkbox();)
+       button(15, 216, 93, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(16, 216, 156, 53, 31, "Close",
+          :close();)
+       radiobuttons(17, 166, 102, 25, "vertical", "checked,unchecked", "unchecked")
+       statictext(18, 173, 82, "center", "default")
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,5,"tab_number",2)
+       setpar(n,8,"tab_number",3)
+       setpar(n,13,"tab_number",5)
+       setpar(n,14,"tab_number",6,
+                   "mode","default")
+       setpar(n,15,"tab_number",7)
+       setpar(n,16,"tab_number",8,
+                   "mode","cancel")
+       setpar(n,18,"name","name")
+
+endproc(n)
+
+###############################################
+# Define the divider modification dialog
+###############################################
+
+procedure(define_divider_dialog,parentCtrl)
+
+   n = window("Divider parameters (control $parentCtrl$)", -1, -1, 293, 207)
+
+      # Define all controls with basic parameters
+       windowvar(wv_obj,wv_win)
+       groupbox(1, "Orientation and dimensions", 5, 3, 201, 127)
+       radiobuttons(2, 39, 34, 80, "horizontal", "horizontal,vertical", "horizontal",
+            :divider_orientation();)
+       statictext(3, 103, 33, "right", "horizontal")
+       statictext(4, 170, 34, "right", "vertical")
+       textbox(5, 30, 58, 46)
+       statictext(6, 81, 61, "left", "left")
+       textbox(7, 107, 58, 46)
+       statictext(8, 158, 61, "left", "width")
+       textbox(9, 30, 85, 46)
+       statictext(10, 81, 88, "left", "top")
+       textbox(11, 107, 85, 46)
+       statictext(12, 158, 88, "left", "height")
+       groupbox(18, "Object identification", 5, 138, 201, 53)
+       statictext(19, 45, 162, "right", "name")
+       textbox(20, 52, 159, 132)
+       button(21, 216, 10, 53, 31, "Apply",
+          :apply_divider();)
+       button(22, 216, 60, 53, 31, "Apply +\rClose",
+          :apply_divider();
+          :close();)
+       button(23, 216, 110, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(24, 216, 160, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1)
+       setpar(n,3,"name","name")
+       setpar(n,4,"name","name")
+       setpar(n,5,"tab_number",2)
+       setpar(n,6,"name","name")
+       setpar(n,7,"tab_number",3)
+       setpar(n,8,"name","name")
+       setpar(n,9,"tab_number",4)
+       setpar(n,10,"name","name")
+       setpar(n,11,"tab_number",5)
+       setpar(n,21,"mode","default",
+                   "tab_number",9)
+       setpar(n,22,"tab_number",10)
+       setpar(n,23,"mode","cancel",
+                   "tab_number",11)
+
+endproc(n)
+
+
+###############################################
+# Define the slider modification dialog
+###############################################
+
+procedure(define_slider_dialog,parentCtrl)
+
+   n = window("Slider parameters (control $parentCtrl$)", -1, -1, 281, 289-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Orientation and dimensions", 5, 3, 201, 108)
+       radiobuttons(2, 39, 27, 80, "horizontal", "horizontal,vertical", "horizontal",
+                   :slider_orientation();)
+       statictext(3, 103, 26, "right", "horizontal")
+       statictext(4, 170, 27, "right", "vertical")
+       textbox(5, 30, 51, 46)
+       statictext(6, 81, 54, "left", "left")
+       textbox(7, 107, 51, 46)
+       statictext(8, 158, 54, "left", "width")
+       textbox(9, 30, 78, 46)
+       statictext(10, 81, 81, "left", "top")
+       textbox(11, 107, 78, 46)
+       statictext(12, 158, 81, "left", "height")
+       groupbox(13, "Options", 5, 116, 201, 79)
+       statictext(14, 91, 140, "right", "minimum value")
+       textbox(15, 97, 136, 79)
+       statictext(16, 91, 165, "right", "maximum value")
+       textbox(17, 97, 162, 79)
+       groupbox(18, "Object identification", 5, 203, 201, 53)
+       statictext(19, 45, 227, "right", "name")
+       textbox(20, 52, 224, 132)
+       button(21, 216, 42, 53, 31, "Apply",
+          :apply_slider();)
+       button(22, 216, 115, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(23, 216, 188, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1)
+       setpar(n,3,"name","name")
+       setpar(n,4,"name","name")
+       setpar(n,5,"tab_number",2)
+       setpar(n,6,"name","name")
+       setpar(n,7,"tab_number",3)
+       setpar(n,8,"name","name")
+       setpar(n,9,"tab_number",4)
+       setpar(n,10,"name","name")
+       setpar(n,11,"tab_number",5)
+       setpar(n,12,"name","name")
+       setpar(n,14,"name","name")
+       setpar(n,15,"tab_number",6)
+       setpar(n,16,"name","name")
+       setpar(n,17,"tab_number",7)
+       setpar(n,20,"tab_number",8)
+       setpar(n,21,"tab_number",9,
+               "mode","default")
+       setpar(n,22,"tab_number",10)
+       setpar(n,23,"tab_number",11,
+                   "mode","cancel")
+
+endproc(n)
+
+
+###############################################
+# Define the progressbar modification dialog
+###############################################
+
+procedure(define_progressbar_dialog,parentCtrl)
+
+   n = window("Progress bar parameters (control $parentCtrl$)", -1, -1, 281, 288)
+
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Orientation and dimensions", 5, 3, 201, 108)
+       radiobuttons(2, 39, 27, 80, "horizontal", "horizontal,vertical", "horizontal",
+            :slider_orientation();)
+       statictext(3, 103, 26, "right", "horizontal")
+       statictext(4, 170, 27, "right", "vertical")
+       textbox(5, 30, 51, 46)
+       statictext(6, 81, 54, "left", "left")
+       textbox(7, 107, 51, 46)
+       statictext(8, 158, 54, "left", "width")
+       textbox(9, 30, 78, 46)
+       statictext(10, 81, 81, "left", "top")
+       textbox(11, 107, 78, 46)
+       statictext(12, 158, 81, "left", "height")
+       groupbox(13, "Options", 5, 116, 201, 79)
+       statictext(14, 91, 140, "right", "minimum value")
+       textbox(15, 97, 136, 79)
+       statictext(16, 91, 165, "right", "maximum value")
+       textbox(17, 97, 162, 79)
+       groupbox(18, "Object identification", 5, 202, 201, 80)
+       textbox(19, 61, 249, 132)
+       statictext(20, 54, 253, "right", "value ID")
+       button(21, 216, 26, 53, 34, "Apply+\rClose",
+          :apply_progressbar();)
+       button(22, 216, 165, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(23, 216, 233, 53, 31, "Close",
+          :close();)
+       button(24, 216, 97, 53, 31, "Apply",
+          :apply_progressbar();)
+       textbox(25, 61, 223, 132)
+       statictext(26, 54, 228, "right", "object ID")
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1,
+                  "objID","dirRB")
+       setpar(n,5,"tab_number",2,
+                  "objID","tbLeft")
+       setpar(n,7,"tab_number",3,
+                  "objID","tbWidth")
+       setpar(n,9,"tab_number",4,
+                  "objID","tbTop")
+       setpar(n,11,"tab_number",5,
+                  "objID","tbHeight")
+       setpar(n,15,"tab_number",6,
+                  "objID","tbMin")
+       setpar(n,17,"tab_number",7,
+                  "objID","tbMax")
+       setpar(n,25,"tab_number",8,
+                  "objID","tbObj")
+       setpar(n,19,"tab_number",9,
+                  "objID","valueTB")
+       setpar(n,21,"mode","default",
+                  "tab_number",10)
+       setpar(n,24,"tab_number",11)
+       setpar(n,22,"tab_number",12)
+       setpar(n,23,"mode","cancel",
+                  "tab_number",13)
+
+endproc(n)
+
+###############################################
+# Define the general control modification dialog
+###############################################
+
+procedure(define_general2_dialog, title_text)
+
+   n = window(title_text, -1, -1, 281, 177-26)
+
+      # Define all controls with basic parameters
+       windowvar(wv_obj,wv_win)
+       groupbox(1, "Location and size", 4, 3, 201, 87)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 130, 32, "right", "width")
+       textbox(5, 139, 27, 46)
+       statictext(6, 45, 61, "right", "top")
+       textbox(7, 52, 58, 46)
+       statictext(8, 130, 61, "right", "height")
+       textbox(9, 139, 58, 46)
+       groupbox(10, "Object identification", 4, 92, 201, 53)
+       statictext(11, 43, 116, "right", "name")
+       textbox(12, 50, 113, 132)
+       button(13, 214, 14, 53, 31, "Apply",
+          :apply_general2();)
+       button(14, 214, 59, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(15, 215, 104, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,5,"tab_number",2)
+       setpar(n,7,"tab_number",3)
+       setpar(n,9,"tab_number",4)
+       setpar(n,12,"tab_number",5)
+       setpar(n,13,"tab_number",6,
+              "mode","default")
+       setpar(n,14,"tab_number",7)
+       setpar(n,15,"tab_number",8,
+                   "mode","cancel")
+
+
+endproc(n)
+
+###############################################
+# Define the textbox  modification dialog
+###############################################
+
+procedure(define_textbox_dialog,parentCtrl)
+
+   n = window("Text box parameters (control $parentCtrl$)", -1, -1, 281, 172)
+
+     # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Text box parameters", 4, 3, 201, 87)
+       statictext(2, 45, 31, "right", "left")
+       textbox(3, 52, 27, 46)
+       statictext(4, 130, 32, "right", "width")
+       textbox(5, 139, 27, 46)
+       statictext(6, 45, 61, "right", "top")
+       textbox(7, 52, 58, 46)
+       button(8, 214, 54, 53, 31, "Apply",
+          :apply_textbox();)
+       groupbox(10, "Object identification", 4, 95, 201, 73)
+       statictext(11, 53, 121, "right", "object ID")
+       textbox(12, 60, 116, 132)
+       statictext(13, 53, 141, "right", "value ID")
+       textbox(14, 60, 137, 132)
+       button(15, 214, 12, 53, 33, "Apply+\rClose",
+          :apply_textbox();
+          :close();)
+       button(16, 214, 94, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(17, 215, 134, 53, 31, "Close",
+          :close();)
+
+     # Set other control parameters
+       setpar(n,3,"objID","tbLeft",
+                  "tab_number",1)
+       setpar(n,5,"objID","tbWidth",
+                  "tab_number",2)
+       setpar(n,7,"objID","tbTop",
+                  "tab_number",3)
+       setpar(n,12,"objID","tbID",
+                  "tab_number",5)
+       setpar(n,14,"objID","tbValue",
+                  "tab_number",5)
+       setpar(n,15,"mode","default",
+                  "tab_number",6)
+       setpar(n,16,"tab_number",7)
+       setpar(n,17,"mode","cancel",
+                  "tab_number",8)
+
+
+endproc(n)
+
+
+###############################################
+# Define the updown modification dialog
+###############################################
+
+procedure(define_updown_dialog,parentCtrl)
+
+
+   n = window("Updown box parameters (control $parentCtrl$)", -1, -1, 281, 314)
+
+      
+      # Define all controls with basic parameters
+       windowvar(wv_win,wv_obj)
+       groupbox(1, "Orientation and dimensions", 5, 3, 201, 108)
+       radiobuttons(2, 39, 27, 80, "horizontal", "horizontal,vertical", "horizontal",
+            :updown_orientation();)
+       statictext(3, 103, 26, "right", "horizontal")
+       statictext(4, 170, 27, "right", "vertical")
+       textbox(5, 30, 51, 46)
+       statictext(6, 81, 54, "left", "left")
+       textbox(7, 107, 51, 46)
+       statictext(8, 158, 54, "left", "width")
+       textbox(9, 30, 78, 46)
+       statictext(10, 81, 81, "left", "top")
+       textbox(11, 107, 78, 46)
+       statictext(12, 158, 81, "left", "height")
+       groupbox(13, "Options", 5, 116, 201, 133)
+       statictext(14, 91, 140, "right", "base")
+       textbox(15, 97, 136, 79)
+       statictext(16, 91, 165, "right", "nr steps")
+       textbox(17, 97, 162, 79)
+       groupbox(18, "Object identification", 5, 254, 201, 53)
+       statictext(19, 45, 279, "right", "name")
+       textbox(20, 52, 275, 132)
+       button(21, 213, 54, 53, 31, "Apply",
+          :apply_updown();)
+       button(22, 213, 140, 53, 31, "Help",
+          message("Info","No help available yet");)
+       button(23, 213, 226, 53, 31, "Close",
+          :close();)
+       statictext(24, 91, 191, "right", "step size")
+       textbox(25, 97, 188, 79)
+       textbox(26, 97, 214, 79)
+       statictext(27, 91, 217, "right", "start value")
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1)
+       setpar(n,3,"name","name")
+       setpar(n,4,"name","name")
+       setpar(n,5,"tab_number",2)
+       setpar(n,6,"name","name")
+       setpar(n,7,"tab_number",3)
+       setpar(n,8,"name","name")
+       setpar(n,9,"tab_number",4)
+       setpar(n,10,"name","name")
+       setpar(n,11,"tab_number",5)
+       setpar(n,12,"name","name")
+       setpar(n,14,"name","name")
+       setpar(n,15,"tab_number",6)
+       setpar(n,16,"name","name")
+       setpar(n,17,"tab_number",7)
+       setpar(n,20,"tab_number",8)
+       setpar(n,21,"mode","default")
+       setpar(n,22,"tab_number",10)
+       setpar(n,23,"mode","cancel",
+                   "tab_number",11)
+
+
+endproc(n)
+
+###############################################
+# Initialise static text
+###############################################
+
+procedure(init_stext)
+
+   text = getpar(wv_win,wv_obj,"text")
+   name = getpar(wv_win,wv_obj,"name")
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   just = getpar(wv_win,wv_obj,"justification")
+
+   setpar(0,8,"text",text)
+   setpar(0,15,"text",name)
+   setpar(0,12,"text",just)
+   setpar(0,3,"text",x)
+   setpar(0,5,"text",y)
+
+endproc()
+
+###############################################
+# Apply dialog values to make a new static text
+###############################################
+
+procedure(apply_stext)
+
+   label =  getpar(0,8,"text")
+   name =  getpar(0,15,"text")
+   x = getpar(0,3,"text")
+   y = getpar(0,5,"text")
+   just = getpar(0,12,"text")
+
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   statictext(wv_obj,x,y,just,label)
+   setpar(wv_win,wv_obj,"name",name)
+   seteditwin(wv_win)
+
+endproc()
+
+
+###############################################
+# Initialise button parameters
+###############################################
+
+procedure(init_button)
+
+   obj = getobj(wv_win,wv_obj)
+
+   tbLabel->text(obj->label)
+   tbObj->text(obj->objID)
+   tbLeft->text(obj->x_exp)
+   tbTop->text(obj->y_exp)
+   tbWidth->text(obj->w_exp)
+   tbHeight->text(obj->h_exp)
+   rbMode->text(obj->mode)
+
+endproc()
+
+###############################################
+# Apply dialog values to button
+###############################################
+
+procedure(apply_button)
+
+   obj = getobj(wv_win,wv_obj)
+
+   obj->objID(tbObj->text)
+   obj->label(tbLabel->text)
+   obj->x(tbLeft->text)
+   obj->y(tbTop->text)
+   obj->width(tbWidth->text)
+   obj->height(tbHeight->text)
+   obj->mode(rbMode->text)
+
+endproc()
+
+###############################################
+# Initialise colorbox parameters
+###############################################
+
+procedure(init_colorbox)
+
+   text = getpar(wv_win,wv_obj,"label")
+   name = getpar(wv_win,wv_obj,"name")
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+   col = getpar(wv_win,wv_obj,"color")
+
+   setpar(0,12,"color",col)
+   setpar(0,15,"text",name)
+   setpar(0,3,"text",x)
+   setpar(0,7,"text",y)
+   setpar(0,5,"text",w)
+   setpar(0,9,"text",h)
+
+endproc()
+
+###############################################
+# Apply dialog values to colorbox
+###############################################
+
+procedure(apply_colorbox)
+
+   name =  getpar(0,15,"text")
+   x = getpar(0,3,"text")
+   y = getpar(0,7,"text")
+   w = getpar(0,5,"text")
+   h = getpar(0,9,"text")
+   col = getpar(0,12,"color")
+   setpar(wv_win,wv_obj,"name",name)
+   setpar(wv_win,wv_obj,"x",x)
+   setpar(wv_win,wv_obj,"y",y)
+   setpar(wv_win,wv_obj,"width",w)
+   setpar(wv_win,wv_obj,"height",h)
+   setpar(wv_win,wv_obj,"color",col)
+
+endproc()
+
+
+###############################################
+# Initialise checkbox
+###############################################
+
+procedure(init_checkbox)
+
+   text = getpar(wv_win,wv_obj,"text")
+   value = getpar(wv_win,wv_obj,"value")
+   name = getpar(wv_win,wv_obj,"name")
+   op = getpar(wv_win,wv_obj,"options")
+
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+
+   setpar(0,8,"text",op[0])
+   setpar(0,10,"text",op[1])
+   setpar(0,13,"text",name)
+   setpar(0,3,"text",x)
+   setpar(0,5,"text",y)
+   setpar(0,17,"value",value+1)
+
+endproc()
+
+
+###############################################
+# Apply dialog values to make a new checkbox
+###############################################
+
+procedure(apply_checkbox)
+
+   name =  getpar(0,13,"text")
+   op = list(2)
+   op[0] =  getpar(0,8,"text")
+   op[1] =  getpar(0,10,"text")
+   init =  getpar(0,17,"value")-1  # (0/1)
+   x = getpar(0,3,"text")
+   y = getpar(0,5,"text")
+
+   setpar(wv_win,wv_obj,"value",init)
+   setpar(wv_win,wv_obj,"options",op)
+   setpar(wv_win,wv_obj,"init",op[init])
+   setpar(wv_win,wv_obj,"name",name)
+   setpar(wv_win,wv_obj,"x",x)
+   setpar(wv_win,wv_obj,"y",y)
+
+endproc()
+
+###############################################
+# Initialise radiobutton
+###############################################
+
+procedure(init_radiobutton)
+
+   text = getpar(wv_win,wv_obj,"text")
+   value = getpar(wv_win,wv_obj,"value")
+   name = getpar(wv_win,wv_obj,"name")
+   options = getpar(wv_win,wv_obj,"option_string")
+   init = getpar(wv_win,wv_obj,"init")
+   spacing = getpar(wv_win,wv_obj,"spacing")
+   orient = getpar(wv_win,wv_obj,"orientation")
+
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+
+
+   setpar(0,2,"text",orient)
+   setpar(0,7,"text",spacing)
+   setpar(0,13,"text",options)
+   setpar(0,15,"text",init)
+   setpar(0,18,"text",name)
+   setpar(0,5,"text",x)
+   setpar(0,6,"text",y)
+
+endproc()
+
+
+###############################################
+# Apply dialog values to make a new radiobutton
+###############################################
+
+procedure(apply_radiobutton)
+
+   spacing = getpar(0,7,"value")
+   options = getpar(0,13,"text")
+   init = getpar(0,15,"text")
+   name = getpar(0,18,"text")
+   x = getpar(0,5,"text")
+   y = getpar(0,6,"text")
+   orientation = getpar(0,2,"text")
+
+   if(issubstr(options,init) == 0)
+      message("Error","Default state must be in option list","error")
+      return
+   endif
+
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   radiobuttons(wv_obj,x,y,spacing,orientation,options,init)
+   setpar(wv_win,wv_obj,"name",name)
+
+endproc()
+
+###############################################
+# Initialise slider
+###############################################
+
+procedure(init_slider)
+
+   obj = getobj(wv_win,wv_obj)
+
+   range = obj->range
+   dirRB->text(obj->orientation)
+   valueTB->text(obj->name)
+   tbObj->text(obj->objID)
+   tbMin->text(range[0])
+   tbMax->text(range[1])
+   tbLeft->text(obj->x_exp)
+   tbTop->text(obj->y_exp)
+   tbWidth->text(obj->w_exp)
+   tbHeight->text(obj->h_exp)
+
+endproc()
+
+###############################################
+# Apply dialog values to make a new slider
+###############################################
+
+procedure(apply_slider)
+
+   orientation = dirRB->text
+   name = valueTB->value
+   minval = tbMin->value
+   maxval = tbMax->value
+   x = tbLeft->text
+   y = tbTop->text
+   w = tbWidth->text
+   h = tbHeight->text
+   r = [minval,maxval]
+pr local
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   slider(wv_obj,x,y,w,h,orientation)
+   setpar(wv_win,wv_obj,"range",r)
+
+endproc()
+
+###############################################
+# Make sure slider has correct width and height
+###############################################
+
+procedure(slider_orientation)
+
+   try
+      w = getpar(0,7,"value")
+      h = getpar(0,11,"value")
+   catch
+      message("Error","can't swap orientation if width\ror height are variables","error")
+      return
+   endtry
+   orientation = getpar(0,2,"text")
+   if(orientation == "horizontal" & h>w)
+      swapvar(w,h)
+   elseif(orientation == "vertical" & w>h)  
+      swapvar(w,h)
+   endif
+   setpar(0,7,"text",w)
+   setpar(0,11,"text",h)
+
+endproc
+
+
+###############################################
+# Initialise slider
+###############################################
+
+procedure(init_divider)
+
+   name = getpar(wv_win,wv_obj,"name")
+
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+
+   setpar(0,20,"text",name)
+
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+
+   orient =  getpar(wv_win,wv_obj,"orient")
+   setpar(0,2,"text",orient)
+   setpar(0,5,"text",x)
+   setpar(0,9,"text",y)
+   setpar(0,7,"text",w)
+   setpar(0,11,"text",h)
+
+endproc()
+
+###############################################
+# Apply dialog values to make a new divider
+###############################################
+
+procedure(apply_divider)
+
+   orientation = getpar(0,2,"text")
+
+   x = getpar(0,5,"text")
+   y = getpar(0,9,"text")
+   w = getpar(0,7,"text")
+   h = getpar(0,11,"text")
+
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   if(orientation == "horizontal")
+      divider(wv_obj,x,y,w,3,"horiz")
+   else
+      divider(wv_obj,x,y,3,h,"vert")
+   endif
+
+
+endproc()
+
+###############################################
+# Make sure divider has correct width and height
+###############################################
+
+procedure(divider_orientation)
+
+
+   try
+      w = getpar(0,7,"value")
+      h = getpar(0,11,"value")
+   catch
+   #   nr = guiwinnr("getargs")
+      message("Error","can't swap orientation if width\ror height are variables","error")
+   #   guiwinnr(nr)
+      return
+   endtry
+   orientation = getpar(0,2,"text")
+   if(orientation == "horizontal" & h>w)
+      swapvar(w,h)
+   elseif(orientation == "vertical" & w>h)  
+      swapvar(w,h)
+   endif
+   setpar(0,7,"text",w)
+   setpar(0,11,"text",h)
+
+endproc
+
+
+###############################################
+# Apply dialog values to make a new progressbar
+###############################################
+
+procedure(apply_progressbar)
+
+   orientation = dirRB->text
+   valueID = valueTB->text
+   objID = tbObj->text
+   minval = tbMin->value
+   maxval = tbMax->value
+   x = tbLeft->text
+   y = tbTop->text
+   w = tbWidth->text
+   h = tbHeight->text
+   r = [minval,maxval]
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   obj = progressbar(wv_obj,x,y,w,h,orientation)
+   obj->range(r)
+   obj->name(valueID)
+   obj->objID(objID) 
+
+endproc()
+
+
+###############################################
+# Initialise statusbox dialog
+###############################################
+
+procedure(init_statusbox)
+
+   name = getpar(wv_win,wv_obj,"name")
+   setpar(0,3,"text",name)
+
+endproc()
+
+###############################################
+# Apply dialog value to modify statusbox
+###############################################
+
+procedure(apply_statusbox)
+
+   name =  getpar(0,3,"text")
+   setpar(wv_win,wv_obj,"name",name)
+
+endproc()
+
+
+###############################################
+# Initialise textbox
+###############################################
+
+procedure(init_textbox)
+
+   assignctrls(0)
+   obj = getobj(wv_win,wv_obj)
+   tbValue->text(obj->valueID)
+   tbID->text(obj->objID)
+   tbLeft->text(obj->x_exp)
+   tbTop->text(obj->y_exp)
+   tbWidth->text(obj->w_exp)
+
+endproc()
+
+###############################################
+# Apply dialog value to modify textbox
+###############################################
+
+procedure(apply_textbox)
+
+   assignctrls(0)
+   obj = getobj(wv_win,wv_obj)
+
+   obj->objID(tbID->text)
+   obj->valueID(tbValue->text)
+   obj->x(tbLeft->text)
+   obj->y(tbTop->text)
+   obj->width(tbWidth->text)
+
+endproc()
+
+
+###############################################
+# Initialise updown control
+###############################################
+
+procedure(init_updown)
+
+   base = getpar(wv_win,wv_obj,"base")
+   stepSize = getpar(wv_win,wv_obj,"stepSize")
+   value = getpar(wv_win,wv_obj,"value")
+   nrSteps = getpar(wv_win,wv_obj,"nrSteps")
+   name = getpar(wv_win,wv_obj,"name")
+   orient = getpar(wv_win,wv_obj,"orientation")
+
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp"   )
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+
+   setpar(0,2,"text",orient)
+   setpar(0,20,"text",name)
+   setpar(0,15,"text",base)
+   setpar(0,17,"text",nrSteps)
+   setpar(0,25,"text",stepSize)
+   setpar(0,26,"text",value)
+   setpar(0,5,"text",x)
+   setpar(0,9,"text",y)
+   setpar(0,7,"text",w)
+   setpar(0,11,"text",h)
+
+endproc()
+
+
+
+
+###############################################
+# Apply dialog values to make a new slider
+###############################################
+
+procedure(apply_updown)
+
+
+   base = getpar(0,15,"value")
+   stepSize = getpar(0,25,"value")
+   value = getpar(0,26,"value")
+   nrSteps = getpar(0,17,"value")
+   name = getpar(0,20,"text")
+   orient = getpar(0,2,"text")
+
+   x = getpar(0,5,"text")
+   y = getpar(0,9,"text")
+   w = getpar(0,7,"text")
+   h = getpar(0,11,"text")
+
+   rmobj(wv_win,wv_obj)
+   seteditwin(wv_win)
+   updown(wv_obj,x,y,w,h,orient)
+   setpar(wv_win,wv_obj,"name",name)
+   setpar(wv_win,wv_obj,"base",base)
+   setpar(wv_win,wv_obj,"stepSize",stepSize)
+   setpar(wv_win,wv_obj,"value",value)
+   setpar(wv_win,wv_obj,"nrSteps",nrSteps)
+
+endproc()
+
+
+###############################################
+# Make sure updown box has correct width and height
+###############################################
+
+procedure(updown_orientation)
+
+   w = getpar(0,7,"value")
+   h = getpar(0,11,"value")
+   orientation = getpar(0,2,"text")
+   if(orientation == "horizontal" & h>w)
+      swapvar(w,h)
+   elseif(orientation == "vertical" & w>h)  
+      swapvar(w,h)
+   endif
+   setpar(0,7,"text",w)
+   setpar(0,11,"text",h)
+
+endproc
+
+
+###############################################
+# Initialise general dialog
+###############################################
+
+procedure(init_general1)
+
+   text = getpar(wv_win,wv_obj,"label")
+   name = getpar(wv_win,wv_obj,"name")
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+
+   setpar(0,12,"text",text)
+   setpar(0,15,"text",name)
+   setpar(0,3,"text",x)
+   setpar(0,7,"text",y)
+   setpar(0,5,"text",w)
+   setpar(0,9,"text",h)
+
+endproc()
+
+###############################################
+# Apply dialog values to modify control
+###############################################
+
+procedure(apply_general1)
+
+   label =  getpar(0,12,"text")
+   name =  getpar(0,15,"text")
+   x = getpar(0,3,"text")
+   y = getpar(0,7,"text")
+   w = getpar(0,5,"text")
+   h = getpar(0,9,"text")
+   setpar(wv_win,wv_obj,"name",name)
+   setpar(wv_win,wv_obj,"label",label)
+   setpar(wv_win,wv_obj,"x",x)
+   setpar(wv_win,wv_obj,"y",y)
+   setpar(wv_win,wv_obj,"width",w)
+   setpar(wv_win,wv_obj,"height",h)
+
+endproc()
+
+
+###############################################
+# Initialise general dialog
+###############################################
+
+procedure(init_general2)
+
+   name = getpar(wv_win,wv_obj,"name")
+   x = getpar(wv_win,wv_obj,"x_exp")
+   y = getpar(wv_win,wv_obj,"y_exp")
+   w = getpar(wv_win,wv_obj,"w_exp")
+   h = getpar(wv_win,wv_obj,"h_exp")
+
+   setpar(0,12,"text",name)
+   setpar(0,3,"text",x)
+   setpar(0,7,"text",y)
+   setpar(0,5,"text",w)
+   setpar(0,9,"text",h)
+
+endproc()
+
+###############################################
+# Apply dialog values to modify control
+###############################################
+
+procedure(apply_general2)
+
+   name =  getpar(0,12,"text")
+   x = getpar(0,3,"text")
+   y = getpar(0,7,"text")
+   w = getpar(0,5,"text")
+   h = getpar(0,9,"text")
+   setpar(wv_win,wv_obj,"name",name)
+   setpar(wv_win,wv_obj,"x",x)
+   setpar(wv_win,wv_obj,"y",y)
+   setpar(wv_win,wv_obj,"width",w)
+   setpar(wv_win,wv_obj,"height",h)
+
+endproc()
+
+###############################################
+# Close button has been pressed
+###############################################
+
+procedure(close)
+
+   seteditwin(wv_win)
+   closedialog(0)
+
+endproc()

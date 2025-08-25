@@ -1,0 +1,149 @@
+######################################################
+# Dialog to copy the current 2D plot into a matrix
+######################################################
+
+procedure(copy2DToMatrix)
+
+   n = :windowdefinition()
+    setpar(0,2,"enable","false")
+    setpar(0,5,"enable","false")
+    setpar(0,6,"text","no")
+    setpar(0,7,"text","no")
+    setwindowpar(n,"type","dialog")
+    setwindowpar(n,"show_menu","false")
+    setwindowpar(n,"focus",13)
+   :update_menu()
+   showdialog(n)
+
+endproc()
+
+##########################################################
+# Define the dialog
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Copy 2D data to matrix", -1, -1, 282, 127)
+
+      # Define all controls with basic parameters
+       statictext(1, 182, 10, "right", "Variable Name")
+       textmenu(2, 115, 58, 71, 200)
+       button(3, 207, 34, 54, 28, "Copy",
+          if(:copy_to_matrix());
+          closedialog();
+          endif;)
+       button(4, 207, 74, 54, 28, "Exit",
+          closedialog();)
+       textmenu(5, 115, 84, 71, 200)
+       checkbox(6, 73, 62, "no,yes", "yes",
+            :toggle_copy();)
+       checkbox(7, 73, 89, "no,yes", "yes",
+            :toggle_copy();)
+       statictext(8, 65, 61, "right", "Copy x axis")
+       statictext(9, 65, 88, "right", "Copy y axis")
+       statictext(10, 106, 62, "right", "->")
+       statictext(11, 66, 34, "right", "Copy matrix")
+       checkbox(12, 73, 35, "no,yes", "yes",
+            :toggle_copy();)
+       textmenu(13, 115, 32, 71, 200)
+
+     # Set other control parameters
+       setpar(n,3,"mode","default")
+       setpar(n,4,"mode","cancel")
+
+endproc(n)
+
+##########################################################
+# Populate menu with names of all current 1D matrices
+##########################################################
+
+procedure(update_menu)
+
+   matMenu = matrixlist(1)
+   if(size(matMenu) > 0)
+      matMenu = sortlist(matMenu)
+      setpar(0,2,"menu",matMenu)
+      setpar(0,5,"menu",matMenu)
+   endif
+
+   matMenu = matrixlist(2)
+   if(size(matMenu) > 0)
+      matMenu = sortlist(matMenu)
+      setpar(0,13,"menu",matMenu)
+   endif
+
+# Specify some default names
+   setpar(0,2,"text","x")
+   setpar(0,5,"text","y")
+   setpar(0,13,"text","m")
+
+endproc()
+
+##########################################################
+# Copy the 1D data set to the named matrix or matrices
+##########################################################
+
+procedure(copy_to_matrix)
+
+   nameX = getpar(0,2,"text")
+   nameY = getpar(0,5,"text")
+   nameM = getpar(0,13,"text")
+   loadX = getpar(0,6,"text")
+   loadY = getpar(0,7,"text")
+   loadM = getpar(0,12,"text")
+
+   (m,x,y) = getplotdata("2d")
+
+   if(loadX == "yes")
+      if(nameX != "") 
+         assign(nameX,x,"global")
+      else
+         return(0)
+      endif
+   endif
+
+   if(loadY == "yes")
+      if(nameY != "") 
+         assign(nameY,y,"global")
+      else
+         return(0)
+      endif
+   endif
+
+   if(loadM == "yes")
+      if(nameM != "") 
+         assign(nameM,m,"global")
+      else
+         return(0)
+      endif
+   endif
+
+endproc(1)
+
+procedure(toggle_copy)
+
+   loadX = getpar(0,6,"text")
+   loadY = getpar(0,7,"text")
+   loadM = getpar(0,12,"text")
+
+   if(loadX == "yes")
+      setpar(0,2,"enable","true")
+   else
+      setpar(0,2,"enable","false")
+   endif
+
+   if(loadY == "yes")
+      setpar(0,5,"enable","true")
+   else
+      setpar(0,5,"enable","false")
+   endif
+
+   if(loadM == "yes")
+      setpar(0,13,"enable","true")
+   else
+      setpar(0,13,"enable","false")
+   endif
+
+endproc()

@@ -1,0 +1,1232 @@
+##############################################
+# Parameter class for KeaExpert
+#
+# V2.xx.xx
+##############################################
+
+##############################################
+# Initialiser for the class
+##############################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+
+# Parameter list
+   self->convertHistoryToFileName   = "seParam:convertHistoryToFileName"
+   self->createParameterCtrls       = "seParam:createParameterCtrls"
+   self->createScriptCtrls          = "seParam:createScriptCtrls"
+   self->getParameterVisibilityList = "seParam:getParameterVisibilityList"
+   self->listCurrentParameters      = "seParam:listCurrentParameters"
+   self->makeUIFromParList          = "seParam:makeUIFromParList"
+   self->modifyParameterDisplay     = "seParam:modifyParameterDisplay"
+   self->parameterChanged           = "seParam:parameterChanged"
+   self->saveMinimumVisibility      = "seParam:saveMinimumVisibility"
+   self->saveParameterVisibility    = "seParam:saveParameterVisibility"
+   self->saveToDefaults             = "seParam:saveToDefaults"
+   self->toggleParameterVisibility  = "seParam:toggleParameterVisibility"
+   self->updateBWandAcq             = "seParam:updateBWandAcq"
+   self->updateDispRange            = "seParam:updateDispRange"
+
+   self->variableList = "============================================="
+
+# Parameter control flags
+   self->parameterVisibility = "userdefined" # Show user defined parameters
+   self->showVisFlags        = 0             # Don't show the parameter visibility checkboxes
+   self->firstParameterCtrl  = -1            # The range of parameter controls numbers
+   self->lastParameterCtrl   = -1            # which is changed for each experiment
+   self->enableMode          = "enable"      # Whether all window elements are enabled or not
+   self->paramCtrlNrStart    = 1000          # Start of parameter control numbering
+   self->parChangedFlag      = 0             # Whether a parameter has been changed 
+   self->currentXNucleus     = "X"           # Records the last X nucleus selected (for X channel expt)
+   self->showParHelp         = 0             # Show help buttons in parameter list
+   self->auxProtocol         = null          # When a second protocol is loaded in the script interface 
+
+endproc()
+
+##############################################
+# Convert an experiment name from the history
+# list to the folder name (without datestamp)
+##############################################
+
+procedure(convertHistoryToFileName, self, histName)
+
+   if(gData->getFolderHierarchy() == "date")
+      (timeStamp,protocol,comment) = scanstr(histName,"%1|%2|%3")
+      dateStamp = gData->curHistoryDate
+   else # Flat
+      (dateStamp,timeStamp,protocol,comment) = scanstr(histName,"%1|%2|%3|%4")
+   endif
+   exptName = "$dateStamp$ $timeStamp$ $protocol$ ($comment$)"
+
+endproc(exptName)
+
+
+##############################################
+# Create the experiment parameter interface
+# deleting the old one first.
+# All parameters should be stored in
+# gData->curExpt->parameters. The interface
+# layout is passed as an argument
+##############################################
+
+procedure(createScriptCtrls, self, ctrlLayout, plotLayout)
+
+# If layout not provided then get it from script interface procedure
+   n = gView->wn
+   if(nrArgs == 1)
+
+      # For scripts with an auxillary protocol (like ArrayExperiment) save this information for the interface procedure
+      if(isvar("gData->curExpt->parameters->auxProtocol"))
+         if(gData->curExpt->parameters->auxProtocol != gData->curExpt->protocol)
+            gParam->auxProtocol = gData->curExpt->parameters->auxProtocol
+         endif
+      endif
+
+      # Build the user interface
+      if(isproc(gData->curExpt->ppPath, gData->curExpt->protocol, "interface"))     
+         mac = "$gData->curExpt->protocol$:interface"
+         try
+            (ctrlLayout,plotLayout,gProc->curProcList) = mac()
+         catch
+            (ctrlLayout,plotLayout) = mac()
+             gProc->curProcList = null
+         endtry
+      else
+         return(null)
+      endif
+
+   endif
+
+# Convert layout to 2D if not already
+   if(vartype(plotLayout) == "list")
+      plotLayout = listto2d(plotLayout)
+   endif
+
+# Make the parameter list interface
+   self->makeUIFromParList(ctrlLayout, gData->curExpt)
+
+# Update the U.I. scrollable panel
+   gView->exptPanel->panelupdate("")
+
+# Update the U.I. control values from the parameter list
+   setctrlvalues(n,list(gData->curExpt->parameters))
+
+# Reset the auxillary protocol
+   gParam->auxProtocol = null
+
+# All finished, so enable the parameters controls unless data has been collected
+  if(self->enableMode == "enable")
+     enableMode = "true"
+   else
+     enableMode = "false"
+  endif
+
+   for(k = self->firstParameterCtrl to self->lastParameterCtrl)
+      if(getpar(n,k,"tag") == "hidden")
+         setpar(n,k,"visible","false")
+      else
+         setpar(n,k,"visible","true")
+      endif
+      if(getpar(n,k,"tag") == "disabled")
+         setpar(n,k,"enable","false")
+      else
+         setpar(n,k,"enable",enableMode)
+      endif
+    #  setpar(n,k,"highlitechanges","true") Does work for anything except textboxes
+   next(k)
+
+# Update the parameter list group label
+   protocol = gData->curExpt->protocol
+   suffix = gData->curExpt->suffix
+   source = gData->curExpt->source
+   if(source != "")
+      source = source + "-"
+   endif
+   if(suffix == "")
+      gView->exptParameterLabel->label("$protocol$ $source$parameters") # ($mode$)")
+   else
+      gView->exptParameterLabel->label("$protocol$ ($suffix$) $source$parameters") # ($mode$)")
+   endif
+
+# Return the plot layout
+
+endproc(plotLayout)
+
+
+##############################################
+# Create the experiment parameter interface
+# deleting the old one first.
+# All parameters should be stored in
+# gData->curExpt->parameters. The interface
+# layout is loaded from the layout file.
+##############################################
+
+procedure(createParameterCtrls, self)
+
+   q = -1 # Control counter
+   n = gView->wn # Main window number
+
+# Check to see of data is already present
+   dataIsPresent = 0
+#   if(:isDataPresent(exptInfo))
+#      dataIsPresent = 1
+#   endif
+
+   actualVis = "all"
+
+# Load the preferences
+   prefs = gData->preferences
+
+# Load the parameter list
+   parList = gData->curExpt->parameters
+
+ # Process the experimental parameters
+   if(parList != null)
+
+    # Make all parameters accessible locally in case we need them
+      assignstruct(parList)
+
+    # Load the interface description if it exists
+      dir = gData->curExpt->ppPath
+
+      if(dir != null)
+
+         cd(dir)
+         mac = "$gData->curExpt->protocol$_interface.mac"
+         if(isfile(mac) == 0)
+            throw("No interface description macro")
+         endif 
+         mac = "$mac$:interfaceDescription"
+         itfc = mac()
+
+     # Generate the parameter list U.I. from 'itfc'              
+         if(vartype(itfc) == "list")
+            (visList, actualVis) = self->getParameterVisibilityList()
+            self->makeUIFromParList(itfc,gData->curExpt,self->showVisFlags,visList)
+         endif
+
+     # Update bandwidth and acqTime in the U.I.
+         parList = self->updateBWandAcq(parList)
+
+     # Update the U.I. scrollable panel
+         gView->exptPanel->panelupdate("")
+
+     # Update the U.I. control values from the parameter list
+         setctrlvalues(n,parList)
+
+     # Change the display state of the range controls based on the ppm/Hz selection
+         self->updateDispRange()
+
+     # All finished, so enable the parameters controls unless data has been collected
+         if(self->enableMode == "enable" & (not(dataIsPresent)))
+            enableMode = "true"
+         else
+            enableMode = "false"
+         endif
+
+         for(k = self->firstParameterCtrl to self->lastParameterCtrl)
+            if(getpar(n,k,"tag") == "hidden")
+               setpar(n,k,"visible","false")
+            else
+               setpar(n,k,"visible","true")
+            endif
+            if(getpar(n,k,"tag") == "disabled")
+               setpar(n,k,"enable","false")
+            else
+               setpar(n,k,"enable",enableMode)
+            endif
+          #  setpar(n,k,"highlitechanges","true")
+         next(k)
+
+      endif
+
+   else # No acqu.par preset
+
+      name = ""
+
+   endif # Is acqu.par file present?
+
+# Set the parameter list groupbox label
+   if(actualVis == "minimum")
+      mode =  "min"
+   elseif(actualVis == "all")
+      mode =  "all"
+   else
+      mode =  "user"
+   endif
+   protocol = gData->curExpt->protocol
+   suffix = gData->curExpt->suffix
+   source = gData->curExpt->source
+   if(source != "")
+      source = source + "-"
+   endif
+
+   if(suffix == "")
+      gView->exptParameterLabel->label("$protocol$ $source$parameters") # ($mode$)")
+   else
+      gView->exptParameterLabel->label("$protocol$ ($suffix$) $source$parameters") # ($mode$)")
+   endif
+
+endproc()
+
+
+##################################################################
+# Get a list of those parameters which should be visible
+##################################################################
+
+procedure(getParameterVisibilityList, self)
+
+   bak = getcwd()
+   lst = null
+   visibility = "all"
+
+# Check for current experiment parameters
+   if(not(isvar("gData->curExpt")))
+      return(lst,visibility)
+   endif
+
+   if(gData->curExpt->ppPath == "" | gData->curExpt->protocol == "")
+      return(lst,visibility)
+   endif
+
+   visibility = self->parameterVisibility
+
+   setpar(0,gView->experimentNr,"uncheckitem","minParKey")
+   setpar(0,gView->experimentNr,"uncheckitem","allParKey")
+   setpar(0,gView->experimentNr,"uncheckitem","userParKey")
+
+# Load the user defined visibility list
+  if(visibility == "userdefined")
+      cd(prefdir)
+      dir = "KeaParameters\\Experiments\\$gData->curExpt->protocol$"
+      mkdir(dir)
+      cd(dir)
+      if(isfile("parameterVisibility.mac"))
+        lst = parameterVisibility()
+        setpar(0,gView->experimentNr,"checkitem","userParKey")
+      else # Not found so try for minimum
+         visibility = "minimum"
+      endif
+      cd(bak)
+   endif
+
+# Load the minimum list of parameters if this option is selected
+  if(visibility == "minimum")
+      dir = gData->curExpt->ppPath
+      cd(dir)
+      if(isfile("parameterVisibility.mac"))
+         lst = parameterVisibility()
+         cd(bak)
+         setpar(0,gView->experimentNr,"checkitem","minParKey")
+         return(lst,visibility)
+      else # Not found so load all
+        visibility = "all"
+      endif
+   endif
+
+# Load them all
+   if(visibility == "all") # Otherwise load all
+     setpar(0,gView->experimentNr,"checkitem","allParKey")
+   endif
+
+   cd(bak)
+
+endproc(lst,visibility)
+
+
+##############################################
+# List the parameters for the current 
+# experiment to the CLI
+##############################################
+          
+procedure(listCurrentParameters, self)
+
+   if(gData->curExpt == null)
+      return
+   endif
+
+   if(self->firstParameterCtrl != -1)
+      par = getctrlvalues(0,"list","range",[self->firstParameterCtrl,self->lastParameterCtrl])
+      pr("\n\n------ Current parameters for $gData->curExpt->protocol$ ------")
+      pr(retvar(sortlist(par),1))
+      pr("\n\n--------------------------------------------------------------\n\n")
+   endif
+
+endproc()
+
+
+##############################################
+# Make the parameter list UI deleteing the 
+# old one first
+##############################################
+
+procedure(makeUIFromParList,self,itfc,exptInfo,showFlags=0,showList=null)
+
+   n = gView->wn
+   x = 125
+   y = 14
+   q = self->paramCtrlNrStart
+   try
+      if(size(itfc)%5 != 0)
+        throw("Invalid interface size - missing a comma?")
+      endif
+      controlsLoading = 1
+
+      panelNr = gView->exptPanel->ctrlNr
+      name = ""
+      
+      # Restore panel to top position before deleting controls
+      setpar(n,panelNr,"panelset",1)
+      setpar(n,panelNr,"panelset",0)
+
+      # Delete old controls in panel
+      if(self->firstParameterCtrl != -1)
+        for(k = self->firstParameterCtrl to self->lastParameterCtrl)
+           rmobj(n,k)
+        next(k)
+      endif
+   
+      # Allow controls to be added to window
+      seteditwin(n,"fast")
+      
+      # Add new controls by interpreting interface description list
+      self->firstParameterCtrl = q
+      tabNr = q
+
+      # Offset the parameters horizontally if in 'choose' mode 
+      if(showFlags)
+         cbOff = 20
+         x = x + cbOff
+      else
+         cbOff = 0
+      endif
+
+      cnt = 0
+
+   # Check for special modes
+      bandwidthMode = 0
+      for(m = 0 to size(itfc)-1 step 5)
+         if(itfc[m] == "bandwidthPPM")
+            bandwidthMode = 1   
+            exitfor()
+         elseif(itfc[m] == "bandwidth")
+            bandwidthMode = 0  
+            exitfor()
+         endif
+      next(m) 
+
+      # Loop over the interface list
+      for(m = 0 to size(itfc)-1 step 5)
+   
+         name  = itfc[m]
+         label = itfc[m+1]
+         ctrl  = itfc[m+2]
+         type  = itfc[m+3]
+         range = itfc[m+4]
+
+         cltrInfo = parse(ctrl,",")
+         if(size(cltrInfo) == 1)
+            ctrl = cltrInfo[0]
+            ctrlInfo = ""
+         else
+            ctrl = cltrInfo[0]
+            ctrlInfo = cltrInfo[1]
+         endif
+
+         if(ctrl == "tmw")
+            ctrl = "tm"
+         elseif(ctrl == "tbw")
+            ctrl = "tb"
+         endif
+
+         qStart = q
+ 
+      # Add label for control (except dividers)
+        if(ctrl != "dv")
+            statictext(q,x,y,"right",label+":")
+            setpar(n,q,"panelparent",panelNr)
+        endif
+ 
+      # Add control
+         if(ctrl == "tb") # Textbox
+            textbox(q+1,x+8,y-3,64)
+            if(gData->commonPar != null) # Color the text if its a common par
+               idx = getlistindex(gData->commonPar->common,name)
+               if((idx != -1) & (gData->useCommonPar == "yes"))
+                  setpar(0,q+1,"color",[0,128,0],"readonly","true")
+               endif
+            endif
+         elseif(ctrl == "tb_wide") # Wide textbox
+            textbox(q+1,x+8,y-3,100)
+            if(gData->commonPar != null) # Color the text if its a common par
+               idx = getlistindex(gData->commonPar->common,name)
+               if((idx != -1) & (gData->useCommonPar == "yes"))
+                  setpar(0,q+1,"color",[0,128,0],"readonly","true")
+               endif
+            endif
+         elseif(ctrl == "tb2") # Textbox
+            textbox(q+1,x+8,y-3,40)
+            if(gData->commonPar != null) # Color the text if its a common par
+               idx = getlistindex(gData->commonPar->common,name)
+               if((idx != -1) & (gData->useCommonPar == "yes"))
+                  setpar(0,q+1,"color",[0,128,0],"readonly","true")
+               endif
+            endif
+         elseif(ctrl == "dv") # Divider
+            cnt = cnt - 1
+            if(self->showParHelp)
+               statictext(q,x-105,y,"left","=== $label$ =================================")
+               setpar(0,q,"color",[0,128,0])
+               button(q+1,x-120,y+2,12,12,"")
+               callback = "gView->dividerHelp(\"$type$\");"
+               setpar(0,q+1,"procedure",callback,
+                            "tooltip","Show help for the '$label$' parameter group")
+            else
+               statictext(q,x-125,y,"left","=== $label$ =================================")
+               setpar(0,q,"color",[0,128,0])
+            endif
+         elseif(ctrl == "cb") # Checkbox
+            init = scanstr(range,"%1,*")
+            checkbox(q+1,x+8,y,range,init)
+         elseif(ctrl == "bt") # Button
+            button(q+1,x+6,y-4,20,20,"")
+            callback = "gView->gotoExptFolder(\"$exptInfo->protocol$\"); $exptInfo->protocol$:$range$"
+            setpar(n,q+1,"procedure",callback,
+                         "panelparent",panelNr)
+         elseif(ctrl == "rb") # Radiobuttons
+         # Parse the options and labels (spacing,option1, option2 ... optionN, label1, label2 ... labelN)
+            rbLst = parse(range,",")             
+            if(isinteger(rbLst[0]) == 0)
+               seteditwin(-n,"fast")
+               message("Error","The first radiobutton entry should be a vertical spacing in pixels","error")
+               abort("")
+            endif
+            rbSpacing = eval(rbLst[0])
+            states = ""
+            rbLst = rbLst[1:-1]             
+            nrRB = size(rbLst)
+            if(nrRB%2 != 0)
+               seteditwin(-n,"fast")
+               message("Error","The number of radiobutton option entries\rshould be a multiple of two: options + labels.\rInvalid arguments are: '$range$'","error")
+               abort("")
+            endif
+            nrRB = nrRB/2
+            for(k = 0 to nrRB-1)
+               states = states + rbLst[k]               
+               if(k < nrRB-1)
+                  states = states + ","
+               endif
+            next(k)
+            radiobuttons(q+1,x+8,y,rbSpacing,"vertical",states,rbLst[0])
+         # Add labels for radiobuttons
+            for(k = 0 to nrRB-1)
+              label = rbLst[nrRB + k]              
+              statictext(q+2+k,x+26,y+k*rbSpacing+1,"left",label)
+              setpar(n,q+2+k,"panelparent",panelNr)
+            next(k)     
+         elseif(ctrl == "tm") # Text menu
+            textmenu(q+1,x+8,y-3,64,100)
+         elseif(ctrl == "tm_wide") # Wide text menu
+            textmenu(q+1,x+8,y-3,100,100)
+         else
+            throw("Invalid control type $ctrl$")
+         endif  
+      
+        # Set expected data type
+         if(type != "")
+            if(ctrl == "tb" | ctrl == "tm" | ctrl == "tb2" | ctrl == "tmw" | ctrl == "tbw")
+               if(type == "readonly_string")
+                  setpar(n,q+1,"type","string")
+                  setpar(n,q+1,"readonly","true")
+               else
+                  setpar(n,q+1,"type",type)
+               endif
+            endif
+         endif
+        # Set expected range
+         if(range != "")
+            if(ctrl == "tb" | ctrl == "tb2" | ctrl == "tb_wide")
+               setpar(n,q+1,"range",eval(range))
+            elseif(ctrl == "tm" | ctrl == "textmenu" | ctrl == "tm_wide")
+               if(range = "xNuclei") # Special case for X-channel experiment
+                  range = ["1H"] # = KeaParameterUpdater:getXChannelNames()
+                  setpar(n,q+1,"menu",range)
+               elseif(range = "mNuclei") # Special case for multi channel 1 (main) experiments
+                  range = ["1H"] #KeaParameterUpdater:getMChannelNames()
+                  setpar(n,q+1,"menu",range)
+               elseif(range = "allNuclei") # Special case for M & X-channel experiment
+                  #range = KeaParameterUpdater:getMChannelNames()
+                  #range = range + KeaParameterUpdater:getXChannelNames()
+                  setpar(n,q+1,"menu",["1H"])
+               else
+                  setpar(n,q+1,"menu",eval(range))
+               endif
+            endif
+         endif
+
+         if(ctrlInfo == "proc" | (self->parChangedFlag == 0 & gView->exptModeCtrl->text == "batch")) 
+            procName = "gParam->parameterChanged()"
+         else
+            procName = ""
+         endif
+    
+         if(bandwidthMode)
+          # Update nrPnts and  dwellTimeBW if acqTime or BW is changed
+            if(name == "bandwidthPPM" | name == "acqTime")
+              procName = "gParam->updateBWandAcq()"
+            endif             
+          # Disable dwellTime and nrPnts
+            if(name == "dwellTime" | name == "nrPnts")
+              setpar(n,q+1,"enable","false","tag","disabled")
+            endif
+         else
+          # Update BW and acqTime if nrPnts or dwellTime is changed
+            if(name == "nrPnts" | name == "dwellTime")
+              procName = "gParam->updateBWandAcq()"
+            endif
+
+          # Disable acqTime and bandwidth
+            if(name == "acqTime" | name == "bandwidth")
+              setpar(n,q+1,"enable","false","tag","disabled")
+            endif
+         endif
+
+        # Toggle enable on display range controls
+         if(name == "usePPMScale")
+            procName = "gParam->updateBWandAcq()"
+         endif
+
+       # Other parameters (panelparent, menubar, tabnumber, name)
+         if(ctrl == "dv")
+            setpar(n,q,"panelparent",panelNr)  
+            q = q + 1
+            if(self->showParHelp)
+               setpar(n,q,"panelparent",panelNr)
+               q = q + 1
+            endif
+         elseif(ctrl == "rb")
+            setpar(n,q+1,"panelparent",panelNr,
+                      "tab_number",tabNr,
+                      "procedure",procName,
+                      "name",name)
+            tabNr = tabNr + 1
+            q = q + 2 + nrRB
+         elseif(ctrl == "tb" | ctrl == "tm" | ctrl == "tb_wide" | ctrl == "tm_wide")
+            setpar(n,q+1,"panelparent",panelNr,
+                      "menubar",gView->textEditMenu,
+                      "acceptkeyevents","true",
+                      "procedure",procName,
+                      "tab_number",tabNr,
+                      "name",name)
+            tabNr = tabNr + 1
+            q = q + 2
+         elseif(ctrl == "tb2")
+            setpar(n,q+1,"panelparent",panelNr,
+                      "menubar",gView->textEditMenu,
+                      "acceptkeyevents","true",
+                      "procedure",procName,
+                      "tab_number",tabNr,
+                      "name",name)
+            statictext(q+2,x+52,y,"left","")
+            setpar(n,q+2,"panelparent",panelNr)
+            tabNr = tabNr + 1
+            q = q + 3
+         elseif(ctrl == "cb")
+            setpar(n,q+1,"panelparent",panelNr,
+                      "procedure",procName,
+                      "tab_number",tabNr,
+                      "name",name)
+            tabNr = tabNr + 1
+            q = q + 2
+         else
+            setpar(n,q+1,"panelparent",panelNr,
+                      "tab_number",tabNr,
+                      "name",name)
+            tabNr = tabNr + 1
+            q = q + 2
+         endif 
+
+         qEnd = q
+
+      # Set a tag on controls to hide or show depending on parameter show state
+         if(showList == null)
+            showParameter = 1
+         else
+            showParameter = (getlistindex(showList,name) >= 0)
+         endif
+         hide = (showParameter == 0 & showFlags == 0) # & ctrl != "dv" & ctrl != "divider")
+         for(w = qStart to qEnd-1) # Loop over controls belonging to this name
+            if(hide)
+               setpar(n,w,"tag","hidden")
+            else
+               setpar(n,w,"tag","")
+            endif
+         next(w)
+
+      # Add a checkbox so user can select which parameters to display
+         if(showFlags)
+          #  if(ctrl != "dv" & ctrl != "divider")
+               checkbox(q,5,y,"no,yes","no")
+               setpar(n,q,"panelparent",panelNr)
+               setpar(n,q,"tag",name)
+               if(showParameter == 1)
+                  setpar(n,q,"text","yes")
+               else
+                  setpar(n,q,"text","no")
+               endif
+               q = q + 1
+          #  endif
+         endif
+      
+      # Update y position - radiobuttons are special
+         if(showParameter | showFlags) # | ctrl == "dv")
+            if(ctrl == "rb")
+               y = y + (nrRB-1)*rbSpacing + 24
+            else
+               y = y + 24 
+            endif
+         endif
+
+         cnt = cnt + 1
+
+      next(m) # End of interface description loop
+
+# Add a end line   
+#      statictext(cnt,x-120,y,"left","==========================================")
+#      q = q + 1
+#      cnt = cnt + 1
+
+   # Stop adding controls
+     seteditwin(-n,"fast")
+   
+   # Note the last control so we can deleting them next time
+     self->lastParameterCtrl = q-1  
+
+   catch # Catch any errors
+
+      pr lasterror()
+
+    # Delete any controls already created
+    # and reset anything important
+      if(controlsLoading)
+
+         n = guiwinnr()  
+       # Stop editing
+         seteditwin(-n,"fast")
+         for(k = self->firstParameterCtrl to q+2)
+            if(isobj(n,k))
+               rmobj(n,k)
+            endif
+         next(k)
+         self->lastParameterCtrl = self->firstParameterCtrl - 1
+         setpar(n,panelNr,"panelupdate","")
+         pr "\n   Last control added = $name$\n"
+      endif
+
+      self->firstParameterCtrl = -1
+      self->lastParameterCtrl = -1
+      lst = null
+ 
+   endtry
+
+  # wvBandwidthMode = bandwidthMode
+   setfocus(0)
+
+
+endproc()
+
+
+##############################################
+# Change what parameters are displayed
+# when an experiment is selected
+##############################################
+
+procedure(modifyParameterDisplay, self, which)
+
+   curExpt = gData->curExpt
+   path = curExpt->ppPath
+   path = getbasepath(path)
+   folder = getbasedir(path)
+   ctrlStart = self->firstParameterCtrl
+   ctrlEnd = self->lastParameterCtrl
+   self->showVisFlags = 0
+
+   if(which == "minimum")
+
+      self->parameterVisibility = "minimum"
+      gData->curExpt->parameters = struct(getctrlvalues(0,"list","range",[ctrlStart,ctrlEnd]))
+      setpar(0,gView->experimentNr,"checkitem","minParKey")
+      setpar(0,gView->experimentNr,"uncheckitem","allParKey")
+      setpar(0,gView->experimentNr,"uncheckitem","userParKey")
+      self->createParameterCtrls()
+
+   elseif(which == "all")
+
+      self->parameterVisibility = "all"
+      gData->curExpt->parameters = struct(getctrlvalues(0,"list","range",[ctrlStart,ctrlEnd]))
+      setpar(0,gView->experimentNr,"uncheckitem","minParKey")
+      setpar(0,gView->experimentNr,"checkitem","allParKey")
+      setpar(0,gView->experimentNr,"uncheckitem","userParKey")
+      self->createParameterCtrls()
+
+   elseif(which == "userdefined")
+
+      self->parameterVisibility = "userdefined"
+      gData->curExpt->parameters = struct(getctrlvalues(0,"list","range",[ctrlStart,ctrlEnd]))
+      setpar(0,gView->experimentNr,"uncheckitem","minParKey")
+      setpar(0,gView->experimentNr,"uncheckitem","allParKey")
+      setpar(0,gView->experimentNr,"checkitem","userParKey")
+      self->createParameterCtrls()
+
+   endif
+
+   setpar(0,gView->experimentNr,"uncheckitem","editParVis")
+
+endproc()
+
+##############################################
+# A parameter has been changed so update
+# the batch check if the protocols in the
+# batch and parameter list are the same and
+# the protocol came from the batch list.
+# In addition if there is a callback procedure
+# defined in the macro then call that too.
+##############################################
+
+procedure(parameterChanged, self)
+
+   if(self->parChangedFlag == 0 & gView->exptModeCtrl->text == "batch") 
+      try  
+         currentBatchExpt = trimstr(scanstr(gView->batch->text,"%1|%2"))
+         currentParExpt = gData->curExpt->protocol
+         if((currentBatchExpt == currentParExpt) & (gExpt->exptSource == "batch"))
+            self->parChangedFlag = 1
+            bak = getcwd()
+            cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\BitMaps")
+            gView->upDateParametersButton->icon("checkRed.png")
+            cd(bak)
+         endif
+      catch
+      endtry
+   endif
+
+   # Look into the experiment control file and then the pulse program file
+   protocol = gData->curExpt->protocol
+   if(isproc(gData->curExpt->ppPath,"$protocol$.mac","parameterCallBack"))
+      proc =  "$protocol$:parameterCallBack"
+      proc()
+   else 
+      file = getbasedir(gData->curExpt->ppPath)
+      if(isproc(gData->curExpt->ppPath,"$file$_pp.mac","parameterCallBack"))
+        proc =  "$file$_pp:parameterCallBack"
+        proc()
+      endif
+   endif
+
+endproc()
+
+##############################################
+# Extract the visible parameters and save 
+# them to the pulse program folder as the 
+# minimum visibility file
+##############################################
+
+procedure(saveMinimumVisibility, self)
+
+   curExpt = gData->curExpt
+   bak = getcwd()
+   cd(prefdir)
+   protocol = curExpt->protocol
+   dir = "KeaParameters\\Experiments\\$protocol$"
+   mkdir(dir)
+   cd(dir)
+
+   if(isfile("parameterVisibility.mac"))
+      lst = parameterVisibility()
+      if(isdir(curExpt->ppPath))
+         cd(curExpt->ppPath)
+         if(isfile("parameterVisibility.mac"))
+            if(query("Warning","This will overwrite the current parameter visibiliy file\rfor the experiment: '$protocol$'.\r\rContinue?") == "no")
+               return
+            endif
+         endif
+         printtofile("parameterVisibility.mac")
+         pr("procedure(parameterVisibility)\n")
+         if(size(lst) >= 2)
+            pr ("\n   showList = [\"$lst[0]$\",\n")
+            for(k = 1 to size(lst)-2)
+               pr("               \"$lst[k]$\",\n")  
+            next(k)
+            pr("               \"$lst[-1]$\"]\n")  
+         elseif(size(lst) == 1)
+            pr("\n   showList = [\"$lst[0]$\"]\n")  
+         else
+            pr("\n   showList = null\n")    
+         endif  
+         pr("\nendproc(showList)\n")
+         closeprint()
+         message("Information","The parameter visibility file for protocol '$protocol$' has been updated","info")      
+      endif
+   else
+      message("Error","A user defined visibility file for '$protocol$' has not been written yet","error")
+   endif
+   cd(bak)
+
+endproc()
+
+##################################################################
+# Saves the current parameter visibility
+##################################################################
+
+procedure(saveParameterVisibility, self)
+
+# Extract the visible parameters from the UI
+   lst = list(0)
+   firstCtrl = self->firstParameterCtrl
+   lastCtrl = self->lastParameterCtrl
+   sv = matrix(lastCtrl-firstCtrl+1)
+   for(k = firstCtrl to lastCtrl)
+     name = getpar(0,k,"tag")
+     if(name != "")
+        vis = getpar(0,k,"text")
+        if(vis == "yes")
+           lst = lst + name
+        endif
+     endif
+     
+   next(k)
+
+# Write this list to the preferences experiment folder
+   curExpt = gData->curExpt
+   bak = getcwd()
+   cd(prefdir)
+   dir = "KeaParameters\\Experiments\\$curExpt->protocol$"
+   mkdir(dir)
+   cd(dir)
+
+   printtofile("parameterVisibility.mac")
+   pr("procedure(parameterVisibility)\n")
+   if(size(lst) >= 2)
+      pr ("\n   showList = [\"$lst[0]$\",\n")
+      for(k = 1 to size(lst)-2)
+         pr("               \"$lst[k]$\",\n")  
+      next(k)
+      pr("               \"$lst[-1]$\"]\n")  
+   elseif(size(lst) == 1)
+      pr("\n   showList = [\"$lst[0]$\"]\n")  
+   else
+      pr("\n   showList = null\n")    
+   endif
+   
+   pr("\nendproc(showList)\n")
+   closeprint()
+   cd(bak)
+
+endproc()
+
+
+##############################################
+# Save the default parameter file for the 
+# current experiment
+##############################################
+
+procedure(saveToDefaults, self)
+
+   if(gData->curExpt == null)
+      message("Error","Please select an experiment","error")
+      return
+   endif
+     
+   curExpt = gData->curExpt
+
+   protocol = curExpt->protocol
+
+   if(query("Warning","This will overwrite the current default parameter file\rfor the experiment: $protocol$.\r\rContinue?") == "no")
+      return
+   endif
+
+# The data directory
+   srcDir = curExpt->dataPath
+
+# The pulse program folder
+   dstDir = curExpt->ppPath
+
+# Save to the default parameter file after
+# merging with the existing one and changing
+# pr removing some parameters
+   error = 1
+   if(isdir(srcDir))
+      cd(srcDir)
+      if(isfile("acqu.par"))
+         par = load("acqu.par","truedoubles")
+      # Remove some parameters needed by MNova but not Expert
+         par = rmfromlist(par,"b1Freq")
+         par = rmfromlist(par,"b1FreqCh2")
+         par = rmfromlist(par,"lowestFrequency")
+         par = rmfromlist(par,"lowestFrequency2")
+         par = rmfromlist(par,"rxChannel2")
+         par = rmfromlist(par,"position")
+         par = rmfromlist(par,"windowSize")
+  
+      # Merge with existing default in case some parameter 
+      # is not present and then save        
+         if(isdir(dstDir))
+            cd(dstDir)
+            if(isfile("$protocol$Default.par"))
+               defaults = load("$protocol$Default.par")
+               save("$protocol$DefaultBak.par", defaults)
+               par = struct(mergelists(par,defaults))
+            else
+               par = struct(par)
+            endif
+            par->dataDirectory = ""
+            par->experiment = protocol
+            par->expName = "" 
+            par->specID = ""
+            par->specType = "" 
+       # Save the data 
+            save("$protocol$Default.par",sortlist(list(par)))
+            error = 0
+         endif
+      endif
+   else
+      message("Error","Current data set not found for '$protocol$' - aborting.","error")
+      return
+   endif
+
+   if(error)
+      message("Error","Problems copying to '$protocol$' default parameter file .","error")
+   else
+      message("Success","Default parameter file for '$protocol$' updated.","info")
+   endif
+
+endproc()
+
+
+##################################################################
+# Show or hide the parameter visibility controls
+##################################################################
+
+procedure(toggleParameterVisibility, self)
+
+   self->showVisFlags = not(self->showVisFlags)
+   if(self->showVisFlags == 0)
+      self->saveParameterVisibility()
+      setpar(0,gView->experimentNr,"uncheckitem","editParVis")
+   else
+      setpar(0,gView->experimentNr,"checkitem","editParVis")
+   endif
+   self->parameterVisibility = "userdefined"
+   self->createParameterCtrls()
+   setfocus(0,gView->history->ctrlNr)
+   setpar(0,gView->experimentNr,"uncheckitem","minParKey")
+   setpar(0,gView->experimentNr,"uncheckitem","allParKey")
+   setpar(0,gView->experimentNr,"checkitem","userParKey")
+
+endproc()
+
+
+################################################
+# Update the bandwidth and acquisition 
+# parameter via lst or the user interface
+# Update the relevant controls and return
+# correct list.
+#
+# Also check for the presense of the bandwidthPP
+# parameter. In this case update the dwelltime
+# and nrPnts paramaters and also check for the
+# spectralPnts parameter and menu.
+#################################################
+
+procedure(updateBWandAcq, self, lst)
+
+   if(nrArgs == 1)
+      lst = getctrlvalues(0)
+   endif
+
+# Only update the BW and Acq if a return is pressed or option selected
+# Note this prevents changes when in batch mode from triggering the red check
+#   if(isvar("parentCtrl") & nrArgs == 1)
+#      if(parentCtrl->event == "keydown")
+#         return
+#      endif   
+#   endif
+
+   if(vartype(lst) == "structure")
+      lst = list(lst)
+   endif
+
+   assignlist(lst)
+
+   f2 = null
+
+# Check if a nucleus is defined
+   if(isvar("nucleus"))
+   
+   # Try to get the current frequency
+      try
+         (n2,n1) = scanstr(nucleus,"%1-%2")
+      catch
+         n2 = nucleus
+      endtry
+      try
+         f2 = eval("b1Freq$n2$")
+      catch
+         f2 = null
+      endtry
+      if((isfloat(f2) == 0) & (isdouble(f2) == 0))
+         f2 = null
+      endif
+      if(f2 == 0)
+         f2 = null
+      endif
+
+   else
+
+      f2 = null
+
+   endif
+
+# Dwelltime and nrPnts are determined by bandwidth in PPM and acquisition time in ms
+   if(isvar("bandwidthPPM") & isvar("acqTime"))
+
+      if(f2 == null)
+         return(lst)
+      endif
+
+      try
+         dwellTime = round(1e6/(bandwidthPPM*single(f2)))
+         nrPnts = round(acqTime*1e3/dwellTime)
+      catch
+         return
+      endtry
+      lst = setlistvalue(lst,"dwellTime","$dwellTime$")
+      lst = setlistvalue(lst,"nrPnts","$nrPnts$")
+      try
+         m = findobj(0,"name","nrPnts")
+         if(m >= 0)
+            if(getpar(0,m,"tag") != "hidden")
+               setpar(0,m,"text",nrPnts,
+                          "tag","disabled")
+            endif
+         endif
+         m = findobj(0,"name","dwellTime")
+         if(m >= 0)
+            if(getpar(0,m,"tag") != "hidden")
+               setpar(0,m,"text",dwellTime,
+                          "tag","disabled")
+            endif
+         endif
+         m = findobj(0,"name","spectralPnts")
+         base = trunc(log2(nrPnts)+1)
+         if(base < 16)
+            if(m >= 0)
+               if(spectralPnts < nrPnts)
+                  setpar(0,m,"menu",2^[base:16],"range",[2^base,2^16])
+                  setpar(0,m,"text","$2^base$")
+               endif
+               lst = setlistvalue(lst,"spectralPnts","$2^base$")
+            endif
+         else
+            message("Error","Too many data points to collect.\rReduce acquisition time or increase bandwidth","error")
+            abort("")   
+         endif
+      catch
+         pr lasterror()
+      endtry
+      
+   # Acquisition and bandwidth are determned by dwellTime in us and nrPnts 
+   elseif(isvar("dwellTime") & isvar("nrPnts"))
+
+      if(isfloat(dwellTime) == 0)
+         return(lst)
+      endif
+
+    # Update the bandwidth and acqusition time
+      try
+         bandwidth = 1000/dwellTime
+         acqTime = dwellTime*nrPnts/1000
+      catch
+         return
+      endtry
+      lst = setlistvalue(lst,"acqTime","$acqTime$")
+      lst = setlistvalue(lst,"bandwidth","$bandwidth$")
+      try
+         m = findobj(0,"name","acqTime")
+         if(m >= 0)
+            if(getpar(0,m,"tag") != "hidden")
+               setpar(0,m,"text",acqTime,
+                          "tag","disabled")
+            endif
+         endif
+         m = findobj(0,"name","bandwidth")
+         if(m >= 0)
+            if(getpar(0,m,"tag") != "hidden")
+               setpar(0,m,"text","$bandwidth,1.1f$",
+                          "tag","disabled")
+             # Update bandwidth in ppm if frequency defined
+               if(f2 != null)
+                  bandwidthPPM = bandwidth*1000/f2
+                  if(getpar(0,m+1,"objtype") == "static text")
+                     setpar(0,m+1,"text","($round(bandwidthPPM),1.0f$ ppm)",
+                             "tag","disabled")
+                  endif
+               endif              
+            endif
+         endif
+      catch
+         pr lasterror()
+      endtry
+
+   endif
+   
+# Update the batch list if relevant
+   if(isvar("parentCtrl") & nrArgs == 1)
+      self->parameterChanged()
+   endif
+
+endproc(lst)
+
+
+##############################################
+# The display ppm scale check has been 
+# selected to toggle enable on ppm/hz display
+# range fields.
+##############################################
+
+procedure(updateDispRange, self)
+
+   c0 = findobj(0,"name","usePPMScale")
+   c1 = findobj(0,"name","dispRangeMinPPM")
+   c2 = findobj(0,"name","dispRangeMaxPPM")
+   c3 = findobj(0,"name","dispRange")
+   c4 = findobj(0,"name","dispRangePPM")
+
+   if(c0 >= 0)
+      if(getpar(0,c0,"text") == "yes")
+         if(c1 > 0 & c2 > 0)
+            setpar(0,c1,"enable","true")
+            setpar(0,c2,"enable","true")
+         endif
+         if(c4 > 0)
+            setpar(0,c4,"enable","false")
+         endif
+         if(c3 > 0)
+            setpar(0,c3,"enable","false")
+         endif
+      else
+         if(c1 > 0 & c2 > 0)
+            setpar(0,c1,"enable","false")
+            setpar(0,c2,"enable","false")
+         endif
+         if(c4 > 0)
+            setpar(0,c4,"enable","true")
+         endif
+         if(c3 > 0)
+            setpar(0,c3,"enable","true")
+         endif
+      endif
+   endif
+
+endproc()

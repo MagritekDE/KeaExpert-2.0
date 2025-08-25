@@ -1,0 +1,75 @@
+procedure(laplace_cpmg)
+
+   n = window("Laplace CPMG", -1, -1, 573, 157)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+
+procedure(definecontrols,n)
+
+    # Define all controls with basic parameters
+       groupbox(1, "", 15, 9, 166, 119)
+       statictext(2, 128, 30, "right", "Filter time domain")
+       checkbox(3, 136, 31, "no,yes", "no",
+            fn = findobj(0,"name","filter");
+            ucsCtrl:enableControls(fn+1,fn+3,fn);)
+       statictext(4, 45, 61, "right", "Filter")
+       textmenu(5, 52, 57, 85, 200)
+       button(6, 147, 57, 22, 22, "...",
+          filters();)
+       statictext(7, 128, 93, "right", "Time magnitude")
+       checkbox(8, 136, 94, "no,yes", "no")
+       groupbox(9, "", 187, 9, 97, 119)
+       statictext(10, 224, 35, "center", "Sum echoes")
+       checkbox(11, 260, 35, "no,yes", "no")
+       statictext(12, 227, 64, "center", "Autophase")
+       checkbox(13, 260, 65, "no,yes", "no")
+       statictext(14, 228, 93, "center", "Normalize")
+       checkbox(15, 260, 95, "no,yes", "no")
+       groupbox(16, "", 289, 9, 125, 119)
+       statictext(17, 385, 36, "right", "Exponential fit")
+       statictext(18, 385, 54, "right", "Bi-exponential fit")
+       statictext(19, 385, 72, "right", "Inverse-Laplace fit")
+       statictext(20, 385, 90, "right", "No fit")
+       radiobuttons(21, 390, 38, 18, "vertical", "exp,biexp,nnls,none", "exp",
+            fn = findobj(0,"name","fitType");
+            ucsCtrl:enableControls(fn+1,fn+8,fn,3);)
+       groupbox(22, "", 420, 9, 137, 119)
+       statictext(23, 491, 24, "center", "Relaxation range (ms)")
+       statictext(24, 479, 50, "right", "Minimum")
+       textbox(25, 486, 45, 43)
+       statictext(26, 479, 72, "right", "Maximum")
+       textbox(27, 486, 68, 43)
+       statictext(28, 479, 99, "right", "Alpha")
+       textbox(29, 486, 97, 44)
+
+     # Set other control parameters
+       setpar(n,3,"valueID","filter")
+       setpar(n,5,"valueID","filterType",
+                  "menu",[""])
+       setpar(n,8,"valueID","timeMag")
+       setpar(n,11,"valueID","sumEchoes")
+       setpar(n,13,"valueID","autoPhase")
+       setpar(n,15,"valueID","normalize")
+       setpar(n,21,"valueID","fitType")
+       setpar(n,25,"valueID","x_minimum")
+       setpar(n,27,"valueID","x_maximum")
+       setpar(n,29,"valueID","alpha")
+
+endproc(29, "processing+display")
+
+##########################################################
+# Procedure to update state GUI based on certain variables
+# this will appear as part of the tab button procedure
+#############s#############################################
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","filter");
+   ucsCtrl:enableControls(fn+1,fn+3,fn);
+   fn = findobj(0,"name","fitType");
+   ucsCtrl:enableControls(fn+1,fn+8,fn,3);
+
+endproc()

@@ -1,0 +1,88 @@
+####################################################
+#                         copydata.mac
+#
+# Copy the current 2D data and then paste it in the
+# a different region preserving the plot labels
+# and zoom extent.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2007
+#
+#####################################################
+
+procedure(copyData)
+
+   n = :windowdefinition()
+   showwindow(n)
+   x1 = -1
+
+endproc()
+
+####################################################
+# Generate the window interface
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D copy/paste data", -1, -1, 193, 78)
+
+      # Define all controls with basic parameters
+       windowvar(y2,y1,x2,x1,mode,nc,ly,lx,txt,y,x,m)
+       button(1, 11, 8, 95, 27, "Copy data",
+          :copy_data();)
+       button(2, 11, 43, 95, 27, "Paste data",
+          :paste_data();)
+       button(3, 120, 8, 54, 27, "Help",
+          :show_help();)
+       button(4, 120, 43, 54, 27, "Exit",
+          closewindow(0);)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","copydata.htm")
+endproc()
+
+
+####################################################
+# Copy the current zoom region to window variables
+####################################################
+
+procedure(copy_data)
+
+# Get the data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+      message("Error","No 2D data set","error")
+      return()
+   endif
+# Get the labels and zoom region
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+
+endproc()
+
+####################################################
+# Paste the data stored in window variables
+####################################################
+
+procedure(paste_data)
+
+# Make sure a region has been copied
+   if(x1 == -1)
+      message("Error","Data needs to be copied first")
+      return()
+   endif
+
+# Display the new data
+   image(m,x,y)
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+
+endproc()

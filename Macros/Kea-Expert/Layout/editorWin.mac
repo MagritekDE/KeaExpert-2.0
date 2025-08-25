@@ -1,0 +1,356 @@
+##################################################
+# Generate an editor window
+#
+# 3 modes:
+#
+#  0 arguments - full is self contained window
+#  1 argument - full window but constrained
+#  2 arguments - editor object is part of another window
+#
+#  n is the window number
+#  m is the initial object number
+#
+###################################################
+
+procedure(editorWin, n, m)
+
+   if(nrArgs == 0) # Stand alone window
+      (x,y,w,h) = :loadpar()
+      n = window("Text editor", -1,-1,w,h,"resizable")
+     # setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"title","Editor ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      m = 1
+      editor(m,5,5,"ww-10","wh-10")
+   elseif(nrArgs == 1) # Constrained window
+      mode = n
+      n = window("Text editor", "0","0","ww","wh","resizable")
+      setwindowpar(n,"titleupdate","true")
+      setwindowpar(n,"title","Editor ($n$)")
+      if(mode == 1)
+         setwindowpar(n,"constrained","true")
+      elseif(mode == 2)
+         setwindowpar(n,"constrained","true")
+         setwindowpar(n,"permanent","true")
+      endif
+      m = 1
+     editor(m,5,5,"ww-10","wh-10")
+   else # Part of another window
+     editor(m,5,5,"rw-10","rh-10")
+     setwindowpar(n,"titleupdate","true")
+   endif
+   
+   statusbox(m+1,"ww-50","ww","-1")
+   
+   menu(m+2,"Multi-edit","1 edit window\tCtrl+Shift+S",funcedit("multiedit 1*1"),
+                      "1 row by 2 columns\tCtrl+Shift+H",funcedit("multiedit 2*1"),
+                      "1 row by 3 columns\tCtrl+Shift+T",funcedit("multiedit 3*1"),
+                      "2 rows by 1 column\tCtrl+Shift+V",funcedit("multiedit 1*2"),
+                      "2 rows by 2 columns\tCtrl+Shift+G",funcedit("multiedit 2*2"),
+                      "m rows by n columns\tCtrl+Shift+M",funcedit("multiedit m*n"))
+   
+   menu(m+3,"File",
+                "Open macro\tCtrl+O",funcedit("open macro"),
+                "Save macro\tCtrl+S",editorWin:saveMacro(),
+                "Save macro as ...",editorWin:saveMacroAs(),
+                "Separator", ,  
+                "New editor window\tCtrl+N",editorWin(),
+                "Separator", ,   
+                "Print macro\tCtrl+P",funcedit("print macro"),
+                "Close macro",funcedit("close macro"),  
+                "Close all macros",funcedit("close all macros"),           
+                "Separator", , 
+                "Open folder containing macro/file",editorWin:openCurrentEditFolder(), 
+                "Separator", ,  
+                "Run text\tCtrl+T",funcedit("run text"),
+                "Save and run text\tCtrl+R", editorWin:saveAndRunMacro(),
+                "Separator", ,  
+                "Exit\tCtrl+Q", :exitproc(); closewindow(0))
+
+   menu(m+4,"Edit","Undo\tCtrl+Z",funcedit("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcedit("cut"),
+                "Copy\tCtrl+C",funcedit("copy"),
+                "Paste\tCtrl+V",funcedit("paste"),
+                "Separator", , 
+                "Copy selection to new window\tCtrl+Shift+C",:copyToNewWindow(),
+                "Select all\tCtrl+A",funcedit("select all"),
+                "Separator", , 
+                "Indent\tTab",funcedit("indent text"),
+                "Unindent\tShift+Tab",funcedit("unindent text"),
+                "Separator", , 
+                "Block comment\tCtrl+K",funcedit("block comment"),
+                "Block uncomment\tCtrl+U",funcedit("block uncomment"),
+                "Separator", , 
+                "Sort selection",funcedit("sort selection"),
+                "Sort procedures\tCtrl+Alt+S",funcedit("sort procedures"),
+                "Separator", , 
+                "Find down\tF3",funcedit("find down"),
+                "Find up\tShift+F3",funcedit("find up"),
+                "Find and replace\tCtrl+F",funcedit("find and replace"),
+                "Separator", , 
+                "Tabs to spaces\tCtrl+T",funcedit("tabs to spaces"))
+   
+   menu(m+5,"View","Go to line number ...\tCtrl+G",funcedit("go to line"),
+                "Separator", , 
+                "Go to procedure\tCtrl+Double-click",funcedit("go to procedure"),
+                "Go back\tF5",funcedit("go back"),
+                "Go forward\tF6",funcedit("go forward"),
+                "Separator", , 
+                "Show procedure syntax\tCtrl+click","",
+                "Query macro procedures ...\tCtrl+M", :showProcs(),
+                "Separator", , 
+                "Increment font size\tCtrl+I",funcedit("increment font size"),
+                "Decrement font size\tCtrl+Shift+I",funcedit("decrement font size"),
+                "Separator", , 
+                "Show full filename",funcedit("toggle full path"),
+                "Show fault line\tCtrl+Shift+F",funcedit("show fault"),
+                "Separator", , 
+                "Pull_right",m+2,
+                "Separator", , 
+                "Command help\tF1",funcedit("command help"),
+                "Separator", , 
+                "Show next window\tCtrl+Tab", shownextwindow(0),
+                "Show last window\tCtrl+Shift+Tab", showlastwindow(0),
+                "Hide window\tCtrl+W",hidewindow(0))
+   
+   menu(m+6, "Procedures", "procedure menu", "procedures")
+   
+   menu(m+7, "&Help", "Window &help", help("User Interface\Text Editor","Introduction.htm"))
+
+   setpar(n,m,"menubar",[m+3:m+7])
+   setpar(n,m,"statusbox",m+1)
+   setpar(n,m+1,"syntaxWindow","")
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"menubar",[m+3:m+7])
+      showwindow(n,"recalc")
+      setwindowpar(n,"keepinfront","true")
+      setwindowpar(n,"title","Editor ($n$)")
+   else
+      setwindowpar(n,"keepinfront","false")
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+endproc(n)
+
+procedure(hide)
+
+   (x,y,w,h) = :loadpar()
+   n = window("Text editor", 100,100,400,600,"resizable")
+   setwindowpar(n,"dimensions",[x,y,w,h])
+   m = 1
+   editor(m,5,5,"ww-10","wh-10")
+  
+   statusbox(m+1,"ww-50","ww","-1")
+   
+   menu(m+2,"Multi-edit","1 edit window\tCtrl+Shift+S",funcedit("multiedit 1*1"),
+                      "1 row by 2 columns\tCtrl+Shift+H",funcedit("multiedit 2*1"),
+                      "1 row by 3 columns\tCtrl+Shift+T",funcedit("multiedit 3*1"),
+                      "2 rows by 1 column\tCtrl+Shift+V",funcedit("multiedit 1*2"),
+                      "2 rows by 2 columns\tCtrl+Shift+G",funcedit("multiedit 2*2"),
+                      "m rows by n columns\tCtrl+Shift+M",funcedit("multiedit m*n"))
+   
+   menu(m+3,"File",
+                "Open macro\tCtrl+O",funcedit("open macro"),
+                "Save macro\tCtrl+S",funcedit("save macro"),
+                "Save macro as ...",funcedit("save macro as"),
+                "Separator", ,  
+                "New editor window\tCtrl+N",editorWin(),
+                "Separator", ,   
+                "Print macro\tCtrl+P",funcedit("print macro"),
+                "Close macro",funcedit("close macro"),  
+                "Close all macros",funcedit("close all macros"),           
+                "Separator", ,  
+                "Run text\tCtrl+T",funcedit("run text"),
+                "Save and run text\tCtrl+R",funcedit("save and run text"))
+
+   menu(m+4,"Edit","Undo\tCtrl+Z",funcedit("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcedit("cut"),
+                "Copy\tCtrl+C",funcedit("copy"),
+                "Paste\tCtrl+V",funcedit("paste"),
+                "Separator", , 
+                "Select all\tCtrl+A",funcedit("select all"),
+                "Copy selection to new window\tCtrl+N",:copyToNewWindow(),
+                "Separator", , 
+                "Indent\tTab",funcedit("indent text"),
+                "Unindent\tShift+Tab",funcedit("unindent text"),
+                "Separator", , 
+                "Block comment\tCtrl+K",funcedit("block comment"),
+                "Block uncomment\tCtrl+U",funcedit("block uncomment"),
+                "Separator", , 
+                "Find down\tF3",funcedit("find down"),
+                "Find up\tShift+F3",funcedit("find up"),
+                "Find and replace\tCtrl+F",funcedit("find and replace"),
+                "Separator", , 
+                "Tabs to spaces\tCtrl+T",funcedit("tabs to spaces"))
+   
+   menu(m+5,"View","Go to line number ...\tCtrl+G",funcedit("go to line"),
+                "Separator", , 
+                "Go to procedure\tCtrl+Double-click",funcedit("go to procedure"),
+                "Go back\tF5",funcedit("go back"),
+                "Go forward\tF6",funcedit("go forward"),
+                "Separator", , 
+                "Show procedure syntax\tCtrl+click","",
+                "Query macro procedures ...\tCtrl+M",:showProcs(),
+                "Separator", , 
+                "Increment font size\tCtrl+I",funcedit("increment font size"),
+                "Decrement font size\tCtrl+Shift+I",funcedit("decrement font size"),
+                "Separator", , 
+                "Show full filename",funcedit("toggle full path"),
+                "Show fault line\tCtrl+Shift+F",funcedit("show fault"),
+                "Separator", , 
+                "Pull_right",m+2,
+                "Separator", , 
+                "Command help\tF1",funcedit("command help"),
+                "Separator", , 
+                "Hide window\tCtrl+W",hidewindow(0))
+   
+   menu(m+6, "Procedures", "procedure menu", "procedures")
+   
+   menu(m+7, "&Help", "Window &help", help("User Interface\Text Editor","Introduction.htm"))
+
+   setpar(n,m,"menubar",[m+3:m+7])
+   setpar(n,m,"statusbox",m+1)
+   setpar(n,m+1,"syntaxWindow","")
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"menubar",[m+3:m+7])
+   #   showwindow(n,"recalc")
+      setwindowpar(n,"title","Editor ($n$)")
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"keepinfront","false")
+   setwindowpar(n,"exit_procedure",":exitproc(); closewindow(0)")
+   setwindowpar(n,"show_menu","false")
+
+
+endproc(n)
+
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("edit.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 400
+      h = 800
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   save("edit.par",par)
+   cd(bak)
+   r = getobj(0)->saveEditSessions("")
+  # r = funcedit("save open sessions")
+
+endproc(r)
+
+procedure(copyToNewWindow)
+
+   funcedit("copy")
+   editorWin()
+   funcedit("paste")
+
+endproc()
+
+
+procedure(openCurrentEditFolder)
+
+   edObj = cureditor()
+   path = edObj->pathname()
+   if(isdir(path))
+      cd(path)
+      exec("explorer",getcwd())
+   endif
+
+endproc()
+
+# When saving text make sure it is cached
+procedure(saveMacroAs)
+
+   if(funcedit("save macro as") == "ok")
+      edObj = cureditor()
+      fileName = edObj->filename
+      pathName = edObj->pathName
+      import(fileName,pathName,"global")
+   endif
+
+endproc()
+
+# When resaving text make sure it is cached
+procedure(saveMacro)
+
+   if(funcedit("save macro") == "ok")
+      edObj = cureditor()
+      fileName = edObj->filename
+      pathName = edObj->pathName
+      import(fileName,pathName,"global")
+   endif
+
+endproc()
+
+# When resaving text make sure it is cached
+procedure(saveAndRunMacro)
+
+   if(funcedit("save macro") == "ok")
+      edObj = cureditor()
+      fileName = edObj->filename
+      pathName = edObj->pathName
+      import(fileName,pathName,"global")
+      bak = getcwd()
+      cd(pathName)
+      fileName()
+      cd(bak)
+   endif
+
+endproc()
+
+
+# List all the procedures in a class or a macro
+procedure(showProcs)
+
+   ce = cureditor()
+   name = ce->getmacroname()
+   if(name != null)
+      (path,macroName) = findmacro(name)
+      if(path != null)
+         lst = getprocnames(path,macroName)
+         procs = sortlist(lst)
+         item = selectItemFromList(procs,"Select procedure from macro '$macroName$'")
+         if(item != null)
+            ce = cureditor()
+            ce->inserttext(item+"()")
+            ce->insertoffset(-2)
+            ce->showsyntax("")
+            ce->insertoffset(1)
+            setfocus(ce->winNr,ce->objNr)
+         endif
+      else
+         print("\n  Macro/Class '$name$' not found\n")
+      endif
+   endif
+
+endproc()

@@ -1,0 +1,160 @@
+##################################################
+# Generate a 3D plot window
+#
+# 3 modes:
+#
+#  0 arguments - full is self contained window
+#  1 argument - full window but constrained
+#  2 arguments - 3D plot object is part of another window
+#
+#  n is the window number
+#  m is the initial object number
+#
+###################################################
+
+procedure(plot3dwin, n, m)
+
+   if(nrArgs == 0) # Stand alone window
+      (x,y,w,h) = :loadpar()
+      n = window("3D Plot", 100,100,400,600,"resizable")
+      setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"title","3D Plot ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      m = 1
+      plot3d(m,0,0,"ww","wh")
+   elseif(nrArgs == 1) # Constrained window
+      mode = n
+      n = window("3D Plot", "0","0","ww","wh","resizable")
+      setwindowpar(n,"title","3D Plot ($n$)") 
+      setwindowpar(n,"titleupdate","true")
+   if(mode == 1)
+         setwindowpar(n,"constrained","true")
+      elseif(mode == 2)
+         setwindowpar(n,"constrained","true")
+         setwindowpar(n,"permanent","true")
+      endif
+      m = 1
+      plot3d(m,5,5,"ww-10","wh-10")
+   else # Part of another window
+     plot3d(m,5,5,"rw-10","rh-10")
+    setwindowpar(n,"titleupdate","false")
+   endif
+
+   :windowdefinition(n,m)
+   
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"toolbar",m+10)
+      setwindowpar(n,"statusbox",m+1)
+      showwindow(n,"recalc")
+      setwindowpar(n,"keepInFront","true")
+      setwindowpar(n,"menubar",[m+5:m+9])
+      setwindowpar(n,"title","3D Plot ($n$)")
+   elseif(nrArgs == 1)
+      setwindowpar(n,"keepInFront","false")
+      setwindowpar(n,"toolbar",m+10)
+      setwindowpar(n,"statusbox",m+1)
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+
+endproc(n)
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("3d.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 1000
+      h = 800
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   save("3d.par",par)
+   cd(bak)
+   hidewindow(0)
+
+endproc()
+
+procedure(windowdefinition,n,m)
+
+     statusbox(m+1,"ww",-1)
+
+     menu(m+2, "Rotate", "x ccw\tLeft", func3d("rotate cw azimuth"),
+                         "x cw\tRight", func3d("rotate ccw azimuth"),
+                         "y ccw\tUp", func3d("rotate ccw elevation"),
+                         "y cw\tDown", func3d("rotate cw elevation"),
+                         "z ccw\tShift+Left", func3d("rotate cw twist"),
+                         "z cw\tShift+Right", func3d("rotate ccw twist"))
+   
+
+     menu(m+3, "Move", "left\tCtrl+Right", func3d("move left"),
+                      "right\tCtrl+Left", func3d("move right"),
+                      "up\tCtrl+Up", func3d("move up"),
+                      "down\tCtrl+Down", func3d("move down"))
+   
+     menu(m+4, "Scale", "x up\tAlt+Right", func3d("scale x up"),
+                      "x down\tAlt+Left", func3d("scale x down"),
+                      "y up\tAlt+Up", func3d("scale y up"),
+                      "y down\tAlt+Down", func3d("scale y down"),
+                      "z up\tShift+Up", func3d("scale z up"),
+                      "z down\tShift+Down", func3d("scale z down"))
+
+     menu(m+5, "File", "Save image ...", func3d("save image"))
+     menu(m+6, "Edit", "Erase plot\tCtrl+E", func3d("clear plot"),
+                     "Reset parameters\tCtrl+R", func3d("reset parameters"),
+                     "Copy plot\tCtrl+C", func3d("copy to clipboard"))
+
+
+     menu(m+7, "View", "Specular lighting\tCtrl+L",func3d("specular lighting"),
+                     "Smooth shading\tCtrl+S",func3d("smooth shading"),
+                     "Preferences ...\tCtrl+D",preferences3d(),
+                     "Pull_right",m+2,
+                     "Pull_right",m+3,
+                     "Pull_right",m+4,
+                     "Separator", ,
+                     "Show next window\tCtrl+Tab", shownextwindow(0),
+                     "Show last window\tCtrl+Shift+Tab", showlastwindow(0),
+                     "Hide window\tCtrl+W", hidewindow(0);)
+
+     menu(m+8, "&Macros", "Macro help", help("Macros\\3D","fillregion3d.htm"),
+                 "Separator", ,
+                 "user menu", "$appdir$\\Macros\\3D_Macros")
+  
+    menu(m+9, "&Help", "Window &help", help("User Interface\3D Plot","Introduction.htm"))
+
+
+    toolbar(m+10, "toolbar3D", "Save WMF", func3d("save WMF"),
+              "Preferences", preferences3d(),
+              "Print plot", :Print3D(),
+              "Separator", "",
+              "2D Surface plot", surf2dParameters(),
+              "3D Surface plot", display3dIsosurface(),
+              "Separator", "")
+
+
+    setpar(n,m,"menubar",[m+5:m+9])
+    setpar(n,m,"toolbar",m+10)
+    setpar(n,m,"statusbox",m+1)
+    setpar(n,m,"initialise","")
+
+endproc()

@@ -1,0 +1,152 @@
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   20-06-30  11:43:26  config2.asm  Page 1
+
+
+
+1                          ;**************************************************************************
+2                          ;   config.asm - routine to store spectrometer configuration data in flash eeprom
+3                          ;
+4                          ;   February 2010 : version 1.0 For 56309 and ATMEL AT29LV020
+5                          ;       original Version
+6                          ;   Robin Dykstra
+7                          ;
+8                          ;       June 2020 update : version 1.1 for DSP56321 and ATMEL AT29LV020
+9                          ;       Raschid Tamrzadeh
+10                         ;
+11                         ;   This routine loads the first 80 words stored at the base of Y memory
+12                         ;   into the top sector of the flash memory which is P:D3FF00
+13                         ;       NEW: and the next three sets of 80 words from Y memory to the addresses P:D3FC00
+14                         ;
+15                         ;**************************************************************************
+619    
+620       P:002000                   org     p:$002000
+621    
+622       P:002000 605E00            move              r0,x:(r6)+              ;Save registers
+623       P:002001 615E00            move              r1,x:(r6)+
+624       P:002002 625E00            move              r2,x:(r6)+
+625       P:002003 445E00            move              x0,x:(r6)+
+626       P:002004 505E00            move              a0,x:(r6)+
+627       P:002005 545E00            move              a1,x:(r6)+
+628       P:002006 525E00            move              a2,x:(r6)+
+629       P:002007 515E00            move              b0,x:(r6)+
+630       P:002008 555E00            move              b1,x:(r6)+
+631       P:002009 535E00            move              b2,x:(r6)+
+632       P:00200A 62F400            move              #$D3FF00,r2             ; config at flash address $D3FF00
+                   D3FF00
+633       P:00200C 300000            move              #0,r0                   ; start of program mem
+634       P:00200D 050810            bsr     <WRY_FLASH                        ; WRY_FLASH loads 84 words each time
+635       P:00200E 62F400            move              #$D3FC00,r2             ; config at flash address $D3FC00
+                   D3FC00
+636       P:002010 305400            move              #84,r0                  ; start of program mem
+637       P:002011 05080C            bsr     <WRY_FLASH                        ; WRY_FLASH loads 84 words each time
+638       P:002012 53FE00            move              x:-(r6),b2              ; Restore registers
+639       P:002013 55FE00            move              x:-(r6),b1
+640       P:002014 51FE00            move              x:-(r6),b0
+641       P:002015 52FE00            move              x:-(r6),a2
+642       P:002016 54FE00            move              x:-(r6),a1
+643       P:002017 50FE00            move              x:-(r6),a0
+644       P:002018 44FE00            move              x:-(r6),x0
+645       P:002019 62FE00            move              x:-(r6),r2
+646       P:00201A 61FE00            move              x:-(r6),r1
+647       P:00201B 60FE00            move              x:-(r6),r0
+648       P:00201C 00000C            rts
+649    
+650    
+651                        ;************************************************************************
+652                        ;   WRY_FLASH
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   20-06-30  11:43:26  config2.asm  Page 2
+
+
+
+653                        ;   This routine writes one 256-byte FLASH sector.
+654                        ;   Each sector will contain 84 (24-bit) words from DSP RAM (252 bytes)
+655                        ;   The last 4 bytes contain a 16-bit checksum of the data
+656                        ;   followed by two blank bytes.
+657                        ;
+658                        ;   enter with:  r2 pointing to starting PEROM Byte Address from 56309 p.o.v.
+659                        ;                r0 pointing to first DSP word to save
+660                        ;
+661                        ;   corrupts:    r0 - points to next Y:memory location to save
+662                        ;                r2 - points to next P:FLASH byte address to write
+663                        ;                a,b,x0
+664                        ;-----------------------------------------------------------------------------
+665    
+666                        WRY_FLASH
+667       P:00201D 20001B            clr     b                                 ;initialize checksum
+668                        ;----------------------------------------------------------------------------
+669                        ;  disable_protect - Software data Protection routine
+670                        ;  Note: upper address lines swapped
+671                        ;----------------------------------------------------------------------------
+672    
+673       P:00201E 44F400            move              #>$AA,x0                ;Atmel needs $AA
+                   0000AA
+674       P:002020 077084            move              x0,p:$D09555            ;at address $5555
+                   D09555
+675       P:002022 44F400            move              #>$55,x0                ;then $55
+                   000055
+676       P:002024 077084            move              x0,p:$D068AA            ;at address $2AAA
+                   D068AA
+677       P:002026 44F400            move              #>$A0,x0                ;then $A0
+                   0000A0
+678       P:002028 077084            move              x0,p:$D09555            ;at address $5555
+                   D09555
+679                                                                            ;--- writes are now enabled
+680    
+681       P:00202A 065490            dor     #84,move_ycode                    ;move 252 bytes
+                   000008
+682       P:00202C 5ED800            move                          y:(r0)+,a   ;get 3 byte word
+683       P:00202D 200018            add     a,b                               ;accumulate checksum
+684       P:00202E 075A8C            move              a1,p:(r2)+              ;move low byte to flash
+685       P:00202F 0C1ED0            lsr     #8,a
+**** 686 [config2.asm 86]: WARNING --- Pipeline stall reading register written in previous instruction (X data move field)
+686       P:002030 075A8C            move              a1,p:(r2)+              ;move mid byte
+687       P:002031 0C1ED0            lsr     #8,a
+**** 688 [config2.asm 88]: WARNING --- Pipeline stall reading register written in previous instruction (X data move field)
+688       P:002032 075A8C            move              a1,p:(r2)+              ;move high byte
+689                        move_ycode
+690    
+691                                                                            ;*** 253rd and 254th bytes are 16-bit checksum
+692       P:002033 075A8D            move              b1,p:(r2)+              ;move low byte of checksum to flash
+693       P:002034 0C1ED1            lsr     #8,b                              ;get next 8 bits of checksum
+**** 694 [config2.asm 94]: WARNING --- Pipeline stall reading register written in previous instruction (X data move field)
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   20-06-30  11:43:26  config2.asm  Page 3
+
+
+
+694       P:002035 075A8D            move              b1,p:(r2)+              ;move mid byte of checksum to flash
+695       P:002036 20001B            clr     b                                 ;The last two bytes are 0
+**** 696 [config2.asm 96]: WARNING --- Pipeline stall reading register B written in previous instruction (X data move field)
+**** 696 [config2.asm 96]: WARNING --- Pipeline stall reading register written in previous instruction (X data move field)
+696       P:002037 075A8D            move              b1,p:(r2)+              ;to make up 256.
+697       P:002038 075A8D            move              b1,p:(r2)+
+698       P:002039 050802            bsr     <delay_20m                        ;wait 20 milliseconds to finish
+699                                                                            ;...program cycle
+700       P:00203A 00000C            rts
+701    
+702                        ;---------------------------------------------------------------------------
+703                        ; delay_20m --
+704                        ; 20.15 ms of delay guarantees that the write cycle has finished.
+705                        ;
+706                        ; For Write Pulse Width High to extend 150 us requires a minimum of
+707                        ; 5100 Icycles for a 33.868 MHz clock.  (29.5 ns/Icycle)
+708                        ;
+709                        ; the tWC is 20ms, so we just wait long enough here for the
+710                        ; write cycle to have started AND finished...
+711                        ;
+712                        ;---------------------------------------------------------------------------
+713                        delay_20m
+714       P:00203B 06D290            dor     #210,_l1                          ;110 x 207us = 22.7 ms
+                   000006
+715       P:00203D 44F400            move              #7000,x0
+                   001B58
+716       P:00203F 06C420            rep     x0                                ; 207us delay
+717       P:002040 000000            nop
+718       P:002041 000000            nop
+719                        _l1
+720       P:002042 00000C            rts
+721    
+722                                  end
+
+0    Errors
+5    Warnings
+
+

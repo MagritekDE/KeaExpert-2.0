@@ -1,0 +1,30 @@
+###############################################
+# Display a 1D plot. Arguments are:
+# 
+# plt ... plot region (object)
+# x ..... x axis (vector)
+# y ..... y axis (vector)
+# xlab .. xlabel (string)
+# ylab .. ylabel (string)
+# titl .. title (string)
+#
+###############################################
+
+procedure(Plot, plt, x, y, xlab, ylab, titl)
+
+   selecteditline(getcurrentline("parent"))
+   p = plt->subplot(1,1)
+   if(nrArgs == 3)
+      p->plot(x,y)
+   elseif(nrArgs == 6)
+      p->draw("false")
+      p->plot(x,y)
+      p->title(titl)
+      p->xlabel(xlab)
+      p->ylabel(ylab)
+      p->draw("true")
+   else
+      pr("Expecting 6 arguments: plot, xaxis, yaxis, xlabel, ylabel, title\n")
+   endif
+
+endproc()

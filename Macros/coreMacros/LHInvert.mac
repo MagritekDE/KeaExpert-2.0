@@ -1,0 +1,140 @@
+####################################################
+#
+# Lawson and Hanson 1D calc
+#
+# xData ..... time axis input data
+# yData ..... attenuation input data
+#
+# parList should supply the following variables:
+#
+# exp_type ... type of experiment "diffusion/relaxation"
+# x_minimum .. smallest spectral value
+# x_maximum .. largest spectral value
+# x_steps .... number of steps in spectru,
+# alpha ...... 1e4->1e12
+# 
+###################################################
+
+
+procedure(LHInvert,xData,yData,parList)
+
+   assignlist(parList)
+
+# Get matrix sizes
+   yDataSize = size(yData)
+   xDataSize = size(xData)
+   if(xDataSize != yDataSize)
+      message("Error","Data x & y dimensions must be the same","error")
+      return(null,null,null,null)
+   endif
+
+# Work out result relaxation spectrum x-axis (xSpec) and make space for spectrum (ySpec)
+   xSpec = logspace(x_minimum,x_maximum,x_steps)
+   xSpecSz = x_steps
+
+# Average steps size of the time & spectral domains
+   xDataStep = (log10(xData[-1]) - log10(xData[0]))/(xDataSize-1)
+   xSpecStep = (log10(xSpec[-1]) - log10(xSpec[0]))/(xSpecSz-1)
+
+# Compensate alpha for input data size and spectrum size (100 is typical for both)
+   alpha = alpha*xDataSize/100*xSpecSz^3/(100^3)
+
+# Alpha contraint
+   constraint = 1/(sqrt(xDataStep^2*xSpecStep^3*alpha))
+   if(constraint > 300)
+      message("Error","Make smoothing factor smaller")
+      return(null,null,null,null)
+   endif
+# Weighting matrix
+   weighting = single(1/(xDataStep^2*xSpecStep^3*alpha))
+
+# Make design matrix
+   kernel = eval(designMat)
+
+# Weighting the kernel and data with the s.d. of each bin
+   if(logBin == "yes" & weightBins == "yes")
+    #  binPositions = logvec(xData[0],xData[-1],xDataSize)
+      try
+         binPositions = pseudologvec(xData[0],xData[-1],xDataSize)
+         binWeights = ((diff(binPositions)/xData[0])^0.5)
+         binWeights = join(binWeights,[binWeights[-1]]) # add missing point
+         normBinWeights = xDataSize*binWeights/sum(binWeights)
+         kernel = kernel.*clonearray(normBinWeights',xSpecSz,xDataSize)
+         yData = yData.*normBinWeights
+      catch
+      endtry
+   endif
+
+# Simplify the design matrices
+   (U,V,S) = svd(kernel)
+    q = size(S)
+    for(k = 0 to size(S)-1)
+        if(S[k,k] < S[0,0]*1e-3) 
+           q = k
+           exitfor
+        endif
+    next(k)
+
+    U = U[[0:q-1],:]
+    V = V[[0:q-1],:]
+    S = S[[0:q-1],[0:q-1]]
+
+    kernelRed = -U'*kernel
+    yDataRed = -U'*yData'
+
+# Curvature regularization
+#    curve = matrix(x_steps,x_steps)
+#    for(k = 0 to x_steps-3)
+#       curve[k,k] = weighting
+#       curve[k+1,k] = -2*weighting
+#       curve[k+2,k] = weighting
+#    next(k)
+#    weighting = curve
+
+# Do the inversion
+    try
+       ySpec = lhil1d(yDataRed',kernelRed,weighting)
+    catch
+       #pr lasterror()
+       return(null,null,null,null)
+    endtry
+
+# Calculate the fit & chisquared
+    fit = (kernel*ySpec')'
+    res = fit-yData
+    avg = sum(res)/yDataSize
+    chisq = sum((res-avg)^2)/(yDataSize-1)
+
+endproc(xSpec,ySpec,fit,chisq)
+
+########################################################
+# Calculate fit and chisquared for fit and if required
+# draw the fit over the current plot
+########################################################
+
+procedure(calcFit,func,xSpec,ySpec,xData,yData,colour,width)
+
+
+   ss  = size(ySpec)
+   t = xData
+   sd  = size(t)
+   fit = matrix(sd)
+   
+   for(ii = 0 to ss-1)
+      A = ySpec[ii]
+      T = xSpec[ii]
+      fit = fit + A*eval(func)
+   next(ii)
+
+   if(nrArgs == 6)
+      plot(t,fit,"symbolshape","none",
+                      "tracetype","lines",
+                      "tracewidth",1)
+   endif
+
+   res = fit-real(yData)
+   avg = sum(res)/sd
+   chisq = sum((res-avg)^2)/(sd-1)
+
+endproc(fit,chisq)
+

@@ -1,0 +1,3 @@
+#ifndef FOLDERBROWSER_H
+#define FOLDERBROWSER_H
+#endif // define FOLDERBROWSER_H

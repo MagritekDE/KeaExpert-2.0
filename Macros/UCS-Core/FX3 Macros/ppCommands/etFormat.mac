@@ -1,0 +1,138 @@
+###########################################################################################################
+# Overview of the event table list format for the FX3/TRex
+# To display type 'info etFormat' from Prospa CLI.
+#
+# The file sent to the FX3 consists of a series of events.
+# Each event contains three 32 bit words
+# A duration.
+#   The duration of the command in clock cycles (10ns)
+#   The maximum duration is 2^32-1 = 42.9 s
+#   The minimum duration is 10 clock cycles (100 ns) (write command)
+#   Read commands require 15 clock cycles.
+#   More complex commands require longer delays.
+# A command + address
+#   The command is one byte - from bits 31 to 25
+#   The address is two bytes from bits 15 to 0
+# A data word
+#   This is a 32 bit word the contents of which depend on the 
+#   command. Typically only the bottom 16 bits are used for data
+#   while the top 8 bits are used to modify the command.
+#   A few commands pack data differently such as shim16/shimramp16
+#
+# Here are the current command codes:
+#
+# 0x00 - Write to address
+# 0x01 - Read from address
+# 0x02 - not used
+# 0x03 - Reset sequencer (usually the last command)
+# 0x04 - Loop command
+# 0x05 - Endloop command
+# 0x06 - Kea rxGain control
+# 0x07 - Kea gradient control
+# 0x08 - Spinsolve rxGain and channel control
+# 0x09 - Delay
+# 0x0A - not used
+# 0x0B - not used
+# 0x0C - not used
+# 0x0D - Spinsolve shim ramp controller
+# 0x0E - Spinsolve shim controller
+#
+# Here are some common WRITE addresses:
+#
+# GENERAL
+# 0x0000 - TTL, ADC start, CIC/FIR reset
+# 0x0080 - Sync, DDS reset
+# 0x0084 - Debug line 1
+# 0x0085 - Start/reset sequencer (start=1, reset=0)
+# 0x0087 - Cause pulse sequence to abort  (any number)
+# 0x0088 - Reset pulse sequence abort flag (any number)
+# 0x0089 - Set sequencer mode (delay=1, time=0)
+#
+# RF gate values (used with adrs 0)
+# 0x4000 - channel 1 RF amp gate
+# 0x1000 - channel 1 Wobble enable
+# 0x0008 - channel 1 transceiver gate
+# 0x0100 - channel 2 RF amp gate
+# 0x0400 - channel 2 Wobble enable
+# 0x0002 - channel 2 transceiver gate
+#
+# DDS (digital synthesiser)
+#
+# 0x118E - profile 1
+# 0x128E - profile 2
+# 
+# BRAM (pulse sequencer memory)
+# 0x3000 - Write to start of pulse sequencer memory
+# 0x5000 - Specifies BRAM page to write to (0,1,2 ... 7)
+#
+# DDC (digital receiver)
+#
+# 0x41A3 - number of points to collect
+# 0x4081 - DDC and output enable
+# 0x4082 - acquisition mode (0 - overwrite, 1- integrate, 2 - append, 3 - sum
+# 0x4083 - number of points per block (for modes 1 - 3)
+#
+# FIFO/SRAM (NMR data and table memory)
+# 0x6080 - Write data to FIFO
+# 0x6081 - Control write data destination FIFO/SRAM (4/0)
+# 0x6084 - Specify SRAM address for subsequent reads/writes
+# 0x6085 - Write to SRAM address and increment address
+# 0x6086 - Write to SRAM address but don't increment address
+# Note : need to read twice from FIFO/SRAM entity the first time after
+# and address is changed to get the correct data.
+# 
+# USB LEDs (controlled by MSP430 processor - use 'T' write mode to adrs 0x1A
+# 0x1A, 0x10 : blue LED - system has booted up
+# 0x1A, 0x20 : green LED - reading/writing data
+# 0x1A, 0x40 : yellow LED - running a pulse program
+# 0x1A, 0x80 : amber LED (maybe should be red for an error?)
+#
+# Write modifiers
+# When writing to memory the top byte in the data word changes the write mode
+# 0x00  - write data to specified address
+# 0x01  - write temp value (from last read) to specified address
+# 0x02  - write temp value to specified address with a 16 bit increment
+# 0x03  - write temp value to specified address with a 16 bit decrement
+#
+# Here are some common READ addresses
+#
+# GENERAL
+# 0x0082 - Read: FPGA HW version
+# 0x0083 - Read: FPGA FW version
+# 0x0084 - Write: Save debug data 1
+# 0x0085 - Write: start pulse sequence
+# 0x0084 - Read: Load debug line 1
+# 0x0085 - Read: Load debug line 2 (from internal entities)
+# 0x0086 - Read: Load pulse sequence status (0xCBCD = not running, 0xABAB = running)
+# (note that reading any other address while running a PS will return 0xAAAA)
+#
+# FIFO/SRAM (NMR data/tables)
+# 0x6080 - Read FIFO (NMR) data
+# 0x6081 - Read FIFO control register
+# 0x6082 - Read FIFO info register
+# 0x6083 - Read FIFO count
+# 0x6084 - Read from SRAM address (tables) 
+# 0x6085 - Read from SRAM address and increment address
+# 0x6086 - Read from SRAM address but don't increment address
+#
+# Reading from memory
+# When reading from memory (cmd = 0x01) the result is additionally stored
+# in the write temp value (see above)
+# Because of this, read commands require >= 15 clock cycles
+#
+#
+# FX3 read and write modes (fx3read/fx3write)
+# "e/E" read/write from/to TRex address and increment between words
+# "d/D" read/write from/to TRex address and don't increment between words
+# "i/I" read/write from/to FX3 internal address and increment betwen words
+# "f/F" read/write from/to FX3 flash address and increment betwen words
+# "s/S" write to x/y/z shims
+# "t/T" read/write to MSP430 temperature controller 
+#
+##########################################################################################################
+
+
+procedure(etFormat)
+
+endproc()
+

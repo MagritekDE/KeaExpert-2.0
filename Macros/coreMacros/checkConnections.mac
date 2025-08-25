@@ -1,0 +1,18 @@
+#####################################################
+# Get a list from other instances of KeaExpert
+# of connected Keas
+#####################################################
+procedure(checkConnections)
+
+   w = findprospawin()
+   ids = list(0)
+   for(k = 0 to size(w)-1)
+     id = runremote("getSpecID",w[k])
+     if(size(id) > 2)
+         if(id[0:1] == "MG")
+           ids = ids + [id]
+         endif
+     endif
+   next(k)
+
+endproc(ids)

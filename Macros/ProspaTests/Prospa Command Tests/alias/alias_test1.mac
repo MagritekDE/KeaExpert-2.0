@@ -1,0 +1,46 @@
+# Test that an alias can be made
+
+procedure(alias_test1,verbose,delay)
+
+pr "\n   ALIAS NOT TESTED!!  \n"
+return(1,"")
+# check to see if memory requirements for
+# alias are minimal (note need to check for
+# quite big change because of window memory
+# shuffling 
+   a = matrix(200,200,200)
+   mem = memory()
+   b = alias(a)
+   if(abs(memory() - mem) >= 100*100*100*4)
+      abort("Invalid result 1 for : alias_test1")
+   endif
+   rmvar("b")
+   rmvar("a")
+
+   a = linvec(0,10,10)
+   b = alias(a)
+   if(a != b)
+      abort("Invalid result 2 for: alias_test1")
+   endif
+   rmvar("b")
+   rmvar("a")
+
+   a = matrix(100,100)+5
+   b = alias(a)
+   if(a != b)
+      abort("Invalid result 3 for: alias_test1")
+   endif
+
+# removing variable a should fail
+   try
+      rmvar("a")
+   catch
+      pr("   Recovered from error!")
+      rmvar("b")
+      rmvar("a")
+      return()
+   endtry
+   abort("Invalid result 4 for: alias_test1")
+   
+  
+endproc(1,"")

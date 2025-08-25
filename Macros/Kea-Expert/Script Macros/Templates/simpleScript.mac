@@ -1,0 +1,116 @@
+#####################################################################
+# This example script generates a nutation stacked plot for the 
+# proton experiment. Parameters are the pulse step size and number
+# of steps.
+# All the necessay procedures are here to run the experiment and
+# save the plot data and load the experiment into the batch list
+#####################################################################
+
+procedure(simpleScript) # Change this name to match the file
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else
+      parameters = ["nrSteps=5","stepSize=2"] # Change this for your own parameter list defaults
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()), parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["nrSteps","Number of steps","tb","float","",
+                 "stepSize","Step size(us)","tb","float",""] # Change this to include all parameters
+   plotLayout = ["pt3";"pt4"] # Maybe change this if you need more than one plot
+
+   procLayout = struct(buttonLabel = "View",      plotName = "pt3", macroToRun = "StackedPlotSetup()";
+                       buttonLabel = "Integ.",    plotName = "pt3", macroToRun = "IntegrateRegions()";
+                       buttonLabel = "MNova",     plotName = "pt3", macroToRun = "exportMNova2D(\"pt3\")")
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list. 
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt3","nutationCurve.pt1","pt4","workPlot.pt1"] # This is the plot to be loaded when selected.
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+
+###########################################################
+# Execute this command. 'parameters' includes all standard
+# parameters and the ones you have defined above
+# Standard parameters are:
+#
+# dataDirectory .... used to define where expName is stored
+# expName .......... the name of the experiment data folder
+# specID ........... the name of the spectrometer
+# specType ......... the type of spectrometer
+#
+# More parameters can be found in the gData structure
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   (pt1,pt2,pt3) = InitPlot(["pt1","pt2";"pt3","pt4"])
+   M = nrSteps
+   mt = cmatrix(16384,M) # Time domain data
+   mf = cmatrix(16384,M) # Freq domain data
+
+   for(k = 0 to M-1)
+
+      (result,acqPar) = RunExpt("Proton",
+                              ["nrPnts = 16384",
+                               "repTime = 1000",
+                               "nrScans = 1",
+                               "zf = 1",
+                               "dwellTime = 100",
+                               "pulseLength1H = $(k+1)*stepSize$",
+                               "tdPhaseCorr = \"none\"",
+                               "fdPhaseCorr = \"autophase\"",
+                               "saveData=\"false\""], parameters)  
+
+      mt[~,k] = result->tData
+      mf[~,k] = result->fData
+
+      xRange = [acqPar->dispRangeMinPPM,acqPar->dispRangeMaxPPM]
+      usePPM = acqPar->usePPMScale
+
+      StackedPlot(pt3, mf, k, xRange, result->fAxis, usePPM, [1:M]*stepSize, "linear", 
+                 "Frequency (ppm)","Pulse length (\G(m)s)","Experiment = $k+1$")
+
+   next(k)
+
+ # Save the data
+   acqPar->saveData = "true"
+   par = mergelists(list(acqPar),list(parameters))
+   ucsFiles:saveAcquPar(par)
+   ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),par)
+   ucsFiles:saveMNovaData(mt,"data.2d",par)
+
+endproc()
+

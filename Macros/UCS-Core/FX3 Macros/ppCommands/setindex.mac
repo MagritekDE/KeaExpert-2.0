@@ -1,0 +1,40 @@
+###################################################################################
+# Set a table index
+#
+#   setindex(table, idx)
+#
+#   table : name of table array (2x1) generated with saveTable.
+#   idx : zero based index to use to specify current table value to use.
+#
+#   duration = 1 us
+#
+##################################################################################
+
+procedure(setindex, table, idx)
+
+   if(wvFX3Info->mode == "run")
+
+      ps = [20d,  0x00006081,   00000004,       # Set FIFO Control Register (DDC disable data capture from DDC to FIFO)
+            20d,  0x00006084,   table[0]-1,     # dspWrite to set start table address
+            60d,  0x00006086,   table[0]+idx]   # Save index
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+        
+   elseif(wvFX3Info->mode == "time") # TODO
+
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+         gSeq->psInfo->command = gSeq->psInfo->command + ["setindex,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+      endif
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(table, idx)
+
+   endif
+
+endproc()
+

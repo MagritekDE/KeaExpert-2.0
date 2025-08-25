@@ -1,0 +1,26 @@
+####################################################
+#                  hft1d.mac
+#
+# Plot Hilbert transform of current 1D data set
+# (i.e. generates imaginary part from real)
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(hft1d)
+
+  (x,A) = getplotdata("1d")
+  if(x != null)
+     if(maths:ispower2(size(x))) 
+        plot(x,hft(A))
+      else
+        message("Can't complete operation","1D data set size is not a power of 2")
+      endif    
+   else
+      message("Can't complete operation","No 1D data set presently plotted","error")
+   endif  
+
+endproc()

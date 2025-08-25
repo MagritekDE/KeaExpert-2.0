@@ -1,0 +1,84 @@
+procedure(copy1DtoNewWin,mode)
+
+  :all()
+
+endproc()
+
+
+procedure(all)
+
+  plt = curplot("1d")
+  xrange = plt->axes->xrange()
+  yrange = plt->axes->yrange()
+  minaxisvalue = plt->axes->minaxisvalue()
+  maxaxisvalue = plt->axes->maxaxisvalue()
+  lines = plt->getlines()
+  text = plt->gettext()
+  (x1,x2,y1,y2) = plt->zoom()
+  func1d("copy plot")
+  plot1dwin()
+  func1d("paste plot")
+  plt = curplot("1d")
+  plt->zoom(x1,x2,y1,y2)
+  if(lines != null)
+     plt->addlines(lines)
+  endif
+  if(text != null)
+     plt->addtext(text)
+  endif
+  plt->axes->xrange(xrange)
+  plt->axes->yrange(yrange)
+  plt->axes->minaxisvalue(minaxisvalue)
+  plt->axes->maxaxisvalue(maxaxisvalue)
+  sendmessage("1D Plot","SelectPlot")
+   
+endproc()
+
+procedure(current)
+
+  plt = curplot("1d")
+ # xrange = plt->axes->xrange()
+#  yrange = plt->axes->yrange()
+  lines = plt->getlines()
+  text = plt->gettext()
+  tlst = plt->tracelist()
+  axesType = plt->axes->type()
+  minaxisvalue = plt->axes->minaxisvalue()
+  maxaxisvalue = plt->axes->maxaxisvalue()
+  id = curtrace()->id()
+  (x,y) = curtrace()->getdata()
+  (x1,x2,y1,y2) = plt->zoom()
+  xlab = curplot()->xlabel->text()
+  ylab = curplot()->ylabel->text()
+  tLab = curplot()->title->text()
+  xdir = curplot()->axes->xdirection()
+  ydir = curplot()->axes->ydirection()
+  xppm = curplot()->axes->xppmscale()
+  plot1dwin()
+  plt = curplot("1d")
+  plt->draw("false")
+  plt->plot(x,y)
+  plt->xlabel(xlab)
+  plt->ylabel(ylab)
+  if(axesType == "box_y_independent")
+     pos = (maxaxisvalue-minaxisvalue)*(size(tlst)-1-id)/(size(tlst)-1)+minaxisvalue
+     tLab = tLab + " : Trace position $pos$" 
+  endif
+  curplot()->title(tLab)
+#  curplot()->axes->xrange(xrange)
+ # curplot()->axes->yrange(yrange)
+  curplot()->axes->xdirection(xdir)
+  curplot()->axes->ydirection(ydir)
+  curplot()->axes->xppmscale(xppm)
+  curplot()->zoom(x1,x2)
+  if(lines != null)
+     plt->addlines(lines)
+  endif
+  if(text != null)
+     plt->addtext(text)
+  endif
+  plt->draw("true")
+
+  sendmessage("1D Plot","SelectPlot")
+   
+endproc()

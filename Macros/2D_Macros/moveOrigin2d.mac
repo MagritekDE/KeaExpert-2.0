@@ -1,0 +1,88 @@
+####################################################
+#                 moveorigin2d.mac
+#
+# Apply the ftshift command to a 2D data set.
+# Can applied along the x or y axes.
+#
+# Rotate options:
+# 1. Select a new origin.
+# 2. Select a new centre 
+# 3. Drag a point in the plot to a new position 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(moveOrigin2d)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Move origin", -1, -1, 266, 47)
+
+      # Define all controls with basic parameters
+       button(1, 11, 12, 54, 24, "Move x",
+          :move_origin("x");)
+       button(2, 76, 12, 54, 24, "Move y",
+          :move_origin("y");)
+       button(3, 141, 12, 47, 24, "Help",
+          :show_help();)
+       button(4, 199, 12, 47, 24, "Exit",
+          closewindow(0);)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","moveorigin2d.htm")
+endproc()
+
+####################################################
+# Move the origin
+####################################################
+
+procedure(move_origin,axis)
+
+# Get the plot data
+   (m,xs,ys) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(m)
+
+# Do the shift
+   if(axis == "x")
+      for(y = 0 to h-1)
+         m[~,y] = ftshift(m[~,y])
+      next(y)
+   else
+      for(x = 0 to w-1)
+         m[x,~] = ftshift(m[x,~])
+      next(x)
+   endif 
+
+# Update the data
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(m,xs,ys)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()

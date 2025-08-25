@@ -1,0 +1,555 @@
+####################################################
+# Generate a diffusion map from a complex 2D or 3D 
+# matrix which is diffusion weighted in 1 dimension
+####################################################
+
+procedure(makeDiffMap)
+
+   n = :windowdefinition()
+   :update_input_matrix()
+   :exp_type_selection()
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Define window
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate diffusion map", -1, -1, 407, 357)
+
+      # Define all controls with basic parameters
+       windowvar(parlist_win)
+       statictext(1, 96, 30, "right", "Input matrix")
+       textmenu(2, 103, 26, 89, 200,
+          :load_control_values(getpar(0,2,"text"));)
+       statictext(3, 96, 55, "right", "1D diffusion map")
+       statictext(4, 96, 79, "right", "1D intensity map")
+       textbox(5, 103, 51, 89)
+       textbox(6, 103, 77, 89)
+       statictext(7, 300, 117, "right", "Threshold")
+       textbox(8, 309, 114, 52)
+       textbox(9, 309, 140, 52)
+       statictext(10, 300, 144, "right", "Max error")
+       radiobuttons(11, 64, 135, 20, "vertical", "grad,ldel,sdel", "grad",
+            :exp_type_selection();)
+       statictext(12, 86, 133, "left", "Variable gradient")
+       statictext(13, 127, 220, "right", "Small delta (s)")
+       textbox(14, 134, 216, 52)
+       button(15, 323, 235, 53, 25, "Close",
+          :save_control_values(getpar(0,2,"text"));
+          closewindow(0);)
+       button(16, 249, 201, 53, 26, "Calculate",
+          :save_control_values(getpar(0,2,"text"));
+          :calc_map();)
+       statusbox(17)
+       statictext(18, 86, 154, "left", "Variable large delta")
+       statictext(19, 86, 175, "left", "Variable small delta")
+       textmenu(20, 309, 89, 52, 200)
+       statictext(21, 281, 91, "left", "Axis")
+       button(22, 249, 234, 53, 26, "Help",
+          :showhelp();)
+       groupbox(23, "Type of experiment", 7, 113, 216, 84)
+       textbox(24, 134, 242, 52)
+       statictext(25, 125, 245, "right", "Large delta (s)")
+       statictext(26, 88, 303, "right", "Gradient (T/m)")
+       textbox(27, 95, 299, 258)
+       button(28, 323, 201, 53, 26, "1D View",
+          trackcursor("2d","cross",":view1d");)
+       groupbox(29, "Control", 230, 178, 161, 93)
+       groupbox(30, "Varying parameter array", 5, 277, 387, 54)
+       button(31, 362, 310, 22, 15, "...",
+          :load_from_file();)
+       groupbox(32, "Dimensions", 230, 5, 161, 58)
+       statictext(33, 310, 31, "center", "10")
+       statictext(34, 256, 31, "center", "128")
+       groupbox(35, "Input and output matrices", 7, 5, 216, 103)
+       groupbox(36, "Processing parameters", 230, 68, 162, 104)
+       groupbox(37, "Fixed parameters", 7, 201, 216, 70)
+       statictext(38, 337, 31, "center", "by")
+       statictext(39, 283, 31, "center", "by")
+       statictext(40, 364, 31, "center", "1")
+       button(41, 362, 291, 22, 15, "/",
+          :make_a_ramp();)
+       button(42, 198, 27, 15, 19, "U",
+          :update_input_matrix();)
+
+     # Set other control parameters
+       setpar(n,2,"name","matrixFT",
+                   "tab_number",1,
+                   "menu",[""])
+       setpar(n,5,"name","diffMap",
+                   "tab_number",2)
+       setpar(n,6,"name","intensMap",
+                   "tab_number",3)
+       setpar(n,8,"name","threshold",
+                   "tab_number",5)
+       setpar(n,9,"name","maxErr",
+                   "tab_number",6)
+       setpar(n,11,"name","diffType")
+       setpar(n,14,"name","sdel",
+                   "tab_number",7)
+       setpar(n,15,"tab_number",12)
+       setpar(n,16,"tab_number",10)
+       setpar(n,20,"name","diffAxis",
+                   "tab_number",4,
+                   "menu",["x","y"])
+       setpar(n,22,"tab_number",13)
+       setpar(n,24,"name","ldel",
+                   "tab_number",8)
+       setpar(n,27,"name","grad",
+                   "tab_number",9)
+       setpar(n,28,"tab_number",11)
+
+endproc(n)
+
+##########################################################
+# Select type of experiment (modified stext labels)
+##########################################################
+
+procedure(exp_type_selection)
+
+   type = getpar(0,11,"text")
+
+   if(type == "grad")
+      setpar(0,26,"text","Gradient (T/m)")
+      setpar(0,13,"text","Small delta (s)")
+      setpar(0,25,"text","Large delta (s)")
+      setpar(0,14,"name","sdel")
+      setpar(0,24,"name","ldel")
+      setpar(0,27,"name","grad")
+   elseif (type == "ldel")
+      setpar(0,13,"text","Gradient (T/m)")
+      setpar(0,25,"text","Small delta (s)")
+      setpar(0,26,"text","Large delta (s)")
+      setpar(0,14,"name","grad")
+      setpar(0,24,"name","sdel")
+      setpar(0,27,"name","ldel")
+   elseif (type == "sdel")
+      setpar(0,13,"text","Gradient (T/m)")
+      setpar(0,25,"text","Large delta (s)")
+      setpar(0,26,"text","Small delta (s)")
+      setpar(0,14,"name","grad")
+      setpar(0,24,"name","ldel")
+      setpar(0,27,"name","sdel")
+   endif
+
+endproc()
+
+##########################################################
+# Load the list of 2D and 3D matrices into the menu
+##########################################################
+
+
+procedure(update_input_matrix)
+
+   matmenu = matrixlist(2+4)
+   setpar(0,2,"menu",matmenu)
+   if(size(matmenu) >= 1)
+      if(isvar("curmatrix_3d") == 1)
+        :load_control_values(curmatrix_3d)
+         setpar(0,2,"text",curmatrix_3d)
+      elseif(isvar("curmatrix_2d") == 1)
+        :load_control_values(curmatrix_2d)
+         setpar(0,2,"text",curmatrix_2d)
+      else
+        :load_control_values(matmenu[0])
+         setpar(0,2,"index",1)
+      endif
+   endif
+
+endproc()
+
+##########################################################
+# Load the variable parameter array from a file
+##########################################################
+
+procedure(load_from_file)
+
+   type = getpar(0,11,"text")
+
+# Prompt the user for a suitable file
+   if(type == "grad")
+      name = getfilename("load","Select gradient array","Ascii data file","*")
+   elseif (type == "ldel")
+      name = getfilename("load","Select large delta array","Ascii data file","*")
+   elseif (type == "sdel")
+      name = getfilename("load","Select small delta array","Ascii data file","*")
+   endif
+
+   if(name == "cancel")
+      return()
+   endif
+
+# Read in the data as an ascii real file   
+   import1dpar("ab", "ascii", "xyrc", "real") 
+   array = import1d(name)
+   setpar(0,27,"text","$array$")
+
+endproc()
+
+##########################################################
+# Generate an array for a linearly varying parameter
+##########################################################
+
+procedure(make_a_ramp)
+
+# Get the q-space size
+   procDim = getpar(0,20,"text")
+   if(procDim == "x")
+      sz = eval(getpar(0,34,"text"))
+   elseif(procDim == "y")
+      sz = eval(getpar(0,33,"text"))
+   else
+      sz = eval(getpar(0,40,"text"))
+   endif
+
+# Determine a suitable prompt to get the maxmim value
+   type = getpar(0,11,"text")
+   if(type == "grad")
+      prompt = "Enter maximum gradient value (T/m)"
+   elseif (type == "ldel")
+      prompt = "Enter maximum large delta value (s)"
+   elseif (type == "sdel")
+      prompt = "Enter maximum small delta value (s)"
+   endif
+
+# Get the maximum value via a dialog
+   n = guiwinnr("getargs")
+   array = getpar(0,27,"value")
+   if(vartype(array) == "matrix1d")
+      maxV = max(array)
+      txt = gettext(prompt,maxV)
+   else
+      txt = gettext(prompt)
+   endif
+   guiwinnr(n)
+
+# Update the array window
+   if(txt != "cancelled")
+      maxV = eval(txt)
+      setpar(0,27,"text","[0: $maxV$/$(sz-1)$ : $maxV$ ]")
+   endif
+
+endproc()
+
+##########################################################
+# Display help file
+##########################################################
+
+procedure(showhelp)
+   help("Macros\\NMRI","makeDifMap.htm")
+endproc()
+
+##########################################################
+# Calculate the diffusion map 
+##########################################################
+
+procedure(calc_map)
+
+   setpar(0,17,"text","Processing ...")
+
+# Extract the gui parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+
+   mat = alias(matrixFT,"eval")
+   (w,h,d) = size(mat)
+   error = maxErr/100
+   dim = (w>1)+(h>1)+(d>1)
+
+# Generate the abscissa
+   if(diffAxis == "x")
+      sz = w
+      intMap  = matrix(h,d)
+      diffMap = matrix(h,d)
+   elseif(diffAxis == "y")
+      sz = h
+      intMap  = matrix(w,d)
+      diffMap = matrix(w,d)
+   else   
+      sz = d
+      intMap  = matrix(w,h)
+      diffMap = matrix(w,h)
+   endif
+
+   if(diffType == "grad")
+      xa = eval(grad)
+      p1 = sdel
+      p2 = ldel
+   elseif(diffType == "ldel")
+      xa = eval(ldel)
+      p1 = grad
+      p2 = sdel
+   else
+      xa = eval(sdel)
+      p1 = ldel
+      p2 = grad
+   endif
+
+# Process 3D velocity data
+   if(dim == 3)
+      if(diffAxis == "x")
+      # Process every row
+         for(z = 0 to d-1)
+            for(y = 0 to h-1)
+               v = mat[~,y,z]
+               if(v[0] > threshold)
+                  (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v,0,p1,p2,"no")
+                  if(D > 0 & Derr/D < error)
+                     intMap[y,z] = E0
+                     diffMap[y,z] = D
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(diffMap)
+              title("Diffusion Map (tier = $z$)")
+              draw2d("true")
+            endif
+         next(z)
+      elseif(diffAxis == "y")
+      # Process every column
+         for(z = 0 to d-1)
+            for(x = 0 to w-1)
+               v = mat[x,~,z]
+               if(v[0] > threshold)
+                  (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v',0,p1,p2,"no")
+                  if(D > 0 & Derr/D < error)
+                     intMap[x,z] = E0
+                     diffMap[x,z] = D
+                  endif
+               endif
+            next(x)
+            if(z%10 == 0)
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false")
+              image(diffMap)
+              title("Diffusion Map (tier = $z$)")
+              draw2d("true")
+            endif
+         next(z)
+      elseif(diffAxis == "z")
+      # Process every tier
+         for(y = 0 to h-1)
+            for(x = 0 to w-1)
+               v = mat[x,y,~]
+               if(v[0] > threshold)
+                  (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v,0,p1,p2,"no")
+                  if(D > 0 & Derr/D < error)
+                     intMap[x,y] = E0
+                     diffMap[x,y] = D
+                  endif
+               endif
+            next(x)
+            if(y%10 == 0)
+              setpar(0,17,"text","Processing row $y$")
+              draw2d("false")
+              image(diffMap)
+              title("Diffusion Map (row = $y$)")
+              draw2d("true")
+            endif
+         next(y)
+      endif
+    # Make the output matrices global
+      assign(getpar(0,5,"text"),diffMap,"global")
+      assign(getpar(0,6,"text"),intMap,"global")
+
+# Process 2D diffusion data
+   else
+      if(diffAxis == "x")
+         for(y = 0 to h-1)
+            v = mat[~,y]
+            if(v[0] > threshold)
+               (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v,0,p1,p2,"no")
+               if(D > 0 & Derr/D < error)
+                  intMap[y] = E0
+                  diffMap[y] = D
+               endif
+            endif
+         next(y)
+      elseif(diffAxis == "y")
+         for(x = 0 to w-1)
+            v = mat[x,~]
+            if(v[0] > threshold)
+               (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v',0,p1,p2,"no")
+               if(D > 0 & Derr/D < error)
+                  intMap[x] = E0
+                  diffMap[x] = D
+               endif
+            endif
+         next(x)
+      endif
+
+    # Display the result
+      draw1d("false");
+      plot(diffMap)
+      title("Diffusion Map")
+      draw1d("true");
+    # Make the output matrices global
+      assign(getpar(0,5,"text"),diffMap,"global")  
+      assign(getpar(0,6,"text"),intMap,"global")
+   endif
+
+   setpar(0,17,"text","Finished")
+
+endproc()
+
+##########################################################
+# Interactively view diffusion curve at coordinates (x,y)
+##########################################################
+
+procedure(view1d,horiz,vert)
+
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+
+   if(isvar(matrixFT) == 0)
+      message("Information","No 3D matrix loaded")
+      return
+   endif
+
+   m3d = alias(matrixFT,"eval")
+   (w,h,d) = size(m3d)
+
+# Get data vector based on diffusion axis
+   if(diffAxis == "x")
+      sz = w
+      v = m3d[~,horiz,vert]
+   elseif(diffAxis == "y")
+      sz = h
+      v = m3d[horiz,~,vert]'
+   else   
+      sz = d
+      v = m3d[horiz,vert,~]
+   endif
+
+
+# Generate the abscissa
+   if(diffType == "grad")
+      xa = eval(grad)
+      p1 = sdel
+      p2 = ldel
+      label = "Gradient (T/m)"
+   elseif(diffType == "ldel")
+      xa = eval(ldel)
+      p1 = grad
+      p2 = sdel
+      label = "\G(D) (s)"
+   else
+      xa = eval(sdel)
+      p1 = ldel
+      p2 = grad
+      label = "\G(d) (s)"
+   endif
+
+# Plot the diffusion data
+    if(v[0] > threshold)
+      (fitV,E0,D,E0err,Derr) = diffit(diffType,xa,v,0,p1,p2,"no")
+       draw1d("false")
+         plot(xa,v,"symbolcolor",[255,0,0],"symbolshape","opencircle","tracetype","none")
+         hold("on")
+         plot(xa,fitV,"tracecolor",[255,255,0],"symbolshape","none","tracetype","lines")
+         num = errorstr(D,Derr,2,0,"plot")
+         title("D = $num$ m^(2)s^(-1)") 
+         xlabel(label) 
+         ylabel("Echo amplitude") 
+       draw1d("true")
+       hold("off")
+    else
+       draw1d("false")
+       plot(xa,v)
+       title("Below threshold") 
+       xlabel(label) 
+       ylabel("Echo amplitude") 
+       draw1d("true")
+    endif
+
+endproc()
+
+
+##########################################################
+# Update the control values using a parameter list
+# or if not present use values from the current matrix
+##########################################################
+
+procedure(load_control_values,  matrixName)
+
+   parlistName = matrixName + "_pl"
+
+   if(isvar(parlistName))
+      parlist = eval(parlistName)
+      setctrlvalues(0,parlist)
+      assign("parlist_win", parlist, "window")
+   endif
+
+   mat = eval(matrixName)
+   dim = matrixdim(mat)
+   (w,h,d) = size(mat)
+
+   if(dim == 2)
+      setpar(0,3,"text","1D diffusion map")
+      setpar(0,4,"text","1D intensity map")
+      setpar(0,20,"menu",["x","y"])
+      setpar(0,20,"text","y")
+      setpar(0,28,"enable","false")
+   else
+      setpar(0,3,"text","2D diffusion map")
+      setpar(0,4,"text","2D intensity map")
+      setpar(0,20,"menu",["x","y","z"])
+      setpar(0,20,"text","z")
+      setpar(0,28,"enable","true")
+   endif
+
+   setpar(0,34,"text",w)
+   setpar(0,33,"text",h)
+   setpar(0,40,"text",d)
+
+endproc()
+
+##########################################################
+# Save the current parameters with this data set
+##########################################################
+
+procedure(save_control_values, matrixName)
+
+# Make the current matrix the output matrix 	
+   assign("curmatrix_0d",matrixName,"global");
+# Save the current parameters with this data set
+   parlist = getctrlvalues(0)
+   if(isvar("parlist_win"))
+      parlist = mergelists(parlist,parlist_win)
+   endif
+   assign(matrixName+"_pl",parlist, "global");
+
+endproc()
+
+##########################################################
+# User has pressed the gradient "/" button 
+# generate a dialog which allows the user to enter the 
+# maximum value for the parameter - assume minimum value
+# is zero.
+##########################################################
+
+procedure(make_ramp,label,array)
+
+ n = window(label, -1, -1, 200, 89)
+
+       textbox(1, 60, 20, 40)
+       statictext(2, 30, 15, "centre", "Maximum")
+       statictext(3, 30, 31, "centre", "value")
+       button(4, 140, 9, 42, 22, "OK",
+              val = getpar(0,1,"value");
+              closedialog(val);)
+       button(5, 140, 35, 42, 22, "Cancel",closedialog("cancel");)
+       setwindowpar(n,"type","dialog")
+       setpar(0,4,"mode","default")
+       setpar(0,1,"text",array)
+
+endproc(n)

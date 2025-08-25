@@ -1,0 +1,36 @@
+# rft function test (check that FFT and DFT produce same results)
+# Needs some work to get the match better.
+procedure(rft_test1,verbose,delay)
+
+   N = 128
+   x = [0:1:N-1]/10
+   y = exp(-(i*20+1)*x)
+   
+   # Calculate the DFT
+   s = cmatrix(N)
+   for(n = 0 to N-1)
+      for(k = 0 to N-1)
+         s[n] = s[n] + y[k]*exp(i*2*pi*k*n/N)
+      next(k)
+   next(n)
+
+
+   clear1d()
+   plot(submatrix(s/2,0,N/2))
+   hold("on")
+   plot(rft(y))
+   trace("tracetype","none",
+           "symbolshape","circle",
+           "symbolcolor",[255,0,0])
+   title("DFT and RFT comparison")
+   
+   hold("off")
+#   ratio = sum(mag(rft(y)))/sum(mag(ftshift(s)-ft(y)))
+#   if(ratio < 1e6) # Arbitrary large factor
+#      return(0, "Invalid result: ft()")
+#   endif
+
+   pause(delay)
+
+
+endproc(1,"")

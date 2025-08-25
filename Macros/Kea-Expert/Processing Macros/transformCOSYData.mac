@@ -1,0 +1,47 @@
+############################################
+# Transform 2D time domain COSY data
+############################################
+
+procedure(transformCOSYData)
+
+   cp = curplot("2d")
+   obj = cp->parent
+
+   s = obj->uservar
+   type = s->type
+
+   if(type == "MagCosyFid")
+
+      srcPlt = cp
+      dest = s->freqDomain
+      dstPlt = gPlot->getPlotObject(dest)
+      filter = "shsinebellsquared"
+      (mIn,x,y) = srcPlt->getdata()   
+      (w,h) = size(mIn)
+      bw1 = w/(x[-1]-x[0])/1000
+      bw2 = h/(y[-1]-y[0])
+      (w,h) = size(mIn)
+
+      mOut = fft_local:2d(mIn,w,h,filter,filter,"FTFid","FTFid","yes")
+      mOut = reflect(mOut,"horiz")
+      dstPlt->draw("false")
+      dstPlt->axes->xdirection("forward")
+      dstPlt->axes->ydirection("forward")
+      dstPlt->image(mOut,[-0.5*bw1,0.5*bw1],[-0.5*bw2,0.5*bw2])
+      dstPlt->title("COSY Spectrum")
+      dstPlt->xlabel("Frequency f1 (Hz)")
+      dstPlt->ylabel("Frequency f2 (Hz)")
+      dstPlt->title("COSY Spectrum")
+      dstPlt->draw("true")
+      curplot(dstPlt)     
+      togglePPM_Hz_XY()
+      dstPlt->axes->xrange([-10,10])
+      dstPlt->axes->yrange([-10,10])
+
+   else
+
+      pr "Not a magnitude COSY fid data set\n"
+
+   endif
+
+endproc()

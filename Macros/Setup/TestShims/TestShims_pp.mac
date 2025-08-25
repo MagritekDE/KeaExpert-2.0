@@ -1,0 +1,144 @@
+############################################################
+#  
+# A pulse sequence suitable for performing a shim test
+# by setting all the shims and then performing a pulse
+# and collect experiment on hydrogen nuclei.
+#
+# shim - delay - pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
+               "b1Freq1H",        "B1 Frequency (MHz)",        "tb",  "freq";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime";
+               "shimDelay",       "Shim delay (ms)",           "tb",  "float, [0.001,10000]";
+               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
+               "shiftPoints",     "Points to shift",           "tb",  "integer";
+               "loadShim",        "Load last shims",           "bt",  "loadShims";
+               "xshim",           "x shim",                    "tb",  "float, [-32678,32767]";
+               "yshim",           "y shim",                    "tb",  "float, [-32678,32767]";
+               "zshim",           "z shim",                    "tb",  "float, [-32678,32767]";
+               "z2shim",          "z2 shim",                   "tb",  "float, [-32678,32767]";
+               "zxshim",          "zx shim",                   "tb",  "float, [-32678,32767]";
+               "zyshim",          "zy shim",                   "tb",  "float, [-32678,32767]";
+               "xyshim",          "xy shim",                   "tb",  "float, [-32678,32767]";
+               "x2y2shim",        "x2-y2 shim",                "tb",  "float, [-32678,32767]";
+               "z3shim",          "z3 shim",                   "tb",  "float, [-32678,32767]";
+               "z2xshim",         "z2x shim",                  "tb",  "float, [-32678,32767]";
+               "z2yshim",         "z2y shim",                  "tb",  "float, [-32678,32767]";
+               "zxyshim",         "zxy shim",                  "tb",  "float, [-32678,32767]";
+               "zx2y2shim",       "z(x2-y2) shim",             "tb",  "float, [-32678,32767]";
+               "x3shim",          "x3 shim",                   "tb",  "float, [-32678,32767]";
+               "y3shim",          "y3 shim",                   "tb",  "float, [-32678,32767]"]
+
+
+# Define the parameters groups and order
+   groups = ["Pulse_sequence","Acquisition","Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts   = nrPnts",
+                    "freqCh1     = b1Freq1H",
+                    "freqCh2     = freqCh1",
+                    "freqRx      = freqCh1",
+                    "a90Amp      = 90Amplitude1H",
+                    "d90Dur      = pulseLength1H",
+                    "dAcqDelay   = ucsUtilities:getacqDelay(d90Dur,shiftPoints,dwellTime)",
+                    "w1          = shimDelay*1000",
+                    "totPnts     = nrPnts",
+                    "totTime     = acqTime",
+                    "nx          = xshim",
+                    "ny          = yshim",
+                    "nz          = zshim",
+                    "nz2         = z2shim",
+                    "nzx         = zxshim",
+                    "nzy         = zyshim",
+                    "nx2y2       = x2y2shim",
+                    "nxy         = xyshim",
+                    "nz3         = z3shim",
+                    "nz2x        = z2xshim",
+                    "nz2y        = z2yshim",
+                    "nzx2y2      = zx2y2shim",
+                    "nzxy        = zxyshim",
+                    "nx3         = x3shim",
+                    "ny3         = y3shim",
+                    "spoilAmp    = 5000",
+                    "nxs         = xshim-(spoilAmp*xshim/(abs(xshim)+1))",
+                    "nys         = yshim-(spoilAmp*yshim/(abs(yshim)+1))",
+                    "nzs         = zshim-(spoilAmp*zshim/(abs(zshim)+1))"]
+
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)                      # Define compile directory and clear parameter list
+
+   shim16(1,nx)                     # Set the shims
+   shim16(2,ny) 
+   shim16(0,nz)  
+   shim16(3,nz2)  
+   shim16(4,nzx) 
+   shim16(5,nzy)   
+   shim16(6,nx2y2)  
+   shim16(7,nxy)  
+   shim16(8,nz3)  
+   shim16(9,nz2x)   
+   shim16(10,nz2y) 
+   shim16(11,nzx2y2)  
+   shim16(12,nzxy)  
+   shim16(13,nx3)  
+   shim16(14,ny3)  
+   wait(w1)                         # Wait while shims settle
+   pulse(1,a90Amp,p1,d90Dur)        # RF pulse on channel 1 with phase p1
+   delay(dAcqDelay)                 # Pulse - acquire delay
+   acquire("overwrite",nDataPnts)   # Acquire FID
+   shim16(1,nxs)                    # x homospoil
+   shim16(2,nys)                    # y
+   shim16(0,nzs)                    # z
+   delay(50000)                     # homospoil delay
+   shim16(1,nx)                     # x
+   shim16(2,ny)                     # y
+   shim16(0,nz)                     # z
+   delay(10000)                     # settle delay
+
+   parList = endpp(0)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0;   # p1 : Pulse phase
+                 0]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par = ["rxGain        = $modelPar->rxGain$",
+          "pulseLength1H = $PulseLength_1H$",
+          "90Amplitude1H = $PowerLevel_1H$",
+          "b1Freq1H      = $Frequency_1H$"]
+
+endproc(par)

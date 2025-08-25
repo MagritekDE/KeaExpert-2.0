@@ -1,0 +1,93 @@
+###########################################################
+# Command to wait a fixed amount of time.
+###########################################################
+
+procedure(WaitTime, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+     parameters = ["waitTimeValue=1"] 
+     gExpt->addExperiment(getmacropath(),"WaitTime", parameters)
+   endif
+
+endproc()
+
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result. A string type allows
+# loop numbers like 'lc1'
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["waitTimeValue","Wait time (s)","tb","float",""]
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+###########################################################
+# Add the WaitTime command to the batch list
+###########################################################
+
+procedure(addCommand)
+     
+   assignlist(getctrlvalues(0))
+   entry = "WaitTime|$waitTimeValue$ s"
+
+endproc(entry)
+
+###########################################################
+# The user has changed the sample name in the parameter
+# list so update the file comment to match and also the
+# acqu.par file and batch folder name.
+###########################################################
+
+procedure(parameterChanged,protocol,comment,exptNr)
+
+  assignlist(getctrlvalues(0))
+  gBatch->saveCurrentParameters(protocol,comment,exptNr)
+  gBatch->renameSingleProtocol(protocol,comment,exptNr,"$waitTimeValue$ s")
+
+endproc()
+
+###########################################################
+# Rename the WaitTime value
+###########################################################
+
+procedure(renameCommand, entry)
+
+  assignlist(getctrlvalues(0))
+  entry = "WaitTime|$waitTimeValue$ s"   
+
+endproc(entry)
+
+###########################################################
+# Execute the WaitTime command
+###########################################################
+
+procedure(backdoor, parameters)
+
+   t1 = time()
+
+   assignstruct(parameters)
+
+   while(time()-t1 < waitTimeValue) # Loop for waittime
+      if(wvExpStatus == "stop")
+         return
+     endif
+     pause(0.1)
+   endwhile
+
+endproc()
+
+########################################################
+# Return expected experiment duration based on comment
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar) 
+
+endproc(waitTimeValue)

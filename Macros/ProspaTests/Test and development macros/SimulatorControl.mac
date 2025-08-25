@@ -1,0 +1,340 @@
+procedure(SimulatorControl, parentWin)
+
+   n = :windowdefinition()
+   windowvar(wvParentWin)
+   wvParentWin = parentWin
+   assignctrls(n)
+   par = :loadPar(wvParentWin)
+   :updateWindow(par)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Simulator control", -1, -1, 398, 237, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(90LengthCtrl,90AmpCtrl,rxNoiseCtrl,linewidthCtr,FIDAmpCtr,b0FreqCtrl,nucleusCtrl,simModeCtrl,sampleNameCtrl)
+      textmenu(1, 130, 41, 141, 200)
+      radiobuttons(2, 80, 24, 20, "vertical", "Spinsolve,Simulator", "Spinsolve")
+      statictext(3, 73, 24, "right", "Spinsolve")
+      statictext(4, 73, 45, "right", "Simulator")
+      statictext(5, 241, 19, "right", "Simulated sample")
+      button(6, 310, 10, 61, 26, "Apply",
+         :apply();
+         :savePar();
+         closewindow(0);)
+      button(7, 310, 50, 61, 26, "Close",
+         :savePar();
+         closewindow(0);)
+      textmenu(8, 130, 100, 50, 200,
+         par = :loadPar();
+         :updateWindow(par);)
+      statictext(9, 121, 104, "right", "Nucleus")
+      textbox(10, 130, 130, 50)
+      statictext(11, 121, 134, "right", "B0 frequency (MHz)")
+      textbox(12, 130, 190, 50)
+      statictext(13, 121, 194, "right", "FID amplitude (uV)")
+      textbox(14, 130, 160, 50)
+      statictext(15, 121, 165, "right", "Magnet linewidth (Hz)")
+      textbox(16, 310, 100, 50)
+      statictext(17, 300, 104, "right", "Rx noise (1MHz BW)")
+      textbox(18, 310, 130, 50)
+      statictext(19, 300, 134, "right", "90 pulse amp (dB)")
+      textbox(20, 310, 160, 50)
+      statictext(21, 300, 165, "right", "90 pulse length (us)")
+      groupbox(22, "Parameters", 10, 79, 361, 142)
+
+     # Set other control parameters
+      setpar(n,1,"objID","sampleNameCtrl",
+                  "valueID","sampleName",
+                  "tab_number",2,
+                  "menu",[""])
+      setpar(n,2,"objID","simModeCtrl",
+                  "valueID","simMode",
+                  "tab_number",1)
+      setpar(n,6,"tab_number",10)
+      setpar(n,7,"tab_number",11)
+      setpar(n,8,"objID","nucleusCtrl",
+                  "valueID","nucleus",
+                  "tab_number",3,
+                  "menu",["1H","13C","19F","31P"])
+      setpar(n,10,"objID","b0FreqCtrl",
+                  "valueID","b0Freq",
+                  "tab_number",4)
+      setpar(n,12,"objID","FIDAmpCtr",
+                  "valueID","FIDAmp",
+                  "tab_number",6)
+      setpar(n,14,"objID","linewidthCtr",
+                  "valueID","linewidth",
+                  "tab_number",5)
+      setpar(n,16,"objID","rxNoiseCtrl",
+                  "valueID","rxNoise",
+                  "tab_number",7)
+      setpar(n,18,"objID","90AmpCtrl",
+                  "valueID","90Amp",
+                  "tab_number",8)
+      setpar(n,20,"objID","90LengthCtrl",
+                  "valueID","90Length",
+                  "tab_number",9)
+
+     # Set other window parameters
+endproc(n)
+
+procedure(loadPar,wvParentWin)
+
+   parWin = wvParentWin
+   thisWin = guiwinnr()
+
+   file = "$prefdir$\\SpinsolveParameters\\Simulator.par"
+
+   if(not(isfile(file))) # Set defaults
+
+      nucleus         = "1H"
+      simMode         = "Spinsolve"
+      sampleName      = "water"
+
+      b1Freq1H        = 42.58
+      90Amplitude1H   = 0
+      pulseLength1H   = 10
+      fidAmplitude1H  = 10
+      fidLineWidth1H  = 1
+      rxNoise1H       = 0.5
+
+      b1Freq13C       = 10.71
+      90Amplitude13C  = 0
+      pulseLength13C  = 10
+      fidAmplitude13C = 10
+      fidLineWidth13C = 1
+      rxNoise13C      = 0.5
+
+      b1Freq19F       = 40.05
+      90Amplitude19F  = 0
+      pulseLength19F  = 10
+      fidAmplitude19F = 10
+      fidLineWidth19F = 1
+      rxNoise19F      = 0.5
+
+      b1Freq31P       = 42.58
+      90Amplitude31P  = 0
+      pulseLength31P  = 10
+      fidAmplitude31P = 10
+      fidLineWidth31P = 1
+      rxNoise31P      = 0.5
+
+
+      b0Freq      = b1Freq1H
+      90Amp       = 90Amplitude1H
+      90Length    = pulseLength1H
+      FIDAmp      = fidAmplitude1H
+      linewidth   = fidLineWidth1H
+      rxNoise     = rxNoise1H
+
+      par = mkparlist()
+      par = rmfromlist(par,"file")
+
+    else # Load file and update some locals
+
+      if(nrArgs == 0)
+         assignlist(getctrlvalues(0))
+         nmrNucleus = nucleus
+         par = load(file)
+         assignlist(par)
+      else
+         par = load(file)
+         assignlist(par)
+         nmrNucleus = nucleus
+      endif
+
+      if(nmrNucleus == "1H")
+         b0Freq    = b1Freq1H
+         90Length  = pulseLength1H
+         90Amp     = 90Amplitude1H
+         FIDAmp    = fidAmplitude1H
+         linewidth = fidLineWidth1H
+         rxNoise   = rxNoise1H
+      elseif(nmrNucleus == "13C")
+         b0Freq    = b1Freq13C
+         90Length  = pulseLength13C
+         90Amp     = 90Amplitude13C
+         FIDAmp    = fidAmplitude13C
+         linewidth = fidLineWidth13C
+         rxNoise   = rxNoise13C
+      elseif(nmrNucleus == "19F")
+         b0Freq    = b1Freq19F
+         90Length  = pulseLength19F
+         90Amp     = 90Amplitude19F
+         FIDAmp    = fidAmplitude19F
+         linewidth = fidLineWidth19F
+         rxNoise   = rxNoise19F
+      elseif(nmrNucleus == "31P")
+         b0Freq    = b1Freq31P
+         90Length  = pulseLength31P
+         90Amp     = 90Amplitude31P
+         FIDAmp    = fidAmplitude31P
+         linewidth = fidLineWidth31P
+         rxNoise   = rxNoise31P
+      endif 
+
+      par = mkparlist()
+
+   endif
+
+endproc(par)
+
+procedure(updateWindow, par)
+
+   parWin = wvParentWin
+   thisWin = guiwinnr()
+
+   cd(getmacropath())
+   if(isdir("Simulated Samples"))
+      cd("Simulated Samples")
+      files = getfilelist(".")
+      if(size(files) > 0)
+         sampleNameCtrl->menu(rmext(files))
+      endif
+   endif
+
+   winnamespace(parWin)
+   if(wvSpecType == "Simulator")
+      simMode = "Simulator"
+   else
+      simMode = "Spinsolve"
+   endif
+   par = setlistvalue(par,"simMode",simMode)
+   winnamespace(thisWin)
+
+   setctrlvalues(0,par)
+
+endproc()
+
+procedure(savePar)
+
+   defaults  = ["b1Freq1H  = 42.58", "90Amplitude1H  = 0", "pulseLength1H  = 10",
+                "b1Freq19F = 40.05", "90Amplitude19F = 0", "pulseLength19F = 10",
+                "b1Freq13C = 10.71", "90Amplitude13C = 0", "pulseLength13C = 10",
+                "b1Freq31P = 17.24", "90Amplitude31P = 0", "pulseLength31P = 10",
+                "fidAmplitude1H = 10",  "fidLineWidth1H = 1",    "rxNoise1H = 0.5",
+                "fidAmplitude13C = 20", "fidLineWidth13C = 2",   "rxNoise13C = 1.5",
+                "fidAmplitude19F = 30", "fidLineWidth19F = 3",   "rxNoise19F = 2",
+                "fidAmplitude31P = 40", "fidLineWidth31P = 4",   "rxNoise31P = 2.5"]
+
+   assignlist(defaults)
+
+   bak = getcwd()
+   dir = "$prefdir$\\SpinsolveParameters"
+   if(not(isdir(dir)))
+      mkdir(dir)
+   endif
+   cd(dir)
+
+   gui = getctrlvalues(0)
+   assignlist(gui)
+
+   if(nucleus == "1H")
+      defaults = setlistvalues(defaults,["b1Freq1H       = $b0Freq$",
+                                         "pulseLength1H  = $90Length$",
+                                         "90Amplitude1H  = $90Amp$",
+                                         "fidAmplitude1H = $FIDAmp$",
+                                         "fidLineWidth1H = $linewidth$",
+                                         "rxNoise1H      = $rxNoise$"])
+   elseif(nucleus == "13C")
+      defaults = setlistvalues(defaults,["b1Freq13C       = $b0Freq$",
+                                         "pulseLength13C  = $90Length$",
+                                         "90Amplitude13C  = $90Amp$",
+                                         "fidAmplitude13C = $FIDAmp$",
+                                         "fidLineWidth13C = $linewidth$",
+                                         "rxNoise13C      = $rxNoise$"])
+   elseif(nucleus == "19F")
+      defaults = setlistvalues(defaults,["b1Freq19F       = $b0Freq$",
+                                         "pulseLength19F  = $90Length$",
+                                         "90Amplitude19F  = $90Amp$",
+                                         "fidAmplitude19F = $FIDAmp$",
+                                         "fidLineWidth19F = $linewidth$",
+                                         "rxNoise19F      = $rxNoise$"])
+   elseif(nucleus == "31P")
+      defaults = setlistvalues(defaults,["b1Freq31P       = $b0Freq$",
+                                         "pulseLength31P  = $90Length$",
+                                         "90Amplitude31P  = $90Amp$",
+                                         "fidAmplitude31P = $FIDAmp$",
+                                         "fidLineWidth31P = $linewidth$",
+                                         "rxNoise31P      = $rxNoise$"])
+   endif
+
+   par = mergelists(gui,defaults)     
+   save("Simulator.par",par)
+   cd(bak)
+
+endproc()
+
+procedure(backdoor, wvParentWin ,mode)
+
+   if(nrArgs == 1)
+      mode = "Simulator"
+   endif
+   par = :loadPar(wvParentWin)
+   :apply(par,wvParentWin,mode)
+
+endproc()
+
+procedure(apply, par, wvParentWin, mode)
+   
+   if(nrArgs == 0)
+      parWin = wvParentWin
+      thisWin = guiwinnr()
+      par = getctrlvalues(0) 
+      mode = simModeCtrl->text 
+   else
+      parWin = wvParentWin
+      thisWin = wvParentWin
+   endif
+
+   assignlist(par)
+
+   T2Star = 1/(pi*linewidth)
+
+   winnamespace(wvParentWin)
+   setupsim(sampleName,b0Freq,T2Star,rxNoise,90Amp,90Length,FIDAmp)
+   winnamespace(thisWin)
+
+   if(mode == "Simulator") 
+      winnamespace(wvParentWin)
+      wvSpecType = "Simulator"
+      cd("$appdir$\\DLLs")
+      files = ls("*Run.DLL")
+      ignoredll("DSPWinUSBRun.dll")
+   else
+      winnamespace(wvParentWin)
+      wvSpecType = "SpinsolveNormal"
+      loaddlls()
+   endif
+
+# Initialise the spectrometer common parameters if necessary
+   if(expert:isCommonPar() == 0)
+      SpinsolveExpertInterface:restoreCommonPar(0,0)
+   endif
+
+  (wvTitle,wvSpecName) = SpinsolveExpertInterface.pex:getTitle()
+   setwindowpar(parWin,"title",wvTitle)
+   winnamespace(thisWin)
+
+# Cache simulator files (check is already cached)
+   bak = getcwd()
+   cd(getmacropath())
+   files = ls("*.mac")
+   for(k = 0 to size(files)-1)
+      cachemacro(files[k])
+   next(k)
+   cd("Simulated Samples")
+   files = ls("*.mac")
+   for(k = 0 to size(files)-1)
+      cachemacro(files[k])
+   next(k)
+   cacheproc("true")
+   cd(bak)
+
+endproc()

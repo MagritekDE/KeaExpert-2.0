@@ -1,0 +1,67 @@
+###########################################################
+# Remove waits
+###########################################################
+
+procedure(RemoveWaits)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      :removeWaitsFromBatch()
+   endif
+
+endproc()
+
+###########################################################
+# Remove waits from the batch list
+###########################################################
+
+procedure(removeWaitsFromBatch)
+
+# Check for modification
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file before removing waits?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+   entries = gView->batch->list
+   sz = size(entries)
+   output = list(0)
+
+   if(query("Warning","Are you sure you want to remove all Wait commands?") == "no")
+      return
+   endif
+
+   if(isdir(gBatch->batchFolder))
+
+      bak = getcwd()
+
+      cd(gBatch->batchFolder)
+    
+      for(k = 0 to sz-1) 
+      
+         entry = entries[k]   
+         values = parse(entry,"|")
+         if(size(values) == 3 & k > 0)
+            if(values[0] == "WaitTime")
+               folderName = "$values[2]$ WaitTime ($values[1]$)"
+               rmfolder(folderName)
+            else
+               output = output + entry
+            endif
+         else   
+            output = output + entry
+         endif
+   
+      next(k)
+   
+      gBatch->displayBatchList(output)
+      gBatch->saveCurrentList()
+
+   endif()
+
+endproc()
+

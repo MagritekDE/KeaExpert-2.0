@@ -1,0 +1,1400 @@
+##################################################
+# Open a script editor which can be used to design
+# and run experiment on a Spinsolve spectrometer.
+# Works with the macro expert.mac
+##################################################
+
+
+procedure(ScriptEditor,parentWinNr,dataFolder,pulsePrograms,exptList,plots,path,filename)
+
+   n = :windowdefinition()
+   :initWinVar(parentWinNr,dataFolder,pulsePrograms,exptList,plots)
+   assignctrls(n)
+   :updateMenus()
+   if(nrArgs == 7)
+      :loadPar(path,filename)
+   else
+      :loadPar()
+   endif
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"menubar",[100:103])
+   setwindowpar(n,"mergetitle","true")
+   setwindowpar(n,"exit_procedure",":exitWindow")
+   setwindowpar(n,"statusbox",50)
+   setwindowpar(n,"sizelimits",[440,-1,350,-1])
+   showwindow(n)
+   setfocus(n,1)
+   updateedittitle()
+
+endproc()
+
+##############################################
+# Add a command from the command textmenu
+##############################################
+
+procedure(addCommand)
+
+   cmd = commands->text()
+   scriptEditor->insert(":$cmd$\n")
+
+endproc()
+
+
+##############################################
+# Add an experiment from the experiment menu
+##############################################
+
+procedure(addExperiment)
+
+   expt = experiments->text()
+   scriptEditor->insert(":RunExpt(\"$expt$\",[parameters])\n")
+
+endproc()
+
+##############################################
+# Add a new experiment to the experiment
+# list if it isn't already present
+##############################################
+
+procedure(addExperimentToList, type, suffix, expNr)
+
+# Get data folder name
+   if(suffix != "")
+      name = "$type$ ($suffix$)"
+   else
+      name = type
+   endif
+
+# Get location of data folder
+   dstDir = "$dataFolderCtrl->text$\\$name$"
+   mainWinNr = wvParentWinNr
+
+# Get the pulse program directory
+   seWinNr = wvScriptWinNr
+   winnamespace(wvParentWinNr)
+   srcDir = expert:getPPFolder(type)
+   pulseProgramsCtrl->text(getbasepath(srcDir))   
+   winnamespace(seWinNr)
+
+# Get list
+   lst = exptListCtrl->list()
+
+# See if the experiment already exists in the batch list
+# if so return the position and the acqu.par list
+   idx = :findExperiment(type, suffix, expNr)
+   if(idx >= 0) # Entry already exists so check for acqu.par
+      par = :addAcquPar(srcDir,dstDir,type,name,expNr)
+      return(lst,idx,par)  
+   endif    
+
+# No experiment found
+   if(expNr > 0) # If subexperiment search for the parent folder
+      idx = :findExperiment(type, suffix, expNr-1)
+      # Add experiment name to list
+      if(idx >= 0) # Parent experiment exists so insert child
+         entry =  "   expNr = $expNr$"
+         lst = insertinlist(lst,entry,idx+1)
+         idx = idx + 1
+         par = :addAcquPar(srcDir,dstDir,type,name,expNr)
+         return(lst,idx,par)
+      else # No subexperiment parent so search for parent
+         idx = :findExperiment(type, suffix, -1)
+         if(idx >= 0)
+            entry =  "   expNr = $expNr$"
+            lst = insertinlist(lst,entry,idx+1)
+            idx = idx + 1
+            par = :addAcquPar(srcDir,dstDir,type,name,expNr)
+            return(lst,idx,par)
+         else
+            if(lst == null)
+               lst = ["$name$"]
+            else
+               lst = lst + name
+            endif
+            lst = lst + "   expNr = $expNr$"
+            par = :addAcquPar(srcDir,dstDir,type,name,expNr)
+            idx = size(lst)-1
+            return(lst,idx,par)
+         endif
+      endif
+   else # If its just a normal experiment
+      if(lst == null)
+         lst = ["$name$"]
+      else
+         lst = lst + name
+      endif
+      par = :addAcquPar(srcDir,dstDir,type,name,-1)
+      idx = size(lst)-1
+      return(lst,idx,par)
+   endif
+
+endproc(lst,-1,null)
+
+###################################################################
+# Make an experiment folder and add default acqusition parameters
+###################################################################
+ 
+procedure(addAcquPar,srcDir,dstDir,exptType,exptName,exptNr)
+
+# Normal experiment
+   if(exptNr == -1)
+
+      dir = dstDir
+
+   # Data directory already exists
+      if(isdir(dir))
+         cd(dir)
+         if(isfile("acqu.par"))
+            par = load("acqu.par","truedoubles")
+            return(par)
+         else
+            if(isdir(srcDir))
+               cd(srcDir)
+               if(isfile("$exptType$Default.par"))
+                  par = load("$exptType$Default.par")
+                  cd(dir)
+                  save("acqu.par",par,"truedoubles")
+                  return(par)
+               endif
+            else
+               return(null)
+            endif
+         endif
+      endif
+   
+   # Make the data directory 
+      mkdir(dir)  
+      if(isdir(srcDir))
+         cd(srcDir)
+         if(isfile("$exptType$Default.par"))
+            par = load("$exptType$Default.par")
+            cd(dir)
+            save("acqu.par",par,"truedoubles")
+            return(par)
+         endif
+      else
+         return(null)
+      endif
+
+# Subexperiment
+   else
+      dirParent = dstDir
+      dirChild = "$dstDir$\\$exptNr$"
+
+   # Copy acqu.par from parent folder to subexperiment
+      mkdir(dirParent)
+      cd(dirParent)
+      if(isfile("acqu.par")) # Parent acqu.par exists
+         par = load("acqu.par","truedoubles")         
+         mkdir(dirChild)
+         cd(dirChild)
+         save("acqu.par",par,"truedoubles")
+         return(par)
+      else # Parent acqu.par does not exist
+         if(isdir(srcDir)) # Copy default to parent and child
+            cd(srcDir)
+            if(isfile("$exptType$Default.par"))
+               par = load("$exptType$Default.par")
+               cd(dirParent)
+               save("acqu.par",par,"truedoubles")
+               mkdir(dirChild)
+               cd(dirChild)
+               save("acqu.par",par,"truedoubles")
+               return(par)
+            endif
+         else
+            return(null)
+         endif
+      endif
+   endif
+
+endproc(null)
+
+
+##############################################
+# Add a script folder to the experiment
+# list
+##############################################
+
+procedure(addScriptFolderToList, name)
+
+ # See if the script already exists
+   lst = exptListCtrl->list()
+   sz = size(lst)
+   for(k = 0 to sz-1)
+      if(lst[k] == name)
+         exptListCtrl->zindex(k)
+         return
+      endif
+   next(k)
+      
+ # Add script name to list otherwise
+  if(lst == null)
+     lst = ["$name$"]
+  else
+     lst = lst + name
+  endif
+  exptListCtrl->list(lst)
+  sz = size(lst)
+  exptListCtrl->index(sz)
+  
+endproc()
+
+
+##################################################
+# Add an experiment entry in the experiment
+# list which is a subexperiment. i.e. with an 
+# experiment number.
+##################################################
+
+procedure(addSubExperiment, type, suffix, guipar)
+
+# See if the expNr is valid (i.e. >= 0)
+   if(suffix != "")
+      name = "$type$ ($suffix$)"
+   else
+      name = type
+   endif
+   assignlist(guipar)
+   if(vartype(expNr) == "string")
+      return(name)
+   endif
+   if(expNr < 0)
+      return(name)
+   endif
+
+ # See if the script already exists
+   listName = "   expNr = $expNr$"
+   lst = exptListCtrl->list()
+   sz = size(lst)
+   for(k = 0 to sz-1)
+      if(lst[k] == listName)
+         exptListCtrl->zindex(k)
+         return(listName)
+      endif
+   next(k)
+
+# Add experiment name to list
+   lst = lst + listName
+   exptListCtrl->list(lst)
+   sz = size(lst)
+   exptListCtrl->index(sz)
+ 
+endproc(listName)
+
+##################################################
+# Check for modified files - save if required
+##################################################
+
+procedure(checkForModifiedText)
+
+   if(nrArgs == 0)
+     prompt = "Files have been modified - do you want to save them?"
+   endif
+   if(scriptEditor->modified   == "true")
+     response = query("File not saved","The script text has been modified - do you want to save them?","yes","yes/no/cancel")
+     if(response == "yes")
+        :saveScript()
+        return(0)
+     elseif(response == "no")
+        return(0)
+     elseif(response == "cancel")
+        return(1)
+     endif
+   endif
+
+endproc(0)
+
+#########################################################
+# Exit window and save parameters to preferences file
+#########################################################
+
+procedure(exitWindow)
+
+   :savePar() 
+   if(:checkForModifiedText())
+      return
+   endif 
+   closewindow(0)
+
+endproc()
+
+##################################################
+# Run the experiment 'name' using the parameters
+# guipar. This is run in a separate thread.
+##################################################
+
+procedure(experimentThread, name, guipar, mainWinNr, seWinNr)
+
+  try
+     proc = "$name$:backdoor"
+     result = proc(guipar)
+  catch
+     pr lasterror()
+  endtry
+  wvThreadRunning = 0
+  winnamespace(seWinNr)
+  wvResult = result
+  winnamespace(mainWinNr)
+
+endproc()
+
+##################################################
+# Search for the first experiment in the list
+# which matches extName (suffix). If a valid
+# experiment number is passed then search for 
+# this line as well.
+##################################################
+
+procedure(findExperiment, exptName, suffix, expNr)
+
+   if(suffix == "")
+      name = exptName
+   else
+      name = "$exptName$ ($suffix$)"
+   endif
+
+   lst = exptListCtrl->list()
+   sz = size(lst)
+   for(k = 0 to sz-1)
+      if(lst[k] == name)
+         if(expNr >= 0)
+            for(q = k to sz-1)
+               if(lst[q] == "   expNr = $expNr$")
+                  return(q)
+               endif
+            next(q)
+            return(-1)
+         endif
+         return(k)
+      endif
+   next(k)
+
+endproc(-1)
+
+   
+##################################################
+# Get common parameter(s) + shim values
+##################################################
+
+procedure(GetCommon, keys)
+  
+   selecteditline(getcurrentline("parent"))
+   comPar = ucsFiles:loadCommonPar()
+   if(nrArgs == 1)
+      comPar = getsublist(comPar,keys)
+   endif
+
+   pref = ucsFiles:loadPref()
+   pref = getsublist(pref,["xshim","yshim","zshim"])
+   comPar = comPar + pref
+   comPar = sortlist(comPar)
+
+endproc(comPar)
+
+##################################################
+# Get preference parameter(s)
+##################################################
+
+procedure(GetPref, keys)
+  
+   selecteditline(getcurrentline("parent"))
+   pref = ucsFiles:loadPref()
+   if(nrArgs == 1)
+      pref = getsublist(pref,keys)
+   endif
+
+endproc(pref)
+   
+procedure(getExpInfo, entry)
+
+   sz = size(entry)
+   try
+      (expt,txt) = scanstr(entry,"%1 (%2)")
+      error = 0
+   catch
+      expt = entry
+      txt = ""
+   endtry
+
+endproc(expt,txt)
+
+##################################################################
+# Create the full experiment name with script and experiment number
+##################################################################
+
+procedure(getFullExptName, name, expNr)
+
+   if(expNr != "")
+      name = name + " expNr = $expNr$"
+   endif
+
+endproc(name)
+
+###############################################
+# Display a 2D plot. Arguments are:
+# 
+# plt ... plot region (object)
+# mat ... image to display (matrix)
+# xaxis . x axis (vector)
+# yaxis . y axis (vector)
+# xlab .. xlabel (string)
+# ylab .. ylabel (string)
+# titl .. title (string)
+#
+###############################################
+
+procedure(Image, plt, mat, xaxis, yaxis, xlab, ylab, titl)
+
+   selecteditline(getcurrentline("parent"))
+   im = plt->subplot(1,1)
+   if(nrArgs == 2)
+      im->image(mat)
+   elseif(nrArgs == 7)
+      im->draw("false")
+      im->image(mat,[xaxis[0],xaxis[-1]],[yaxis[0],yaxis[-1]])
+      im->title(titl)
+      im->xlabel(xlab)
+      im->ylabel(ylab)
+      im->draw("true")
+   else
+      pr("Expecting 7 arguments: plot, matrix, xaxis, yaxis, xlabel, ylabel, title\n")
+   endif
+
+endproc()
+
+###############################################
+# Set up the plot regions to appear
+# 
+# layout ... description of regions (list)
+#
+# layout is a pseudo 2D list. Format is
+#
+# ["reg1","reg2",":","reg3","reg4",":" ... ]
+#
+# This will place region 1 and 2 on the first
+# row, regions 3 and 4 on the second etc.
+#
+# regions must come from the list
+#
+# pt1 ...  pt6, im1  ... im4
+#
+# and may not be repeated. ptx are 1D plots
+# imx are 2D images.
+#
+###############################################
+
+procedure(InitPlot,layout)
+
+   selecteditline(getcurrentline("parent"))
+
+# Check argument
+   if(vartype(layout) != "list2d" & vartype(layout) != "list")
+      message("Error","Argument 1 to InitPlot should be a 1D or 2D list","error")
+      return
+   endif
+
+# Convert 1D lists into 2D
+   if(vartype(layout) == "list")
+      if(getlistindex(layout,";") == -1)
+         old = layout
+         layout = list(size(old),1)
+         layout[~,0] = old
+      endif
+   endif
+
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+
+# Update the plot layout
+   winnamespace(seWinNr)
+   wvPlotLayout = layout
+   winnamespace(mainWinNr)
+   wvPlotLayout = layout
+   if(expert:setPlotMode(layout))   
+      winnamespace(seWinNr)
+      return
+   endif
+   winnamespace(seWinNr)
+
+endproc()
+
+##################################################
+# Initialise the window variables
+##################################################
+
+procedure(initWinVar,parentWinNr,dataFolder,pulsePrograms,exptList,plots)
+
+# Define window variable
+   windowvar(dataFolderCtrl,pulseProgramsCtrl,exptListCtrl,wvPlotLayout)
+   windowvar(pt1,pt2,pt3,pt4,pt5,pt6,im1,im2,im3,im4)
+   windowvar(wvParentWinNr,wvScriptWinNr) 
+   windowvar(wvResult)
+# Intialise window variables
+   # Script editor window number (defines global namespace)
+   wvScriptWinNr = winnamespace() 
+   # Main interface namespace
+   wvParentWinNr = parentWinNr 
+   # Experiment output
+   wvResult = null
+   # Control containing data location
+   dataFolderCtrl = dataFolder
+   # Control containing pulse program location
+   pulseProgramsCtrl = pulsePrograms 
+   # Control containing list of experiments (parent interface)
+   exptListCtrl = exptList 
+   # Plot layout list
+   wvPlotLayout = null
+   # Update plot regions
+   pt1 = plots->plt1
+   pt2 = plots->plt2
+   pt3 = plots->plt3
+   pt4 = plots->plt4
+   pt5 = plots->plt5
+   pt6 = plots->plt6
+   im1 = plots->plt7
+   im2 = plots->plt8
+   im3 = plots->plt9
+   im4 = plots->plt10
+
+endproc()
+
+##################################################
+# Load parameters
+##################################################
+
+procedure(loadPar, pathLocal, fileLocal)
+
+   file = "$prefdir$\\SpinsolveParameters\\ScriptEditor.par"
+   if(isfile(file))
+      par = load(file)
+      assignlist(par)
+      setwindowpar(0,"dimensions",dimensions)
+      if(nrArgs == 2)
+         pathName = pathLocal
+         fileName = fileLocal
+      endif
+      edFile = "$pathName$\\$fileName$"
+      if(isfile(edFile))
+         escapechar("false")  
+         txt = load(edFile)
+         scriptEditor->filename(fileName)
+         scriptEditor->pathname(pathName)
+         scriptEditor->syntaxcoloringstyle("macro")
+         scriptEditor->text(txt)
+         scriptEditor->modified("false")
+         escapechar("true")  
+      endif
+   endif
+
+endproc()
+
+##################################################
+# Make a new experiment data folder and update
+# the user interface
+##################################################
+
+procedure(NewDataFolder, dir)
+
+   selecteditline(getcurrentline("parent"))
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+   winnamespace(mainWinNr)
+# Save current experiment and project parameters
+   expert:saveExptPar(wvCurrentExpt)
+   expert:savePar(wvCurrentDataFolder)
+# Make new project directory and load into UI
+   mkdir(dir)
+   cd(dir)
+   dataFolderCtrl->text(dir)
+   wvCurrentDataFolder = dir 
+   gUCSInfo = struct()
+   gUCSInfo->running = 0
+   winnamespace(mainWinNr)
+# Load the new project experiments into list and add icons
+   expert:loadExptToRun(1)
+   expert:addIcons()
+   winnamespace(seWinNr)
+
+endproc()
+
+##################################################
+# Close the current script and clear the editor
+##################################################
+
+procedure(newScript)
+
+   funcEdit("close macro")
+
+endproc()
+
+##################################################
+# Select an existing script using the file browser
+##################################################
+
+procedure(openScript)
+
+   path = "$appdir$\\Macros\\Spinsolve-Expert\\Example Scripts"
+   scriptEditor->pathname(path)
+   funcEdit("open macro")
+
+endproc()
+
+
+###############################################
+# Display a 1D plot. Arguments are:
+# 
+# plt ... plot region (object)
+# x ..... x axis (vector)
+# y ..... y axis (vector)
+# xlab .. xlabel (string)
+# ylab .. ylabel (string)
+# titl .. title (string)
+#
+###############################################
+
+procedure(Plot, plt, x, y, xlab, ylab, titl)
+
+   selecteditline(getcurrentline("parent"))
+   p = plt->subplot(1,1)
+   if(nrArgs == 3)
+      p->plot(x,y)
+   elseif(nrArgs == 6)
+      p->draw("false")
+      p->plot(x,y)
+      p->title(titl)
+      p->xlabel(xlab)
+      p->ylabel(ylab)
+      p->draw("true")
+   else
+      pr("Expecting 6 arguments: plot, xaxis, yaxis, xlabel, ylabel, title\n")
+   endif
+
+endproc()
+
+
+##################################################
+# Run the experiment 'ppName'. This involves
+# finding the pulse parameters and modifying them
+# if necessary using the modList argument. Missing
+# required parameters such as dataDirectory
+# expName and expNr are then added.
+# The plot layout is then updated, the interface
+# prepared to run an experiment, and the experiment
+# is run in a separate thread. (This allows window
+# resizing etc during the experiment). When the 
+# experiment has completed the interface is tidied
+# up and any experimental results are returned.
+###################################################
+
+procedure(RunExpt, ppName, modList)
+
+   selecteditline(getcurrentline("parent"))
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+
+   try
+   # Extract and assign modification to parameter list (if any)
+      if(nrArgs == 2)
+      # Assign modList
+         assignlist(modList)
+         if(isvar("expNr"))
+            if(vartype(expNr) == "float")
+               if(expNr <= 0)
+                  pr "\nRunExpt: Invalid experiment number 1: $expNr$"
+                  return
+               endif  
+            else
+               pr "\nRunExpt: Invalid experiment number 2: $expNr$"
+               return
+            endif
+         else
+            expNr = -1
+         endif             
+      else
+        expNr = -1
+      endif   
+  
+   # Extract the experiment name and suffix (if any)
+     (expt,suffix) = :getExpInfo(ppName)
+   
+   # See if the experiment already exists, if not add it
+   # and then load the appropriate acqu.par file
+      cd(dataFolderCtrl->text)
+      (lst,listIndx,guipar) = :addExperimentToList(expt,suffix,expNr)
+
+   # Update list
+      exptListCtrl->list(lst)
+      exptListCtrl->zindex(listIndx)
+
+   # Update the icons
+      winnamespace(mainWinNr)
+      expert:addIcons()
+      winnamespace(seWinNr)
+
+   # Check for valid parameter file
+      if(guipar == null)
+         pr "No parameter file found for experiment '$expt$'\n"
+         return
+      endif
+
+   # Merge with common parameters
+      winnamespace(mainWinNr)
+      guipar = expert:mergeWithCommonPar(guipar)
+      winnamespace(seWinNr)
+
+   # Merge modList with guipar
+      if(nrArgs == 2)
+        if(vartype(modList) != "list")
+            message("Error","Argument 2 to RunExpt should be a list","error")
+            return
+        endif
+        guipar = mergelists(modList,guipar)
+      endif
+
+   # Add the experiment name, number and data directory to guipar
+      guipar = setlistvalue(guipar,"dataDirectory","\"$dataFolderCtrl->text()$\"")
+      guipar = setlistvalue(guipar,"expName","\"$ppName$\"")
+      listName = ppName
+      if(getlistindex(guipar,"expNr") == -1)
+         guipar = setlistvalue(guipar,"expNr","\"\"")
+         expNr = ""
+      else
+         expNr = getlistvalue(guipar,"expNr")
+      endif
+      if(getlistindex(guipar,"incExpNr") == -1)
+         guipar = setlistvalue(guipar,"incExpNr","\"no\"")
+      endif
+   
+   # Save acqu.par and common par
+      winnamespace(mainWinNr)
+      guipar = :updateBWandAcq(guipar)
+      :saveAcquPar(ppName,expNr,guipar)
+      :saveCommonPar(guipar)
+      winnamespace(seWinNr)
+   
+      gUCSInfo = struct()
+      gUCSInfo->running = 0
+
+   # Run the experiment passing guipar
+      cd(pulseProgramsCtrl->text)
+      cd(ppName)
+      exptListCtrl->zindex(listIndx)
+      fullName = :getFullExptName(ppName,expNr)
+      wvSpecType = "SpinsolveScript"
+     # exptListCtrl->text(listName)
+      winnamespace(seWinNr)
+   
+     # wvPlotLayout == null implies a InitPlot command has not been
+     # run so the experiment default plot layout should be used
+      if(wvPlotLayout == null)
+         winnamespace(mainWinNr)
+         expert:createParameterCtrls()
+         expert:hideProcessingControls()
+         layout = expert:loadPlotLayout("run")
+         gView->layoutPlots(layout)   
+         gView->showPlots(layout)  
+         expert:prepareToRunExpt()
+         assignlock("wvExpStatus","running","window")
+         winnamespace(seWinNr)
+         cd(pulseProgramsCtrl->text)
+         if(not(isfile(expt+".mac"))) # Try for version 3 
+            cd(expt)        
+            if(not(isfile(expt+".mac"))) # Try for version 4 
+               throw("Experiment macro '$name$' not found")
+            endif
+         endif
+         :disableSEInterface()
+         exptStatus->text("Running")
+         winnamespace(mainWinNr)
+         experimentLabelCtrl->label("$fullName$ running ...")
+         wvThreadRunning = 1
+      # Run the experiment passing guipar
+         id = thread(":experimentThread",expt, guipar, mainWinNr, seWinNr)
+         threadwait(id)
+#         while(wvThreadRunning)
+#            pause(0.1)
+#         endwhile 
+         if(wvExpStatus == "running")
+            expert:saveExtraResults()
+            experimentLabelCtrl->label("$fullName$ completed")
+         elseif(wvExpStatus == "finish")
+            expert:saveExtraResults()
+            experimentLabelCtrl->label("$fullName$ finished")
+         else
+            experimentLabelCtrl->label("$fullName$ aborted")
+         endif
+         expert:makeParameterBackup()
+         expert:addIcons()
+         statusCtrl->text("")
+       #  :restoreInterface()
+   # The plot layout has been set so don't change it, 
+   # just update the parameter list
+      else
+         exptStatus->text("Running ...")
+         winnamespace(mainWinNr)
+         expert:createParameterCtrls()
+         expert:prepareToRunExpt()
+         assignlock("wvExpStatus","running","window")
+         winnamespace(seWinNr)
+         :disableSEInterface()
+         cd(pulseProgramsCtrl->text)
+         cd(expt)
+         winnamespace(mainWinNr)
+         experimentLabelCtrl->label("$fullName$ running ...")
+         wvThreadRunning = 1
+         id = thread(":experimentThread", expt, guipar, mainWinNr, seWinNr)
+       #  threadwait(id)
+         while(wvThreadRunning)
+            pause(0.1)
+         endwhile  
+         if(wvExpStatus == "running")
+            expert:saveExtraResults()
+            experimentLabelCtrl->label("$fullName$ completed")
+         elseif(wvExpStatus == "finish")
+            expert:saveExtraResults()
+            experimentLabelCtrl->label("$fullName$ finished")
+         else
+            experimentLabelCtrl->label("$fullName$ aborted")
+         endif
+         expert:makeParameterBackup()
+         expert:addIcons()
+         statusCtrl->text("")
+      #   :restoreInterface()
+      endif
+   
+   # Check to see if the experiment has been aborted or finished
+      winnamespace(mainWinNr)
+      if(wvExpStatus == "stop")
+         pr("\n   Experiment $fullName$ and script aborted\n")
+         winnamespace(seWinNr)
+         exptStatus->text("Aborted")
+         :restoreSEInterface()
+         abort("")
+      elseif(wvExpStatus == "finish")
+         pr("\n   Experiment $fullName$ finished early\n")
+      endif
+      winnamespace(seWinNr)
+    #  :restoreSEInterface()
+      exptStatus->text("Processing ...")
+   catch
+      pr lasterror()
+      winnamespace(mainWinNr)
+    #  :restoreInterface()
+      winnamespace(seWinNr)
+    #  :restoreSEInterface()
+   endtry
+
+   winnamespace(mainWinNr)
+   wvSpecType = "SpinsolveNormal"
+   expert:showProcessingControls()
+   winnamespace(seWinNr)
+
+endproc(wvResult)
+
+##################################################
+# An experiment is starting so disable the 
+# script editor iterface
+##################################################
+
+procedure(disableSEInterface)
+
+   lst = getwindowpar(0,"ctrllist")
+   for(k = 0 to size(lst)-1)
+      tag = getpar(0,lst[k],"tag")
+      if(tag != "enabled" & tag != "help")
+         setpar(0,lst[k],"enable","false")
+      else
+         setpar(0,lst[k],"enable","true")
+      endif
+   next(k)
+
+endproc()
+
+##################################################
+# An experiment has finished so restore the 
+# main window interface.
+##################################################
+
+procedure(restoreInterface)
+
+   if(isvar("gUCSInfo"))
+      gUCSInfo->running = 0
+   endif
+   cd("..")
+   gView->enableControls()
+   ucsCtrl:beep()
+   
+endproc()
+
+##################################################
+# An experiment has finished so restore the 
+# script editor interface.
+##################################################
+
+procedure(restoreSEInterface)
+
+   lst = getwindowpar(0,"ctrllist")
+   for(k = 0 to size(lst)-1)
+      tag = getpar(0,lst[k],"tag")
+      if(tag != "enabled")
+         setpar(0,lst[k],"enable","true")
+      else
+         setpar(0,lst[k],"enable","false")
+      endif
+   next(k)
+
+endproc()
+
+##################################################
+# Runs the current script
+##################################################
+
+procedure(runScript)
+
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+   wvPlotLayout = null
+   cd(pulseProgramsCtrl->text)
+   winnamespace(mainWinNr)
+   windowvar(wvEnableMode)
+   wvEnableMode = "disable"
+   winnamespace(seWinNr)
+   txt = scriptEditor->text
+   try
+      txt()
+   catch
+      pr lasterror()
+   endtry
+
+   winnamespace(mainWinNr)
+   :restoreInterface()
+   winnamespace(seWinNr)
+   :restoreSEInterface()
+   exptStatus->text("Finished")
+   wvEnableMode = "enable"
+
+endproc()
+
+##################################################
+# Save the experiment parameters and common
+# parameters
+##################################################
+
+procedure(Save, folderName, saveWhat, value1, value2)
+
+   selecteditline(getcurrentline("parent"))
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+   dataDir = "$dataFolderCtrl->text$\\Script ($folderName$)"
+   mkdir(dataDir)
+   cd(dataDir)
+   if(saveWhat == "script")
+      escapechar("false")
+      txt = scriptEditor->text()
+      save("script.mac",txt)
+      escapechar("true")
+      :addScriptFolderToList("Script ($folderName$)")
+   elseif(saveWhat == "plot")
+      if(nrArgs != 4)
+         message("Error","Should be 4 arguments; folder suffix, \"plot\", plot_name, file_name ","error")
+         return
+      endif         
+      if(vartype(value1) != "string")
+         message("Error","Invalid plot name. Should be one of (pt1,pt2,pt3,pt4,im1,im2)","error")
+         return
+      endif
+      if(value1 == "pt1")
+         value2 = rmext(value2) + ".pt1"
+         pt1->save(value2)
+      elseif(value1 == "pt2")
+         value2 = rmext(value2) + ".pt1"
+         pt2->save(value2)
+      elseif(value1 == "pt3")
+         value2 = rmext(value2) + ".pt1"
+         pt3->save(value2)
+      elseif(value1 == "pt4")
+         value2 = rmext(value2) + ".pt1"
+         pt4->save(value2)
+      elseif(value1 == "im1")
+         value2 = rmext(value2) + ".pt2"
+         im1->save(value2)
+      elseif(value1 == "im2")
+         value2 = rmext(value2) + ".pt2"
+         im2->save(value2)
+      else
+         message("Error","Invalid plot name $name$. Should be one of (pt1,pt2,pt3,pt4,im1,im2)","error")
+         return
+      endif
+   elseif(saveWhat == "layout")
+      if(nrArgs != 3)
+         message("Error","Should be 3 arguments; folder suffix, \"plot\", plot_layout_list","error")
+         return
+      endif
+      save("layout.par","layout = $value1$\n")
+   endif
+
+# Update the experiment list icons
+   winnamespace(mainWinNr)
+   expert:addIcons()
+   winnamespace(seWinNr)
+
+endproc()
+
+
+##################################################
+# Save the experiment parameters and common
+# parameters
+##################################################
+
+procedure(saveAcquPar, ppName, expNr, guipar)
+
+   if(expNr == "")
+      parFile = "$dataFolderCtrl->text$\\$ppName$\\acqu.par"
+   else
+      dir = "$dataFolderCtrl->text$\\$ppName$\\$expNr$"
+      mkdir(dir)
+      parFile = "$dir$\\acqu.par"
+   endif
+   save(parFile,sortlist(guipar),"truedoubles") 
+
+endproc()
+
+##################################################
+# Save the common experimental parameters
+##################################################
+
+procedure(saveCommonPar, guipar)
+
+# Update common par
+   if(useCommonParCtrl->text == "yes")
+      ucsFiles:saveCommonPar(guipar)
+   endif
+
+endproc()
+
+##################################################
+# Save parameters
+##################################################
+
+procedure(savePar)
+
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   pathName = scriptEditor->pathname()
+   fileName = scriptEditor->filename()
+   dim =  getwindowpar(0,"dimensions")
+   lst = ["pathName = \"$pathName$\"","fileName = \"$fileName$\"",
+          "dimensions = $dim$"]
+   save("scriptEditor.par",lst)
+
+endproc()
+
+##################################################
+# Save the editor script to a new file location
+##################################################
+
+procedure(saveScriptAs)
+
+   funcEdit("save macro as")
+
+endproc()
+
+##################################################
+# Save the editor script to the current location
+##################################################
+
+procedure(saveScript)
+
+   funcEdit("save macro")
+
+endproc()
+
+##################################################
+# Show help for special commands or experiments
+# when user presses F1 after clicking on name
+##################################################
+
+procedure(showHelp, command)
+
+   expts = caseset(getpar(0,9,"menu"),"lower")
+   funcs = caseset(getpar(0,7,"menu"),"lower")
+   for(k = 0 to size(funcs)-1)
+      funcs[k] = ":"+scanstr(funcs[k],"%1(*)")
+   next(k)
+
+   if(getlistindex(expts,command) != -1) # Help for experiments
+      help("Macros\\Proton",command+".htm")
+   elseif(getlistindex(funcs,command) != -1) # Help for special command
+      help("Macros\\Spinsolve-Expert","ScriptEditor.htm#$command$")
+   endif
+
+endproc()
+
+##################################################
+# Update common parameter
+##################################################
+
+procedure(SetCommon, lst)
+  
+   selecteditline(getcurrentline("parent"))
+   comPar = ucsFiles:loadCommonPar()
+   comPar = setlistvalues(comPar,lst)
+
+   ucsFiles:saveCommonPar(comPar)
+
+   prefPar = ucsFiles:loadPref()
+   prefPar = setlistvalues(prefPar,lst)
+
+   ucsFiles:savePref(prefPar)
+
+endproc()
+
+##################################################
+# Update common parameter
+##################################################
+
+procedure(UseCommon, state)
+  
+   selecteditline(getcurrentline("parent"))
+   if(state == "true" | state == 1)
+      state = "yes"
+   else
+      state = "no"
+   endif
+
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+   winnamespace(mainWinNr)
+   useCommonParCtrl->text(state)
+   winnamespace(seWinNr)
+
+endproc()
+
+##############################################
+# Update the bandwidth and acquisition 
+# parameter stored in the list based on the
+# dwelltime and nrPnts
+##############################################
+
+procedure(updateBWandAcq,lst)
+
+   assignlist(lst)
+   bandwidth = 1000/dwellTime
+   acqTime = dwellTime*nrPnts/1000
+   lst = setlistvalue(lst,"bandwidth","$bandwidth$")
+   lst = setlistvalue(lst,"acqTime","$acqTime$")
+
+endproc(lst)
+
+##############################################
+# Update experiments which can be added
+##############################################
+
+procedure(updateExp)
+
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+
+   winnamespace(mainWinNr)
+   if(isdir(pulseProgramsCtrl->text))
+      cd(pulseProgramsCtrl->text)
+      dir = getdirlist(".")
+      lst = null
+      for(k = 0 to size(dir)-1)
+         cd(dir[k])
+         exptMac = "$dir[k]$.mac"
+         ppFile = "$dir[k]$*.p"
+         itfcMac = "$dir[k]$_interface.mac"
+         if(isfile("..\\$exptMac$"))
+            if(isfile(ppFile) & isfile(itfcMac))
+               lst = lst + ["$dir[k]$"]
+               cachemacro(itfcMac) # Speed things up
+            endif
+         endif
+         cd("..")
+      next(k)
+      if(lst != null)
+         lst = lst + ["----","Delay","Time"]
+         winnamespace(seWinNr)
+         experiments->menu(lst)
+         experiments->text(lst[0])
+      endif
+   endif
+   winnamespace(seWinNr)
+
+endproc()
+
+##################################################
+# Update the command and experiment menus
+##################################################
+
+procedure(updateMenus)
+
+   commands->menu(["lst = GetCommon(parameter_names)",
+                   "Image(img, mat, [xaxis, yaxis, xlabel, ylabel, title])",
+                   "InitPlot([plot_layout])",
+                   "NewDataFolder(folderName)",
+                   "Plot(plt, x, y, [xlabel, ylabel, title])",
+                   "RunExpt(exptName,[parameters])",
+                   "Save(folderName, mode, argument ...)",
+                   "SetCommon(parameters)",
+                   "UseCommon(\"true\"/\"false\")",
+                   "WaitUntilTime(time_in_seconds)"])
+   commands->zindex(0)
+
+   :updateExp()
+
+endproc()
+
+##################################################
+# Wait until time() has reach the specified value
+##################################################
+
+procedure(WaitUntilTime,t)
+
+   seWinNr = wvScriptWinNr
+   mainWinNr = wvParentWinNr
+
+   selecteditline(getcurrentline("parent"))
+   while(time() < t)
+      winnamespace(mainWinNr)
+      if(wvExpStatus == "stop")
+         :restoreInterface()
+         experimentLabelCtrl->label("Script aborted")
+         winnamespace(seWinNr)
+         exptStatus->text("Aborted")
+         pr("\n   Script aborted\n")
+         :restoreSEInterface()
+         abort("")
+      endif
+      pause(0.01)
+   endwhile
+  winnamespace(seWinNr)
+
+endproc() 
+
+##################################################
+# Define the script user interface
+##################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Spinsolve-Expert Script Editor", -1, -1, 500, 350, "resizable")
+
+      # Define all controls with basic parameters
+      editor(1, 10, 70, "ww-20", "wh-135")
+      button(2, "ww-64", "wh-56", 44, 27, "Close",:exitWindow())
+      button(3, 20, "wh-56", 44, 27, "Run",:runScript())
+      button(4, 150, "wh-56", 44, 27, "Finish",
+         exptStatus->text("Finishing ...");
+         winnamespace(wvParentWinNr);
+         experimentLabelCtrl->label("Finishing. Wait for the current phase cycle to complete ...");
+         assignlock("wvExpStatus","finish","window");)
+      button(5, 90, "wh-56", 44, 27, "Abort",
+         exptStatus->text("Aborting ...");
+         winnamespace(wvParentWinNr);
+         experimentLabelCtrl->label("Aborting. Wait for the current experiment to complete ...");
+         assignlock("wvExpStatus","stop","window");)
+      statictext(6, 105, 13, "right", "Command to add")
+      textmenu(7, 110, 10, 260, 200,
+         :addCommand())
+      statictext(8, 105, 39, "right", "Experiment to add")
+      textmenu(9, 110, 36, 260, 200,:addExperiment())
+      button(10, "ww-123", "wh-56", 44, 27, "Help",
+         help("Macros\\Spinsolve-Expert","ScriptEditor.htm");)
+      statictext(11, 385, 18, "left", "")
+      statictext(12, 385, 38, "left", "")
+
+      statusbox(50,"ww-50","ww","-1")
+
+      menu(100, "File", "Open script ...\tCtrl+O", :openScript(),
+                "Save script ...\tCtrl+S", :saveScript(),
+                "Save script as ...", :saveScriptAs(),
+                "New script\tCtrl+N", :newScript(), 
+                "Separator", ,
+                "Run script\tCtrl+R", :runScript(), 
+                "Exit\tCtrl+Q", :exitWindow())
+
+      menu(101,"Edit","Undo\tCtrl+Z",funcEdit("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcEdit("cut"),
+                "Copy\tCtrl+C",funcEdit("copy"),
+                "Paste\tCtrl+V",funcEdit("paste"),
+                "Select all\tCtrl+A",funcEdit("select all"),
+                "Separator", , 
+                "Indent\tTab",funcEdit("indent text"),
+                "Unindent\tShift+Tab",funcEdit("unindent text"),
+                "Separator", , 
+                "Block comment\tCtrl+K",funcEdit("block comment"),
+                "Block uncomment\tCtrl+U",funcEdit("block uncomment"),
+                "Separator", , 
+                "Find down\tF3",funcEdit("find down"),
+                "Find up\tShift+F3",funcEdit("find up"),
+                "Find and replace\tCtrl+F",funcEdit("find and replace"))
+
+     menu(102,"View","Go to line number ...\tCtrl+G",funcEdit("go to line"),
+                "Separator", , 
+                "Go to procedure\tCtrl+Double-click",funcEdit("go to procedure"),
+                "Go back\tF5",funcEdit("go back"),
+                "Go forward\tF6",funcEdit("go forward"),
+                "Separator", , 
+                "Increment font size\tCtrl+I",funcEdit("increment font size"),
+                "Decrement font size\tCtrl+Shift+I",funcEdit("decrement font size"),
+                "Separator", , 
+                "Show fault line\tCtrl+Shift+F",funcEdit("show fault"),
+                "Separator", , 
+                "Command help\tF1",funcEdit("command help"))
+  
+     menu(103,"Help","Help for script editor",
+         help("Macros\\SpinsolveExpert","ScriptEditor.htm");)
+
+
+     # Set other control parameters
+      setpar(n,1,"objID","scriptEditor",
+                 "statusbox",50,
+                 "syntaxcoloringstyle","macro")                
+      setpar(n,2,"tab_number",17)
+      setpar(n,3,"tab_number",14)
+      setpar(n,4,"tag","enabled",
+                  "active","true",
+                  "tab_number",17)
+      setpar(n,5,"tag","enabled",
+                  "active","true",
+                  "tab_number",16)
+      setpar(n,7,"objID","commands",
+                  "tab_number",5,
+                  "menu",[""])
+      setpar(n,9,"objID","experiments",
+                  "tab_number",5,
+                  "menu",[""])
+      setpar(n,10,"tag","help",
+                  "active","true")
+      setpar(n,11,"objID","exptStatus")
+      setpar(n,12,"objID","winLabel")
+
+      setpar(n,50,"syntaxWindow","")
+
+     # Set other window parameters
+endproc(n)
+
+
+
+
+
+
+
+
+
+
+    
+
+ 
+
+
+
+
+

@@ -1,0 +1,43 @@
+###################################################################################
+# Increment a table index
+#
+#   incindex(table, inc)
+#
+#   table : name of table array (2x1) generated with saveTable.
+#   inc : amount by which index should be incremented (positive only)
+#
+#   duration = 1 us
+#
+##################################################################################
+
+procedure(incindex, table, increment=1)
+
+   if(wvFX3Info->mode == "run")
+      
+      ps = [20d,  0x00006081,   00000004,    # Set FIFO Control Register (DDC disable data capture from DDC to FIFO)
+            20d,  0x00006084,   table[0]-1,  # dspWrite to set start table address
+            20d,  0x01006086,   1,           # Dummy read
+            20d,  0x01006086,   1,           # Read table offset
+            20d,  0x00006086,   0x02000000 + increment] # Increment offset
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+        
+   elseif(wvFX3Info->mode == "time") # TODO
+
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+         gSeq->psInfo->command = gSeq->psInfo->command + ["incindex,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+      endif
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(table, increment)
+
+   endif
+
+
+endproc()
+

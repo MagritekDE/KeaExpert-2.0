@@ -1,0 +1,126 @@
+procedure(listSSParameterAddresses)
+
+   print("\n")
+   lst = :getParameterList()
+   sz = size(lst)
+
+   adrs = 3 # Offset for parameter list version
+
+   for(k = 0 to sz-1 step 3)
+      name = lst[k]
+      type = lst[k+1]
+
+      print("$hex(adrs)$ $name$\n")
+
+      if(type == "ascii16")
+         adrs = adrs + 16
+      elseif(type == "bits32")
+         adrs = adrs + 4
+      elseif(type == "uint8")
+         adrs = adrs + 1
+      elseif(type == "uint16")
+         adrs = adrs + 2    
+      elseif(type == "int16")
+         adrs = adrs + 2 
+      elseif(type == "uint24")
+         adrs = adrs + 3     
+      elseif(type == "uint24Temp")
+         adrs = adrs + 3  
+      elseif(type == "uint16Volts")
+         adrs = adrs + 2  
+      else
+         print("Unknown type $type$\n")
+      endif
+
+   next(k)
+
+endproc()
+
+
+procedure(getParameterList)
+
+        parList = ["ElectronicsID",               "ascii16",       "1",
+                 "SystemID",                   "ascii16",       "1",
+                 "HardwareCap1",               "bits32",        "1",
+                 "HardwareCap2",               "bits32",        "1",
+                 "HardwareCap3",               "bits32",        "1",
+                 "HardwareCap4",               "bits32",        "1",
+                 "Jitter_Lock",                "uint8",         "1",
+                 "Jitter_1H",                  "uint8",         "1",
+                 "Jitter_X",                   "uint8",         "1",
+                 "PulseLength_Lock",           "uint16",        "10",
+                 "PulseLength_1H",             "uint16",        "10",
+                 "PulseLength_19F",            "uint16",        "10",
+                 "PowerLevel_Lock",            "int16",         "10",
+                 "PowerLevel_1H",              "int16",         "10",
+                 "PowerLevel_19F",             "int16",         "10",
+                 "ReceiverCal_Lock",           "uint16",        "1",
+                 "ReceiverCal_1H",             "uint16",        "1",
+                 "ReceiverCal_X",              "uint16",        "1",
+                 "PreampGain_Lock",            "uint16",        "10",
+                 "PreampGain_1H",              "uint16",        "10",
+                 "PreampGain_X",               "uint16",        "10",
+                 "RxAmpCor_Lock",              "uint16",        "100",
+                 "RxAmpCor_1H",                "uint16",        "100",
+                 "RxAmpCor_X",                 "uint16",        "100",
+                 "TxPoly0_Lock",               "int16",         "10",
+                 "TxPoly0_1H",                 "int16",         "10",
+                 "TxPoly0_X",                  "int16",         "10",
+                 "TxPoly1_Lock",               "int16",         "100",
+                 "TxPoly1_1H",                 "int16",         "100",
+                 "TxPoly1_X",                  "int16",         "100",
+                 "TxPoly2_Lock",               "int16",         "1000",
+                 "TxPoly2_1H",                 "int16",         "1000",
+                 "TxPoly2_X",                  "int16",         "1000",
+                 "xshim",                      "int16",         "1",
+                 "yshim",                      "int16",         "1",
+                 "zshim",                      "int16",         "1",
+                 "z2shim",                     "int16",         "1",
+                 "zxshim",                     "int16",         "1",
+                 "zyshim",                     "int16",         "1",
+                 "x2y2shim",                   "int16",         "1",
+                 "xyshim",                     "int16",         "1",
+                 "z3shim",                     "int16",         "1",
+                 "z2xshim",                    "int16",         "1",
+                 "z2yshim",                    "int16",         "1",
+                 "zx2y2shim",                  "int16",         "1",
+                 "zxyshim",                    "int16",         "1",
+                 "x3shim",                     "int16",         "1",
+                 "y3shim",                     "int16",         "1",
+                 "Frequency_Lock",             "uint16",        "1000",
+                 "Frequency_1H",               "uint16",        "1000",
+                 "Frequency_X",                "uint16",        "1000",
+                 "SetPntTempMag",              "uint24Temp",    "1",
+                 "CalOffTempMag",              "uint24Temp",    "1",
+                 "SetPntTempBox",              "uint24Temp",    "1",
+                 "CalOffTempBox",              "uint24Temp",    "1",
+                 "SetPntTempRoom",             "uint24Temp",    "1",
+                 "CalOffTempRoom",             "uint24Temp",    "1",
+                 "Pulse_length_X",             "int16",         "10",
+                 "Power_level_X",              "int16",         "10",
+                 "Power_level_HX45",           "int16",         "10",
+                 "Power_level_HX90",           "int16",         "10",
+                 "Power_level_HX135",          "int16",         "10",
+                 "Power_level_HX180",          "int16",         "10",
+                 "Magnet_Ki_Integral_Offset",  "uint24",        "1",
+                 "NumberLockPoints",           "uint8",         "1",
+                 "MaxGradientValue",           "uint16",        "1",
+                 "MagTempOffsetVolts",         "uint16Volts",   "1",
+                 "z4shim",                     "int16",         "1",
+                 "z3xshim",                    "int16",         "1",
+                 "z3yshim",                    "int16",         "1",
+                 "z2xyshim",                   "int16",         "1",
+                 "z2x2y2shim",                 "int16",         "1",
+                 "zx3shim",                    "int16",         "1",
+                 "zy3shim",                    "int16",         "1",
+                 "x4shim",                     "int16",         "1",
+                 "y4shim",                     "int16",         "1",
+                 "PulseLength_1H270",          "uint16",        "10",
+                 "PowerLevel_1H270",           "int16",         "10",
+                 "PulseLength_1H_Decouple",    "int16",         "10",
+                 "PowerLevel_1H_Decouple",     "int16",         "10",
+                 "PowerLevel_1H_NOE",          "int16",         "10",
+                 "Ph270_twiddle",              "uint16",        "100"]
+
+
+endproc(parList)

@@ -1,0 +1,70 @@
+procedure(testMonitor)
+
+   thread(":monitorTC08")
+
+endproc()
+
+procedure(monitorTC08)
+
+   opentc08("TTTT")
+   
+   temps = matrix(10000,9)
+   tm = linspace(0,9999,10000)
+   shapes = ["opensquare", "square", "opencircle", "circle", "opentriangle", "triangle", "openinvtriangle", "invtriangle", "opendiamond", "diamond", "cross", "plus"]
+   colors = [255,0,0; 128,128,0;0,255,0; 0,255,255; 0,0,255; 255,0,255; 0,0,0; 255,0,0; 128,128,0;0,255,0; 0,255,255; 0,0,255; 255,0,255]
+ #  clear1d()
+   hold("off")
+   plt = curplot()
+   assign("gx1",0,"global")
+   assign("gx2",0,"global")
+   assign("gy1",0,"global")
+   assign("gy2",0,"global")
+   
+   for(k = 0 to size(temps,1)-1)
+   
+
+      time(0)
+   
+      curTemp = gettc08()
+      for(q = 0 to 8)
+       # if(curTemp[q] != nan)
+           temps[k,q] = curTemp[q]
+       # endif
+      next(q)
+   
+      plt->draw("false")
+      for(q = 0 to 8)
+        if(temps[0,q] != nan)
+           plt->plot(tm[0:k],temps[0:k,q],"tracecolor",colors[~,q])
+           if(q == 1)
+             plt->hold("on")
+           endif
+        endif
+      next(q)
+      plt->xlabel("Time (s)")
+      plt->ylabel("Temperature (\176C)")
+      plt->title("Temperature Log")
+      plt->hold("off")
+
+
+      if(gx1 != -1 & gx2 > gx1)
+         curplot()->rmlines()
+         curplot()->zoom(gx1,gx2)
+      endif
+
+      plt->draw("true")
+      if(k%100==0)
+         pr time()
+      endif
+     
+    
+   
+   next(k)
+   hold("off")
+   
+   closetc08()
+
+endproc()
+
+
+   

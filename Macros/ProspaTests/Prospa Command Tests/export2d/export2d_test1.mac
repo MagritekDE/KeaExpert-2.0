@@ -1,0 +1,358 @@
+# Test different file formats with export and import
+
+procedure(export2d_test1,verbose,delay)
+
+
+   clear1d()
+
+# Binary complex bigend - float
+   x  = [0:1:255]/5
+   y = trans(10*exp((i-0.1)*x))*exp((i-0.1)*x)
+
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "bigend",
+              "fileheader", 0)
+pr local
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+
+   if(n != y)
+       return(0, "Invalid result for: export2d_test1 'binary-complex-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-float-bigend'\n"  
+   endif
+
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,float,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary complex bigend - long
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "bigend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-complex-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-long-bigend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,long,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary complex bigend - short
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "bigend",
+              "fileheader", 0) 
+   export2d(y, "data")  
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "bigend", 
+              "fileheader", 0)
+   n = import2d("data",256,256)
+
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-complex-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-short-bigend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,short,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary complex littleend - float
+   x  = [0:1:255]/10
+   y = trans(10*exp((i-0.1)*x))*exp((i-0.1)*x)
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != y)
+       return(0, "Invalid result for: export2d_test1 'binary-complex-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-float-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,float,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary complex littleend - long
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-complex-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-long-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,long,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary complex littleend - short
+   export2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-complex-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-complex-short-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,short,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real bigend - float
+   x  = [0:1:255]/5
+   y = real(trans(10*exp((i-0.1)*x))*exp((i-0.1)*x))
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "bigend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != y)
+       return(0, "Invalid result for: export2d_test1 'binary-real-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-float-bigend'\n"  
+   endif
+
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,float,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real bigend - long
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "bigend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-real-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-long-bigend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,long,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real bigend - short
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "bigend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-real-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-short-bigend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,short,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real littleend - float
+   x  = [0:1:255]/10
+   y = real(trans(10*exp((i-0.1)*x))*exp((i-0.1)*x))
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != y)
+       return(0, "Invalid result for: export2d_test1 'binary-real-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-float-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,float,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real littleend - long
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-real-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-long-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,long,bigend)")
+   draw2d("true")
+   pause(delay)
+
+# Binary real littleend - short
+   export2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "littleend",
+              "fileheader", 0)
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import2d("data",256,256)
+   if(n != round(y))
+       return(0, "Invalid result for: export2d_test1 'binary-real-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'binary-real-short-littleend'\n"  
+   endif
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (binary,short,bigend)")
+   draw2d("true")
+   pause(delay)
+
+
+# Ascii complex
+   x  = [0:1:255]/20
+   y = trans(exp((i-0.1)*x))*exp((i-0.1)*x)
+   export2dpar("ab", "ascii",  "xyrc", "complex")
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "ascii",  "xyrc", "complex")
+   
+   n = import2d("data",256,256)
+
+   if(max(abs(n - y)) > 1e-6) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export2d_test1 'ascii-complex'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'ascii-complex'\n"  
+   endif
+
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (ascii)")
+   draw2d("true")
+   pause(delay)
+
+# Ascii real
+   x  = [0:1:255]/20
+   y = real(trans(exp((i-0.1)*x))*exp((i-0.1)*x))
+   export2dpar("ab", "ascii",  "xyrc", "real")
+   
+   export2d(y, "data")
+    
+   import2dpar("ab", "ascii",  "xyrc", "real")
+   
+   n = import2d("data",256,256)
+
+   if(max(abs(n - y)) > 1e-6) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export2d_test1 'ascii-real'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export2d_test1 'ascii-real'\n"  
+   endif
+
+   draw2d("false")
+   image(n)
+   title("export2d/import2d example (ascii)")
+   draw2d("true")
+   pause(delay)
+
+   rmfile("data")
+
+
+endproc(1,"")

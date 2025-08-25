@@ -1,0 +1,73 @@
+############################################################
+#  
+# A pulse sequence suitable for performing a
+# pulse and collect experiment on hydrogen nuclei
+# in the Spinsolve Spectrometer.
+#
+#
+# The acquisition delay is optimised to reduce 1st order
+# phase errors when the data is shifted forward in time 
+# (effectively putting the missed data at time zero where 
+# it just introduces a baseline offset.)
+#
+# pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
+               "b1Freq1H",        "1H frequency (MHz)",        "tb",  "freq";
+               "xShim",           "x-shim",                    "tb",  "float";
+               "yShim",           "y-shim",                    "tb",  "float";
+               "zShim",           "z-shim",                    "tb",  "float";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime";
+               "rxGain",          "Receiver gain",             "tm",  "integer,[-20:3:70]";
+               "rxChannel",       "Receiver channel",          "tm",  "string,[\"1H\",\"13C\",\"15N\",\"19F\",\"29Si\",\"31P\",\"X\"]";
+               "rxPhase",         "Receiver phase",            "tb",  "float,[-360,360]";
+               "nrPnts",          "Number of points",          "tm",  "integer,[4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768]";
+               "dwellTime",       "Dwell time (us)",           "tm",  "float,[1,2,5,10,20,50,100,200,500,1000,2000]";
+               "nrScans",         "Number of scans",           "tb",  "float,[1,1e8]";
+               "flatFilter",      "Flat filter",               "cb",  "no,yes";
+               "accumulate",      "Accumulate data",           "cb",  "no,yes";
+               "usePhaseCycle",   "Phase cycle",               "cb",  "no,yes";
+               "bandwidth",       "Bandwidth (kHz)",           "tb2", "float";
+               "acqTime",         "Acquisition time (ms)",     "tb",  "float"]
+
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts    = nrPnts",
+                    "freqCh1  = double(b1Freq1H)",
+                    "freqRx     = double(b1Freq1H)",
+                    "freqRx     = double(b1Freq1H)",
+                    "nxShim       = xShim",
+                    "nyShim       = yShim",
+                    "nzShim       = zShim",
+                    "totPnts      = nrPnts",
+                    "totTime      = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+## Pulse sequence
+
+   initpp(dir)              # Define compile directory and clear parameter list
+   delay(20000)
+   shim16(1,nxShim)
+   shim16(2,nyShim)
+   shim16(0,nzShim)
+   lst = endpp(1)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0]   # pA : Acquire phase
+
+
+endproc(lst,list(0),interface,relationships,variables,null,phaseList)
+
+

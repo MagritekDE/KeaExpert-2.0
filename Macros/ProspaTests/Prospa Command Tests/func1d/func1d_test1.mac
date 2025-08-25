@@ -1,0 +1,17 @@
+procedure(func1d_test1,verbose,delay)
+
+# Just runs all the non-interactive "plot1d" commands in a random order.
+
+func1d_commands = ["border axes","copy all plots","copy plot","corner axes","crossed axes","cut plot","delete all plots","display data","drag plot","enlarge horizontal","enlarge vertical","hide borders","linear x scale","log x scale","move up","move down","move left","move right","multiplot 1*1","multiplot 1*2","multiplot 2*1","multiplot 2*2","paste into plot","paste plot","reduce horizontal","reduce vertical","remove all data","remove current data","remove other subplots","select region","show all plots","show borders","toggle antialiasing","toggle border","toggle fixed range","toggle imaginary","toggle real","view one plot"]
+for (m = 1 to 20)
+  shuffled = shuffle(func1d_commands)
+  for (n = 0 to size(shuffled) - 1)
+    curplot()->title(shuffled[n])
+    func1d(shuffled[n])
+    plot([1:100],noise(100)+20)
+    curplot()->title(shuffled[n])
+    
+  next n
+next m
+ 
+endproc(1,"")

@@ -1,0 +1,73 @@
+procedure(ls_test1,verbose,delay)
+
+   bak = getcwd()
+   cd(getmacropath())
+
+# Check directory mode
+   for(k = 0 to 9)
+     mkdir("mydir$k$")
+   next(k)
+
+   for(k = 0 to 9)
+     mkdir("there$k$dir")
+   next(k)
+
+   lst = ls("mydir*","folders","no")
+   for(k = 0 to 9)
+     if(lst[k] != "mydir$k$")
+        return(0, "Invalid result for: ls_test1 #1")
+     endif
+   next(k)
+
+   lst = ls("there*dir","folders","no")
+   for(k = 0 to 9)
+     if(lst[k] != "there$k$dir")
+        return(0, "Invalid result for: ls_test1 #2")
+     endif
+   next(k)
+
+   for(k = 0 to 9)
+     rmdir("mydir$k$")
+   next(k)
+
+   for(k = 0 to 9)
+     rmdir("there$k$dir")
+   next(k)
+
+# Check file mode
+   m = noise(100)
+   for(k = 0 to 9)
+     save("myfile$k$.1d",m)
+   next(k)
+
+   for(k = 0 to 9)
+     save("their$k$file.1d",m)
+   next(k)
+
+   lst = ls("myfile*","files","no")
+   for(k = 0 to 9)
+     if(lst[k] != "myfile$k$.1d")
+        return(0, "Invalid result for: ls_test1 #3")
+     endif
+   next(k)
+
+   lst = ls("their*file.1d","files","no")
+
+   for(k = 0 to 9)
+     if(lst[k] != "their$k$file.1d")
+        return(0, "Invalid result for: ls_test1 #4")
+     endif
+   next(k)
+
+   for(k = 0 to 9)
+     rmfile("myfile$k$.1d")
+   next(k)
+
+   for(k = 0 to 9)
+     rmfile("their$k$file.1d")
+   next(k)
+
+
+   cd bak
+
+endproc(1,"")

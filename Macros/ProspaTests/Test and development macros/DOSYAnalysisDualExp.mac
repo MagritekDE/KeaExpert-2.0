@@ -1,0 +1,148 @@
+########################################################################
+# Does a bi-exponential fit to each column in a DOSY data set which
+# has an initial amplitude > 1/50 of the maximum.
+########################################################################
+
+procedure(DOSYAnalysis)
+
+    cd("$appdir$\\Macros\Kea-Core")
+    cachemacro("keaRun")
+    cacheproc("true")
+
+curplot("1d")
+clear("plot")
+    plt = curplot("2d")
+    (m,xr,yr) = plt->getdata("current")
+
+
+   (w,h) = size(m)
+
+
+   for(x = 0 to w-1)
+      a = m[x,~]'
+      (ph,a) = keaRun:autoPhase(a,"maxreal")
+      m[x,~] = a'
+   next(x)
+
+   for(y = 0 to h-1)
+      a = m[~,y]
+      a = convolve(a,[1,1,1,1,1])
+      m[~,y] = a
+   next(y)
+
+   image(m,xr,yr)
+    mm = mag(m)
+
+   delta = 0.007
+   Delta = 0.05
+   G        = [0.0114708,
+               0.0280976,
+               0.0380443,
+               0.0458831,
+               0.0525657,
+               0.0584898,
+               0.0638666,
+               0.0688247,
+               0.0734489,
+               0.0777987,
+               0.0819178,
+               0.0858395,
+               0.0895897,
+               0.0931891,
+               0.0966546,
+               0.1]
+  
+   diffAxis = (gamma*G*delta)^2*(Delta-delta/3)
+    
+   mx = max(mm[~,0])
+
+   ppmAxis = linspace(xr[0],xr[-1],w)
+   d1Out = matrix(w)
+   d2Out = matrix(w)
+   e1Out = matrix(w)
+   e2Out = matrix(w)
+   d1ErrOut = matrix(w)
+   d2ErrOut = matrix(w)
+   for(x = 0 to w-1)
+
+      a0 = mm[x,0]
+      if(a0 > mx/50)
+         ampAxis = m[x,~]'/a0
+         (fit,e1,d1,e2,d2,e1_err,d1_err,e2_err,d2_err) = :bifit(diffAxis,real(ampAxis))
+         d1Out[x] = d1
+         d2Out[x] = d2
+         e1Out[x] = e1
+         e2Out[x] = e2
+         d1ErrOut[x] = d1
+         d2ErrOut[x] = d2
+       #  pr "$x$ $ppmAxis[x]$ $a0$ $dOut[x]$ $dErr[x]$ $c[x]$\n"
+      endif
+   next(x)
+
+   a = real(m[~,0])
+
+   plt = curplot("1d")
+   plt->hold("off")
+   plt->plot(ppmAxis,d1Out,"color",[255,0,0])
+   plt->hold("on")
+   plt->plot(ppmAxis,d2Out,"color",[0,255,0])
+   #plt->plot(ppmAxis,dErr,"color",[0,128,0])
+   plt->axes->xdirection("reversed")
+
+
+    cacheproc("false")
+
+   d1Out = d1Out*1e9
+   d2Out = d2Out*1e9
+   h = 100
+   diffAxis = linspace(0,3,h)
+   yr = [0,3]
+
+   dOut2D = matrix(w,h)
+
+   for(x = 0 to w-1)
+
+      if(d1ErrOut[x] > 0 & d2ErrOut[x] > 0)
+         y = a[x]*(e1Out[x]*exp(-(diffAxis-d1Out[x])^2/(2*(0.05)^2)) +
+                  e2Out[x]*exp(-(diffAxis-d2Out[x])^2/(2*(0.05)^2)))
+         dOut2D[x,~] = y'
+      endif
+
+   next(x)
+
+   plt = curplot("2d")
+   plt->image(dOut2D,xr,yr)
+   plt->axes->ydirection("reversed")
+
+endproc()
+
+
+procedure(bifit,xs,ys)
+
+
+    try
+    (fit,ea,ta,eb,tb,ea_err,ta_err,eb_err,tb_err) = biexpfit(xs,ys)
+     da = 1/ta
+     db = 1/tb
+     errA = ta_err/ta
+     errB = tb_err/tb
+    catch
+      ea = 0
+      da = 0
+      eb = 0
+      db = 0
+      ea_err = 0
+      errA = 0
+      eb_err = 0
+      errB = 0
+      fit = null
+   endtry
+#hold("off")
+#plot(xs,ys)
+#hold("on")
+#plot(xs,fit)
+#pr ("E = $ea$,$eb$ D = $1/ta$,$1/tb$\n")
+#
+#pause(1)
+
+endproc(fit,ea,da,eb,db,ea_err,errA,eb_err,errB)

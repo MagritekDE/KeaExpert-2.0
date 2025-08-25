@@ -1,0 +1,105 @@
+#####################################################################
+# This code should be in all GUI scripts just change the procedure
+# name to match the filename
+#####################################################################
+
+procedure(guiScript)
+
+   n = :windowdefinition()
+   InitScript(getmacropath(),getmacroname())
+   setwindowpar(n,"exit_procedure",":exitWindow")
+   showwindow(n)
+
+endproc()
+
+#####################################################################
+# This procedure makes the graphical user interface and can be 
+# changed using the designer macro. Any manual changes may be 
+# overwritten if the designer macro is run again.
+#####################################################################
+
+procedure(windowdefinition)
+
+   n = window("GUI test", -1, -1, 234, 125, "resizable")
+
+      getmessage(-1,InitScript:processMessage())
+
+      # Define all controls with basic parameters
+      button(1, 20, 25, 71, 27, "Run",
+         InitScript:initGUI();      # Initialise system
+         th = thread(":runScript"); # This is a button callback which runs the script
+         threadwait(th);            # In a separate thread
+         EndScript(null);)          # Tidy up at the end
+      statictext(2, 61, 69, "right", "Nr scans")
+      button(3, 131, 65, 71, 27, "Close",
+         :exitWindow();)
+      textbox(4, 69, 66, 40)
+      button(5, 131, 25, 71, 27, "Abort",
+         winnamespace(wvParentWinNr);
+         assignlock("wvExpStatus","stop","window");)
+     # Set other control parameters
+      setpar(n,4,"valueID","nrScans","text","1")
+      setpar(n,5,"active","true",
+                 "tag","help")
+
+endproc(n)
+
+#####################################################################
+# This code provides F1 help for special function commands
+#####################################################################
+
+procedure(showHelp, command)
+
+   help("Macros\\Spinsolve-Expert","ScriptEditor.htm#$command$")
+
+endproc()
+
+#####################################################################
+# Come here when exiting the window. It tidies up the interface and
+# exits the window
+#####################################################################
+
+procedure(exitWindow)
+
+   EndScript()
+
+endproc()
+
+#####################################################################
+# This is the core of the script and the part which contains the 
+# NMR code. It can be copied and modified for each button callback.
+#####################################################################
+
+procedure(runScript)
+
+   assignlist(getctrlvalues(0))
+
+   InitPlot(["pt1","pt2";"im1"])
+   M = 40
+   m = cmatrix(16384,M)
+
+   time(0)
+   for(k = 0 to M-1)
+
+
+      r = RunExpt("1Pulse-H",
+                  ["nrPnts = 16384",
+                   "repTime = 1000",
+                   "nrScans = $nrScans$",
+                   "zf = 1",
+                   "dwellTime = 100",
+                   "pulseLength1H = $k+1$",
+                   "tdPhaseCorr = \"none\"",
+                   "fdPhaseCorr = \"autophase\"",
+                   "saveData=\"false\""])  
+
+      m[~,k] = r->fy
+   
+      ImageMatrix(im1,m,r->fx,[1:M],
+                    "Frequency (ppm)",
+                    "Experiment",
+                    "Test = $k$") 
+
+   next(k)
+
+endproc()

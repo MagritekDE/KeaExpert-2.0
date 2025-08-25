@@ -1,0 +1,47 @@
+procedure(getddirlist_test1,verbose,delay)
+
+   n = 9
+
+   cd(getmacropath())
+   for(k = 1 to n)
+     mkdir("dir$k$")
+   next(k)
+
+# Check that getdirlist works for current directory
+   lst =  sortlist(getdirlist("."))
+
+   for(k = 1 to n)
+     if(lst[k-1] != "dir$k$")
+        return(0, "Invalid result for: getdirlist_test1() #1")
+     endif
+   next(k)
+
+   cd("dir1")
+
+   for(k = 1 to n)
+     mkdir("subdir$k$")
+   next(k)
+
+   cd("..")
+
+# Check that getdirlist works for subdirectories
+   lst =  sortlist(getdirlist("dir1"))
+   for(k = 1 to n)
+     if(lst[k-1] != "subdir$k$")
+        return(0, "Invalid result for: getdirlist_test1() #2")
+     endif
+   next(k)
+
+   cd("dir1")
+
+   for(k = 1 to n)
+     rmdir("subdir$k$")
+   next(k)
+
+   cd("..")
+
+   for(k = 1 to n)
+     rmdir("dir$k$")
+   next(k)
+
+endproc(1,"")

@@ -1,0 +1,178 @@
+procedure(export1DtoJCamp, fileName="nmr_fid.dx", plt=null, type="FID", acqDelay=40.8)
+
+   if(plt == null)
+      return
+   endif
+
+   bak = getcwd()
+
+   cd(gData->curExpt->dataPath)
+
+# Get the experiment parameters
+   par = load("acqu.par")
+   assignlist(par)
+
+   protocol = gData->curExpt->protocol
+   SPA = gData->specID 
+   SW = 1e6/(dwellTime*b1Freq)
+   NucleusFrequency = b1Freq
+   ReferenceFrequency = b1Freq - (lowestFrequency+bandwidth*500)/1e6d
+   if(isvar("centerFreqPPM"))
+      centerFreq = centerFreqPPM
+   else
+      name = "centerFreq$nucleus$PPM"
+      if(isvar(name))
+         centerFreq = eval(name)
+      else
+         centerFreq = 0
+         print("\n   Warning center frequency not found in export1DtoJCamp\n")
+      endif
+   endif
+     
+# Get real and imaginary data - reverse sign on latter to account for Spinsolve reversal
+   (x,y) = plt->getdata()
+   rY = real(y)
+   if(type == "FID")
+      iY = -imag(y) 
+   else
+      iY = imag(y)
+   endif
+   nrPnts = size(x)
+
+# Get the plot type
+   type = "FID"
+   try
+      if(plt->parent->uservar->type == "fid")
+         type = "FID"
+      elseif(plt->parent->uservar->type == "spectrum")
+         type = "Spectrum"
+      endif
+   catch
+   endtry
+
+# Find maximum and minimum values
+   maxRealY = max(rY)
+   minRealY = min(rY)
+   maxImagY = max(iY)
+   minImagY = min(iY)
+
+# Find first and last data points
+   firstDataR = real(y[0])
+   lastDataR =  real(y[-1])
+   firstDataI = imag(y[0])
+   lastDataI =  imag(y[-1])
+   if(type == "FID")
+      firstTime = x[0]/1000
+      lastTime = x[-1]/1000
+   else
+      firstPPM = x[0]
+      lastPPM = x[-1]
+   endif
+
+# Save the data
+   printtofile(fileName)
+
+   print("##TITLE=$protocol$\n")
+   print("##JCAMP-DX=                   5.01 $$$$ Magritek Spinsolve: $SPA$ Expert: V$gView->versionNr$\n")
+   print("##DATA TYPE=                  NMR $type$\n")
+   print("##DATA CLASS=                 NTUPLES\n")
+   print("##ORIGIN=                     $SPA$ at Magritek\n")
+   print("##OWNER=                      Copyright (C) 2024 by Magritek\n")
+   print("##LONGDATE=                   $getdate(\"yyyy/mm/dd\")$ $gettime(\"%2d:%2d:%2d:%3d\")$\n")
+   print("##.OBSERVE FREQUENCY=         $b1Freq,2.13f$\n")
+   print("##.OBSERVE NUCLEUS=           ^$nucleus$\n")
+   print("##.DELAY=                     ($acqDelay$,  $acqDelay$)\n")
+   print("##.ACQUISITION MODE=          SIMULTANEOUS\n")
+   print("##.FIELD=                     $b1Freq*2*pi/gamma*1e6,1.2f$\n")
+   print("##.AVERAGES=                  $nrScans$\n")
+   print("##.DIGITISER RES=             16\n")
+   print("##.SHIFT REFERENCE=           (INTERNAL, None, $round(nrPnts/2)$, $centerFreq$)\n")
+   print("##$$REFERENCE_POINT=          $-lowestFrequency$    $$$$ Referencing label\n")
+   print("$$      Distance of the zero axis position (in Hz) from the last data\n")
+   print("$$      point (right edge); positive values -> right edge is below 0 Hz\n")
+   print("##SPECTROMETER/DATA SYSTEM=   Magritek Spinsolve\n")
+   print("##SAMPLE DESCRIPTION=         solvent=None\n")
+   print("$$$$ Bruker specific parameters\n")
+   print("$$$$ --------------------------\n")
+   print("##$$AUNMP=   <proc_1d_nosref>\n")
+   print("##$$INSTRUM= <Magritek>\n")
+   print("##$$SI=      $nrPnts$\n")
+   print("##$$TD=      $nrPnts$\n")
+   print("##$$TDeff=   $nrPnts$\n")
+   print("##$$SW=      $SW,1.6f$\n")
+   print("##$$BF1=     $NucleusFrequency,2.13f$\n")
+   print("##$$SF=      $ReferenceFrequency,2.13f$\n")
+   print("##$$LB=      0\n")
+   print("##$$PHC0=    0.0\n")
+   print("##$$PHC1=    0.0\n")
+   print("##$$REVERSE= no\n")
+   print("$$$$ End of Bruker specific parameters\n")
+   print("$$$$ ---------------------------------\n")
+   print("##NTUPLES=NMR $type$\n")
+   if(type == "FID")
+   print("##VAR_NAME=            TIME,            FID/REAL,            FID/IMAG, PAGE NUMBER\n")
+   else
+   print("##VAR_NAME=           RANGE,            AMP/REAL,            AMP/IMAG, PAGE NUMBER\n")
+   endif
+   print("##SYMBOL=                 X,                   R,                   I,           N\n")
+   print("##VAR_TYPE=     INDEPENDENT,           DEPENDENT,           DEPENDENT,        PAGE\n")
+   print("##VAR_FORM=            AFFN,                AFFN,                AFFN,        AFFN\n")
+   print("##VAR_DIM=     $nrPnts,12d$,        $nrPnts,12d$,        $nrPnts,12d$,           2\n")
+   if(type == "FID")
+   print("##UNITS=            SECONDS,     ARBITRARY UNITS,     ARBITRARY UNITS,\n")     
+   print("##FIRST=    $firstTime,15g$,    $firstDataR,16g$,    $firstDataI,16g$,           1\n")
+   print("##LAST=     $lastTime,15g$,      $lastDataR,14g$,     $lastDataI,15g$,           2\n")
+   print("##MIN=     $firstTime,16g$,       $minRealY,13g$,      $minImagY,14g$,           1\n")
+   print("##MAX=      $lastTime,15g$,       $maxRealY,13g$,      $maxImagY,14g$,           2\n")
+   else  
+   print("##UNITS=                PPM,     ARBITRARY UNITS,     ARBITRARY UNITS,\n")
+   print("##FIRST=     $firstPPM,15g$,    $firstDataR,16g$,    $firstDataI,16g$,           1\n")
+   print("##LAST=       $lastPPM,15g$,     $lastDataR,14g$,     $lastDataI,15g$,           2\n")
+   print("##MIN=       $firstPPM,16g$,      $minRealY,13g$,      $minImagY,14g$,           1\n")
+   print("##MAX=        $lastPPM,15g$,      $maxRealY,13g$,      $maxImagY,14g$,           2\n")
+   endif 
+   print("##FACTOR=                 1,                   1,                   1,           1\n")
+
+# Real data
+   print("##PAGE=N=1\n")
+   print("##DATA TABLE=(X++(R..R)), XYDATA\n")
+
+   x = x/1000
+
+   N = trunc(nrPnts/6)*6
+   for(k = 0 to N-6 step 6)
+      print("$x[k],3.6f$ $rY[k],+12.6f$  $rY[k+1],+12.6f$  $rY[k+2],+12.6f$  $rY[k+3],+12.6f$  $rY[k+4],+12.6f$  $rY[k+5],+12.6f$\n")
+   next(k)
+   print("$x[k],3.6f$ ")
+   for(k = N to nrPnts-1)
+      print("$rY[k],12.6f$ ")
+   next(k)
+   print("\n")
+
+# Imaginary data
+   print("##PAGE=N=2\n")
+   print("##DATA TABLE=(X++(I..I)), XYDATA\n")
+
+   for(k = 0 to N-6 step 6)
+      print("$x[k],3.6f$ $iY[k],+12.6f$  $iY[k+1],+12.6f$  $iY[k+2],+12.6f$  $iY[k+3],+12.6f$  $iY[k+4],+12.6f$  $iY[k+5],+12.6f$\n")
+   next(k)
+   print("$x[k],3.6f$ ")
+   for(k = N to nrPnts-1)
+      print("$iY[k],+12.6f$ ")
+   next(k)
+   print("\n")
+
+   print("##END NTUPLES=NMR $type$\n")
+   print("##END=\n")
+
+   closeprint()
+
+# Display folder
+   if(isdir(getcwd()))
+     exec("explorer",getcwd())
+   endif
+
+   cd(bak)
+
+endproc()
+

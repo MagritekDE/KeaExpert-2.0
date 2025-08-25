@@ -1,0 +1,19 @@
+procedure(decimate_test1,verbose,delay)
+delay = 1
+x = [0:1:1000]/1000
+y = sin(200*pi*x/100)
+for(m = 20 to 300 step 20)
+   xs = decimate(x,20,m)
+   ys = decimate(y,20,m)
+   draw1d("false")
+   plot(x,y,"tracecolor",[255,0,0])
+   hold("on")
+   plot(xs,ys,"tracecolor",[255,255,0])
+   title("decimation step size = $m$")
+   hold("off")
+   draw1d("true")
+   pause(delay)
+next(m)
+ 
+
+endproc(1,"")

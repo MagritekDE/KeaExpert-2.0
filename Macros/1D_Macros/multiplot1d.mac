@@ -1,0 +1,336 @@
+####################################################
+#                 multiplot1d.mac
+#
+# Display a series of 1D plot file as a multiplot.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek April 2011
+###################################################
+
+
+procedure(multiPlot1D)
+
+   n = :windowdefinition()
+   :loadPar()
+   :init()
+   :update()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define GUI window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("1D Multi-plot loader", -1, -1, 386, 333)
+
+      # Define all controls with basic parameters
+       listbox(1, 19, 101, 125, 139,
+          :list1proc();)
+       listbox(2, 187, 100, 125, 139)
+       textmenu(3, 148, 255, 43, 200)
+       textmenu(4, 225, 255, 43, 200)
+       statictext(5, 78, 79, "center", "Source plots")
+       statictext(6, 273, 79, "right", "Displayed plots")
+       button(7, 151, 153, 30, 20, "",
+          :copySource();)
+       statictext(8, 214, 259, "right", "by")
+       statictext(9, 135, 259, "right", "Plot organization (x by y)")
+       button(10, 271, 300, 56, 25, "Close",
+          :savePar();
+          closewindow(0);)
+       button(11, 162, 300, 56, 25, "Help",
+          :show_help();)
+       groupbox(12, "", 4, 62, 372, 228)
+       button(13, 324, 167, 40, 25, "",
+          :moveup();)
+       button(14, 324, 202, 40, 25, "",
+          :movedown();)
+       groupbox(15, "1D Plot source folder", 5, 5, 370, 54)
+       button(16, 333, 26, 28, 20, "...",
+          :setplotfolder();)
+       textbox(17, 20, 25, 300)
+       button(18, 324, 110, 40, 25, "",
+          :delete();)
+       button(19, 53, 300, 56, 25, "Apply",
+          :display_plots();)
+
+     # Set other control parameters
+       setpar(n,3,"menu",["1","2","3","4"])
+       setpar(n,4,"menu",["1","2","3","4"])
+       setpar(n,17,"valueID","plotDir")
+       setpar(n,19,"mode","default")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\1D","multiplot1d.htm")
+endproc()
+
+####################################################
+# Update the button icons
+####################################################
+
+procedure(init)
+
+   bak = getcwd()
+   cd("$getmacropath()$\\$rmext(getmacroname())$")
+   setpar(0,7,"icon","rightarrow.png")
+   setpar(0,13,"icon","uparrow.png")
+   setpar(0,14,"icon","downarrow.png")
+   setpar(0,18,"icon","cross.png")
+   cd(bak)
+
+endproc()
+
+####################################################
+# Update list1 with the current 1D plot list
+####################################################
+
+procedure(update)
+
+   bak = getcwd()
+   dir = getpar(0,17,"text")
+   cd(dir)
+   lst =  ls("*.pt1","files","no")
+   if(lst != null)
+      lst = sortlist(rmext(lst))
+      setpar(0,1,"list",lst)
+   endif
+   setpar(0,17,"text",dir)
+   cd(bak)
+
+endproc()
+
+####################################################
+# Set plot folder
+####################################################
+
+procedure(setplotfolder)
+
+   dir = getfolder(".","Select folder containing plots to display")
+   if(dir != "cancel")
+      setpar(0,17,"text",dir)
+      :update()
+   endif
+
+endproc()
+
+####################################################
+# Copy plot file from list1 to list2
+# when double clicking
+####################################################
+
+procedure(list1proc)
+
+    event = getpar(0,1,"event")
+    if(event == "double_click_down")
+       :copySource()
+    endif
+
+endproc()
+
+####################################################
+# Copy plot file from list1 to list2
+####################################################
+
+procedure(copySource)
+
+   lst2 = getpar(0,2,"list")
+   txt1 = getpar(0,1,"text")
+   if(lst2 != null)
+     if(getlistindex(lst2,txt1) == -1)
+        lst2 = lst2 + txt1
+     endif
+   else
+     lst2 = [txt1]
+   endif
+   setpar(0,2,"list",lst2)
+
+   sz = size(lst2)
+
+   (w,h) = :getmatrixdim(sz)
+    setpar(0,3,"text",w)
+    setpar(0,4,"text",h)
+
+endproc()
+
+####################################################
+# Move a plot name up in list2
+####################################################
+
+procedure(moveup)
+
+   txt = getpar(0,2,"text")
+   if(txt != null)
+      lst2 = getpar(0,2,"list")  
+      ind = getlistindex(lst2,txt)
+      if(ind >= 1)
+         temp = lst2[ind-1]
+         lst2[ind-1] = lst2[ind]
+         lst2[ind] = temp
+         setpar(0,2,"list",lst2)
+         setpar(0,2,"index",ind-1)
+      endif
+   endif
+
+endproc()
+
+####################################################
+# Move a plot name down in list2
+####################################################
+
+procedure(movedown)
+
+   txt = getpar(0,2,"text")
+   if(txt != null)
+      lst2 = getpar(0,2,"list")
+      sz = size(lst2)
+   
+      ind = getlistindex(lst2,txt)
+      if(ind < sz-1)
+         temp = lst2[ind+1]
+         lst2[ind+1] = lst2[ind]
+         lst2[ind] = temp
+         setpar(0,2,"list",lst2)
+         setpar(0,2,"index",ind+1)
+      endif
+   endif
+
+endproc()
+
+####################################################
+# Delete an entry in list2
+####################################################
+
+procedure(delete)
+
+   txt = getpar(0,2,"text")
+   if(txt != null)
+      lst2 = getpar(0,2,"list")
+      sz = size(lst2)
+      if(sz > 0)
+         ind = getlistindex(lst2,txt)
+         if(ind != -1)
+            lst2 = rmfromlist(lst2,ind)
+            setpar(0,2,"list",lst2)
+            if(size(lst2) > 0)
+               if(ind < size(lst2))
+                  setpar(0,2,"index",ind+1)
+               else if(ind == size(lst2)-1)
+                  setpar(0,2,"index",ind)
+               endif
+            endif
+         endif
+      endif
+
+      sz = size(lst2)
+      (w,h) = :getmatrixdim(sz)
+      setpar(0,3,"text",w)
+      setpar(0,4,"text",h)
+
+   endif
+
+
+
+endproc()
+
+####################################################
+# Figure out the best multiplot dimension
+####################################################
+
+procedure(getmatrixdim,d)
+
+   ideal = sqrt(d)
+
+   minErr = 1e6
+   if(ideal == trunc(ideal))
+      return(ideal,ideal)
+   else
+      for(k = 1 to 100)
+         if(d/k == trunc(d/k))
+            error = abs(d/k-k)
+            if(error < minErr)
+                minErr = error
+                best = k
+            endif
+          endif
+      next
+      nx = best
+      ny = d/best
+   endif
+
+endproc(nx,ny)
+
+
+####################################################
+# Display all plots
+####################################################
+
+procedure(display_plots)
+
+   bak = getcwd()
+   dir = getpar(0,17,"text")
+   if(isdir(dir) == 0)
+      message("Error","Directory '$dir$' not found","error")
+      return
+   endif
+   cd(dir)
+   lst2 = getpar(0,2,"list")
+   if(lst2 != null)
+      sz = size(lst2)
+      w = getpar(0,3,"value")
+      h = getpar(0,4,"value")
+   
+      multiplot("1d",w,h)
+      loadplotmode("1d","append")
+      cnt = 0
+      for(y = 1 to h)
+         for(x = 1 to w)
+            curplot("1d",x,y)
+            if(cnt < sz)
+               load(lst2[cnt]+".pt1")
+            endif
+            cnt = cnt + 1
+         next(x)
+     next(y)
+     loadplotmode("1d","new")
+   endif
+   cd(bak)
+
+endproc()
+
+procedure(loadPar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("multiplot1d.par"))
+      par = load("multiplot1d.par")
+      setctrlvalues(0,par)
+   endif
+   cd(bak)
+
+endproc()
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   par = getctrlvalues(0)
+   save("multiplot1d.par",par)
+   cd(bak)
+
+endproc()

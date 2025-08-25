@@ -1,0 +1,22 @@
+###################################################################################
+#######################################################
+
+procedure(gradon, channel, value)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 2.5
+      names = ["Go","Gz","Gy","Gx"]
+      if(isinteger(channel))
+         gSeq->psInfo->command = gSeq->psInfo->command + ["gradon,$names[channel]$,$value$,$args[0]$,$args[1]$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["gradon,G$channel$,$value$,$args[0]$,$args[1]$"]
+      endif
+
+   endif
+
+endproc()
+
+

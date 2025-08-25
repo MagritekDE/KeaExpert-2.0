@@ -1,0 +1,305 @@
+#####################################################
+# Macro to modify the colours in the 1D plots
+#
+# C Eccles, March 2010
+#####################################################
+
+procedure(modifyPlotColours2d)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   :initColours()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Modify 2D plot window colours", -1, -1, 414, 206)
+
+      # Define all controls with basic parameters
+       statictext(1, 100, 29, "right", "Axes")
+       colorbox(2, 112, 25, 22, 22, [0,0,0],
+          :setAxesColour();)
+       statictext(3, 100, 59, "right", "Axes-font")
+       colorbox(4, 112, 55, 22, 22, [0,0,0],
+          :setAxesFontColour();)
+       statictext(5, 100, 89, "right", "X/Y label")
+       colorbox(6, 112, 85, 22, 22, [0,0,0],
+          :setXYLabelColour();)
+       statictext(7, 100, 119, "right", "Title")
+       colorbox(8, 112, 115, 22, 22, [0,0,0],
+          :setTitleColour();)
+       statictext(9, 167, 27, "center", "Copy axes")
+       statictext(10, 167, 42, "center", "colour")
+       checkbox(11, 160, 60, "no,yes", "no")
+       checkbox(12, 160, 90, "no,yes", "no")
+       checkbox(13, 160, 120, "no,yes", "no")
+       statictext(14, 303, 29, "right", "Border")
+       colorbox(15, 315, 25, 22, 22, [255,255,255],
+          :setBorderColour();)
+       statictext(16, 303, 59, "right", "Background")
+       colorbox(17, 315, 55, 22, 22, [255,255,255],
+          :setBGColour();)
+       button(22, 10, 160, 62, 39, "Apply to region",
+          :applyToRegion();)
+       button(23, 290, 160, 51, 39, "Help",
+          help("Macros\\Core","modifyPlotColours2d.htm");)
+       groupbox(24, "", 10, 3, 391, 150)
+       getmessage(25,
+         :processMessage();)
+       button(26, 350, 160, 50, 39, "Close",
+          closewindow(0);)
+       button(27, 150, 160, 62, 39, "Make default",
+          :makeDefault();)
+       button(28, 80, 160, 62, 39, "Apply to all regions",
+          :applyAllRegions();)
+       statictext(30, 303, 119, "right", "Fine grid")
+       colorbox(31, 315, 115, 22, 22, [220,220,220],
+          :setFineGridColor();)
+       colorbox(32, 315, 85, 22, 22, [160,160,160],
+          :setGridColor();)
+       statictext(35, 303, 89, "right", "Grid")
+       button(41, 220, 160, 62, 39, "Load default",
+          :setDefaultColours();)
+
+     # Set other control parameters
+       setpar(n,2,"objID","axesColor")
+       setpar(n,4,"objID","fontColor")
+       setpar(n,6,"objID","labelColor")
+       setpar(n,8,"objID","titleColor")
+       setpar(n,11,"objID","copyToFont")
+       setpar(n,12,"objID","copyToLabel")
+       setpar(n,13,"objID","copyToTitle")
+       setpar(n,15,"objID","borderColor")
+       setpar(n,17,"objID","bkgColor")
+       setpar(n,22,"mode","default")
+       setpar(n,31,"objID","fineGridColor")
+       setpar(n,32,"objID","gridColor")
+
+endproc(n)
+
+################################################
+# Initialise all the color boxes in the window
+################################################
+
+procedure(initColours)
+
+# Make sure the correct plot is selected
+
+   rg = curplot("2d")
+
+   rg->draw("false")
+
+   axesColor->color(rg->axes->axescolor)
+   fontColor->color(rg->axes->fontcolor)
+   labelColor->color(rg->xlabel->color)
+   titleColor->color(rg->title->color)
+   bkgColor->color(rg->bkgcolor)
+   borderColor->color(rg->bordercolor)
+   gridColor->color(rg->grid->gridcolor)
+   fineGridColor->color(rg->grid->finegridcolor)
+
+   rg->draw("true")
+
+endproc()
+
+procedure(setAxesColour)
+
+   col = getcolor(axesColor->color)
+   if(col != null)
+      axesColor->color(col)
+   
+      if(copyToFont->text == "yes")
+         fontColor->color(col)
+      endif
+      if(copyToLabel->text == "yes")
+         labelColor->color(col)
+      endif
+      if(copyToTitle->text == "yes")
+         titleColor->color(col)
+      endif
+   endif
+
+endproc()
+
+
+procedure(setGridColor)
+
+   try
+      tc = curtrace()
+      col = getcolor(gridColor->color)
+      if(col != null)
+         gridColor->color(col)
+      endif
+   catch
+     message("Error","No current trace","error")
+   endtry
+
+endproc()
+
+procedure(setFineGridColor)
+
+   try
+      tc = curtrace()
+      col = getcolor(fineGridColor->color)
+      if(col != null)
+         fineGridColor->color(col)
+      endif
+   catch
+     message("Error","No current trace","error")
+   endtry
+
+endproc()
+
+
+procedure(setSymbolColor)
+
+   try
+      tc = curtrace()
+      col = getcolor(symbolColor->color)
+      if(col != null)
+         symbolColor->color(col)
+      endif
+   catch
+     message("Error","No current trace","error")
+   endtry
+
+endproc()
+
+
+procedure(setAxesFontColour)
+
+   col = getcolor(axes("fontcolor",""))
+   if(col != null)
+      fontColor->color(col)
+   endif
+
+endproc()
+
+procedure(setXYLabelColour)
+
+   col = getcolor(xlabel("color",""))
+   if(col != null)
+      labelColor->color(col)
+   endif
+
+endproc()
+
+procedure(setTitleColour)
+
+   col = getcolor(title("color",""))
+   if(col != null)
+      titleColor->color(col)
+   endif
+
+endproc()
+
+procedure(setBorderColour)
+
+   col = getcolor(bordercolor(),1)
+   if(col != null)
+      borderColor->color(col)
+   endif
+
+endproc()
+
+procedure(setBGColour)
+
+   col = getcolor(bkgcolor())
+   if(col != null)
+      bkgColor->color(col)
+   endif
+
+endproc()
+
+
+procedure(setDefaultColours)
+
+   axesColor->color(plotpref("axescolor"))
+   fontColor->color(plotpref("axesfontcolor"))
+   labelColor->color(plotpref("labelcolor"))
+   titleColor->color(plotpref("titlecolor"))
+   borderColor->color(plotpref("bordercolor"))
+   bkgColor->color(plotpref("bkgcolor"))
+
+endproc()
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,25,"text")
+
+   if(src == "2D Plot" & cmd == "SelectPlot")
+      :initColours()
+      (cx,cy) = curplot("2d")->position
+      setwindowpar(0,"title","Modify 2D plot window colours ($cx$,$cy$)")
+      setfocus(curplot()->parent->winnr)
+    endif 
+
+endproc()
+
+# Apply the current color setting to all plot regions
+procedure(applyAllRegions)
+
+   plt = curplot("2d")->parent
+  (cols,rows) = plt->size
+
+   draw2d("false")
+
+   for(y = 1 to rows)
+      for(x = 1 to cols)
+         rg = plt->subplot(x,y)
+         rg->axes("axescolor",axesColor->color)
+         rg->axes("fontcolor",fontColor->color)
+         rg->xlabel("color",labelColor->color)
+         rg->ylabel("color",labelColor->color)
+         rg->title("color",titleColor->color)
+         rg->bordercolor(borderColor->color)
+         rg->bkgcolor(bkgColor->color)
+         rg->grid("gridcolor",gridColor->color)
+         rg->grid("finegridcolor",fineGridColor->color)
+      next(x)
+   next(y)
+
+   draw2d("true")
+
+endproc()
+
+# Take the gui colours and save to the  defaults
+# For this instance of Prospa
+
+procedure(makeDefault)
+
+# Make the default
+   plotpref("axescolor",axesColor->color)
+   plotpref("axesfontcolor",fontColor->color)
+   plotpref("labelcolor",labelColor->color)
+   plotpref("titlecolor",titleColor->color)
+   plotpref("bordercolor",borderColor->color)
+   plotpref("bkgcolor",bkgColor->color)
+
+endproc()
+
+procedure(applyToRegion)
+
+
+   rg = curplot("2d")
+  (cols,rows) = rg->parent->size
+
+   draw2d("false")
+
+   rg->axes("axescolor",axesColor->color)
+   rg->axes("fontcolor",fontColor->color)
+   rg->xlabel("color",labelColor->color)
+   rg->ylabel("color",labelColor->color)
+   rg->title("color",titleColor->color)
+   rg->bordercolor(borderColor->color)
+   rg->bkgcolor(bkgColor->color)
+   rg->grid("gridcolor",gridColor->color)
+   rg->grid("finegridcolor",fineGridColor->color)
+
+   draw2d("true")
+
+endproc()

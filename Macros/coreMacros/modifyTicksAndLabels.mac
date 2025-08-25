@@ -1,0 +1,141 @@
+procedure(TicksAndLabels,dim)
+
+   #curplot(dim)
+   n = :windowdefinition()
+   assignctrls(n)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Ticks and Labels", -1, -1, 341, 238)
+
+       groupbox(1, "Tick and label spacing", 8, 5, 319, 117)
+       groupbox(2, "Tick length", 8, 128, 319, 65)
+       checkbox(3, 29, 31, "false,true", "false",:useZoomToggled())
+       statictext(4, 49, 31, "left", "Choose tick parameters using zoom")
+       textbox(5, 95, 55, 64)
+       textbox(6, 95, 87, 64)
+       textbox(7, 240, 55, 64)
+       textbox(8, 240, 87, 64)
+       statictext(9, 88, 59, "right", "X tick spacing")
+       statictext(10, 88, 90, "right", "Y tick spacing")
+       statictext(11, 232, 59, "right", "X ticks/label")
+       statictext(12, 232, 90, "right", "Y ticks/label")
+       textbox(13, 80, 154, 37)
+       textbox(14, 189, 154, 37)
+       statictext(15, 49, 150, "center", "Small tick")
+       statictext(16, 49, 165, "center", "length")
+       statictext(17, 155, 150, "center", "Long tick")
+       statictext(18, 155, 165, "center", "length")
+       checkbox(19, 298, 158, "false,true", "false")
+       statictext(20, 265, 150, "center", "Apply to all")
+       statictext(21, 266, 165, "center", "regions")
+       button(22, 33, 201, 65, 29, "Apply",:apply())
+       button(23, 127, 201, 76, 29, "Apply + Close",:apply();closewindow(0))
+       button(24, 232, 201, 65, 29, "Exit",closewindow(0))
+       getmessage(25,:processMessage())
+
+     # Set other control parameters
+       setpar(n,3,"objID","useZoom")
+       setpar(n,5,"objID","xSpacing")
+       setpar(n,6,"objID","ySpacing")
+       setpar(n,7,"objID","xTPL")
+       setpar(n,8,"objID","yTPL")
+       setpar(n,13,"objID","smTickSz")
+       setpar(n,14,"objID","lgTickSz")
+       setpar(n,19,"objID","applyAll")
+
+endproc(n)
+
+procedure(initialise)
+
+   cp = curplot()
+   plt = cp->parent
+   ax = cp->axes
+
+   useZoom->text(ax->autoscale)
+   :useZoomToggled()
+
+   xSpacing->text(ax->xtickspacing)
+   ySpacing->text(ax->ytickspacing)
+   xTPL->text(ax->xticksperlabel)
+   yTPL->text(ax->yticksperlabel)
+   smTickSz->text(ax->smticksize)
+   lgTickSz->text(ax->lgticksize)
+
+   getobj(0)->title("Ticks and Labels ($cp->dim$ - window:$plt->winnr$,$plt->objNr$ region:$cp->position$) ")
+
+endproc()
+
+procedure(useZoomToggled)
+
+   if(useZoom->text == "true")
+      xSpacing->enable("false")
+      ySpacing->enable("false")
+      xTPL->enable("false")
+      yTPL->enable("false")
+   else
+      xSpacing->enable("true")
+      ySpacing->enable("true")
+      xTPL->enable("true")
+      yTPL->enable("true")
+   endif
+
+endproc()
+
+procedure(apply)
+
+
+   if(applyAll->text == "true") # Update all regions in plot
+   
+      plt = curplot()->parent
+      (w,h) = plt->size
+
+      for(y = 1 to h)
+         for(x = 1 to w)
+
+            ax = plt->subplot(x,y)->axes
+
+            if(useZoom->text == "false")
+               ax->xtickspacing(xSpacing->value)
+               ax->ytickspacing(ySpacing->value)
+               ax->xticksperlabel(xTPL->value)
+               ax->yticksperlabel(yTPL->value)
+            endif
+            ax->smticksize(smTickSz->value)
+            ax->lgticksize(lgTickSz->value)
+            ax->autoscale(useZoom->text)
+
+         next(x)
+      next(y)
+
+   else # Single plot region only
+      ax = curplot()->axes
+      if(useZoom->text == "false")
+         ax->xtickspacing(xSpacing->value)
+         ax->ytickspacing(ySpacing->value)
+         ax->xticksperlabel(xTPL->value)
+         ax->yticksperlabel(yTPL->value)
+      endif
+      ax->smticksize(smTickSz->value)
+      ax->lgticksize(lgTickSz->value)
+      ax->autoscale(useZoom->text)
+   endif
+
+
+endproc()
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,25,"text")
+
+   if(src == "1D Plot" | src == "2D Plot")
+      :initialise()
+   endif
+
+endproc()

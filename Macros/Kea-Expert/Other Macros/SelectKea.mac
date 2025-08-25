@@ -1,0 +1,369 @@
+#######################################################
+# Display a dialog to allow a Kea to be selected
+#######################################################
+
+procedure(SelectKea, internal=1)
+
+   if(gView->uiMode == "viewer")
+      message("Information","Can't select Kea in view mode","info")
+      return
+   endif
+
+   if(isvar("gData->recordHistory"))
+      if(gData->recordHistory == "true")
+         r = query("Warning","History is being recorded.\rChanging the spectrometer will disable this function.\r\rContinue?","no")
+         if(r == "no")
+            return
+         endif
+         gData->recordHistory = "false"
+         gExpt->stopChecking()
+      endif
+   endif
+
+   n = :windowdefinition(internal) 
+   setwindowpar(n,"type","dialog") 
+   assignctrls(n)
+   :updateFX3PortList()
+   :updateDSPPortList()
+   showdialog(n)
+
+endproc()
+
+#######################################################
+# Define the user interface
+#######################################################
+
+procedure(windowdefinition, internal)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Select Kea", -1, -1, 320, 110)
+
+      # Define all controls with basic parameters
+      windowvar(nameCtrl,usbPortCtrl,fx3Ports,dspPorts)
+      getmessage(-1,:processMessages())
+      textmenu(1, 100, 30, 100, 200)
+      statictext(2, 92, 33, "right", "FX3 ports:")
+      textmenu(3, 100, 60, 100, 200)
+      statictext(4, 92, 63, "right", "DSP ports:")
+      button(5, 210, 30, 45, 24, "Select",:updateFX3Port())
+      button(6, 210, 60, 45, 24, "Select",:updateDSPPort())
+      button(7, 260, 30, 40, 24, "None",:chooseNothing())
+      if(internal)
+         button(8, 260, 60, 40, 24, "Cancel",closedialog())
+      endif
+      groupbox(9, "", 10, 4, 295, 95)
+
+     # Set other control parameters
+      setpar(n,1,"objID","usbFX3PortCtrl",
+                  "menu",[""])
+      setpar(n,3,"objID","usbDSPPortCtrl",
+                  "menu",[""])
+endproc(n)
+
+#######################################################
+# Get the current list of USB ports which
+# have an FX3 spectrometer attached and
+# connect to the last one
+#######################################################
+
+procedure(updateFX3PortList)
+
+   remoteIDs = checkConnections()
+   nr = fx3count()
+   lst = list(0)
+   fx3Ports = list(0)
+   for(k = 0 to nr-1)
+      id = gFX3->readSpecID(k)
+      if(id != "" & getlistindex(remoteIDs,id) == -1)
+         lst = lst + id
+         fx3Ports = fx3Ports + ["$k$"]
+      endif
+    next(k)
+
+   if(size(lst) > 0)
+      current = eval(fx3Ports[-1])
+      usbFX3PortCtrl->menu(lst)
+      fx3setport(current)
+      usbFX3PortCtrl->text(lst[-1])
+      setpar(0,5,"enable","true")
+   else
+      usbFX3PortCtrl->text("")
+      setpar(0,5,"enable","false")
+   endif
+
+endproc()
+
+#######################################################
+# Get the current list of USB ports which
+# have a spectrometer attached and connect
+# to the last one
+#######################################################
+
+procedure(updateDSPPortList)
+
+   remoteIDs = checkConnections()
+   lst = list(0)
+   dspPorts = list(0)
+   for(k = 0 to 9)
+      try
+
+         dspsetport(k)
+         id = gDSP->readSpecID(k)
+         if(id != "" & (getlistindex(remoteIDs,id) == -1))
+            lst = lst + [id]
+            dspPorts = dspPorts + ["$k$"]
+         endif
+
+      catch
+         usbDSPPortCtrl->menu(list(0))
+         usbDSPPortCtrl->text("")
+         exitfor()
+
+      endtry
+   next(k)
+
+   if(size(lst) > 0)
+      current = eval(dspPorts[-1])
+      usbDSPPortCtrl->menu(lst)
+      dspsetport(current)
+      usbDSPPortCtrl->text(lst[-1])
+      setpar(0,6,"enable","true")
+   else
+      usbDSPPortCtrl->menu(list(0))
+      usbDSPPortCtrl->text("")
+      setpar(0,6,"enable","false")
+   endif
+
+endproc()
+
+#######################################################
+# Update the FX3 port used in the main interface
+#######################################################
+
+procedure(updateFX3Port)
+
+   if(size(usbFX3PortCtrl->menu) == 0)
+      return
+   endif
+
+   thisWin = guiwinnr()
+   idx = usbFX3PortCtrl->zindex
+   port = eval(fx3Ports[idx])
+   # We should use the FX3 PP commands
+   try
+      usedll("fx3PPRun.dll")
+   catch
+      usedll("fx3PPDebug.dll")
+   endtry
+   try
+   # Load the Kea parameters and update the title
+      fx3open(port)
+      gFX3->port = fx3setport()
+      gData->procType = "FX3"
+      :updateParametersAndTitle("FX3",connected=1)
+      if(isvar("wvSpecType"))
+        # CheckLockAndTemperature:backdoor(1,1)
+      endif
+      gData->sseOpen = 0
+   catch
+      pr lasterror()
+      gData->connected = 0
+   endtry
+
+   gData->getPreferences(0)
+   guiwinnr(thisWin)
+   closedialog()
+
+endproc()
+
+#######################################################
+# Update the DSP port used in the main interface
+#######################################################
+
+procedure(updateDSPPort)
+
+   if(size(usbDSPPortCtrl->menu) == 0)
+      return
+   endif
+
+   thisWin = guiwinnr()
+   idx = usbDSPPortCtrl->zindex
+   port = eval(dspPorts[idx])
+   name = usbDSPPortCtrl->menu
+   name = name[idx]
+   if(name[0:1] != "MG")
+      message("Error","This is not a Kea","error")
+      return
+   endif
+
+ #  gData->stdSWOpen = 0
+   # We should use the DSP PP commands
+   try
+      usedll("kea2PPRun.dll")
+   catch
+      usedll("kea2PPDebug.dll")
+   endtry
+   try
+   # Load the Kea parameters and update the title
+      dspsetport(port)
+      gData->procType = "DSP"
+      :updateParametersAndTitle("DSP",connected=1)
+   catch
+      pr lasterror()
+      gData->connected = 0
+   endtry
+
+   gData->getPreferences(0)
+   guiwinnr(thisWin)
+   closedialog()
+   
+endproc()
+
+procedure(chooseNothing)
+
+   thisWin = guiwinnr()
+   gData->procType = ""
+   gData->specID = "NoConnection"
+   gData->connected = 0
+   if(gView->wn > 0)
+       guiwinnr(gView->wn)
+       msg = "$gView->coreTitle$ - No connection"
+       setwindowpar(gView->wn,"title", msg)
+   endif
+   gData->sseOpen = 1
+   guiwinnr(thisWin)
+   closedialog()
+
+endproc()
+
+#######################################################
+# Update the port list if a USB connection is changed
+#######################################################
+
+procedure(processMessages, self)
+
+  (src,cmd) = getpar(0,-1,"text")
+   callingwin = getpar(0,-1,"parent")
+
+# USB connected or disconnected
+   if(src == "USBChanged")
+      if(cmd == "FX3_Kea_Connected" | cmd == "FX3_Kea_Disconnected")
+         guiwinnr(callingwin->winnr)
+         :updateFX3PortList()
+      endif
+      if(cmd == "DSP_Connected" | cmd == "DSP_Disconnected")
+         guiwinnr(callingwin->winnr)
+         :updateDSPPortList()
+      endif
+   endif
+
+endproc()
+
+#######################################################
+# If only one Kea connected select it, otherwise allow 
+# user to choose the Kea or no connection
+#######################################################
+
+procedure(backdoor)
+
+   gData->procType = ""
+
+# Count connected DSPs
+   cntDSP = 0
+   for(k = 0 to 9)
+      try
+         dspread("x",0,1,k)
+        # dspsetport(k)
+         cntDSP = cntDSP + 1
+         gData->procType = "DSP"
+      catch
+      endtry
+   next(k)
+
+# Count connected FX3s
+   cntFX3 = fx3count()
+   cntFX3Kea = 0
+   lastGood = -1
+   for(k = 0 to cntFX3-1)
+      try
+         fx3open(k)
+         gData->procType = "FX3"
+         cntFX3Kea = cntFX3Kea + 1
+         lastGood = k
+      catch
+      endtry
+   next(k)
+
+# Count connections on other Kea-Expert instances
+   remoteIDs = checkConnections()
+
+# If just one spectrometer connected and no other Experts open
+# then make connection and load normally updating title
+   if((cntFX3Kea + cntDSP) == 1 & size(remoteIDs) == 0)
+      if(lastGood != -1)
+         fx3open(lastGood)
+         gFX3->port = fx3setport()
+      endif
+      uiTitle = :updateParametersAndTitle(gData->procType, connected=1)
+      return(uiTitle)
+   endif
+
+# If no spectrometers are available then just load normally
+# but indicate no connection in title
+   if((cntFX3Kea + cntDSP) == 0)
+      gData->procType = ""
+      gData->specID = "NoConnection"
+      gData->connected = 0
+      gData->sseOpen = 0
+      uiTitle = :updateParametersAndTitle(gData->procType, connected=0)
+      return(uiTitle)
+
+   endif
+
+# Otherwise provide a dialog to choose the spectrometer (or no connection))
+   SelectKea(internal=0)
+
+endproc("")
+
+#######################################################
+# Read the spectrometer parameter list and common
+# parameters and then update the main window title
+#######################################################
+
+procedure(updateParametersAndTitle, procType, connected)
+
+# Read the spectrometer parameter list
+   gData->loadFactoryDefaults()
+   if(gData->specParameters == null)
+      return
+   endif
+
+# Read the common parameters for this spectrometer
+   par = ucsFiles:loadCommonPar()
+   if(par != null)
+      gData->commonPar = struct(par)
+   endif
+
+# Update the main window title based on the connection
+   if(connected)
+      name = gData->specParameters->SystemID
+      if(name == "Invalid version")
+         uiTitle = "$gView->coreTitle$ - Invalid or no FX3 parameter block?"
+      elseif(name = "")
+         uiTitle = "$gView->coreTitle$ - No connection"
+      else
+         uiTitle = "$gView->coreTitle$ - $name$ ($procType$)"
+         gData->connected = 1
+      endif
+   else
+      uiTitle = "$gView->coreTitle$ - No connection"
+   endif
+
+   if(gView->wn > 0)
+      guiwinnr(gView->wn)
+      setwindowpar(gView->wn,"title", uiTitle)
+   endif
+
+endproc(uiTitle)
+

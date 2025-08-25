@@ -1,0 +1,199 @@
+####################################################
+#                  submatrix2d.mac
+#
+# Extract a 2D submatrix defined by:
+#
+# 1. the currently visible region
+# 2. by a user defined rectangle
+# 3. by manually entered limits
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(submatrix2d)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xscale,wv_yscale)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Extract 2D submatrix", -1, -1, 305, 130)
+
+      # Define all controls with basic parameters
+       windowvar(wv_yscale,wv_xscale,wv_mat)
+       button(4, 7, 98, 51, 25, "Extract",
+          :extract();)
+       button(5, 239, 98, 51, 25, "Exit",
+          closewindow(0);)
+       textbox(6, 210, 30, 51)
+       statictext(7, 151, 34, "left", "New width")
+       button(8, 123, 98, 51, 25, "Undo",
+          :undo();)
+       textbox(9, 210, 56, 51)
+       statictext(10, 147, 60, "left", "New height")
+       textbox(11, 67, 56, 50)
+       statictext(12, 31, 60, "left", "y-start")
+       groupbox(14, "Submatrix index range", 5, 5, 285, 86)
+       textbox(16, 67, 30, 50)
+       statictext(17, 31, 34, "left", "x-start")
+       button(18, 65, 98, 51, 25, "Update",
+          :initialise();)
+       button(19, 181, 98, 51, 25, "Help",
+          :showhelp();)
+       getmessage(20,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,4,"mode","default",
+                   "tab_number",5)
+       setpar(n,5,"tab_number",7)
+       setpar(n,6,"tab_number",2)
+       setpar(n,8,"tab_number",6)
+       setpar(n,9,"tab_number",4)
+       setpar(n,11,"tab_number",3)
+       setpar(n,16,"tab_number",1)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\2D","submatrix2d.htm")
+endproc()
+
+####################################################
+# Initialise the GUI boxes based on current rect.
+####################################################
+
+procedure(initialise)
+
+# Extract the data from the plot
+   m1 = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# See if there is a rectangle drawn
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      setpar(0,16,"text",x1)
+      setpar(0,11,"text",y1)
+      setpar(0,6,"text",x2-x1+1)
+      setpar(0,9,"text",y2-y1+1)
+   else
+      (x1,x2,y1,y2) = zoom2d("getargs")
+      setpar(0,16,"text",x1)
+      setpar(0,11,"text",y1)
+      setpar(0,6,"text",x2-x1+1)
+      setpar(0,9,"text",y2-y1+1)
+   endif
+
+endproc()
+
+
+####################################################
+# Extract the data from the selected region
+####################################################
+
+procedure(extract)
+
+# Extract the data from the plot
+  (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Save the matrix for undo operation
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+
+# Record the current 2D plot state
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+
+# Extract the submatrix range
+   x1 = getpar(0,16,"text")
+   y1 = getpar(0,11,"text")
+   nw = getpar(0,6,"text")
+   nh = getpar(0,9,"text")
+   if(x1 == "" | y1 == "" | nw == "" | nh == "")
+      message("Error","All range values must be entered")
+      return(0)
+   endif
+   x1 = eval(x1)
+   y1 = eval(y1)
+   nw = eval(nw)
+   nh = eval(nh)
+   x2 = x1+nw
+   y2 = y1+nh
+
+# Get the plot matrix dimensions
+   (ow,oh) = size(m1)
+
+# Check for invalid dimensions
+   if(x1 < 0 | y1 < 0 | x2 > ow | y2 > oh)
+      message("Error","Invalid range","error")
+      return()
+   endif
+
+# Extract the submatrix
+   m2 = m1[[x1:x2-1],[y1:y2-1]]
+
+# Work out new scale range after extraction
+   dx = x[1]-x[0]
+   dy = y[1]-y[0]
+   x = [x1,x2]*dx/ow + x[0]
+   y = [y1,y2]*dy/oh + y[0]
+
+# Draw the submatrix
+   draw2d("false")
+      image(m2,x,y)
+      2dpar:set(txt,lx,ly,nc,mode)
+   draw2d("true")
+
+endproc(1)
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,20,"text")
+
+   if(src == "2D Plot")
+      :initialise()
+   endif
+
+endproc()
+
+####################################################
+# Restore the matrix before last extraction
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat,wv_xscale,wv_yscale)
+   2dpar:set(txt,lx,ly,nc,mode)
+   draw2d("true")
+
+endproc()

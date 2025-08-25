@@ -1,0 +1,91 @@
+###################################################################
+#
+# Display the passed data points and a fitted biexponential curve
+#
+# Parameters are:
+# num ... the number of data points to plot
+# time .. the time array
+# amp ... the amplitude arrays
+# xp,yp . subplot coordinate (1 based) (optional)
+# c1,c2 . color of data and fit (optional)
+#
+###################################################################
+ 
+procedure(BiExpFit,num,tm,amp,xp,yp,c1,c2)
+
+   if(num < 2)
+     return("")
+   endif
+
+   if(nrArgs < 5)
+     c1 = [255,0,0]
+     c2 = [255,255,0]
+   endif
+
+   if(nrArgs < 3)
+     xp = 1
+     yp = 1
+   endif
+
+   curplot("1d",xp,yp) 
+
+  # Make local copies of data but with reduced array sizes  
+   E = submatrix(amp,0,num-1)
+   abscissa = submatrix(tm,0,num-1)/1000
+
+  # Get a best fit
+   try
+     (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,E)
+     if(Ta > Tb)
+        swapvar(Ta,Tb)
+        swapvar(Ea,Eb)
+        swapvar(TaErr,TbErr)
+        swapvar(EaErr,EbErr)
+     endif
+
+     E0 = Ea + Eb
+     result = "exp_(1) ($Ea/E0,2.1f$: $Ta,2.1f ms$)   exp_(2) ($Eb/E0,2.1f$: $Tb,2.1f$ ms)" 
+     resultOut = "Exp. 1 : $errorstr(Ea/E0,EaErr/E0,1)$ $errorstr(Ta,TaErr,1)$ ms\n               Exp. 2 : $errorstr(Eb/E0,EbErr/E0,1)$ $errorstr(Tb,TbErr,1)$ ms"
+   catch
+     Ea = E[0]
+     Eb = 0
+     result = ""
+     resultOut = ""
+   endtry
+ 
+   if(E0 <= 0)
+     message("Error","Initial data point is zero or negative.\rEnsure signal is present and correctly phased.","error")
+     abort("")
+   endif
+
+  # Display raw data and best fit comparison
+   drawplot("false")
+   
+      plot(abscissa,E/E0)
+      if(result != "")
+         title("text","T_(2) = result","size",12)
+      else
+         title("text","Echo attenuation data","size",12)
+      endif
+      trace("tracetype","none",
+            "symbolshape","opensquare",
+            "symbolsize",3,
+            "symbolcolor",c1)
+         hold("on")
+      
+         plot(abscissa,fit/E0)
+         trace("tracetype","lines",
+               "symbolshape","none",
+               "tracecolor",c2)
+         axes("fontsize",11)
+
+
+      axes("fontsize",11)
+      title("text","T_(2) = $result$ ms","size",12)
+      ylabel("text","Normalised peak integral","size",12)
+      xlabel("text","time (ms)","size",12)
+      hold("off")
+   
+   drawplot("true")
+
+endproc(resultOut)

@@ -1,0 +1,23 @@
+procedure(getlistindex_test1,verbose,delay)
+
+# Make a parameter list
+   lst = list(100)
+   for(k = 0 to 99)
+      lst[k] = "a$k$ = $k$"
+   next(k)
+
+# Check the location of entries in the list by parameter
+   for(k = 0 to 99)
+      if(getlistindex(lst,"a$k$") != k)
+         return(0, "Invalid result for: getlistindex_test1() #1")
+      endif
+  next(k)   
+  
+# Check the location of entries in the list by whole string
+   for(k = 0 to 99)
+      if(getlistindex(lst,"a$k$ = $k$") != k)
+         return(0, "Invalid result for: getlistindex_test1() #1")
+      endif
+  next(k)   
+
+endproc(1,"")

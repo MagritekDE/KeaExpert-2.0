@@ -1,0 +1,39 @@
+# Scales all traces to the selected point on
+# the current trace. Copies labels and trace colors
+
+procedure(scaleToPeak)
+   
+   message("Information","Select peak to scale to","info")
+   
+# Save the labels
+   (txt,lx,ly,x1,x2,y1,y2) = 1dpar:get()
+
+   pt = curplot("1d")
+   idx = getx("index")
+   (x,y) = pt->getdata()
+   mxv = real(y[idx])
+   tl = pt->tracelist()
+   nTrace = size(tl)
+   sz = size(x)
+   m = cmatrix(sz,nTrace)
+   mx = matrix(nTrace)
+   cols = matrix(3,nTrace)
+   for(k = 0 to nTrace-1)
+      tn = pt->trace(tl[k])
+      (x,m[~,k]) = tn->getdata()
+      cols[~,k] = tn->realcolor()
+      mx[k] = real(m[idx,k])
+   next(k)
+   pt->hold("off")
+
+   pt->draw("false")
+   for(k = 0 to nTrace-1)
+      tc = pt->plot(x,m[~,k]*mxv/mx[k])
+      pt->trace(tc)->color(cols[~,k])
+      pt->hold("on")
+   next(k)      
+   pt->hold("off")
+   1dpar:set(txt,lx,ly,x1,x2,y1,y2)
+   pt->draw("true")
+
+endproc()

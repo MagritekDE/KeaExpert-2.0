@@ -1,0 +1,210 @@
+#############################################################################################
+# This procedure is run in the background reading the Spinsolve temperatures and lock noise
+# No procedure calls are included in the while loop to prevent multi-thread conflicts
+#############################################################################################
+
+procedure(backgroundMonitor)
+
+   if(gData->connected == 0)
+      pr("   Background Monitor: No connection to Spinsolve - aborting\n")
+      return
+   endif
+
+   pr "\n   Starting periodic checks\n> "
+
+   checkInterval = 1
+
+   t1 = time()
+   while(gExpt->sysCheckingRunning)
+
+      # Check if we are ready to make a measurement
+      if(time()-t1 > checkInterval)
+
+         t1 = time() 
+
+         if(gExpt->pauseMonitor == 0)
+
+            gExpt->monitorRunning = 1
+
+            try
+               
+               gView->tempStatus->color([255,255,0])
+
+            # Read the calibration temperaure offsets from DSP parameter block
+               CalOffTempMag  = gData->specParameters->CalOffTempMag 
+               CalOffTempBox  = gData->specParameters->CalOffTempBox 
+               CalOffTempRoom = gData->specParameters->CalOffTempRoom 
+               magnetSetTemp  = gData->specParameters->SetPntTempMag 
+               boxSetTemp     = gData->specParameters->SetPntTempBox 
+               roomSetTemp    = gData->specParameters->SetPntTempRoom 
+            
+            # Read the raw data from the temperature controller
+               if(gData->procType == "DSP")
+                  temp1 = dspread("x",0x2F180+0x1E,2)
+                  temp1 = dspread("x",0x2F180+0x1E,2)
+                  temp2 = dspread("x",0x2F280+0x1E,2)
+                  temp3 = dspread("x",0x2F380+0x1E,2)
+                  peltierCtrl = dspread("x",0x02F296,2)
+                  magnetCtrl  = dspread("x",0x02F196,2)
+
+               # Convert to Celsius
+                  magnetTemp = inttotemp(eval("0x$hex(temp1[1])$$hex(temp1[0])$"))
+                  boxTemp    = inttotemp(eval("0x$hex(temp2[1])$$hex(temp2[0])$"))
+                  roomTemp   = inttotemp(eval("0x$hex(temp3[1])$$hex(temp3[0])$"))
+             
+               # Convert to Volts
+                  peltierVolts = double((peltierCtrl[1])*65536)/0xffff*34.36 - double((peltierCtrl[0]))/0xffff*34.36
+                  magnetVolts = -double((magnetCtrl[1])*65536)/0xffff*24 + double((magnetCtrl[0]))/0xffff*24
+               
+               else # FX3
+
+                  temp1 = fx3read("T",0x100+0x1E,1)
+                  temp2 = fx3read("T",0x200+0x1E,1)
+                  temp3 = fx3read("T",0x300+0x1E,1)
+                  peltierCtrl = fx3read("T",0x206,1)
+                  magnetCtrl = fx3read("T",0x106,1)
+                  if((peltierCtrl[0] & 0x10000) > 0)
+                     peltierCtrl[0] = -(peltierCtrl[0] & 0xFFFF)
+                  else
+                     peltierCtrl[0] = (peltierCtrl[0] & 0xFFFF)
+                  endif 
+            
+                # Convert them to Celsius and Volts (including tmperature offsets)
+                  magnetTemp   = inttotemp(temp1[0])
+                  boxTemp      = inttotemp(temp2[0])
+                  roomTemp     = inttotemp(temp3[0])
+                  peltierVolts = -double(peltierCtrl[0])/0xffff*34.36
+                  magnetVolts  = double(magnetCtrl[0])/0xffff*24
+
+               endif
+           
+            # Remove offsets and convert to single precision
+               magnetTemp     = single(magnetTemp - CalOffTempMag)
+               magnetSetTemp  = single(magnetSetTemp)
+               CalOffTempMag  = single(CalOffTempMag)
+               boxTemp        = single(boxTemp - CalOffTempBox)
+               boxSetTemp     = single(boxSetTemp) 
+               CalOffTempBox  = single(CalOffTempBox)
+               roomTemp       = single(roomTemp - CalOffTempRoom)
+               roomSetTemp    = single(roomSetTemp) 
+               CalOffTempRoom = single(CalOffTempRoom)
+               magnetVolts    = single(magnetVolts)
+               peltierVolts   = single(peltierVolts)
+
+            # Check the temperatures --------
+
+            # Tolerances in Kelvin
+               magnetTol = 0.01
+               boxTol = 0.1
+               roomUpperLimit = 25.5
+               roomLowerLimit = 19.5
+            
+            # Check limits
+               tempFailure = 0
+               magUpperLimit = magnetSetTemp+magnetTol
+               magLowerLimit = magnetSetTemp-magnetTol
+               if(magnetTemp < magLowerLimit | magnetTemp > magUpperLimit)
+                  tempFailure = 1
+               endif
+            
+               boxUpperLimit = boxSetTemp+boxTol
+               boxLowerLimit = boxSetTemp-boxTol
+               if(boxTemp < boxLowerLimit | boxTemp > boxUpperLimit)
+                  tempFailure = 1
+               endif
+            
+               if(roomTemp < roomLowerLimit | roomTemp > roomUpperLimit)
+                  tempFailure = 1
+               endif
+            
+               if(tempFailure == 0)
+                  gView->tempStatus->color([0,255,0])
+               else
+                  gView->tempStatus->color([255,0,0])
+               endif
+
+            # Save the temperature data
+               gData->history->magTemp      = join(gData->history->magTemp,[magnetTemp])
+               gData->history->boxTemp      = join(gData->history->boxTemp,[boxTemp])
+               gData->history->roomTemp     = join(gData->history->roomTemp,[roomTemp])
+               gData->history->peltierVolts = join(gData->history->peltierVolts,[peltierVolts])
+               gData->history->magnetVolts  = join(gData->history->magnetVolts,[magnetVolts])
+               gData->history->timeAxis     = join(gData->history->timeAxis,[single(time())])
+   
+            # Read the lock info
+      
+               gView->lockStatus->color([255,255,0])
+
+            #   if(gData->lockRunning)
+
+                  fidN = gData->specParameters->NumberLockPoints 
+
+                  if(gData->procType == "DSP")
+
+                     nrshimvalues = 100
+                     readSize = fidN*2+1+nrshimvalues
+                     addrBlockOffset = 33
+                     blockSize = 2^10
+
+                     dspwrite("x",0x28001,[addrBlockOffset]);
+                     dataBlock = dspread("x",0x28400, (readSize*2))
+       
+                     lh = size(dataBlock)
+                  
+                     # Reorder from little endian
+                     processedData = matrix(lh/2)
+                  
+                     for(n = 0 to (lh/2-1))
+                        processedData[n] = single((((dataBlock[2*n]) & 0xFF00)/(2^8))  | ((dataBlock[2*n] & 0x00FF)*(2^8)) |
+                        ((dataBlock[2*n+1] & 0xFF00)*(2^8)) )
+                        if(((processedData[n] & (0x800000)) > 0))
+                           processedData[n] = single(processedData[n]-((0x1000000)))
+                        endif
+                     next(n)
+                  
+                  # Extract the lock frequency history data
+                     history = processedData[fidN*2:fidN*2+nrshimvalues]           
+                     dacscale = 145/0x1000
+                     history = history * dacscale
+
+                  else # FX3
+
+                     (data, history, debugData) = gLock->monitorLockData(fidN)
+
+                  endif
+
+                  history = history[1:-1]
+                  lockAvg = avg(history)
+                  gData->history->lock = join(gData->history->lock,[lockAvg])
+        
+                 # Check lock
+                  lockThreshold = 0.2 
+                  var = sd(history)
+                  if(var < lockThreshold)
+                     gView->lockStatus->color([0,255,0])
+                  else
+                     gView->lockStatus->color([255,0,0])
+                  endif
+
+             #  endif
+
+            catch
+               pr lasterror()
+            endtry
+
+            gExpt->monitorRunning = 0
+
+         else
+            gView->tempStatus->color([0,128,0])
+            gView->lockStatus->color([0,128,0])
+         endif
+
+      endif # Check time 
+
+    #  pause(0.1,"sleep")
+
+   endwhile
+
+   pr "\n   Stopping periodic checks\n> "
+
+endproc()

@@ -1,0 +1,90 @@
+############################################################
+#
+# Tests all TTL outputs
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["onTime",          "On time (ms)",            "tb", "ldelay";
+               "repTime",         "Repetition time (ms)",    "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["dOn       = onTime*1000",
+                    "freqCh1   = 2"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition"] #"Processing_Std","Display_PPM_Range","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+      
+   ttl = [0x01, 0x20, 0x08, 0x02, 0x04, 0x10, 0x80, 0x40]
+      
+   initpp(dir)
+      
+      ttlon(ttl[0])
+      delay(dOn)
+      ttloff(ttl[0])
+      
+      ttlon(ttl[1])
+      delay(dOn)
+      ttloff(ttl[1])
+      
+      ttlon(ttl[2])
+      delay(dOn)
+      ttloff(ttl[2])
+      
+      ttlon(ttl[3])
+      delay(dOn)
+      ttloff(ttl[3])
+      
+      ttlon(ttl[4])
+      delay(dOn)
+      ttloff(ttl[4])
+      
+      ttlon(ttl[5])
+      delay(dOn)
+      ttloff(ttl[5])
+      
+      ttlon(ttl[6])
+      delay(dOn)
+      ttloff(ttl[6])    
+      
+      ttlon(ttl[7])
+      delay(dOn)
+      ttloff(ttl[7]) 
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)

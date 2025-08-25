@@ -1,0 +1,1577 @@
+###################################################################
+#
+# Graphing procedures for Kea
+#
+# graphTime ........ time domain data
+# graphFreq ........ frequency domain data
+# graphTimeAndFreq . time and frequency domain 
+# graphXY .......... graph x-y data
+# graphXYFit ....... graph x-y data and fit curve
+# fitAndGraph ...... perform fit and graph raw data and fit
+#
+# Note that the first 3 procedures require the presence of GUI parameters
+# and possibly window variables to operate. Required parameters are listed
+# below. When operating from the backdoor procedure all extra variables
+# are passed in guipar.
+#
+# guipar/window variables
+#
+# accumlate ............. whether y-data has been accumlated or not
+# acqTime ............... acquisition time in ms
+# dispRange ............. what display range to use for frequency plot
+# freqMag ............... whether freq. data should be magnitide or not
+# timeMag ............... whether time data should be magnitude or not
+# wvUnits ............... whether y-data is raw or in uV or mV
+# wvApplyPreampFactor ... whether preamplifier gain factor is used
+# wvApplyRxampFactor .... whether receiver gain factor us used. 
+# wvAutoScale ........... whether y-autoscaling is on or not
+#
+###################################################################
+
+
+###################################################################
+#
+# Graph the signal in the time domain. Use default colors.
+#
+# Input: 
+#        prt ............ time plot-regioNn
+#        t .............. time domain vector
+#        fidData ........ signal
+#        n .............. number of scans accumulated
+#        guipar ......... parameters extracts from dialog 
+#        txtTime ........ optional time domain plot title
+#        xLabel ......... optional x axis label
+#        yLabel ......... optional y axis label
+#        tscale ......... time axis scale from us to ms (0/1)
+#
+###################################################################
+
+procedure(graphTime,prt,tAxis,fidData,n,guipar,
+                    txtTime,xLabel,yLabel,tscale)
+
+   xMap = "lin"
+   yMap = "lin"
+
+   assignlist(guipar)
+
+   if(isvar("tscale") == 0)
+      tscale = 1
+   endif
+
+# Allow for accumulations
+   if(accumulate == "yes")
+      sf = 1/(n+1)
+   else
+      sf = 1
+   endif
+
+# Select units
+   if(wvUnits == "uV")
+      timeUnits = "\G(m)V"
+      ampMin = wvTimeMin
+      ampMax = wvTimeMax
+   elseif(wvUnits == "mV")
+      timeUnits = "mV"
+      ampMin = wvTimeMin/1000
+      ampMax = wvTimeMax/1000
+    else
+      timeUnits = "raw"
+      ampMin = wvTimeMin/1000
+      ampMax = wvTimeMax/1000
+   endif
+
+# Select time axis
+   if(tscale == 1 & acqTime > 8) # Switch from us to ms at 5 ms
+      tfac = 0.001
+   else
+      tfac = 1
+   endif
+
+# Accumulate text
+   if(accumulate == "yes")
+      accTxt = "Acc"
+   else
+      accTxt = "Scan"
+   endif
+
+# Select y label
+   if(wvApplyPreampFactor == "yes")
+      yTxt = "Probe output amplitude"
+   elseif(wvApplyRxampFactor == "yes")
+      yTxt = "Rx Amp input amplitude"
+   else
+      yTxt = "Transceiver input amplitude"
+   endif
+
+# Allow for two variables to encode magnitude
+# This allows processing_display, processing_display_ap
+# or processing_display_std tabs to be used
+   if(isvar("timeMag"))
+     magMode = (timeMag == "yes")
+   elseif(isvar("tdPhaseCorr"))
+     magMode = (tdPhaseCorr == "mag")  
+   else
+     magMode = 0
+   endif
+
+   prt->draw("false")
+
+    # Display time domain data
+      if(magMode)
+         prt->plot(tAxis*tfac,mag(fidData*sf))
+      else
+         prt->plot(tAxis*tfac,fidData*sf)
+      endif
+
+      if(nrArgs >= 6)
+         txtTime = replacestr(txtTime,"SCANS","($accTxt$: $n+1$/$nrScans$)")
+         prt->title(txtTime)
+      else
+         prt->title("FID data ($accTxt$: $n+1$/$nrScans$)")
+      endif
+
+      if(nrArgs >= 7)
+         prt->xlabel(xLabel)
+      else
+         if(tfac == 1)
+            prt->xlabel("Time (\G(m)s)")
+         else
+            prt->xlabel("Time (ms)")
+         endif
+      endif
+
+     if(nrArgs >= 8)
+         prt->ylabel(yLabel)
+      else
+         prt->ylabel("$yTxt$ ($timeUnits$)")
+      endif
+
+      if(wvAutoScale == "no")
+         prt->zoom(min(tAxis)*tfac,max(tAxis)*tfac,ampMin,ampMax)
+      endif
+
+      prt->axes("xmapping",xMap)
+      prt->axes("ymapping",yMap)
+
+   prt->draw("true")
+
+
+endproc()
+
+
+###################################################################
+#
+# Graph the signal in the frequency domain. Use default colors.
+#
+# Input: 
+#        prf ............ frequency plot-region
+#        fAxis .......... frequency domain axis
+#        specData ....... spectrum
+#        n .............. number of scans accumulated
+#        guipar ......... parameters extracts from dialog 
+#        txtFreq ........ optional frequency domain plot title
+#        xLabel ......... optional x axis label
+#        yLabel ......... optional y axis label
+#
+###################################################################
+
+procedure(graphFreq,prf,fAxis,specData,n,guipar,
+                    txtFreq,xLabel,yLabel)
+
+   assignlist(guipar)
+
+# Allow for accumulations
+   if(accumulate == "yes")
+     sf = 1/(n+1)
+   else
+     sf = 1
+   endif
+
+# Select units
+   if(wvUnits == "uV")
+      freqUnits = "\G(m)V/kHz"
+      ampMin = wvFreqMin
+      ampMax = wvFreqMax
+   else
+      freqUnits = "mV/kHz"
+      ampMin = wvFreqMin/1000
+      ampMax = wvFreqMax/1000
+   endif
+
+# Title
+   if(nrArgs >= 6)
+      titleTxt = txtFreq
+   else
+      if(freqMag == "yes")
+         titleTxt = "Magnitude spectrum (Acc: $n+1$/$nrScans$)"
+      else
+         titleTxt = "Complex spectrum (Acc: $n+1$/$nrScans$)"
+      endif
+   endif
+
+# x label
+  if(nrArgs >= 7)
+     xLabelTxt = xLabel
+  else
+     xLabelTxt = "frequency (kHz)"
+  endif
+
+# y label
+  if(nrArgs >= 8)
+     yLabelTxt = yLabel
+  else
+     yLabelTxt = "Amplitude ($freqUnits$)"
+  endif
+
+ # Plot the data
+   prf->draw("false")
+
+    # Display freq. domain data
+      if(fdPhaseCorr == "mag")
+         prf->plot(fAxis,mag(specData*sf))
+      else
+         prf->plot(fAxis,specData*sf)
+      endif
+      prf->title("text",titleTxt)
+      prf->ylabel("text",yLabelTxt)
+      prf->xlabel("text",xLabelTxt)
+
+      zoomed = 0
+      if(isvar("usePPMScale"))
+         if(usePPMScale == "yes") # PPM scale
+            minf = 0
+            maxf = 0
+            if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+               minf = dispRangeMinPPM
+               maxf = dispRangeMaxPPM
+            elseif(isvar("dispRangePPM"))
+               if(vartype(dispRangePPM) == "float")
+                  if(not(isvar("centerFreqPPM")))
+                     centerFreqPPM = 0
+                  endif
+                  minf = centerFreqPPM-dispRangePPM/2
+                  maxf = centerFreqPPM+dispRangePPM/2
+               elseif(vartype(dispRangePPM) == "string")
+                  dispRangePPM = eval(dispRangePPM)
+                  if(vartype(dispRangePPM) == "matrix1d")
+                     minf = dispRangePPM[0]
+                     maxf = dispRangePPM[1]
+                  endif
+               endif
+            elseif(isvar("dispRangef2PPM") & isvar("centerFreqf2PPM"))
+               minf = centerFreqf2PPM-dispRangef2PPM/2
+               maxf = centerFreqf2PPM+dispRangef2PPM/2
+            endif
+            if(minf >= maxf)
+               prf->zoom(fAxis[0],fAxis[-1])
+            elseif((maxf <= fAxis[-1] & maxf > fAxis[0]) & (minf >= fAxis[0] & minf < fAxis[-1]))
+               prf->zoom(minf,maxf)
+            elseif((maxf <= fAxis[-1] & maxf > fAxis[0]) & (minf < fAxis[0]))
+               prf->zoom(f[0],maxf)
+            elseif((maxf > fAxis[-1]) & (minf >= fAxis[0] & minf < fAxis[-1]))
+               prf->zoom(minf,fAxis[-1])
+            else
+               prf->zoom(fAxis[0],fAxis[-1])
+            endif
+            zoomed = 1
+         endif
+      endif
+
+      if(zoomed == 0)
+         if(dispRange > 0)
+            minf = -dispRange/2
+            maxf = dispRange/2
+            if(wvAutoScale == "no")
+               prf->zoom(minf,maxf,ampMin,ampMax)
+            else
+               prf->zoom(minf,maxf)
+            endif
+         else
+            if(wvAutoScale == "no")
+               prf->zoom(fAxis[0],fAxis[-1],ampMin,ampMax)
+            endif
+         endif
+      endif
+
+   prf->draw("true")
+
+endproc()
+
+
+###################################################################
+#
+# Graph the signal in the time and frequency domains. 
+# Use default colors.
+#
+# Input: 
+#        pp ............. plot parent
+#        prt ............ plot region for time graph
+#        prf ............ plot region for frequency graph
+#        t .............. time domain vector
+#        fidData ........ signal
+#        f .............. frequency domain vector
+#        specData ....... spectrum
+#        n .............. number of scans accumulated
+#        guipar ......... parameters extracts from dialog 
+#        txtTime ........ optional time domain plot title
+#        txtFreq ........ optional freq domain plot title
+#
+###################################################################
+
+
+procedure(graphTimeAndFreq,prt,prf,
+                           t,fidData,f,specData,n,
+                           guipar,txtTime,txtFreq,
+                           timeXLabel,timeYLabel,
+                           freqXLabel,freqYLabel)
+
+   assignlist(guipar)
+
+
+# Check for missing labels
+   if(not(isvar("timeXLabel")))
+     timeXLabel = "" 
+   endif
+   if(not(isvar("timeYLabel")))
+     timeYLabel = "" 
+   endif
+   if(not(isvar("freqXLabel")))
+     freqXLabel = "" 
+   endif
+   if(not(isvar("freqYLabel")))
+     freqYLabel = "" 
+   endif
+   if(not(isvar("showTimeDomain")))
+      showTimeDomain = "yes"
+   endif
+   if(not(isvar("showFreqDomain")))
+      showFreqDomain = "yes"
+   endif
+   if(not(isvar("tdPhaseCorr")))
+      tdPhaseCorr = "none"
+   endif
+   if(not(isvar("fdPhaseCorr")))
+      fdPhaseCorr = "none"
+   endif
+   if(not(isvar("wvTimeMin")))
+      wvTimeMin = t[0]
+   endif
+   if(not(isvar("wvTimeMax")))
+      wvTimeMax = t[-1]
+   endif
+   if(not(isvar("wvFreqMin")))
+      wvFreqMin = f[0]
+   endif
+   if(not(isvar("wvFreqMax")))
+      wvFreqMax = f[-1]
+   endif
+# Hide imaginary frequency domain data
+#   if(showFreqDomain == "yes")
+#      prf->showimag("true")
+#   endif
+
+# Allow for accumulations
+   if(accumulate == "yes" & n >= 0)
+     sf = 1/(n+1)
+   else
+     sf = 1
+   endif
+
+# Select units
+   if(wvUnits == "uV")
+      timeUnits = "\G(m)V"
+      freqUnits = "\G(m)V/Hz"
+      tampMin = wvTimeMin
+      tampMax = wvTimeMax
+      fampMin = wvFreqMin
+      fampMax = wvFreqMax
+   elseif(wvUnits == "mV")
+      timeUnits = "mV"
+      freqUnits = "mV/Hz"
+      tampMin = wvTimeMin/1000
+      tampMax = wvTimeMax/1000
+      fampMin = wvFreqMin/1000
+      fampMax = wvFreqMax/1000
+    else
+      timeUnits = "raw"
+      freqUnits = "1/Hz"
+      tampMin = wvTimeMin/1000
+      tampMax = wvTimeMax/1000
+      fampMin = wvFreqMin/1000
+      fampMax = wvFreqMax/1000
+   endif
+   
+## Select time axis
+   if(acqTime > 5 | timeXLabel != "") # Switch from us to ms at 5 ms
+      tfac = 0.001
+   else
+      tfac = 1
+   endif
+
+# Select y label
+   if(wvApplyPreampFactor == "yes")
+      yTxt = "Probe output amplitude"
+   elseif(wvApplyRxampFactor == "yes")
+      yTxt = "Rx Amp input amplitude"
+   else
+      yTxt = "Transceiver input amplitude"
+   endif
+
+# Special case for raw units
+   if(timeUnits == "raw")
+      yTxt = "Amplitude"
+      timeYLabel = ""
+      freqYLabel = ""
+   endif
+
+# Accumulate text
+   if(accumulate == "yes")
+      accTxt = "Acc"
+   else
+      accTxt = "Scan"
+   endif
+
+# Plot the data
+   if(showTimeDomain == "yes")
+   
+      if(n > 0)
+         prt->autorange("false")
+      else
+         prt->autorange("true")
+      endif
+
+    # Display time domain data
+      prt->draw("false")
+    
+         if(tdPhaseCorr == "mag")
+            prt->plot(t*tfac,mag(fidData*sf))
+         else
+            prt->plot(t*tfac,fidData*sf)
+         endif
+
+         if(nrArgs >= 9)
+            txtTime = replacestr(txtTime,"SCANS","($accTxt$: $n+1$/$nrScans$)")
+            prt->title(txtTime)
+         else
+            prt->title("FID data ($accTxt$: $n+1$/$nrScans$)")
+         endif
+         if(timeXLabel == "")
+            if(tfac == 1)
+               prt->xlabel("Time (\G(m)s)")
+            else
+               prt->xlabel("Time (ms)")
+            endif
+         else
+            prt->xlabel(timeXLabel)
+         endif
+         if(timeYLabel == "")
+            prt->ylabel("$yTxt$ ($timeUnits$)")
+         else
+            prt->ylabel(timeYLabel)
+         endif
+   
+         if(n == 0)
+
+            if(wvAutoScale == "no")
+               prt->zoom(0,acqTime*1000*tfac,tampMin,tampMax)
+            endif
+
+         endif
+
+      prt->draw("true")
+
+   endif
+
+
+# Return if not displaying frequency domain
+   if(showFreqDomain == "yes")
+
+      if(n > 0)
+         prf->autorange("false")
+      else
+         prf->autorange("true")
+      endif
+
+    # Display freq. domain data
+      prf->draw("false")
+   
+         if(fdPhaseCorr == "mag")
+            prf->plot(f,mag(specData*sf))
+            if(nrArgs >= 10)
+               txtFreq = replacestr(txtFreq,"SCANS","($accTxt$: $n+1$/$nrScans$)")
+               prf->title(txtFreq)
+            else
+               prf->title("Magnitude spectrum ($accTxt$: $n+1$/$nrScans$)")
+            endif
+         else
+
+            prf->plot(f,specData*sf)
+            if(nrArgs >= 10)
+               txtFreq = replacestr(txtFreq,"SCANS","($accTxt$: $n+1$/$nrScans$)")
+               prf->title(txtFreq)
+            else
+               prf->title("Complex spectrum ($accTxt$: $n+1$/$nrScans$)")
+            endif
+         endif
+         if(freqXLabel == "")
+            prf->xlabel("Frequency (Hz)")
+         else
+            prf->xlabel(freqXLabel)
+         endif
+         if(freqYLabel == "")
+            prf->ylabel("Amplitude ($freqUnits$)")
+         else
+            prf->ylabel(freqYLabel)
+         endif
+
+         if(n == 0)
+ 
+            zoomed = 0
+            if(isvar("usePPMScale"))
+               if(usePPMScale == "yes") # PPM scale
+                  minf = 0
+                  maxf = 0
+                  if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+                     minf = dispRangeMinPPM
+                     maxf = dispRangeMaxPPM
+                  elseif(isvar("dispRangePPM") & isvar("centerFreqPPM"))
+                     if(vartype(dispRangePPM) == "float")
+                        minf = centerFreqPPM-dispRangePPM/2
+                        maxf = centerFreqPPM+dispRangePPM/2
+                     elseif(vartype(dispRangePPM) == "string")
+                        dispRangePPM = eval(dispRangePPM)
+                        if(vartype(dispRangePPM) == "matrix1d")
+                           minf = dispRangePPM[0]
+                           maxf = dispRangePPM[1]
+                        endif
+                     endif
+                  elseif(isvar("dispRangef2PPM") & isvar("centerFreqf2PPM"))
+                     minf = centerFreqf2PPM-dispRangef2PPM/2
+                     maxf = centerFreqf2PPM+dispRangef2PPM/2
+                  endif
+                  if(minf >= maxf)
+                     prf->zoom(f[0],f[-1])
+                  elseif((maxf <= f[-1] & maxf > f[0]) & (minf >= f[0] & minf < f[-1]))
+                     prf->zoom(minf,maxf)
+                  elseif((maxf <= f[-1] & maxf > f[0]) & (minf < f[0]))
+                     prf->zoom(f[0],maxf)
+                  elseif((maxf > f[-1]) & (minf >= f[0] & minf < f[-1]))
+                     prf->zoom(minf,f[-1])
+                  else
+                     prf->zoom(f[0],f[-1])
+                  endif
+                  zoomed = 1
+               endif
+            endif
+   
+            if(zoomed == 0)
+               if(dispRange > 0)
+                  minf = -dispRange/2
+                  maxf = dispRange/2
+                  if(maxf <= f[-1] & minf >= f[0])
+                     if(wvAutoScale == "no")
+                        prf->zoom(minf,maxf,fampMin,fampMax)
+                     else
+                        prf->zoom(minf,maxf)
+                     endif
+                  else
+                     if(wvAutoScale == "no")
+                        prf->zoom(f[0],f[-1],fampMin,fampMax)
+                     else
+                        prf->zoom(f[0],f[-1])
+                     endif
+                  endif
+               else
+                  if(wvAutoScale == "no")
+                     prf->zoom(f[0],f[-1],fampMin,fampMax)
+                  endif
+               endif
+            endif
+         endif
+   
+      prf->draw("true")
+
+   endif
+
+endproc()
+
+
+########################################################
+# Plot (x,y) and yErr in specified plot region and with 
+# specified labels and title. Plot with symbols and
+# an optional line connecting them.
+#
+# prg ...... plot region for graph
+# x,y ...... data sets to plot
+# yErr ..... error array for y data (can be null)
+# N ........ number of points to plot
+# xTxt ..... x label
+# yTxt ..... y label
+# pTitle ... plot title
+#
+# The first 4 parameters are required.
+#
+########################################################
+
+procedure(graphXY,prg,
+          x,y,yErr,N,
+          xTxt,yTxt,pTitle,guipar)
+
+# If insufficent arguments then make some up
+   if(nrArgs == 4)
+      yErr = null
+      N = size(x)
+      xTxt = "x"
+      yTxt = "y"
+      pTitle = "y vs. x"
+   endif
+
+# Default variables may be overwritten by guipar
+   lineMode = "lines"
+   xMap = "lin"
+   yMap = "lin"
+
+# Add additional parameters if present
+   if(isvar("guipar"))
+      assignlist(guipar)
+   endif
+
+# These variables may be in guipar if run from the backdoor
+# otherwise they are window variables
+   if(isvar("traceCol") == 0)
+      traceCol = wvDataSymbolColor
+   endif
+   if(isvar("symbolShape") == 0)
+      symbolShape = wvDataSymbolShape
+   endif
+   if(isvar("symbolColor") == 0)
+      symbolColor = wvDataSymbolColor
+   endif
+
+ # Make local copies of data but with reduced array sizes  
+   E = y[0:N-1]
+   abscissa = x[0:N-1]
+
+   if(yErr != null)
+      error  = matrix(N,2)
+      error[~,0] = yErr[0:N-1]
+      error[~,1] = yErr[0:N-1]
+   endif
+ 
+  # Display data with labels
+   prg->draw("false")
+
+      if(yErr != null)
+         prg->plot(abscissa,E,
+                  "ebar_array",error,
+                  "ebar_color",symbolColor,
+                  "tracetype",lineMode,
+                  "tracecolor",traceCol,
+                  "symbolshape",symbolShape,
+                  "symbolcolor",symbolColor)
+      else
+         prg->plot(abscissa,E,
+                  "tracetype",lineMode,
+                  "tracecolor",traceCol,
+                  "symbolshape",symbolShape,
+                  "symbolcolor",symbolColor)
+      endif
+
+      prg->title(pTitle)
+      if(wvUnits == "uV")
+         unitsTxt = "\G(m)V"
+      elseif(wvUnits == "mV")
+         unitsTxt = "mV"
+      else
+         unitsTxt = "raw"
+      endif
+      yTxt = replacestr(yTxt,"UNITS",unitsTxt)
+      prg->xlabel(xTxt)
+      prg->ylabel(yTxt)
+
+      prg->axes("xmapping",xMap)
+      prg->axes("ymapping",yMap)
+
+   prg->draw("true")
+
+
+endproc()
+
+
+###################################################################
+# Plot (x,y) in specified subplot and with  specified labels and 
+# title. Plot fit over the top.
+# Raw data is plotted with symbols fit with a line.
+#
+# prg ....... plot region
+# x,y ....... data sets to plot
+# fit ....... fit curve
+# yErr ...... error array for y data (can be null)
+# N ......... number of points to plot
+# xTxt ...... x label
+# yTxt ...... y label
+# pTitle .... plot title
+# guipar .... list of extra parameters
+#
+#
+# The first 4 parameters are required
+#
+###################################################################
+ 
+procedure(graphXYFit,prg,
+                     x,y,fit,yErr,N,
+                     xTxt,yTxt,pTitle,
+                     guipar)
+
+# If insufficent arguments then make some up
+   if(nrArgs == 4)
+      yErr = null
+      N = size(x)
+      xTxt = "x"
+      yTxt = "y"
+      pTitle = "y vs. x"
+   endif
+
+   normalize = "no"
+   lineMode = "lines"
+   xMap = "lin"
+   yMap = "lin"
+
+   if(isvar("guipar"))
+      assignlist(guipar)
+   endif
+
+ # Make local copies of data but with reduced array sizes 
+   abscissa = x[0:N-1]
+   E = y[0:N-1]
+ 
+   if(yErr != null)
+      error  = matrix(N,2)
+      error[~,0] = yErr[0:N-1]
+      error[~,1] = yErr[0:N-1]
+   endif
+
+# Normalize
+   if(normalize == "yes")
+      E0 = E[0]
+   else
+      E0 = 1
+   endif
+
+ # Display raw data and best fit comparison
+   prg->draw("false")
+
+      if(yErr != null)
+         prg->plot(abscissa,E/E0,
+                  "ebar_array",error/E0,
+                  "ebar_color",wvDataSymbolColor,
+                  "tracetype","none",
+                  "symbolshape",wvDataSymbolShape,
+                  "symbolcolor",wvDataSymbolColor)
+      else
+         prg->plot(abscissa,E/E0,
+                  "tracetype","none",
+                  "symbolshape",wvDataSymbolShape,
+                  "symbolcolor",wvDataSymbolColor)
+      endif
+
+      prg->hold("on")
+
+      fitAbscissa = linvec(abscissa[0],abscissa[-1],size(fit))
+
+      prg->plot(fitAbscissa,fit/E0,
+               "tracetype","lines",
+               "symbolshape","none",
+               "tracecolor",wvFitCurveColor)
+
+      prg->title(pTitle)
+
+      if(wvUnits == "uV")
+         unitsTxt = "\G(m)V"
+      elseif(wvUnits == "mV")
+         unitsTxt = "mV"
+      else
+         unitsTxt = "raw"
+      endif
+
+      if(normalize == "yes")
+         unitsTxt = "normalized"
+      endif
+
+      yTxt = replacestr(yTxt,"UNITS",unitsTxt)
+      prg->ylabel(yTxt)
+
+      prg->xlabel(xTxt)
+      prg->hold("off")
+
+   prg->draw("true")
+
+endproc()
+
+
+###################################################################
+# Plot (x,y) and optional yErr in specified subplot and with 
+# specified labels and title. Fit curve to the data and
+# then plot the raw data with symbols and the fitted data with a line
+# This procedure uses only local variables.
+#
+# prg ....... plot region
+# x,y ....... data sets to plot
+# yErr ...... error bar array for y data (can be null)
+# fitType ... fit type ("T2,T1IR,T1VD,exp,biexp,linear")
+# N ......... number of points to fit and plot
+# xTxt ...... x label
+# yTxt ...... y label (optional UNITS string in label)
+# pTitle .... plot title when no fit possible
+# pFitTitle . plot title when fit is possible (opional RESULT in label)
+#
+# The first 6 parameters are required
+#
+# Returns fit results in a formated string suitable for printing
+# and a structure containing the fit parameters
+# If fit fails then it returns a empty and structure
+#
+###################################################################
+ 
+procedure(fitAndGraph,prg,
+          x,y,N,fitType,
+          yErr,xTxt,yTxt,pTitle,pFitTitle,guipar,
+          fitColor=null, dataShape=null)
+
+# Add additional parameters if present
+   if(isvar("guipar"))
+      assignlist(guipar)
+   endif
+
+   if(fitColor == null)
+      fitColor = wvFitCurveColor
+      dataColor = wvDataSymbolColor
+   else
+      dataColor = fitColor
+   endif
+
+   if(dataShape == null)
+      dataShape = wvDataSymbolShape
+   endif
+
+   if(N < 2)
+     return("")
+   endif
+
+# If insufficent arguments then make some up
+   if(nrArgs == 5)
+      yErr = null
+      xTxt = "x"
+      yTxt = "y"
+      pTitle = "y vs. x"
+      pFitTitle = "Fit result = RESULT"
+   endif
+
+   normalize = "no"
+   result = ""
+   resultOut = ""
+   r = struct()
+
+# Generate error bar info
+   if(yErr != null)
+      error  = matrix(N,2)
+      if(size(yErr,2) == 1)
+         error[~,0] = yErr[0:N-1]
+         error[~,1] = yErr[0:N-1]
+      else
+         error[~,0] = yErr[0:N-1,0]
+         error[~,1] = yErr[0:N-1,1]
+      endif
+   endif
+
+ # Make local copies of data but with reduced array sizes  
+   E = y[0:N-1]
+   abscissa = x[0:N-1]
+
+ # Get a best fit if possible
+   try
+     if(fitType == "T2")
+        (fit,E0,T,E0err,Terr) = t2fit(abscissa,E)
+        result = errorstr(T,Terr,1)
+        resultOut = result
+        r->E0 = E0
+        r->T2 = T
+        r->E0err = E0err
+        r->T2err = Terr
+     elseif(fitType == "T1IR")
+        (fit,E0,T,E0err,Terr) = t1fit(abscissa,E,"ir")
+        result = errorstr(T,Terr,1)
+        resultOut = result
+        r->E0 = E0
+        r->T1 = T
+        r->E0err = E0err
+        r->T1err = Terr
+     elseif(fitType == "T1VD")
+        (fit,E0,T,E0err,Terr) = t1fit(abscissa,E,"vd")
+        result = errorstr(T,Terr,1)
+        resultOut = result
+        r->E0 = E0
+        r->T1 = T
+        r->E0err = E0err
+        r->T1err = Terr
+     elseif(fitType == "exp")
+        (fit,E0,T,E0err,Terr) = t2fit(abscissa,E)
+        result = "(E_(0) = $E0,2.1f$: T = $T,2.1f$)" 
+        resultOut = "\n   Single exponential fit:\n\n      E0 = $errorstr(E0,E0err,1)$, T = $errorstr(T,Terr,1)$\n"
+        r->E0 = E0
+        r->T1 = T
+        r->E0err = E0err
+        r->Terr = Terr
+     elseif(fitType == "biexp")
+        (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,E)
+        E0 = Ea + Eb
+        result = "exp_(1) ($Ea,2.1f$: $Ta,2.1f$),   exp_(2) ($Eb,2.1f$: $Tb,2.1f$)" 
+        resultOut = "\n   Bi-exponential fit:\n\n      Exp. 1 : $errorstr(Ea,EaErr,2)$, $errorstr(Ta,TaErr,2)$\n      Exp. 2 : $errorstr(Eb,EbErr,2)$, $errorstr(Tb,TbErr,2)$\n"
+        r->Ea = Ea
+        r->Eb = Eb
+        r->Ta = Ta
+        r->Tb = Tb
+        r->EaErr = EaErr
+        r->EbErr = EbErr
+        r->TaErr = TaErr
+        r->TbErr = TbErr
+     elseif(fitType == "grad")
+        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,E,0,(lDelta+gradRamp)/1e6,bDelta/1e6,"no")
+        result = errorstr(D,Derr,1)
+        resultOut = result
+        r->E0 = E0
+        r->D = D
+        r->E0Err = E0err
+        r->DErr = Derr
+     elseif(fitType == "gradlin")
+        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,E,0,(lDelta+gradRamp)/1e3,bDelta/1e3,"no")
+        result = errorstr(D,Derr,1)
+        resultOut = result
+        r->E0 = E0
+        r->D = D
+        r->E0Err = E0err
+        r->DErr = Derr
+        ldel = (lDelta+gradRamp)/1e3
+        bdel = bDelta/1e3
+        abscissa = (gamma^2*abscissa^2*ldel^2*(bdel-ldel/3))*1e-9;
+     else
+        E0 = E[0]
+     endif
+   catch
+     E0 = E[0]
+     result = ""
+     resultOut = ""
+   endtry
+
+# Check for normalization option
+   if(normalize == "no")
+      E0 = 1
+   else
+      fc = caseset(yTxt[0],"lower")
+      yTxt = fc + yTxt[1:]
+      yTxt = "Normalized $yTxt$"
+   endif
+
+
+ # Display raw data and best fit comparison
+   prg->draw("false")
+
+    # Display fit
+      if(result != "")
+         prg->plot(abscissa,fit/E0,
+                  "tracetype","lines",
+                  "symbolshape","none",
+                  "tracecolor",fitColor)
+      endif
+
+      prg->hold("on")
+
+    # Display raw data
+      if(yErr != null)
+         prg->plot(abscissa,E/E0,
+                  "ebar_array",error/E0,
+                  "ebar_color",dataColor,
+                  "tracetype","none",
+                  "symbolshape",dataShape,
+                  "symbolcolor",dataColor)
+      else
+         prg->plot(abscissa,E/E0,
+                  "tracetype","none",
+                  "symbolshape",dataShape,
+                  "symbolcolor",dataColor)
+      endif
+
+
+   # Add labels
+     if(result != "")
+          pFitTitle = replacestr(pFitTitle,"RESULT",result)
+          prg->title(pFitTitle)
+      else
+          prg->title(pTitle)
+      endif
+
+      if(normalize == "no")
+         if(wvUnits == "uV")
+            unitsTxt = "\G(m)V"
+         elseif(wvUnits == "mV")
+            unitsTxt = "mV"
+         else
+            unitsTxt = "raw"
+         endif
+         yTxt = replacestr(yTxt,"UNITS",unitsTxt)
+      else
+         yTxt = replacestr(yTxt,"(UNITS)","")
+      endif
+
+      prg->ylabel(yTxt)
+      prg->xlabel(xTxt)
+
+# If its normalised and log then ensure y = 1 is visible
+      if(fitType == "gradlin" & normalize == "yes")
+         prg->axes("ymapping","log")
+         if(max(y) < 1)
+            prg->zoom(min(x),max(x),min(y),1.0)
+         endif
+      endif
+
+      prg->hold("off")
+
+   prg->draw("true")
+
+endproc(resultOut,r)
+
+###################################################################
+# Set the 1D plot axis directions based on usePPM flag 
+# Also calculate the frequency axes, labels and ranges
+#
+# These will vary depending on whether time or frequency data
+# is visible. Two argument list options
+#
+# prf ........... 1D frequency domain plot 
+# fAxis ......... 1D frequency domain axis
+# b1Freq ........ B1 frequency
+# ppmOffset ..... Calibration offset in ppm
+# hzOffset ...... B1 frequency offset in Hz
+# guipar ........ User parameters
+#
+# or
+#
+# prf ........... 1D frequency domain plot 
+# fAxis ......... 1D frequency domain axis
+# guipar ........ User parameters
+#
+# In the second case the hzOffset should be called offFreq1H or offFreqX
+# and the ch1/2 transmit frequencies defined as freqCh1/2
+# 
+###################################################################
+ 
+procedure(generate1DFrequencyAxis, prf, fAxis, arg3, arg4, arg5, arg6)
+
+   if(prf == null)
+      return(null,null,null)
+   endif
+
+   if(nrArgs == 3)
+      assignlist(arg3)
+      if(nucleus == "1H")
+         ppmOffset = wvPPMOffset1H
+         if(isvar("freqCh1"))
+            fAxisDisp = single((double(fAxis)+double(offFreq1H))/freqCh1+ppmOffset)
+         else
+            abort("   Can't generate frequency axis - variable 'freqCh1' not defined")
+         endif
+      else
+         ppmOffset = eval("wvPPMOffset$nucleus$")
+         if(isvar("freqCh2"))
+            fAxisDisp = single((double(fAxis)+double(offFreqX))/freqCh2+ppmOffset)
+         else
+            abort("   Can't generate frequency axis - variable 'freqCh2' not defined")
+         endif
+      endif
+   else
+      b1Freq = arg3
+      ppmOffset = arg4
+      hzOffset = arg5 
+      assignlist(arg6)
+      fAxisDisp = single(double(fAxis)/b1Freq)+ppmOffset+single(double(hzOffset)/b1Freq)
+   endif
+
+   if(usePPMScale == "yes")
+      prf->axes->xdirection("reversed")
+      prf->axes->xppmscale("true")
+      fAxisLabel = "Frequency (ppm)"
+      if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+         fRange = [dispRangeMinPPM,dispRangeMaxPPM]
+      elseif(isvar("dispRangePPM") & isvar("centerFreqPPM"))
+         if(vartype(dispRangePPM) == "string")
+            dispRangePPM = eval(dispRangePPM)
+            if(vartype(dispRangePPM) == "matrix1d")
+               fRange = dispRangePPM
+            endif
+         elseif(vartype(dispRangePPM) == "float")                
+            fRange = [centerFreqPPM-dispRangePPM/2,centerFreqPPM+dispRangePPM/2]
+         endif
+      endif
+   else
+      prf->axes->xdirection("reversed")
+      prf->axes->xppmscale("false")
+      fAxisDisp = fAxis
+      fAxisLabel = "Frequency (Hz)"
+      if(dispRange == 0)
+         fRange = [fAxis[0],fAxis[-1]]
+      else
+         fRange = [-dispRange/2,dispRange/2]
+      endif
+   endif
+
+endproc(fAxisDisp,fAxisLabel,fRange)
+
+###################################################################
+# Set the 1D and 2D plot axes directions based on usePPM flag 
+# Also calculate the frequency axes, labels and ranges
+#
+# These will vary depending on whether time or frequency data
+# is visible.
+#
+# prf ........... 1D frequency domain plot 
+# prd ........... 2D frequency domain plot 
+# fAxis ......... 1D frequency domain axis
+# f1Freq ........ B1 frequency in f1 dimension
+# f2Freq ........ B1 frequency in f2 dimension
+# f1PPMOffset ... Calibration offset in f1 in ppm
+# f2PPMOffset ... Calibration offset in f2 in ppm
+# f1HzOffset .... B1 offset in Hz in f1
+# f2HzOffset .... B1 offset in Hz in f2
+# guipar ........ User parameters
+###################################################################
+ 
+procedure(generate2DFrequencyAxes, prf, prd, fAxis, f1Freq, f2Freq, 
+                                   f1PPMOffset, f2PPMOffset, f1HzOffset, f2HzOffset, 
+                                   dispRangeMinPPMf1, dispRangeMaxPPMf1,
+                                   dispRangeMinPPMf2, dispRangeMaxPPMf2,
+                                   guipar, f1BW = null)
+
+
+
+   assignlist(guipar)
+   if(f1BW == null)
+      f1BWHz = bandwidth2*1000 # Bandwidth2 should be in kHz
+   else
+      f1BWHz = f1BW*1000 # Bandwidth2 should be in kHz
+   endif
+
+   f1Freq = single(f1Freq)
+   f2Freq = single(f2Freq)
+
+   if(usePPMScale == "yes")
+      prf->axes->xdirection("reversed")
+      prf->axes->xppmscale("true")
+      prd->axes->xdirection("reversed")
+      prd->axes->ydirection("reversed")
+      prd->axes->xppmscale("true")
+      prd->axes->yppmscale("true")
+      fAxisDisp = single(double(fAxis)/f2Freq)+f2PPMOffset+single(double(f2HzOffset)/f2Freq)
+      fAxisLabel = "Frequency (ppm)"
+      f2AxisLabel = "f2 (ppm)"
+      f1AxisLabel = "f1 (ppm)"
+      f2AxisLimits = [fAxis[0],fAxis[-1]]/f2Freq+f2PPMOffset+single(double(f2HzOffset)/f2Freq)
+      f1AxisLimits = [-0.5,0.5]*f1BWHz/f1Freq+f1PPMOffset+single(double(f1HzOffset)/f1Freq)
+      f2DispRange = [dispRangeMinPPMf2,dispRangeMaxPPMf2]
+      f1DispRange = [dispRangeMinPPMf1,dispRangeMaxPPMf1]
+   else
+      prf->axes->xdirection("reversed")
+      prf->axes->xppmscale("false")
+      prd->axes->xdirection("reversed")
+      prd->axes->ydirection("reversed")
+      prd->axes->xppmscale("false")
+      prd->axes->yppmscale("false")
+      fAxisDisp = fAxis
+      fAxisLabel = "Frequency (Hz)"
+      f2AxisLabel = "f2 (Hz)"
+      f1AxisLabel = "f1 (Hz)"
+      f2AxisLimits = [fAxis[0],fAxis[-1]]
+      f1AxisLimits = [-0.5,0.5]*f1BWHz
+      if(dispRange == 0)
+         f2DispRange = [fAxis[0],fAxis[-1]]
+         f1DispRange = [-0.5,0.5]*f1BWHz
+      else
+         f2DispRange = [-dispRange/2,dispRange/2]
+         f1DispRange = [-dispRange/2,dispRange/2]
+      endif
+   endif
+
+endproc(fAxisDisp,fAxisLabel,f1AxisLabel,f2AxisLabel,f1AxisLimits,f2AxisLimits,f1DispRange,f2DispRange)
+
+###################################################################
+# Get the plot references for the specified number of plots
+#
+# These will vary depending on whether time or frequency data
+# is visible.
+#
+# guipar .. list of GUI parameters
+# n ....... number of plots
+# pp ...... parent plot (only used in V3)
+###################################################################
+ 
+procedure(getPlotRegions, guipar, nrPlots, pp=wvPP)
+
+   assignlist(guipar)
+
+   if(isvar("gPlot")) # Expert interface (V4)
+
+      pl = gPlot->curPlotLayout
+
+      if(vartype(pl) == "list") # 1D list (legacy)
+         sz = size(pl)
+         cnt = 0
+         for(k = 0 to sz-1)
+   
+            par = struct()
+            entry = parse(pl[k],",") 
+            for(w = 0 to size(entry)-1)
+               val = parse(entry[w],"=")
+               if(size(val) == 2)
+                  str = "par->$val[0]$"
+                  assign(str,val[1],"local")
+               else             
+                  name = val[0]
+               endif
+            next(w)
+            assignstruct(par)
+   
+            if(name != ";")
+               if(name[0:1] == "pt")
+                  n = eval(name[2])
+                  if(n >= 1 & n <= gView->nr1DPlots)
+                     ctrlNr = findobj(0,"objID","pltCtrl$n$")
+                     if(ctrlNr != -1)
+                        pltCtrl = getobj(0,ctrlNr)
+                     else
+                        pltCtrl = eval("gView->g$n$")
+                     endif
+                     pltCtrl->uservar(par)
+                     if(cnt == 0)
+                       pr1 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 1)
+                       pr2 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 2)
+                       pr3 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 3)
+                       pr4 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 4)
+                       pr5 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 5)
+                       pr6 = pltCtrl->subplot(1,1)
+                     endif
+                     cnt = cnt + 1
+                  endif
+               endif
+            endif
+         next(k)
+
+      else # list2d (new code)
+
+         (nrCols,nrRows) = size(pl)
+         par = structarray(nrRows)
+
+         cnt = 0
+         for(y = 0 to nrRows-1)
+
+            par[y]->type = "other"
+
+            for(x = 0 to nrCols[y]-1)
+
+               entry = parse(pl[x,y],",")
+               for(q = 0 to size(entry)-1)
+               
+                  val = parse(entry[q],"=")   
+                  if(size(val) == 2)
+                    assign(val[0],val[1],"local")
+                  else             
+                    name = val[0]
+                  endif
+
+                  if(size(val) == 2)
+                     str = "par[$y$]->$val[0]$"
+                     assign(str,val[1],"local")
+                  else             
+                     name = val[0]
+                  endif
+              
+               next(q)
+
+               assignstruct(par[y])
+
+               if(name[0:1] == "pt")
+                  n = eval(name[2])
+                  if(n >= 1 & n <= gView->nr1DPlots)                     
+                     ctrlNr = findobj(0,"objID","pltCtrl$n$")
+                     if(ctrlNr != -1)
+                        pltCtrl = getobj(0,ctrlNr)
+                     else
+                        pltCtrl = eval("gView->g$n$")
+                     endif
+                     pltCtrl->uservar(par[y])
+                     if(cnt == 0)
+                       pr1 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 1)
+                       pr2 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 2)
+                       pr3 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 3)
+                       pr4 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 4)
+                       pr5 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 5)
+                       pr6 = pltCtrl->subplot(1,1)
+                     endif
+                     cnt = cnt + 1
+                  endif
+               endif
+
+            next(x)
+      
+         next(y)
+
+      endif # 2D list
+
+      if(cnt < nrPlots)
+         message("Error","Too few plots specified in the User Interface Macro - at least $nrPlots$ expected but only $cnt$ defined.","error")
+         throw("")
+      endif
+
+      if(cnt == 1)
+         return(pr1)
+      elseif(cnt == 2)
+         return(pr1,pr2)
+      elseif(cnt == 3)
+         return(pr1,pr2,pr3)
+      elseif(cnt == 4)
+         return(pr1,pr2,pr3,pr4)
+      elseif(cnt == 5)
+         return(pr1,pr2,pr3,pr4,pr5)
+      elseif(cnt == 6)
+         return(pr1,pr2,pr3,pr4,pr5,pr6)
+      endif
+
+
+   else # Original (Kea style) interface (V3)
+      if(not(isvar("showTimeDomain")))
+         showTimeDomain="yes"
+      endif()
+
+      if(nrPlots == 4)
+         prt = null
+         prf = null
+         prp = null
+         if(showTimeDomain == "yes" & showFreqDomain == "yes")
+           (prt,prf,pri,prp) = pp->multiplot(4,1)
+           elseif(showTimeDomain == "yes" & showFreqDomain == "no")
+           (prt,pri,prp) = pp->multiplot(3,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "yes")
+           (prf,pri,prp) = pp->multiplot(3,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "no")
+           (pri,prp) = pp->multiplot(2,1)
+         endif
+      
+         return(prt,prf,pri,prp)
+  
+      elseif(nrPlots == 3)
+         prt = null
+         prf = null
+         if(showTimeDomain == "yes" & showFreqDomain == "yes")
+           (prt,prf,pri) = pp->multiplot(3,1)
+         elseif(showTimeDomain == "yes" & showFreqDomain == "no")
+           (prt,pri) = pp->multiplot(2,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "yes")
+           (prf,pri) = pp->multiplot(2,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "no")
+           pri = pp->multiplot(1,1)
+         endif
+      
+         return(prt,prf,pri)
+   
+      elseif(nrPlots == 2)
+   
+         prt = null
+         prf = null
+         if(showTimeDomain == "yes" & showFreqDomain == "yes")
+           (prt,prf) = pp->multiplot(2,1)
+         elseif(showTimeDomain == "yes" & showFreqDomain == "no")
+            prt = pp->multiplot(1,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "yes")
+            prf = pp->multiplot(1,1)
+         endif
+   
+         return(prt,prf)
+   
+      else
+   
+        prt = pp->multiplot(1,1)
+        return(prt)
+   
+      endif
+
+
+   endif
+
+endproc()
+
+###################################################################
+# Get the plot references for current Expert plot layout
+###################################################################
+ 
+procedure(getPlotReferences)
+
+# Convert the plot names into plot objects in a structure
+
+   plts = gPlot->usePlots
+   retVar = struct()
+   for(k = 0 to size(plts)-1)
+
+      name = plts[k]
+      if(name[0:1] == "pt")
+         nr = eval(name[2:-1])
+         txt = "gView->g$nr$->subplot(1,1)"   
+      elseif(name[0:1] == "im")
+         nr = eval(name[2:-1])
+         txt = "gView->g$nr+gView->nr1DPlots$->subplot(1,1)"  
+      else
+         abort("invalid plot/imag name: $name$")
+      endif     
+      plt = eval(txt)  
+      assign("retVar->arg$k+1$",plt,"local")
+   next(k)
+
+# Convert the structure to returned variables
+
+endproc("...",retVar)
+
+
+###################################################################
+# Get the plot references for 1 or 2 images
+#
+# These will vary depending on whether time or frequency data
+# is visible.
+#
+# guipar .. list of GUI parameters
+# n ....... number of plots
+# pp ...... parent plot (only used in V3)
+###################################################################
+ 
+procedure(getImageRegions,guipar,n,pp=wvPP2)
+
+   assignlist(guipar)
+
+   if(isvar("gPlot")) # Expert interface (V4)
+
+      pl = gPlot->curPlotLayout
+
+      if(vartype(pl) == "list") # 1D list (legacy)
+
+         sz = size(pl)
+         cnt = 0
+         for(k = 0 to sz-1)
+            name = pl[k]
+            if(name != ";")
+               if(name[0:1] == "im")
+                  n = eval(name[2])
+                  if(n >= 1 & n <= 2)
+                     ctrlNr = findobj(0,"objID","pltCtrl$n+gView->nr1DPlots$")
+                     if(ctrlNr != -1)
+                        pltCtrl = getobj(0,ctrlNr)
+                     else
+                        pltCtrl = eval("gView->g$n+gView->nr1DPlots$")
+                     endif
+                     if(cnt == 0)
+                       pr1 = pltCtrl->multiplot(1,1)
+                     elseif(cnt == 1)
+                       pr2 = pltCtrl->multiplot(1,1)
+                     endif
+                     cnt = cnt + 1
+                  endif
+               endif
+            endif
+         next(k)
+
+      else # list2d (new code)
+
+         (nrCols,nrRows) = size(pl)
+         par = structarray(nrRows)
+         cnt = 0
+
+         for(y = 0 to nrRows-1)
+            par[y]->type = "other"
+            for(x = 0 to nrCols[y]-1)
+               entry = parse(pl[x,y],",")
+               for(q = 0 to size(entry)-1)              
+                  val = parse(entry[q],"=")   
+                  if(size(val) == 2)
+                    assign(val[0],val[1],"local")
+                  else             
+                    name = val[0]
+                  endif
+                  if(size(val) == 2)
+                     str = "par[$y$]->$val[0]$"
+                     assign(str,val[1],"local")
+                  else             
+                     name = val[0]
+                  endif              
+               next(q)
+               assignstruct(par[y])           
+               if(name[0:1] == "im")
+                  n = eval(name[2])
+                  if(n >= 1 & n <= 2)
+                     ctrlNr = findobj(0,"objID","pltCtrl$n+gView->nr1DPlots$")
+                     if(ctrlNr != -1)
+                        pltCtrl = getobj(0,ctrlNr)
+                     else
+                        pltCtrl = eval("gView->g$n+gView->nr1DPlots$")
+                     endif
+                     pltCtrl->uservar(par[y])
+                     if(cnt == 0)
+                       pr1 = pltCtrl->subplot(1,1)
+                     elseif(cnt == 1)
+                       pr2 = pltCtrl->subplot(1,1)
+                     endif
+                     cnt = cnt + 1
+                  endif
+               endif
+            next(x)     
+         next(y)
+
+      endif # 2D list
+
+      if(cnt == 1)
+         return(pr1)
+      elseif(cnt == 2)
+         return(pr1,pr2)
+      endif
+
+   else # Original interface
+   
+      if(n == 2)
+   
+         prt = null
+         prf = null
+         if(showTimeDomain == "yes" & showFreqDomain == "yes")
+           (prt,prf) = pp->multiplot(2,1)
+         elseif(showTimeDomain == "yes" & showFreqDomain == "no")
+            prt = pp->multiplot(1,1)
+         elseif(showTimeDomain == "no" & showFreqDomain == "yes")
+            prf = pp->multiplot(1,1)
+         endif
+   
+         return(prt,prf)
+   
+      else
+   
+        prt = pp->multiplot(1,1)
+        return(prt)
+   
+      endif
+
+   endif
+
+
+endproc()

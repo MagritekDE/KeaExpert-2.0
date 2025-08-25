@@ -1,0 +1,1318 @@
+###############################################################################
+# Generate a window from which the Spinsolve-Expert preferences can be defined.
+# Different parameter pages are provided by pressing the appropriate button
+# from the main interface page. A button at the top left takes you back to the
+# main interface page. A short help description is available on each page.
+###############################################################################
+
+procedure(SpinsolvePreferences)
+
+# If a preferences window already exists use it
+# if path and file are provided.
+   n = findwin("partialTitle","Kea-Expert Preferences")
+   if(n >= 0)
+      hidewindow(n)
+      showwindow(n)
+      return
+   endif
+
+#   if(gData->connected)
+#      name = gData->specID
+#   else
+#      name = "NoConnection"
+#   endif
+  
+   n = window("Kea-Expert Preferences", -1, -1, 700, 320, "resizable")
+   import(getmacroname(),getmacropath(),"window")
+   windowvar(wvThisWinNr,wvCurrentPage,wvExptPathModified)
+   wvThisWinNr = n
+   wvExptPathModified = 0
+   wvCurrentPage = "main"
+   :defineMainInterface()
+   showwindow(n)
+   setwindowpar(n,"exit_procedure",":exitProcedure")
+   setwindowpar(n,"sizelimits",[700,2000,320,900])
+   setwindowpar(n,"show_menu","false")
+
+endproc()
+
+###############################################################################
+# Add an entry to the list box
+###############################################################################
+
+procedure(addEntry, dir=null, addBaseName=0)
+
+   if(dir == null)
+      dir = getfolder(".","Select a folder containing user-defined pulse programs")
+      if(dir == "cancel")
+         return
+      endif
+   endif
+   if(addBaseName)
+      name = getbasedir(dir)
+      item = "$dir$|$name$"
+   else
+      item = dir
+   endif
+   entries = lb->list()
+   if(entries == null) 
+      entries = ["$item$"]
+   else
+      entries = entries + item
+   endif
+
+   lb->list(entries)
+
+endproc()
+
+###############################################################################
+# Check to see if any changes have been made to the experiment menu list
+# and if so prompt for saving
+###############################################################################
+
+procedure(checkExptMenuChanges)
+
+   cd("$prefdir$\\KeaParameters")
+   if(isfile("pulseProgramMenus.mac"))
+      lst = pulseProgramMenus()
+   else
+      lst = null
+   endif
+   entries = lb->list()
+   entries = entries[1:-1]
+   if(entries != lst)
+      if(query("Warning","Menu information information has been changed - save first?") == "yes")
+          gMenus->updateMenu()
+          print("\n   Menus saved\n")
+      endif
+   endif
+
+endproc()
+
+###############################################################################
+# Check to see if any changes have been made to the preferences and if so
+# prompt for saving
+###############################################################################
+
+procedure(checkPreferenceChanges)
+
+   newPref = sortlist(getctrlvalues(0))
+   allOldPref = ucsFiles:loadPref()
+   oldPref = sortlist(getsublist(allOldPref,getlistnames(newPref)))
+   if(newPref != oldPref)
+      if(query("Warning","Preference information has been changed - save first?") == "yes")
+         :savePref()
+      endif
+   endif
+
+endproc()
+
+###############################################################################
+# Exit the window from the close button
+###############################################################################
+
+procedure(closeProcedure)
+
+   :exitProcedure()
+   closewindow(0)
+
+endproc()
+
+###############################################################################
+# Help for the common parameter page
+###############################################################################
+
+procedure(commonHelp)
+
+   pr("\n   Define parameters which will be shared between experiments.\n")
+
+endproc()
+
+###############################################################################
+# Copy an item from the std experiments to the user defined menu list
+###############################################################################
+
+procedure(copyItem)
+
+   if(lbStd->zindex == 0)
+      return   
+   endif
+   item = lbStd->text
+   if(item != null)
+      entries = lb->list()
+      newPP = "<standard_experiments>\\$item$"
+      for(k = 0 to size(entries)-1)
+         try
+            (folder, name) = scanstr(entries[k],"%1|%2")
+            if(folder == newPP)
+               return
+            endif
+         catch
+         endtry
+      next(k)
+      if(entries == null) 
+         entries = ["$newPP$|$item$"]
+      else
+         entries = entries + "$newPP$|$item$"
+      endif
+      lb->list(entries)
+      lb->color([0,0,128,0])
+   else
+      message("Information","Please select the pulse program to be added.","info")
+   endif
+
+endproc()
+
+
+###############################################################################
+# Edit a name to appear on the menu bar
+###############################################################################
+
+procedure(editEntry)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      idx = lb->zindex()
+      (path,name) = scanstr(entry,"%1|%2")
+      name = gettext("Choose new name for menu",name,20)
+      if(name != "cancel")
+         entry = "$path$|$name$"
+         entries[idx] = entry
+         lb->list(entries)
+         lb->color([0,0,128,0])
+      endif
+   else
+      message("Information","Please select the row to be edited.","info")
+   endif
+
+endproc()
+
+###############################################################################
+# Callback for menu file list
+###############################################################################
+
+procedure(lbCallback)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      :editEntry()
+   endif()
+
+endproc()
+
+###############################################################################
+# Callbacks for menu list
+###############################################################################
+
+procedure(lbStdCallback)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      :copyItem()
+   endif()
+
+endproc()
+
+###############################################################################
+# Load the default preferences
+###############################################################################
+
+procedure(loadDefaults)
+
+   if(query("Warning","This will overwrite the Kea preferences with the default values - continue?") == "yes")
+      cd(prefdir)
+      mkdir("KeaParameters\\Preferences")
+      src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPreferences.par"
+      dst = "$prefdir$\\KeaParameters\\Preferences\\ucsPreferences.par"
+      copyfile(src,dst)
+   endif
+
+endproc()
+
+
+###############################################################################
+# Define an interface to choose which parameters will be 'common' i.e. updated
+# from the common parameter file when loading an experiment into the main interface
+# New nuclei can be added to the list below
+###############################################################################
+
+procedure(defineCommonParameterPage)
+
+   yOff = 48
+   yStep = 24
+   x2 = "ww*0.33"
+   x1 = "ww*0.33+8"
+   x3 = "ww*0.66"
+   x4 = "ww*0.66+8"
+   x5 = "ww*0.5"
+   x6 = "ww*0.5+8"
+
+   par = structarray(23)
+
+   par[0] = struct(ctrl="bt", label="Save",     callback=":savePref", w=42, h=26, x="ww-109", y=5, tooltip="Save changes to this page.", inPanel=0);
+
+
+   par[1] = struct(ctrl="st", label="Common parameters",     x="ww/2",  y=10, alignment="center", color=[128,0,0], inPanel=0);
+   par[2] = struct(ctrl="cb", label="Use common parameters",       name="useCommonPar", callback=":commonParCallback",  xCB=x6, xST=x5,  y=24);
+   par[3] = struct(ctrl="dv",  y=48);
+
+
+   par[4] = struct(ctrl="bt", label="<=",     callback=":returnToMain", w=30, h=25, x=10, y=5, icon="leftarrow.png", tooltip="Return to main preferences page.", inPanel=0);
+   par[5] = struct(ctrl="cb", label="Repetition time",       name="repTime",         xCB=x1, xST=x2,  y=1*yStep+yOff);
+   par[6] = struct(ctrl="cb", label="Inter-experiment time", name="ieTime",          xCB=x1, xST=x2,  y=2*yStep+yOff);
+   par[7] = struct(ctrl="cb", label="Acquisition delay",     name="acqDelay",        xCB=x4, xST=x3,  y=1*yStep+yOff);
+   par[8] = struct(ctrl="cb", label="Echo time",             name="echoTime",        xCB=x4, xST=x3,  y=2*yStep+yOff);
+
+   cnt = 9
+   cnt2 = 4
+
+   par[9] = struct(ctrl="dv",  y=(cnt2-1)*yStep+yOff);
+   par[10] = struct(ctrl="cb", label="B1 frequency (ch-1)",    name="b1FreqCh1",          xCB=x1, xST=x2,  y=(cnt2+0)*yStep+yOff);
+   par[11] = struct(ctrl="cb", label="90 amplitude (ch-1)",    name="90AmplitudeCh1",   xCB=x1, xST=x2,  y=(cnt2+1)*yStep+yOff);
+   par[12] = struct(ctrl="cb", label="180 amplitude (ch-1)",   name="180AmplitudeCh1",  xCB=x1, xST=x2,  y=(cnt2+2)*yStep+yOff);
+   par[13] = struct(ctrl="cb", label="Pulse length (ch-1)",    name="pulseLengthCh1",   xCB=x1, xST=x2,  y=(cnt2+3)*yStep+yOff);
+
+   par[14] = struct(ctrl="cb", label="B1 frequency (ch-2)",    name="b1FreqCh2",          xCB=x4, xST=x3,  y=(cnt2+0)*yStep+yOff);
+   par[15] = struct(ctrl="cb", label="90 amplitude (ch-2)",    name="90AmplitudeCh2",   xCB=x4, xST=x3,  y=(cnt2+1)*yStep+yOff);
+   par[16] = struct(ctrl="cb", label="180 amplitude (ch-2)",   name="180AmplitudeCh2",  xCB=x4, xST=x3,  y=(cnt2+2)*yStep+yOff);
+   par[17] = struct(ctrl="cb", label="Pulse length (ch-2)",    name="pulseLengthCh2",   xCB=x4, xST=x3,  y=(cnt2+3)*yStep+yOff);
+
+   par[18] = struct(ctrl="dv",  y=(cnt2+4)*yStep+yOff);
+
+   par[19] = struct(ctrl="cb", label="x-shim",    name="xShim",   xCB=x1, xST=x2,  y=(cnt2+5)*yStep+yOff);
+   par[20] = struct(ctrl="cb", label="y-shim",    name="yShim",   xCB=x1, xST=x2,  y=(cnt2+6)*yStep+yOff);
+
+   par[21] = struct(ctrl="cb", label="z-shim",    name="zShim",   xCB=x4, xST=x3,  y=(cnt2+5)*yStep+yOff);
+   par[22] = struct(ctrl="cb", label="o-shim",    name="oShim",   xCB=x4, xST=x3,  y=(cnt2+6)*yStep+yOff);
+
+   for(k = 0 to size(par)-1)
+      info = par[k]
+      if(isvar("info->name"))
+         if(par[k]->name != "useCommonPar")
+            par[k]->name = "commonPar_" + par[k]->name  
+         endif 
+      endif
+   next(k)
+   :makeControls(par, 1)
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+   :commonParCallback()
+
+   wvCurrentPage = "preferences"
+
+endproc()
+
+###############################################################################
+# Callback for the common parameter button
+###############################################################################
+
+procedure(commonParCallback)
+
+   getobj(0)->draw("false")
+   if(getpar(0,203,"text") == "no")
+       for(k = 206 to 230)
+         if(getpar(0,k,"objtype") == "check box")
+            setpar(0,k,"enable","false")
+         endif
+      next(k) 
+   else
+       for(k = 206 to 230)
+         if(getpar(0,k,"objtype") == "check box")
+            setpar(0,k,"enable","true")
+         endif
+      next(k)    
+   endif
+   getobj(0)->draw("true")
+
+endproc()
+
+
+###############################################################################
+# Define the main interface from which different pages can be displayed.
+###############################################################################
+
+procedure(defineMainInterface)
+
+   wb = "ww*0.15"
+   hb =  "wh*0.25"
+   wb = 80
+   hb = 60
+
+   par = structarray(11)
+   par[0] = struct(ctrl="bt", label="Common\nParameters",        callback=":defineCommonParameterPage",  x="ww*$1/6-0.075$", y="wh*0.33-$hb/2$", w=wb, h=hb) #, color=[255,0,0], fontname="Times", fontsize=18);
+   par[1] = struct(ctrl="bt", label="Nuclear Spin\nInformation", callback=":defineNuclearParameterPage", x="ww*$2/6-0.075$", y="wh*0.33-$hb/2$", w=wb, h=hb);
+   par[2] = struct(ctrl="bt", label="Receiver\nCalibration",     callback=":defineRxCalibrationPage",    x="ww*$3/6-0.075$", y="wh*0.33-$hb/2$", w=wb, h=hb);
+   par[3] = struct(ctrl="bt", label="View Common\nParameters",   callback=":viewCommon",                 x="ww*$4/6-0.075$", y="wh*0.33-$hb/2$", w=wb, h=hb);
+   par[4] = struct(ctrl="bt", label="Load Default\nPreferences", callback=":loadDefaults",               x="ww*$5/6-0.075$", y="wh*0.33-$hb/2$", w=wb, h=hb);
+   par[5] = struct(ctrl="bt", label="Experiment\nMenus",         callback=":defineMenuPage",             x="ww*$1/6-0.075$", y="wh*0.66-$hb/2$", w=wb, h=hb);
+   par[6] = struct(ctrl="bt", label="Saving\nExperiments",       callback=":defineSaveExperimentPage",   x="ww*$2/6-0.075$", y="wh*0.66-$hb/2$", w=wb, h=hb);
+   par[7] = struct(ctrl="bt", label="General",                   callback=":defineGeneralPage",          x="ww*$3/6-0.075$", y="wh*0.66-$hb/2$", w=wb, h=hb);
+   par[8] = struct(ctrl="bt", label="View All\nPreferences",     callback=":viewPreferences",            x="ww*$4/6-0.075$", y="wh*0.66-$hb/2$", w=wb, h=hb);
+   par[9] = struct(ctrl="bt", label="Close",                     callback=":closeProcedure",             x="ww*$5/6-0.075$", y="wh*0.66-$hb/2$", w=wb, h=hb);
+   par[10] = struct(ctrl="gb", label="",                         callback="",                            x="10",             y="10",   w="ww-20", h="wh-20");
+ 
+   :makeControls(par, 0)
+
+   wvCurrentPage = "main"
+
+endproc(par)
+
+
+###############################################################################
+# Define an interface to select which experiment menus will be visible in the 
+# KeaExpert main interface
+###############################################################################
+
+procedure(defineMenuPage)
+
+   n = wvThisWinNr
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+   button(1, 10, 5, 26, 26, "<=",:returnToMain();)
+   statictext(2, "ww/2", 10, "centre", "Define Experiment Folders and Menus Names")
+   setpar(n,2,"color",[128,0,0])
+   button(3, "ww-134", 5, 42, 26, "Save", 
+          :updateMenu();
+          print("\n   Menus saved\n"))
+   button(4, "ww-91", 5, 42, 26, "Help", 
+           pr("\n   Define experiment folders which will be accessible from\n   scripts and which may be added to the main menu if\n   a menu name is given.\n"))
+ 
+   # Define all controls with basic parameters
+   lbStd = listbox(10, 10, 40, 125, "wh-90",:lbStdCallback())
+   lb = listbox(11, 178, 40, "ww-228", "wh-90",:lbCallback())
+   button(12, 178, "wh-41", 62, 26, "Add",
+      :addEntry(null,1);)
+   button(13, 248, "wh-41", 62, 26, "Remove",
+      :removeEntry(1);)
+   button(14, 318, "wh-41", 62, 26, "Edit",
+      :editEntry();)
+   button(16, "ww-40", "wh/2-41", 26, 26, "Up",
+      :moveItemUp())
+   button(17, "ww-40", "wh/2-5", 26, 26, "Down",
+      :moveItemDown())
+   button(18, "140", "wh/2-22", 26, 26, "Copy",
+      :copyItem())
+
+   setpar(0,10,"nrColumns",1,"colwidth",[1.0])
+   setpar(0,11,"nrColumns",2,"colwidth",[0.5,0.5])
+
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+   setpar(0,1,"icon","leftarrow.png","tooltip","Return to main preferences page.")
+   setpar(0,3,"tooltip","Update the menu and save to file.")
+   setpar(0,4,"tooltip","Display help for this dialog.")
+   setpar(0,12,"icon","add.png","tooltip","Add a user-defined pulse-program folder.")
+   setpar(0,13,"icon","cross.png","tooltip","Remove selected entry from the menu list.")
+   setpar(0,14,"icon","rename.png","tooltip","Rename the selected menu.")
+   setpar(0,16,"icon","uparrow.png","tooltip","Move the selected entry up the list.")
+   setpar(0,17,"icon","downarrow.png","tooltip","Move the selected entry down the list.")
+   setpar(0,18,"icon","rightarrow.png","tooltip","Copy the selected item to the menu list.")
+   setwindowpar(n,"dragndropproc",":dragNDropMenu")
+
+   gMenus->loadDefaults()
+
+   seteditwin(-n,"fast")
+
+   for(k = 1 to 18)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+   wvCurrentPage = "exptMenus"
+
+endproc()
+
+
+###############################################################################
+# Define an interface to view the nuclear spins parameters for each possible
+# spin supported by the Kea spectrometers.
+# New nuclei can be added to the list below.
+###############################################################################
+
+procedure(defineNuclearParameterPage)
+
+   yOff = 20
+   yStep = 30
+   x2 = "ww*0.33-50"
+   x1 = "ww*0.33-42"
+   x3 = "ww*0.66-50"
+   x4 = "ww*0.66-42"
+
+   nuclei = ["1H","2H","3H","7Li","11B","13C","14N","15N","19F","23Na","27Al","29Si","31P","33S","119Sn","129Xe"]
+   szNuc = size(nuclei)
+   par = structarray(5 + 2*szNuc + 1)
+
+
+   par[0] = struct(ctrl="bt",  label="<=",     callback=":returnToMain", w=30, h=25, x=10, y=5, icon="leftarrow.png", tooltip="Return to main preferences page.", inPanel=0);
+   par[1] = struct(ctrl="st",  label="Nuclear spin parameters",     x="ww/2",  y=10, alignment="center", color=[128,0,0], inPanel=0);
+   par[2] = struct(ctrl="bt",  label="Save",     callback=":savePref", w=42, h=26, x="ww-109", y=5, tooltip="Save changes to this page.", inPanel=0);
+   par[3] = struct(ctrl="st",  label="NMR frequencies (MHz)",        x="ww*0.33-10",  y=20, alignment="center", color=[0,128,0]);
+   par[4] = struct(ctrl="st",  label="Spectral zero-offset (PPM)",   x="ww*0.66-10",  y=20, alignment="center", color=[0,128,0]);
+
+   for(k = 5 to 5+szNuc-1)
+      nucleus = nuclei[k-5]
+      par[k] = struct(ctrl="tb",  label=nucleus,    name="gyro$nucleus$",  xTB=x1, xST=x2,  y=(k-4)*yStep+yOff,  w=70, type="double", readonly="true")
+   next(k)
+
+   for(k = 5+szNuc to 5+szNuc*2-1)
+      nucleus = nuclei[k-5-szNuc]
+      par[k] = struct(ctrl="tb",  label=nucleus,    name="ppmOffset$nucleus$",  xTB=x4, xST=x3,  y=(k-4-szNuc)*yStep+yOff,  w=70, type="float")
+   next(k)
+
+   par[5 + 2*szNuc] = struct(ctrl="bt", label="Help",     callback=":nucleiHelp", w=42, h=26, x="ww-66", y=5, tooltip="Save changes to this page.", inPanel=0);
+
+   :makeControls(par, 1)
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+
+   wvCurrentPage = "preferences"
+
+endproc()
+
+
+###############################################################################
+# Define the receiver calibration and display units
+###############################################################################
+
+procedure(defineRxCalibrationPage)
+
+   n = wvThisWinNr
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+   button(1, 10, 5, 26, 26, "<=", :returnToMain();)
+   statictext(2, "ww/2", 10, "centre", "Display Units and Receiver Calibration")
+   button(3, "ww-98", 5, 42, 26, "Save", :savePref())
+   button(4, "ww-52", 5, 42, 26, "Help",
+          pr("\n   Select the amplitude display units for FIDs and the receiver calibration parameters\n   which define the overall receiver gain for a Kea channel.\n"))
+
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+   setpar(0,1,"icon","leftarrow.png","tooltip","Return to main preferences page.")
+   setpar(0,3,"tooltip","Update the menu and save to file.")
+
+   groupbox(10, "", 10, 40, 325, "wh-50")
+
+   statictext(11, 42, 70, "left", "Plot Display Units")
+   radiobuttons(12, 88, 101, 22, "vertical", "mV,uV,raw", "mV")
+   statictext(13, 67, 101, "center", "mV:")
+   statictext(14, 68, 123, "center", "uV:")
+   statictext(15, 65, 145, "center", "Raw:")
+   statictext(16, 183, 70, "left", "Receiver calibration")
+   statictext(17, 176, 95, "center", "Digitizer")
+   statictext(18, 177, 110, "center", "calibration")
+   textbox(19, 210, 100, 54)
+   statictext(20, 286, 104, "right", "/uV")
+   statictext(21, 176, 137, "center", "Rx-Amp")
+   statictext(22, 177, 152, "center", "correction")
+   textbox(23, 210, 140, 54)
+   checkbox(24, 285, 144, "no,yes", "no")
+   statictext(25, 176, 174, "center", "Preamp")
+   statictext(26, 177, 189, "center", "gain")
+   textbox(27, 210, 180, 54)
+   statictext(28, 291, 163, "center", "Include")
+   checkbox(29, 285, 184, "no,yes", "no")
+
+   groupbox(30, "", 345, 40, "ww-355", "wh-50")
+
+  # Set other control parameters
+   setpar(n,2,"fgcolor",[128,0,0])
+   setpar(n,11,"fgcolor",[0,128,0])
+   setpar(n,12,"valueID","units")
+   setpar(n,16,"fgcolor",[0,128,0])
+   setpar(n,19,"valueID","rxCalibration")
+   setpar(n,23,"valueID","rxAmpCorrection")
+   setpar(n,24,"valueID","calibrateForRxAmp")
+   setpar(n,27,"valueID","preampGain")
+   setpar(n,29,"valueID","calibrateForPreamp")
+
+   seteditwin(-n,"fast")
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+
+# Make the new controls visible
+   for(k = 1 to 30)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+# Note which page we are on
+   wvCurrentPage = "preferences"
+
+endproc()
+
+
+
+###############################################################################
+# Define the receiver calibration and display units
+###############################################################################
+
+procedure(defineGeneralPage)
+
+   n = wvThisWinNr
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+       # Define all controls with basic parameters
+      button(1, 10, 5, 26, 26, "<=",
+         :returnToMain();)
+      statictext(2, "ww*0.5", 10, "center", "General parameters")
+      button(3, "ww-98", 5, 42, 26, "Save",
+         :savePref();)
+      button(4, "ww-52", 5, 42, 26, "Help",
+         pr("\n   Choose the user permissions\n   to limit ability to perform certain functions.\n");)
+      statictext(5, 245, 218, "right", "Allow to update firmware:")
+      statictext(6, 376, 70, "left", "User interface")
+      checkbox(7, 250, 152, "no,yes", "no")
+      checkbox(8, 250, 174, "no,yes", "no")
+      checkbox(9, 250, 196, "no,yes", "no")
+      groupbox(10, "", 10, 40, 325, "wh-50")
+      statictext(11, 42, 70, "left", "Permissions")
+      checkbox(12, 250, 218, "no,yes", "no")
+      statictext(13, 245, 174, "right", "Allow to trash complete data sets:")
+      statictext(14, 245, 152, "right", "Allow to overwrite default parameter files:")
+      statictext(15, 245, 196, "right", "Allow to overwrite spectrometer parameters:")
+      statictext(16, 245, 130, "right", "Show test protocols (restart required):")
+      statictext(17, 245, 108, "right", "Allow script editing:")
+      checkbox(18, 250, 130, "no,yes", "no")
+      checkbox(19, 250, 108, "no,yes", "no")
+      statictext(20, 578, 96, "right", "Windows 7 buttons (restart required):")
+      checkbox(21, 583, 96, "default,win7", "default")
+      statictext(22, 376, 149, "left", "Temperature and lock history")
+      statictext(23, 578, 175, "right", "Record history (restart required):")
+      checkbox(24, 583, 175, "false,true", "false")
+      statictext(25, 376, 208, "left", "Production setting")
+      statictext(26, 578, 234, "right", "Display production tools:")
+      checkbox(27, 583, 234, "false,true", "false")
+      statictext(28, 245, 240, "right", "Allow off-line sequence development:")
+      checkbox(29, 250, 240, "false,true", "false")
+
+      groupbox(30, "", 345, 40, "ww-355", "wh-50")
+
+      statictext(31, 578, 116, "right", "Provide parameter list help (restart required):")
+      checkbox(32, 583, 116, "no,yes", "no")
+
+      statictext(33, 245, 262, "right", "Allow importer editing:")
+      checkbox(34, 250, 262, "no,yes", "no")
+
+      cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+
+     # Set other control parameters
+      setpar(n,1,"tooltip","Return to main preferences page.","icon","leftarrow.png")
+      setpar(n,2,"fgcolor",[128,0,0])
+      setpar(n,3,"tooltip","Update the menu and save to file.")
+      setpar(n,6,"fgcolor",[0,128,0])
+      setpar(n,7,"valueID","canOverWriteDefaultPar",
+                  "tooltip","Two new items appear in the file menu allowing the default and minimum paramete")
+      setpar(n,8,"valueID","canOverTrashData",
+                  "tooltip","Allow the user to move experimental data to the trash.")
+      setpar(n,9,"valueID","canWriteDSPPar",
+                  "tooltip","Allow the user to update the DSP parameters (MAKE A BACKUP FIRST!).")
+      setpar(n,11,"fgcolor",[0,128,0])
+      setpar(n,12,"valueID","canOverWriteFirmware",
+                  "tooltip","Allow the user to update the system firmware (MAGRITEK STAFF ONLY!).")
+      setpar(n,18,"valueID","showTestProtocols",
+                  "tooltip","Display a few extra protocols in the Monitor menu. Needs a restart.")
+      setpar(n,19,"valueID","canEditScripts",
+                  "tooltip","Allow some scripts to be viewed for editing by holding down the shift key.")
+      setpar(n,21,"valueID","uiSkin")
+      setpar(n,22,"fgcolor",[0,128,0])
+      setpar(n,24,"valueID","recordHistory")
+      setpar(n,25,"fgcolor",[0,128,0])
+      setpar(n,27,"valueID","productionMode")
+      setpar(n,29,"valueID","offLineDevelop",
+                  "tooltip","Allow the user to access a copy of the Kea parameters on file when not connected.")
+
+      setpar(n,32,"valueID","showParameterHelp")
+      setpar(n,34,"valueID","canEditImporter")
+
+   seteditwin(-n,"fast")
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+
+# Make the new controls visible
+   for(k = 1 to 34)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+# Note which page we are on
+   wvCurrentPage = "preferences"
+
+endproc()
+
+
+
+###############################################################################
+# Define experiment path options
+###############################################################################
+
+procedure(defineSaveExperimentPage)
+
+  n = wvThisWinNr
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+   button(1, 10, 5, 26, 26, "<=", :returnToMain();)
+   statictext(2, "ww/2", 10, "centre", "Experiment Saving Options")
+   setpar(n,2,"color",[128,0,0])
+   button(3, "ww-98", 5, 42, 26, "Save", :savePref();)
+
+   groupbox(4, "", 10, 40, 325, "wh-50")
+
+   statictext(5, 210, 94, "right", "Year/Month/Day:")
+   statictext(6, 210, 116, "right", "Flat folder:")
+   radiobuttons(7, 215, 94, 22,"vertical","date,flat","date")
+
+   statictext(10, 178, 163, "center", "Additional Files to Save")
+   statictext(11, 206, 187, "right", "Data files (.1d/.2d)")
+   checkbox(12, 214, 187, "no,yes", "no")
+   statictext(13, 206, 210, "right", "Picture files (*.png)")
+   checkbox(14, 214, 210, "no,yes", "no")
+   statictext(15, 206, 232, "right", "Text files (*.csv)")
+   checkbox(16, 214, 232, "no,yes", "no")
+
+   statictext(17, 178, 70, "center", "Data Folder Hierarchy")
+
+   button(18, "ww-52", 5, 42, 26, "Help",
+           pr("\n   Choose the experiment folder hierarchy to use when saving files\n   and also any additional formats to be used when saving data.\n"))
+
+   groupbox(19, "", 345, 40, "ww-355", "wh-50")
+
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+   setpar(0,1,"icon","leftarrow.png","tooltip","Return to main preferences page.")
+   setpar(0,3,"tooltip","Update the menu and save to file.")
+   setpar(0,7,"name","folderHierarchy")
+
+   setpar(n,10,"color",[0,128,0])
+   setpar(n,17,"color",[0,128,0])
+   setpar(n,12,"valueID","saveDataFiles")
+   setpar(n,14,"valueID","savePictureFiles")
+   setpar(n,16,"valueID","saveTextFiles")
+
+   seteditwin(-n,"fast")
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+
+# Make the new controls visible
+   for(k = 1 to 19)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+   wvCurrentPage = "preferences"
+
+endproc()
+
+###############################################################################
+# Drag and drop for menu interface
+###############################################################################
+
+procedure(dragNDropMenu, path, file, ext, objNr)
+
+   dir = getbasedir(path)
+   :addEntry("$path$|$dir$")
+
+endproc()
+
+###############################################################################
+# The close or exit button in the title bar has been selected.
+# Check for unsaved preferences.
+###############################################################################
+
+procedure(exitProcedure)
+
+   if(wvCurrentPage == "menus")
+      :checkExptMenuChanges()
+   elseif(wvCurrentPage == "exptSearchPath")
+      :checkSearchPathChanges()
+   elseif(wvCurrentPage == "preferences")
+      :checkPreferenceChanges()
+   endif
+
+endproc()
+
+###############################################################################
+# Given a parameter list delete the previous controls and make the new
+# controls to match the parameter list  adding these to the main window
+###############################################################################
+
+procedure(makeControls, par, mkPanel)
+
+   n = wvThisWinNr
+
+   getobj(n)->draw("false")
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+# Place controls
+   xPos = 168
+   yPos = 20
+   nrCtrl = size(par)
+
+   if(mkPanel)
+      panel(100,8,36,"ww-16","wh-50")
+   endif
+
+   start = 200
+   m = start
+   h = size(par)
+   for(k = 0 to h-1)
+      info = par[k]
+      inPanel  = 1
+      callback = null
+      icon     = null
+      tooltip  = null
+      color    = null
+      type     = null
+      readonly = null
+      italics  = null
+      bold     = null
+      fontname = null
+      fontsize = null
+
+      assignstruct(info)
+
+      if(ctrl == "dv")
+         divider(m, 20, y, "ww-70", 3, "horizontal")  
+         if(inPanel & mkPanel)
+            setpar(n,m,"panelparent",100) 
+         endif
+         m = m + 1
+
+      elseif(ctrl == "gb")
+         groupbox(m, label, x, y, w, h)  
+         if(inPanel & mkPanel)
+            setpar(n,m,"panelparent",100) 
+         endif
+         m = m + 1
+
+      elseif(ctrl == "cb")
+         statictext(m, xST, y-1, "right", label)
+         checkbox(m+1, xCB, y, "no,yes", "no")
+         setpar(n,m+1,"valueID",name)
+         if(callback != null)
+            setpar(n,m+1,"procedure",callback) 
+         endif
+         if(inPanel & mkPanel)
+            setpar(n,m, "panelparent",100) 
+            setpar(n,m+1, "panelparent",100) 
+         endif
+ 
+         m = m + 2
+
+      elseif(ctrl == "tb")
+         statictext(m, xST, y+3, "right", label)
+         textbox(m+1, xTB, y, w)
+         setpar(n,m+1,"valueID",name)
+         if(inPanel & mkPanel)
+            setpar(n,m, "panelparent",100) 
+            setpar(n,m+1, "panelparent",100) 
+         endif
+         if(type != null)
+            setpar(n,m+1,"type",type)
+         endif
+         if(readonly != null)
+            setpar(n,m+1,"readonly",readonly)
+         endif
+         m = m + 2
+
+      elseif(ctrl == "st")
+         statictext(m, x, y, alignment, label)  
+         if(color != null)
+            setpar(n,m,"color",color)
+         endif 
+         if(inPanel & mkPanel)
+            setpar(n,m, "panelparent",100) 
+         endif
+         m = m + 1
+
+      elseif(ctrl == "bt")
+         button(m, x, y, w, h, label)  
+         if(callback != null)
+            setpar(n,m,"procedure",callback) 
+         endif
+         if(icon != null)
+            cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps")
+            setpar(n,m,"icon",icon) 
+         endif
+         if(color != null)
+            setpar(n,m,"fgcolor",color)
+         endif 
+         if(italics != null)
+            setpar(n,m,"italics",italics)
+         endif 
+         if(bold != null)
+            setpar(n,m,"bold",bold)
+         endif 
+         if(fontname != null)
+            setpar(n,m,"fontname",fontname)
+         endif 
+         if(fontsize != null)
+            setpar(n,m,"fontsize",fontsize)
+         endif 
+         if(tooltip != null)
+            setpar(n,m,"tooltip",tooltip) 
+         endif
+         if(inPanel & mkPanel)
+            setpar(n,m, "panelparent",100) 
+         endif
+         m = m + 1
+      endif
+
+   next(k)
+
+   seteditwin(-n,"fast")
+
+   for(k = start to m)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+   if(mkPanel)
+      setpar(n,100,"visible","true")
+      setpar(0,100,"panelupdate","")
+   endif
+
+   getobj(n)->draw("true")
+
+endproc()
+
+###############################################################################
+# Help for the nuclei page
+###############################################################################
+
+procedure(nucleiHelp)
+
+   pr("\n   Define parameters which are used to calculate the frequency of\n   different nuclear-spins. These are used when performing a\n   calibration. Also define the default PPM offsets for each spin type.")
+
+endproc()
+
+
+###############################################################################
+# Remove all the controls from the window
+###############################################################################
+
+procedure(removeAllControls)
+
+   objs = getobj(wvThisWinNr)->ctrllist()
+   for(k = 0 to size(objs)-1)
+      rmobj(wvThisWinNr,objs[k])
+   next(k)
+
+endproc()
+
+###############################################################################
+# Move an item down in the listbox 'lb'
+###############################################################################
+
+procedure(moveItemDown)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      indx = lb->zindex
+      sz = size(entries)
+      if(indx < sz-1)
+         tmp = entries[indx+1]
+         entries[indx+1] = entries[indx] 
+         entries[indx] = tmp
+         lb->list(entries)
+         lb->zindex(indx+1) 
+         setpar(0,11,"color",[0,0,128,0])   
+         drawwin(0)
+      endif 
+   else
+      message("Information","Please select the row to be moved.","info")
+   endif
+
+endproc()
+
+###############################################################################
+# Move an item up in the listbox 'lb'
+###############################################################################
+
+procedure(moveItemUp)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      top = lb->topzindex
+      indx = lb->zindex
+      if(indx >= 2) # Don't overwrite the title
+         tmp = entries[indx-1]
+         entries[indx-1] = entries[indx] 
+         entries[indx] = tmp
+         lb->list(entries)
+         lb->zindex(indx-1)  
+         if(indx-1 >= top) 
+            lb->topzindex(top)
+         else
+            lb->topzindex(indx-1)
+         endif
+         setpar(0,11,"color",[0,0,128,0])
+         drawwin(0) 
+      endif
+   else
+      message("Information","Please selecrt the row to be moved.","info")
+   endif
+
+endproc()
+
+###############################################################################
+# Remove an entry from the list box 'lb'
+###############################################################################
+
+procedure(removeEntry, isMenu=0)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      idx = lb->zindex()
+      entries = rmfromlist(entries,idx)
+      lb->list(entries)
+      if(isMenu)
+         lb->color([0,0,128,0])
+      endif
+      if(idx != 1)
+         idx = idx - 1
+      endif
+      if(size(entries) > 1)
+         lb->zindex(idx)
+      endif
+      if(isMenu)
+         (name,comment) = scanstr(entry,"%1|%2")
+      else
+         name = entry
+      endif
+      # Remove all macros in this folder from the cache
+      # If they have an absolute path
+      if(isdir(name))
+         cd(name)
+         folders = getdirlist(name)
+         for(k = 0 to size(folders)-1)
+            folder = folders[k]
+            cd(folder)
+            files = ls("*.mac")
+            for(m = 0 to size(files)-1)
+               file = files[m]
+               path = name+"\\"+folder
+               if(iscached(file,path,"global"))
+                  rmcachedmacro(path,file,"global")
+                  #pr "File $file$ is removed from cache\n"
+               endif
+            next(m)
+            cd("..")
+         next(k)
+      endif
+      # Remove from search path
+      gData->removeFromPPSearchPath(name)
+
+   else
+      message("Information","Please select the row to be removed.","info")
+   endif
+
+endproc()
+
+###############################################################################
+# The return to main menu button has been pressed
+###############################################################################
+
+procedure(returnToMain)
+
+   :exitProcedure()
+   :defineMainInterface()
+
+endproc()
+
+##############################################
+# Update the common parameter list by 
+# modifying the common parameter to match
+# the items selected in the preferences
+# dialog.
+##############################################
+
+procedure(setCommonPar,lst)
+
+   common = getsublist(lst,"commonPar_")
+   common = rmprefix(common,"commonPar_")
+   parList = list(0)
+
+# From this list extract just those parameters which are selected
+   for(k = 0 to size(common)-1)
+      (name,state) = splitpar(common[k])
+      if(state == "yes")
+         parList = parList + name
+      endif
+   next(k)
+
+# Extract those parameters from common parameter file which are selected
+# and then write them back along with the common list.
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("KeaParameters\\Common")
+   cd("KeaParameters\\Common")
+   try
+      name = getobj(wv_parent)->winvar->wvSpecName
+   catch
+      name = gData->specID
+   endtry
+   if(isfile("$name$Common.par"))  
+      cp = load("$name$Common.par")
+      cp = rmfromlist(cp,"common")
+      cp = cp + ["common = $parList$"]
+      save("$name$Common.par",sortlist(cp))
+      if(isvar("gData"))
+         save("$gData->specID$Common.par",sortlist(cp))
+      endif
+   else # Default list just has common par
+      cp = ["common = $parList$"]
+      save("$name$Common.par",cp)
+   endif
+   if(isvar("gData"))
+      gData->commonPar = struct(sortlist(cp))
+   endif
+   cd(dir)
+
+
+endproc()
+
+###############################################################################
+# Save the current page of preferences to the preferences file leaving other
+# parameters unchanged. Also update the history list if the save hierarchy has
+# changed. Make sure the file version number is up to date.
+###############################################################################
+
+procedure(savePref)
+
+   pref = ucsFiles:loadPref()
+   folderHierarchyOld = getlistvalue(pref,"folderHierarchy")
+   lst = getctrlvalues(0)
+   folderHierarchyNew = getlistvalue(lst,"folderHierarchy")
+   pref = mergelists(lst,pref)
+   :setCommonPar(pref)
+   ucsFiles:savePref(pref)
+   print("\n   Preferences saved\n")
+   gData->preferences = struct(pref)
+   assignlist(pref)
+   gData->permissions = mkparstruct(["canOverTrashData","canOverWriteDefaultPar","canOverWriteFirmware",
+                                     "canWriteDSPPar","showTestProtocols","canEditScripts","canEditImporter"])
+   gData->useCommonPar = getlistvalue(pref,"useCommonPar")
+   if(folderHierarchyNew != folderHierarchyOld)
+      gView->loadHistoryList()
+      if(size(gView->history->list) > 1)
+         gView->history->zindex(1)
+      endif
+   endif
+
+   gData->productionMode = productionMode
+   gData->recordHistory = recordHistory
+   gData->offLineDevelop = offLineDevelop
+
+#   if(recordHistory == "true")
+#      gExpt->startPeriodicChecks()
+#   elseif(recordHistory == "false")
+#      gExpt->stopChecking()
+#   endif
+
+endproc()
+
+###############################################################################
+# Update the user menus and search paths
+###############################################################################
+
+procedure(updateMenu)
+
+   gView->mainWin->draw("false")
+   getobj(0)->draw("false")
+
+   try
+   # Remove any existing pulse program menus
+      if(gView->userMenusRange[1] > 0)
+         for(k = gView->userMenusRange[0] to gView->userMenusRange[1])
+            rmobj(gView->wn,k)
+         next(k)
+         gView->userMenusRange[1] = -1
+      endif
+   
+      cnt = gView->userMenusRange[0]
+   
+   # Define the new menus
+      entries = lb->list()
+      sz = size(entries)  
+      paths = list(0) 
+      if(sz > 1)
+         seteditwin(gView->wn,"fast")
+         for(k = 1 to sz-1)
+            (location, menuName) = scanstr(entries[k],"%1|%2")
+            baseDir = getbasedir(location)
+            if(issubstr(location,"<standard_experiments>"))
+               location = "$appdir$\\Macros\\$baseDir$\\"
+            else
+               gData->addToPPSearchPath(location)
+               paths = paths + "$location$\\*"
+            endif
+            if(menuName != "") # Paths with blank menu names will be hidden 
+               menu(cnt, menuName, "user folder menu", "") # Need to use following command as this only 
+               setpar(gView->wn,cnt,"procedure",location)  # works with global variables like $appdir$
+               cnt = cnt + 1
+            endif            
+         next(k)
+         cnt = cnt - 1
+         seteditwin(-gView->wn,"fast")
+         gView->userMenusRange[1] = cnt
+      endif
+
+   # Update search path list
+     :updateSearchPaths(paths)
+
+   # Add these menus to the different control lists
+      m = gView->exptMenu
+      if(sz > 0)
+         gView->exptMenu = [gView->userMenusRange[0]:gView->userMenusRange[1]]
+         gView->exptMenu = join(gView->exptMenu,m[-5:-1])
+      else
+         gView->exptMenu = m[-5:-1]
+      endif
+   
+      gView->cliMenu = join(gView->cliCoreMenu, gView->exptMenu)
+      gView->graphMenu = join(gView->graphCoreMenu, gView->exptMenu)
+      gView->imageMenu = join(gView->imageCoreMenu, gView->exptMenu)      
+      gView->textEditMenu = join(gView->textEditCoreMenu, gView->exptMenu)
+
+   # Update the menubars for the controls
+      for(k = 1 to 6)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->graphMenu)
+      next(k)
+      for(k = 7 to 10)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->imageMenu)
+      next(k)
+      gView->cli->menubar(gView->cliMenu)
+
+   # Update the textbox and textmenu menus
+      n = gView->mainWin->winNr
+      ctrls = getobj(n)->ctrllist
+      for(k = 0 to size(ctrls)-1)
+         type = getobj(n,ctrls[k])->ctrltype
+         if(type == "text menu" | type == "text box")
+            setpar(n,ctrls[k],"menubar",gView->textEditMenu)
+         endif
+      next(k)
+   
+   # Update the main menubar
+      setwindowpar(gView->wn,"menubar",gView->graphMenu)
+    
+   # Save the new menu list
+      cd(prefdir)
+      mkdir("KeaParameters")
+      cd("KeaParameters")
+      printtofile("pulseProgramMenus.mac")
+      pr("procedure(pulseProgramMenus)\n")
+   
+      if(sz >= 3)
+         pr ("\n   menuList = [\"$entries[1]$\",\n")
+         for(k = 2 to sz-2)
+            pr("               \"$entries[k]$\",\n")  
+         next(k)
+         pr("               \"$entries[-1]$\"]\n")  
+      elseif(sz == 2)
+         pr("\n   menuList = [\"$entries[1]$\"]\n")  
+      else
+         pr("\n   menuList = null\n")    
+      endif  
+   
+      pr("\nendproc(menuList)\n")
+      closeprint()
+
+   catch
+
+      pr lasterror()
+
+   endtry
+
+   getobj(0)->draw("true")
+   gView->mainWin->draw("true")
+  
+endproc()
+
+###############################################################################
+# Define the search path for Prospa
+###############################################################################
+
+procedure(updateSearchPaths, paths)
+
+   searchpath = ["$$appdir$$\Macros\*"] + paths
+   varstatus("macrosearchpath","visible","readwrite","permanent")
+   assign("macrosearchpath",searchpath,"global")
+   varstatus("macrosearchpath","hidden","readonly","permanent")
+
+endproc()
+
+###############################################################################
+# Display the preferences in an editor
+###############################################################################
+
+procedure(viewPreferences)
+
+   bak = getcwd()
+   mkdir("KeaParameters\\Preferences")
+   cd("$prefdir$\\KeaParameters\\Preferences")
+   file = "ucsPreferences.par" 
+   if(isfile(file))
+      EditorWin()
+      ed(file)
+   else
+      print("\n   Preferences file not found\n")
+   endif
+   cd(bak)   
+
+endproc()
+
+
+###############################################################################
+# Display the common parameters in an editor
+###############################################################################
+
+procedure(viewCommon)
+
+   bak = getcwd()
+   dir = "$prefdir$\\KeaParameters\\Common"
+   if(isdir(dir))
+      cd(dir)
+      ID = gData->specID
+      file = "$ID$Common.par"
+      if(isfile(file))
+         EditorWin()
+         ed(file)
+      endif
+   endif
+   cd(bak)   
+
+endproc()
+
+

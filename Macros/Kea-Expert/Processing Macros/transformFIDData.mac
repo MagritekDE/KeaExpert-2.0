@@ -1,0 +1,49 @@
+############################################
+# Transform 1D time domain FID data
+############################################
+
+procedure(transformFIDData)
+
+   cp = curplot("1d")
+   obj = cp->parent
+
+   s = obj->uservar
+   type = s->type
+
+   if(type == "FID")
+
+      srcPlt = cp
+      dest = s->freqDomain
+      dstPlt = gPlot->getPlotObject(dest)
+      filter = "none"
+      (x,y) = srcPlt->getdata()  
+      if(vartype(y) != "cmatrix1d")
+         pr "Should be complex data\n"
+         return
+      endif 
+      sz = size(x)
+      bw = sz/(x[-1]-x[0])
+      y = fft_local:1d(y,sz,filter,"FTFid","no")
+      dstPlt->draw("false")
+      dstPlt->axes->xdirection("forward")
+      x = linspace(-bw/2,bw/2,sz)
+      dstPlt->plot(x,y)
+      dstPlt->title("Spectrum")
+      dstPlt->xlabel("Frequency (kHz)")
+      dstPlt->ylabel("Amplitude (a.u)")
+      dstPlt->title("Spectrum")
+      dstPlt->draw("true")
+      curplot(dstPlt)     
+      togglePPM_Hz()
+      dstPlt->zoom(-10,10)
+      s = dstPlt->parent->userVar
+      s->modified = 1
+      dstPlt->parent->uservar(s)
+
+   else
+
+      pr "Not a complex 1D FID data set\n"
+
+   endif
+
+endproc()

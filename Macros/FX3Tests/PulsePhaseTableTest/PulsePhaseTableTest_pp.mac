@@ -1,0 +1,65 @@
+############################################################
+#  
+# Generates a pulse with a stepped phase using a table
+#
+# pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
+               "ampPulse",        "Pulse amplitude (dB)",         "tb",  "pulseamp";
+               "freq",            "Pulse frequency (MHz)",        "tb",  "freq";
+               "pulseLength",     "Pulse length (us)",            "tb",  "pulselength";
+               "pulseDelay",      "Interpulse delay (us)",        "tb",  "pulselength";
+               "repTime",         "Repetition time (ms)",         "tb",  "reptime"]
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts     = nrPnts",
+                    "dPulse        = pulseLength",
+                    "dDelay        = pulseDelay",
+                    "tPhase        = [0,1,2,3,2,1,0]/7*2^16",
+                    "f1            = freq",
+                    "nSteps        = size(tPhase)",
+                    "dAcqDelay     = 20",
+                    "totPnts       = nrPnts",
+                    "totTime       = acqTime",
+                    "freqCh2       = 2",
+                    "freqCh1       = f1",
+                    "freqRx        = f1"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)                      # Define compile directory and clear parameter list
+   setindex(tPhase,0)
+   loop("l1",nSteps)
+     pulse(1,ampPulse,tPhase,dPulse)     # RF pulse on channel 1 with phase p1
+    # delay(dDelay)                 # Pulse - acquire delay
+     incindex(tPhase)
+   endloop("l1")
+   delay(dAcqDelay)                 # Pulse - acquire delay
+   acquire("overwrite",nDataPnts)   # Acquire FID
+
+   parList = endpp()                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,0,0,0;   # p1 : Pulse 1 phase
+                 0,1,2,3;   # p2 : Pulse 2 phase
+                 0,1,2,3]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+

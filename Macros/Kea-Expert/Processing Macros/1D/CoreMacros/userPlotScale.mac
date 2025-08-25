@@ -1,0 +1,36 @@
+procedure(userPlotScale, wheelInc, keys)
+
+   SHIFT = 4
+   CTRL = 8
+
+   direction = (wheelInc > 0)
+  
+   pt = curplot("1d")
+   tc = pt->curtrace()
+
+# Get the data
+   (x,y) = pt->getdata("all")
+   if(x == null)
+     message("Error","No 1D plot data","error")
+     return()
+   endif
+
+   if((keys & SHIFT) > 0)
+      fac = 0.01
+   else
+      fac = 0.1
+   endif
+
+# Scale the data
+   if(direction > 0)
+      yn = y * (1+fac)
+   else
+      yn = y * (1-fac)
+   endif
+
+   pt->parent->draw("false")
+   pt->autorange("off")
+   tc->setdata(struct(x,yn))
+   pt->parent->draw("true")
+
+endproc()

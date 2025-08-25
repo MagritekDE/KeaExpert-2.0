@@ -1,0 +1,48 @@
+###################################################################################
+# setrxfreq command - set the receive frequency from a scalar or a table
+##################################################################################
+
+procedure(setrxfreq, frequency)
+
+   if(wvFX3Info->mode == "run")
+    
+      if (vartype(frequency) == "double" | vartype(frequency) == "float")
+      
+        (hiWord, loWord) = gFX3->convertFrequency(frequency)
+         ps = [20d,  0x00004190, hiWord,
+               180d, 0x00004190, loWord]
+     
+      else
+      
+         ps = [20d,  0x00006084,   frequency[0]-1,
+               20d,  0x01006086,   1,
+               20d,  0x01006086,   1,
+               20d,  0x00006084,   0x01000000,
+               20d,  0x01006085,   1,
+               20d,  0x01006085,   1,
+               20d,  0x00004190,   0x01000000,
+               20d,  0x01006086,   1,
+               40d,  0x00004190,   0x01000000]
+      
+      endif
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+          
+   elseif(wvFX3Info->mode == "time") # TODO
+
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+         gSeq->psInfo->command = gSeq->psInfo->command + ["setrxfreq,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+     endif
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(frequency)
+
+   endif
+
+endproc()
+

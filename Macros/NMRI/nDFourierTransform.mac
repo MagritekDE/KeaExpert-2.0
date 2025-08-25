@@ -1,0 +1,646 @@
+##############################################
+# Apply an n-dimensional Fourier transform to
+# the selected data set. Use the data structure
+# connected with the variable curmatrix
+#
+# curmatrix ......... name of input matrix
+# curmatrix +'.pl' ... name of parameter list
+#
+##############################################
+
+procedure(nDFourierTransform)
+
+   n = :windowdefinition()
+   setwindowpar(n,"statusbox",32)
+# Set up menu
+   filtermenu = filters:get_menu()
+   setpar(0,24,"menu",filtermenu)
+   setpar(0,25,"menu",filtermenu)
+   setpar(0,26,"menu",filtermenu)
+
+ # Load any current matrix information
+   if(isvar("curmatrix"))
+    # Update input matrix menu
+      matdim = matrixdim(eval(curmatrix))
+      menumat = matrixlist(2^(matdim-1))
+      setpar(0,2,"index",matdim)
+      setpar(0,8,"menu",menumat)
+      setpar(0,8,"text",curmatrix)
+
+    # Enable/Disable fields based on matrix type
+      :enable_disable_fields()
+    # Load all control values from parameter list
+      :load_control_values(curmatrix)
+    # Make a unique name for the output matrix
+      :make_output_name(curmatrix,menumat)
+   endif
+
+   showwindow(n)
+
+endproc()
+
+###################################################
+# Window definition procedure
+###################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("nD Fourier Transformation", -1, -1, 458, 302)
+
+      # Define all controls with basic parameters
+       windowvar(parlist_win)
+       groupbox(1, "Input matrix", 3, 0, 362, 54)
+       textmenu(2, 11, 19, 38, 200,
+          :dimension_updated();)
+       textbox(3, 10, 93, 30)
+       textbox(4, 10, 120, 30)
+       textbox(5, 10, 147, 30)
+       button(6, 383, 132, 55, 25, "Help",
+          help("Macros\\NMRI","nDFourierTransform.htm");)
+       groupbox(7, "", 374, 0, 71, 211)
+       textmenu(8, 55, 19, 114, 200,
+          :input_matrix_updated();)
+       statictext(9, 173, 23, "left", "Size:")
+       textbox(10, 201, 18, 42)
+       statictext(11, 248, 22, "left", "x")
+       textbox(12, 258, 18, 42)
+       statictext(13, 305, 22, "left", "x")
+       textbox(14, 315, 18, 42)
+       groupbox(15, "Fourier Transformation", 3, 58, 220, 153)
+       checkbox(16, 71, 182, "no,yes", "no")
+       statictext(17, 13, 181, "left", "Magnitude:")
+       statictext(18, 321, 137, "left", "Display")
+       statictext(19, 64, 78, "left", "Type")
+       textmenu(20, 46, 94, 65, 200)
+       textmenu(21, 46, 121, 65, 200)
+       textmenu(22, 46, 148, 65, 200)
+       statictext(23, 138, 79, "left", "Filters")
+       textmenu(24, 118, 94, 98, 200)
+       textmenu(25, 118, 121, 98, 200)
+       textmenu(26, 118, 148, 98, 200)
+       groupbox(27, "Output matrix", 233, 58, 131, 153)
+       textmenu(28, 239, 94, 119, 200)
+       textmenu(29, 254, 121, 57, 200)
+       textmenu(30, 254, 148, 57, 200)
+       textmenu(31, 254, 175, 57, 200)
+       statusbox(32)
+       checkbox(33, 330, 155, "no,yes", "yes")
+       statictext(34, 15, 78, "left", "Axes")
+       button(37, 383, 22, 55, 25, "Transform",
+          :forward_transform();)
+       statictext(38, 264, 78, "left", "Name")
+       button(40, 383, 168, 55, 25, "Close",
+          closewindow(0);)
+       button(41, 112, 178, 104, 25, "Filter parameters",
+          n = filters();)
+       statictext(42, 241, 125, "left", "w")
+       statictext(43, 242, 151, "left", "h")
+       statictext(44, 241, 178, "left", "d")
+       statictext(45, 18, 247, "left", "Digital shift:")
+       textbox(46, 78, 243, 42)
+       groupbox(47, "Other parameters", 6, 220, 358, 57)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",1,
+                   "menu",["1D","2D","3D"])
+       setpar(n,3,"name","1dtype")
+       setpar(n,4,"name","2dtype")
+       setpar(n,5,"name","3dtype")
+       setpar(n,6,"tab_number",18)
+       setpar(n,8,"tab_number",2,
+                   "menu",[""])
+       setpar(n,10,"name","1dim",
+                   "tab_number",3)
+       setpar(n,12,"name","2dim",
+                   "tab_number",4)
+       setpar(n,14,"name","3dim",
+                   "tab_number",5)
+       setpar(n,16,"name","magnitude")
+       setpar(n,20,"name","1dft",
+                   "tab_number",6,
+                   "menu",["none","FTEcho","FTFid"])
+       setpar(n,21,"name","2dft",
+                   "tab_number",8,
+                   "menu",["none","FTEcho","FTFid"])
+       setpar(n,22,"name","3dft",
+                   "tab_number",10,
+                   "menu",["none","FTEcho","FTFid"])
+       setpar(n,24,"name","1dfltr",
+                   "tab_number",7,
+                   "menu",["none","exponential","sinebellsquared","sinebell","gaussian","vee","shsinebellsquared"])
+       setpar(n,25,"name","2dfltr",
+                   "tab_number",9,
+                   "menu",["none","exponential","sinebellsquared","sinebell","gaussian","vee","shsinebellsquared"])
+       setpar(n,26,"name","3dfltr",
+                   "tab_number",11,
+                   "menu",["none","exponential","sinebellsquared","sinebell","gaussian","vee","shsinebellsquared"])
+       setpar(n,28,"name","matrixFT",
+                   "tab_number",12,
+                   "menu",[""])
+       setpar(n,29,"name","1dzf",
+                   "tab_number",13,
+                   "menu",["1","32","64","128","256","512","1024","2048","4096","8192","16384","32768","65536"])
+       setpar(n,30,"name","2dzf",
+                   "tab_number",14,
+                   "menu",["1","32","64","128","256","512","1024","2048","4096","8192","16384"])
+       setpar(n,31,"name","3dzf",
+                   "tab_number",15,
+                   "menu",["1","32","64","128","256","512","1024","2048","4096","8192","16384"])
+       setpar(n,37,"tab_number",17)
+       setpar(n,40,"tab_number",20)
+       setpar(n,46,"name","digShift")
+
+endproc(n)
+
+
+###################################################
+# The input matrix dimension has been updated
+# so reload all parameter fields.
+###################################################
+
+
+procedure(dimension_updated)
+
+  # Get the list of menu names
+   dim = getpar(0,2,"text")
+   if(dim == "1D")
+      menumat = matrixlist(1)
+   elseif(dim == "2D")
+      menumat = matrixlist(2)
+   else
+      menumat = matrixlist(4)
+   endif
+   setpar(0,8,"menu",menumat)
+
+   :enable_disable_fields()
+
+   if(size(menumat) > 0)
+      setpar(0,8,"index",1)
+      :load_control_values(getpar(0,8,"text"))
+   else
+      setpar(0,8,"text","")
+   endif
+
+   :make_output_name(getpar(0,8,"text"),menumat)
+	
+endproc()
+
+
+###################################################
+# Make unique output matrix name and update 
+# output menu.
+###################################################
+
+procedure(make_output_name, baseName, menumat)
+
+   if(isvar("parlist_win"))
+      if(ispar(parlist_win,"matrixFT "))
+         matname = getlistvalue(parlist_win,"matrixFT ")
+      else
+         matname = baseName + "Ft"
+      endif
+   else
+      matname = baseName + "Ft"
+   endif
+
+ # Add this name to the output matrix menu
+   setpar(0,28,"menu",matname + menumat);
+   setpar(0,28,"index",1);
+
+endproc()
+
+###################################################
+# Input matrix name has been updated
+###################################################
+
+procedure(input_matrix_updated)
+
+   name = getpar(0,8,"text")
+   matdim = matrixdim(eval(name))
+   menumat = matrixlist(2^(matdim-1))
+   :enable_disable_fields()
+   :load_control_values(name)
+   :make_output_name(name,menumat)
+endproc()
+
+
+###################################################
+# enable / disable Fields
+###################################################
+
+procedure(enable_disable_fields)
+
+   dim = getpar(0,2,"text")
+   name = getpar(0,8,"text")
+
+   setpar(0,3,"text","none")
+   setpar(0,20,"index",1)
+   setpar(0,24,"index",1)
+   setpar(0,4,"text","none")
+   setpar(0,21,"index",1)
+   setpar(0,25,"index",1)
+   setpar(0,5,"text","none")
+   setpar(0,22,"index",1)
+   setpar(0,26,"index",1)
+
+   if(dim == "1D")
+
+      setpar(0,4,"enable","false")
+      setpar(0,5,"text","none")
+      setpar(0,5,"enable","false")
+      setpar(0,12,"text","1")
+      setpar(0,12,"enable","false")
+      setpar(0,14,"text","1")
+      setpar(0,14,"enable","false")
+      setpar(0,21,"enable","false")
+      setpar(0,22,"enable","false")
+      setpar(0,25,"enable","false")
+      setpar(0,26,"enable","false")
+      setpar(0,30,"index",1)
+      setpar(0,30,"enable","false")
+      setpar(0,31,"index",1)
+      setpar(0,31,"enable","false")
+      setpar(0,10,"enable","false")
+
+      if(isvar("curmatrix"))
+         setpar(0,3,"enable","false")
+      else
+         setpar(0,3,"enable","true")
+      endif
+
+   elseif(dim == "2D")
+      setpar(0,5,"text","none")
+      setpar(0,5,"enable","false")
+      setpar(0,14,"text","1")
+      setpar(0,14,"enable","false")
+      setpar(0,21,"enable","true")
+      setpar(0,22,"enable","false")
+      setpar(0,25,"enable","true")
+      setpar(0,26,"enable","false")
+      setpar(0,30,"enable","true")
+      setpar(0,31,"index",1)
+      setpar(0,31,"enable","false")
+      setpar(0,10,"enable","false")
+      setpar(0,12,"enable","false")
+      if(isvar("curmatrix"))
+         setpar(0,3,"enable","false")
+         setpar(0,4,"enable","false")
+      else
+         setpar(0,3,"enable","true")
+         setpar(0,4,"enable","true")
+      endif
+
+   else # 3D
+      setpar(0,21,"enable","true")
+      setpar(0,22,"enable","true")
+      setpar(0,25,"enable","true")
+      setpar(0,26,"enable","true")
+      setpar(0,30,"enable","true")
+      setpar(0,31,"enable","true")
+      setpar(0,10,"enable","false")
+      setpar(0,12,"enable","false")
+      setpar(0,14,"enable","false")
+      if(isvar("curmatrix"))
+         setpar(0,3,"enable","false")
+         setpar(0,4,"enable","false")
+         setpar(0,5,"enable","false")
+      else
+         setpar(0,4,"enable","true")
+         setpar(0,5,"enable","true")
+      endif
+
+   endif
+	
+endproc()
+
+###################################################
+# Process the data (Transform button pressed)
+###################################################
+
+procedure(forward_transform)
+
+# Check the parameters
+   :check_input_dimensions();
+   :set_filter_types();
+
+# Read in and assign the parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+   nameOut = getpar(0,28,"text")
+
+# Process the data  	
+   if(2dim == 1)
+      :fft1d(guiPar)
+   elseif(3dim == 1)
+      :fft2d(guiPar)
+   else
+      :fft3d(guiPar)
+   endif
+
+# Save the parameters
+   :save_control_values(nameOut)
+
+endproc()
+
+###################################################
+# Check the input matrix dimensions
+###################################################
+
+procedure(check_input_dimensions)
+
+# Get the input matrix dimensions
+   xdim = getpar(0,10,"text")
+   if(xdim != "") 
+      xdim = eval(xdim)
+   endif
+   ydim = getpar(0,12,"text")
+   if(ydim != "") 
+      ydim = eval(ydim)
+   endif
+   zdim = getpar(0,14,"text")
+   if(zdim != "") 
+      zdim = eval(zdim)
+   endif
+
+# Check they are valid
+   if(xdim <= 1)
+      message("Error","The x dimension must be more than 1!")
+      setpar(0,10,"text",2)
+   elseif(ydim <= 1)
+      setpar(0,12,"text",1)
+      setpar(0,14,"text",1)
+      setpar(0,32,"text", "This is 1D file.")
+      setpar(0,21,"index",1)
+      setpar(0,30,"index",1)
+      setpar(0,22,"index",1)
+      setpar(0,31,"index",1)
+   elseif(zdim <= 1)
+      setpar(0,14,"text",1)
+      setpar(0,32,"text", "This is 2D file.")
+      setpar(0,22,"index",1)
+      setpar(0,31,"index",1)
+   else
+      setpar(0,32,"text", "This is 3D file.")
+   endif
+
+endproc()
+
+
+###################################################
+# Set the filter types to none if FT not required
+###################################################
+
+procedure(set_filter_types)
+
+   xft_type = getpar(0,20,"text")
+   yft_type = getpar(0,21,"text")
+   zft_type = getpar(0,22,"text")
+
+   if(xft_type == "none")
+      setpar(0,24,"text","none")
+   endif
+
+   if(yft_type == "none")
+      setpar(0,25,"text","none")
+   endif
+
+   if(zft_type == "none")
+      setpar(0,26,"text","none")
+   endif
+
+endproc()
+
+
+###################################################
+# 1D fft transform
+###################################################
+
+procedure(fft1d, guiPar)
+
+# Get the parameters
+   assignlist(guiPar)
+
+# Check the zerofill dimension is correct
+   if((maths:ispower2(1dzf) == 0 & 1dft != "none"))  
+       message("Can't complete operation","Zero fill size is not a power of 2")
+       return
+   endif
+
+   setpar(0,32,"text","Load matrix ...")
+   time(0)
+   nameIn = getpar(0,8,"text")
+   nameOut = getpar(0,28,"text")
+   display = getpar(0,33,"text")
+
+# Check for valid zerofill size
+   x1 = size(alias(nameIn,"eval"))
+   if(1dzf < x1) 
+      1dzf = x1
+      setpar(0,29,"text",x1)
+   endif
+
+# Process data
+   setpar(0,32,"text","Processing ...") 
+   if(digShift == 0)
+      fft:1d(nameIn,nameOut,1dzf,1dfltr,1dft,magnitude)
+   else
+      fft:1dDig(nameIn,nameOut,1dzf,1dfltr,1dft,magnitude,trunc(-digShift))
+   endif
+   setpar(0,32,"text","Finished - time taken = $time()$s")
+   assign("curmatrix_1d",nameOut,"global");
+
+# Display data
+   if(display == "yes")
+      out = alias(nameOut,"eval")
+      plot(out)
+      title(nameOut)
+   endif
+
+endproc()
+
+###################################################
+# 2D fft transform
+###################################################
+
+procedure(fft2d, guiPar)
+
+# Get the parameters
+   assignlist(guiPar)
+
+# Check the zerofill dimensions are correct
+   if((maths:ispower2(1dzf) == 0 & 1dft != "none") | 
+      (maths:ispower2(2dzf) == 0 & 2dft != "none"))
+       message("Can't complete operation","Zero fill size is not a power of 2")
+       return
+   endif
+
+   time(0)
+
+   setpar(0,32,"text","Load matrix ...")
+   nameIn = getpar(0,8,"text")
+   nameOut = getpar(0,28,"text")
+   display = getpar(0,33,"text")
+
+# Check for valid zerofill sizes
+   (x1,y1) = size(alias(nameIn,"eval"))
+
+   if(1dzf < x1) 
+      1dzf = x1
+      setpar(0,29,"text",x1)
+   endif
+   if(2dzf < y1) 
+      2dzf = y1
+      setpar(0,30,"text",y1)
+   endif
+
+# Process data
+   setpar(0,32,"text","Processing ...")
+
+   if(digShift == 0)
+      fft:2d(nameIn,nameOut,1dzf,2dzf,1dfltr,2dfltr,1dft,2dft,magnitude)
+   else
+      fft:2dDig(nameIn,nameOut,1dzf,2dzf,1dfltr,2dfltr,1dft,2dft,magnitude,trunc(-digShift))
+   endif
+
+   setpar(0,32,"text","Finished - time taken = $time()$s")
+
+   assign("curmatrix_2d",nameOut,"global");
+
+# Display data
+   if(display == "yes")
+      out = alias(nameOut,"eval")
+      image(out)
+      title(nameOut)
+   endif
+
+endproc()
+
+###################################################
+# 3D fft transform
+###################################################
+
+procedure(fft3d, guiPar)
+
+# Get the parameters
+   assignlist(guiPar)
+
+# Check the zero fill dimensions are correct
+   if((maths:ispower2(1dzf) == 0 & 1dft != "none") | 
+      (maths:ispower2(2dzf) == 0 & 2dft != "none") | 
+      (maths:ispower2(3dzf) == 0 & 3dft != "none"))
+       message("Can't complete operation","Zero fill size is not a power of 2")
+       return
+   endif
+
+   time(0)
+
+   setpar(0,32,"text","Load matrix ...")
+   nameIn = getpar(0,8,"text")
+   nameOut = getpar(0,28,"text")
+   display = getpar(0,33,"text")
+
+# Check for valid zerofill sizes
+   (x1,y1,z1) = size(alias(nameIn,"eval"))
+
+   if(1dzf < x1) 
+      1dzf = x1
+      setpar(0,29,"text",x1)
+   endif
+   if(2dzf < y1) 
+      2dzf = y1
+      setpar(0,30,"text",y1)
+   endif
+   if(3dzf < z1) 
+      3dzf = z1
+      setpar(0,31,"text",z1)
+   endif
+
+# Process data
+   setpar(0,32,"text","Processing ...")  
+
+   if(digShift == 0) 
+      fft:3d(nameIn,nameOut,1dzf,2dzf,3dzf,1dfltr,2dfltr,3dfltr,1dft,2dft,3dft,magnitude,32)
+   else
+      fft:3dDig(nameIn,nameOut,1dzf,2dzf,3dzf,1dfltr,2dfltr,3dfltr,1dft,2dft,3dft,magnitude,trunc(-digShift),32)
+   endif
+   setpar(0,32,"text","Finished - time taken = $time()$s")
+
+   assign("curmatrix_3d",nameOut,"global");
+
+# Display data
+   if(display == "yes")
+      out = alias(nameOut,"eval")
+      image(out[~,~,0]);
+      title("$nameOut$ plane 0")
+   endif
+
+endproc()
+
+
+
+
+#######################################################
+# Update the control values using a parameter list
+# or if not present use values from the current matrix
+#######################################################
+
+procedure(load_control_values, matrixName)
+
+   parlistName = matrixName + "_pl"
+   setpar(0,46,"text","0")
+   if(isvar(parlistName))
+      parlist = eval(parlistName)
+      setctrlvalues(0,parlist)
+      assign("parlist_win", parlist, "window")
+   else
+      (xs,ys,zs) = size(alias(matrixName,"eval"))
+      dim = matrixdim(alias(matrixName,"eval"))
+      setpar(0,10,"text",xs)
+      setpar(0,12,"text",ys)
+      setpar(0,14,"text",zs)
+      setpar(0,29,"text",xs)
+      setpar(0,30,"text",ys)
+      setpar(0,31,"text",zs)
+
+      if(dim == 1)
+         setpar(0,20,"index",3)
+         setpar(0,24,"index",1)
+         setpar(0,3,"text","kx")
+      endif
+      if(dim >= 2)
+         setpar(0,20,"index",2)
+         setpar(0,24,"index",1)
+         setpar(0,3,"text","kx")
+         setpar(0,21,"index",2)
+         setpar(0,25,"index",1)
+         setpar(0,4,"text","ky")
+      endif
+      if(dim == 3)
+         setpar(0,22,"index",2)
+         setpar(0,26,"index",1)
+         setpar(0,5,"text","kz")
+      endif
+   endif
+
+endproc()
+
+#######################################################
+# Save the control values and current parameter list
+# to a global variable 
+#######################################################
+
+procedure(save_control_values, matrixName)
+
+# Make the current matrix the output matrix 	
+   assign("curmatrix",matrixName,"global");
+# Save the current parameters with this data set
+   parlist = getctrlvalues(0)
+   if(isvar("parlist_win"))
+      parlist = mergelists(parlist,parlist_win)
+   endif
+   assign(matrixName+"_pl",parlist, "global");
+
+endproc()
+

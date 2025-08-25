@@ -1,0 +1,20 @@
+##############################################
+# In this mode you can drag the current trace 
+# to the left or right relative to its x-axis.
+# Useful when there is a small frequency shift
+# between spectra.
+################################################
+
+procedure(moveTraceHorizontally)
+
+   callback = plotcallback("plot1DMove")
+   if(callback == "")
+      func1d("drag plot")
+      plotcallback("plot1DMove","userPlotMove")
+      setpar(0,3,"checkitem",25)
+   else
+      plotcallback("plot1DMove","")
+      setpar(0,3,"uncheckitem",25)
+   endif
+
+endproc()

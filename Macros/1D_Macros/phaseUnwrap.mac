@@ -1,0 +1,29 @@
+# Unwraps phase collected by the frequency sweep macro
+# with magnitude mode off
+
+procedure(phaseUnwrap)
+   
+   plt = curplot("1d")
+   plt->draw("false")
+   (x,y) = plt->getdata()
+   (txt,lx,ly,x1,x2,y1,y2)  = 1dpar:get()
+   trc = curtrace()
+   in = phase(y) # Find phase from 0 to 2*pi
+   pdiff = in[1:-1] - in[0:-2] # Find phase rollover points
+   offsets = ((pdiff < -pi)-(pdiff > pi))*2*pi # Set phase step to 2*pi all else to 0
+   out = cumsum(offsets) + in[1:-1] # Add to original data to unwrap phase
+   out = join([in[0]],out) # Add missing point
+  # out = :rangeLimit(out)
+   plt->plot(x,out,"color",[255,0,0])
+   plt->hold("on")
+   plt->plot(x,mag(y),"color",[0,0,255])
+   plt->hold("off")
+   1dpar:set(txt,lx,ly,x1,x2,y1,y2)
+   plt->title("Phase (red) and Magnitude (blue)")
+   plt->ylabel("Phase (degrees)")
+   
+ #  plotProc:setTracePar(tpar,plt)
+   plt->draw("true")
+
+endproc()
+

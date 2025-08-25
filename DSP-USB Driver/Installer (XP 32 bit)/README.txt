@@ -1,0 +1,1 @@
+Run the batch file InstallDriver.bat in this folder to install the USB driver for an XP Windows system.

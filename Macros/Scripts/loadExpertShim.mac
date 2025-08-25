@@ -1,0 +1,114 @@
+#####################################################################
+# Load the last best shim found then find and engage the lock, find
+# the B1 frequency and then calibrate
+#####################################################################
+
+procedure(LoadExpertShim, parameters=null)
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   elseif(iskeypressed("control"))
+      lst = gView->batch->list + "LoadExpertShim|"
+      gBatch->displayBatchList(lst)
+      gView->batch->index(size(lst))    
+   else
+      parameters = list(0)
+      ctrlLayout = list(0)
+      gExpt->addExperiment(getmacropath(),"LoadExpertShim", parameters, ctrlLayout)
+   endif
+
+endproc()
+
+###########################################################
+# Add the LoadExpertShim command to the batch list
+###########################################################
+
+procedure(addCommand)
+
+endproc("LoadExpertShim|")
+
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = list(0)
+   plotLayout = listto2d(["pt2"])
+
+endproc(ctrlLayout, plotLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt2","spectrum.pt1"]
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   InitScript(getmacropath(),getmacroname())
+
+   pr("\n------ Load Expert Shim ------\n")
+   experimentLabelCtrl->label("Loading Expert Shim")
+   try
+      shimLst = setupUtilities:loadShims()
+      if(shimLst != null)        
+         RunExpt("updateShims",shimLst)
+         InitPlot(["pt1";"pt2"])
+         experimentLabelCtrl->label("Expert shim loaded, measuring linewidth")
+         pr("   Measuring the linewidth ...")
+         result = RunExpt("Proton",["saveData = \"true\"","usePPMScale = \"yes\""],list(parameters))
+         (txt,width1,width2) = setupUtilities:calcLineWidth(result)
+      # Save the shims
+         fileName = "$gData->specID$Shim.par"
+         setupUtilities:saveShims(fileName,shimLst,width1)
+         pr("\n------------------- Finished -------------------\n")
+      endif
+   catch
+      throw("abort")
+   endtry
+
+   EndScript()
+
+endproc()
+
+#########################################################
+## Get the name of a plot file given the region name
+## or return the whole list
+#########################################################
+#
+#procedure(getPlotInfo,plotRegion)
+#
+#   info = ["pt1","fid.pt1",
+#           "pt2","spectrum.pt1",
+#           "pt3","powerShim.pt1"]
+#
+#   if(plotRegion == "all")
+#      return(info)
+#   endif
+#
+#   idx = getlistindex(info,plotRegion)
+#   if(idx != -1)
+#      return(info[idx+1])
+#   endif
+#
+#endproc(null)
+
+

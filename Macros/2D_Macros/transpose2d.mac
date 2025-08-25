@@ -1,0 +1,30 @@
+###################################################
+#                 transpose2d.mac
+#
+# Take the transpose of the current 2D
+# plot matrix
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+procedure(transpose2d)
+
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+      message("Information","No 2D plot data!")
+      return
+   endif
+
+   (w,h) = size(m)
+   if(w > 0 & h > 0)
+      m = trans(m)
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      draw2d("false")
+      image(m,y,x)
+      2dpar:set(txt,ly,lx,nc,mode,y1,y2,x1,x2)
+      draw2d("true")
+   endif
+
+endproc()

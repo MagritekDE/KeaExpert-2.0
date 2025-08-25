@@ -1,0 +1,89 @@
+######################################################
+# Break the data set up into N segements.
+# For each segment measure the slope and
+# replace with zeros if the slope is > maxSlope.
+# Otherwise subtract off the slope and measure the 
+# sd. If the sd is greater than threshold then
+# zero the segment. Otherwise set to 1.
+# Returns the baseline as 1s and also the number of
+# detected baseline points
+######################################################
+
+procedure(findBaseLine, data, N, maxSlope, threshold)
+
+   sz = size(data) # Size of orignal data set
+   M = sz/N # Number of points in each segment
+
+   out = matrix(sz)
+
+   for(k = 0 to N-1) # Loop over number of segments
+   
+      segment = data[k*M:(k+1)*M-1]
+
+      (slope,c) = :linfit(segment)
+pr "$k*M$ $slope$\n"
+      if(abs(slope) > maxSlope)
+         out[k*M:(k+1)*M-1] = matrix(M)
+      else
+         segment = segment - linspace(c,slope*(M-1)+c,M)
+         ns = sd(segment)
+         if(sd(segment) > threshold)
+            out[k*M:(k+1)*M-1] = matrix(M)
+         else
+            out[k*M:(k+1)*M-1] = matrix(M)+1
+         endif
+      endif
+
+   next(k)
+
+pr local
+
+endproc(out,sum(out))
+
+
+
+
+###########################################
+#
+# Perform a least squares best fit
+# on linear data supplied in array and y
+#
+###########################################
+
+procedure(linfit,ys)
+
+    N = size(ys)
+
+    x = double(linspace(0,N-1,N))
+    y = double(ys)
+
+# Calculate various sums
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+
+# Work out slope and intercept
+   delta = sxx*N - sx*sx
+   c = (sxx*sy - sx*sxy)/delta;
+   m = (sxy*N - sx*sy)/delta;
+
+# Work out standard error in slope and intercept
+# start by estimating variance in original data
+   if(N>2)
+      vdat = (syy - 2*m*sxy - 2*c*sy
+              + 2*m*c*sx +m*m*sxx + N*c*c)/(N-2)
+      mErr = (N*vdat/delta)^0.5
+      cErr = (sxx*vdat/delta)^0.5
+   else
+      mErr = 0
+      cErr = 0
+   endif
+
+   m = single(m)
+   c = single(c)
+   mErr = single(mErr)
+   cErr = single(cErr)
+
+endproc(m,c,mErr,cErr)

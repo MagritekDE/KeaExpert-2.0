@@ -1,0 +1,18 @@
+procedure(surf2d_test1,verbose,delay)
+
+   x = [0:1:100]
+   x = sin(2*pi*x/40).*exp(-(x-50)^2/1000)
+   m = x'*x
+   image(m)
+   draw3d("false")
+   clear3d()
+   shift3d(-50,-50,0)
+   surf2d(m,spectrum,[-1,1],[0,0.8])
+   scale3d(1,1,40)
+   rotate3d(40,0,0)
+   draw3d("true")
+   for(r = 0 to 360)
+      rotate3d(40,0,r)
+   next(r)
+
+endproc(1,"")

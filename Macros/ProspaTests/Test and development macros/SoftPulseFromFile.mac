@@ -1,0 +1,490 @@
+#########################################################
+# 
+# SoftPulseFromFile
+#
+# This pulse sequence demonstrates the use of a 
+# shaped rf pulse.
+#
+# Copyright (c) Magritek Ltd 2012
+#
+# U.I. V3
+#########################################################
+
+procedure(SoftPulseFromFile, guipar)
+
+   ucsCtrl:checkVersion(2.15,1.1)
+
+   n = :windowdefinition()
+
+   windowvar(wv_dispMode,wv_ctrls,wv_shift,wv_other,wv_rel,
+             wv_pp_list,wv_pp_name,wv_var,wv_tabs,wv_phase_list)
+
+   wv_tabs  = ["Pulse Sequence","acquisition","processing+display","File settings"] # Tab names
+   wv_ctrls = [2,14,15,39,40,63,64,84,85,94] # Control groups
+   wv_shift = [-14,143,300,457,460] # Amount to shift control groups
+   wv_other = [93,225,679]  # Collapse control and window size
+   wv_saved = "false"
+
+   (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar()
+
+   if(nrArgs == 0)
+      guipar = "show"
+   endif
+
+   ucsCtrl:setUp(n,"SoftPulseFromFile",getmacropath(),guipar)
+   if(guipar == "hide")
+      return(n)
+   elseif(guipar == "show")
+      showwindow(n)
+      return(n)
+   else
+      setwindowpar(n,"type","dialog")
+      guipar = showdialog(n)
+      return(guipar)
+   endif
+
+endproc()
+
+#########################################################
+# 
+# Returns important pulse sequence parameters
+#
+# rel ......... relationship between pulse sequence parameters
+# var ......... variable which change during the pulse sequence
+# pp_list ..... list of pulse sequence parameters sent to DSP
+# pp_name ..... name of DSP pulse program to run
+# phase_list .. phase cycling information
+#
+#########################################################
+
+procedure(getseqpar)
+
+   rel = ["d1 = 2",
+          "ns = SoftPulseFromFile:getTableSize()",
+          "d2 = stepLength",
+          "s = sin(linvec(-1,1,ns)*2*pi+1e-8)/(linvec(-1,1,ns)*2*pi+1e-8)",
+          "n1 = size(s)",
+          "t1 = ucsRun:convertTxGain(spAmp)*mag(s)",
+          "t2 = 32768*(s <= 0)",
+          "a1 = 0",
+          "n2 = nrPnts",
+          "totPnts = nrPnts",
+          "totTime = acqTime"]
+   var = ["t1","t2"]
+   pp_list = ["t1","t2","p1","n1","d2","n2"]
+   pp_name = "SoftPulseFromFile.p"
+   phase_list = [0;0]
+
+endproc(rel,var,pp_list,pp_name,phase_list)
+
+
+#########################################################
+# 
+# Provide an interface to this macro which does not
+# require the use of the window interface
+#
+# User must supply a list of parameter (see help file)
+# and the pulse program name if different from 
+# "$macro$_ext.p"
+#
+#########################################################
+
+procedure(backdoor, guipar)
+
+   ucsCtrl:checkVersion(2.15,1.1)
+
+   (rel,var,pp_list,pp_name,phase_list) = :getseqpar()
+  
+   (guipar,ppList,pcList,pcIndex,varList) = ucsCtrl:initialisePP(getmacropath(),getmacroname(),guipar,rel,var,pp_list,pp_name,phase_list)
+   
+   r = ucsCtrl:runBDPP(guipar,ppList,pcList,pcIndex,varList)
+
+endproc(r)
+
+#########################################################
+# 
+# Define the window gui
+#
+#########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Soft-Pulse From File", -1, -1, 573, 676)
+
+      # Define all controls with basic parameters
+      getmessage(0,
+        ucsCtrl:processMessage();)
+      tab(1, 6, 7, 555, 213,
+         which = getpar(0,1,"currenttab");
+         if(which == 2);
+         if(wvExpStatus != "run");
+         fnTim = findobj(0,"name","showTimeDomain");
+         fnFrq = findobj(0,"name","showFreqDomain");
+         fnFlt = findobj(0,"name","filter");
+         ucsCtrl:enableControls(fnTim+1,fnTim+9,fnTim);
+         ucsCtrl:enableControls(fnFrq+1,fnFrq+8,fnFrq);
+         if(getpar(0,fnTim,"text") == "yes");
+         ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+         endif;
+         endif;
+         endif();)
+      groupbox(2, "Pulse sequence", 9, 9, 547, 150)
+      statictext(3, 125, 54, "right", "B1 Frequency (MHz)")
+      textbox(4, 131, 50, 46)
+      statictext(5, 125, 79, "right", "Repetition time (ms)")
+      textbox(6, 131, 75, 46)
+      statictext(7, 125, 105, "right", "Soft-pulse file")
+      textbox(8, 131, 101, 380)
+      statictext(9, 516, 101, "center", "")
+      button(10, 516, 101, 20, 20, "...",
+         SoftPulseFromFile:selectSoftPulseFile();)
+      statictext(11, 295, 53, "right", "Softpulse amp. (dB)")
+      textbox(12, 301, 49, 40)
+      statictext(13, 465, 53, "right", "Step length (us)")
+      textbox(14, 471, 49, 40)
+      groupbox(15, "Acquisition", 9, 166, 547, 150)
+      statictext(16, 79, 196, "center", "Rx Gain (dB)")
+      textmenu(17, 27, 214, 39, 200)
+      textmenu(18, 77, 214, 58, 200)
+      statictext(19, 79, 245, "center", "Rx Phase (degrees)")
+      textbox(20, 62, 261, 39)
+      statictext(21, 187, 198, "center", "Number of")
+      statictext(22, 187, 211, "center", "complex points")
+      textmenu(23, 234, 200, 62, 200,
+         ucsCtrl:updateAcqTime();)
+      statictext(24, 187, 230, "center", "Dwell time")
+      statictext(25, 187, 243, "center", "(us)")
+      textmenu(26, 234, 233, 62, 200,
+         ucsCtrl:updateFilters();)
+      statictext(27, 187, 264, "center", "Number of")
+      statictext(28, 187, 277, "center", "scans")
+      textbox(29, 234, 265, 62)
+      statictext(30, 361, 212, "center", "Flat filter")
+      checkbox(31, 397, 213, "no,yes", "no",
+           ucsCtrl:setDwellTimeMenu();
+           ucsCtrl:updateFilters();)
+      statictext(32, 361, 236, "center", "Accumulate")
+      checkbox(33, 397, 237, "no,yes", "no")
+      statictext(34, 361, 260, "center", "Phase cycle")
+      checkbox(35, 397, 262, "no,yes", "yes")
+      statictext(36, 489, 196, "center", "Spectral width (kHz)")
+      textbox(37, 465, 210, 46)
+      statictext(38, 489, 247, "center", "Acquisition time (ms)")
+      textbox(39, 465, 261, 46)
+      groupbox(40, "Processing_Display_Std", 9, 323, 547, 150)
+      statictext(41, 57, 346, "right", "TIME")
+      statictext(42, 142, 367, "right", "Show domain")
+      checkbox(43, 150, 368, "no,yes", "yes",
+           fnTim = findobj(0,"name","showTimeDomain");
+           fnFlt = findobj(0,"name","filter");
+           ucsCtrl:enableControls(fnTim+1,fnTim+9,fnTim);
+           if(getpar(0,fnTim,"text") == "yes");
+           ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+           endif;)
+      statictext(44, 142, 392, "right", "Filter time domain")
+      checkbox(45, 150, 393, "no,yes", "no",
+           fn = findobj(0,"name","filter");
+           ucsCtrl:enableControls(fn+1,fn+2,fn);)
+      textmenu(46, 31, 421, 108, 200)
+      button(47, 148, 421, 22, 22, "...",
+         filters();)
+      groupbox(48, "Phase correction", 187, 354, 100, 97)
+      statictext(49, 252, 383, "right", "Magnitude")
+      statictext(50, 251, 403, "right", "Auto-phase")
+      statictext(51, 251, 422, "right", "None")
+      radiobuttons(52, 256, 383, 20, "vertical", "mag,autophase,none", "mag")
+      divider(53, 308, 340, 3, 120, "vertical")
+      statictext(54, 397, 346, "right", "FREQUENCY")
+      statictext(55, 389, 373, "right", "Show domain")
+      checkbox(56, 397, 374, "no,yes", "yes",
+           fn = findobj(0,"name","showFreqDomain");
+           ucsCtrl:enableControls(fn+1,fn+7,fn);)
+      statictext(57, 419, 403, "right", "Display range (kHz)")
+      textbox(58, 345, 424, 59)
+      groupbox(59, "Phase correction", 432, 354, 101, 97)
+      statictext(60, 500, 383, "right", "Magnitude")
+      statictext(61, 499, 404, "right", "Auto-phase")
+      statictext(62, 499, 424, "right", "None")
+      radiobuttons(63, 504, 385, 20, "vertical", "mag,autophase,none", "mag")
+      groupbox(64, "File_Settings", 9, 480, 547, 150)
+      statictext(65, 79, 528, "right", "Working")
+      statictext(66, 79, 541, "right", "directory")
+      textbox(67, 95, 529, 215)
+      button(68, 315, 529, 22, 22, "...",
+         ucsFiles:setWorkingDir();)
+      statictext(69, 86, 565, "right", "Experiment")
+      statictext(70, 71, 578, "right", "name")
+      textbox(71, 95, 568, 105)
+      button(72, 206, 568, 22, 22, "...",
+         ucsFiles:setExpName();)
+      statictext(73, 308, 565, "right", "Experiment")
+      statictext(74, 298, 578, "right", "number")
+      textbox(75, 316, 568, 25)
+      button(76, 346, 568, 22, 22, "...",
+         ucsFiles:setExpNr();)
+      statictext(77, 370, 527, "center", "Save")
+      statictext(78, 370, 540, "center", "data")
+      checkbox(79, 398, 534, "false,true", "true")
+      statictext(80, 414, 565, "center", "Auto")
+      statictext(81, 414, 578, "center", "increment")
+      checkbox(82, 449, 573, "no,yes", "no")
+      button(83, 435, 522, 40, 36, "Load Data",
+         ucsFiles:loadData();)
+      button(84, 490, 522, 40, 50, "Open data folder",
+         ucsFiles:openDataFolder();)
+      colorbox(85, 18, 643, 10, 10, [255,255,255,255])
+      colorbox(86, 18, 656, 10, 10, [255,255,255,255])
+      button(87, 38, 640, 54, 29, "Run",
+         (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar();
+         ucsCtrl:runPP(getmacropath(),wv_pp_name);)
+      button(88, 103, 640, 54, 29, "Abort",
+         setwindowpar(0,"title","Wait for macro to abort ...");
+         wvExpStatus = "stop";)
+      button(89, 168, 640, 54, 29, "Finish",
+         setwindowpar(0,"title","Wait for phase-cycling to complete ...");
+         wvExpStatus = "finish";)
+      button(90, 233, 640, 54, 29, "Load Par.",
+         ucsFiles:loadParameters();)
+      button(91, 298, 640, 54, 29, "Help",
+         help("Macros\UCS-Proton","SoftPulseFromFile.htm");)
+      button(92, 363, 640, 54, 29, "Kea Pref.",
+         ucsCtrl:showPreferences();)
+      button(93, 428, 640, 54, 29, "Collapse",
+         ucsCtrl:toggleWindowSize(1);)
+      button(94, 493, 640, 54, 29, "Close",
+         guipar = getctrlvalues(0);
+         if(getwindowpar(0,"type") == "dialog");
+         guipar = ucsFiles:addWindowSpecifics(guipar);
+         ucsFiles:saveCommonPar(guipar);
+         closedialog(guipar);
+         else;
+         ucsFiles:saveParameters();
+         closewindow(0);
+         endif;)
+      menu(95, "bkgMenu", "Edit macro\tCtrl+Dbl-Click", edit("$getmacroname()$"),
+                "Show compiler\tCtrl+Shift+Dbl-Click", MakeUCSPulseProgram("$getmacropath()$","$rmext(getmacroname())$"))
+
+     # Set other control parameters
+      setpar(n,1,"active","true",
+                  "inittabs",[""])
+      setpar(n,4,"valueID","b1Freq",
+                  "tag","freqRange",
+                  "type","double",
+                  "range",[1,400])
+      setpar(n,6,"valueID","repTime",
+                  "type","float",
+                  "range",[1,1e+008])
+      setpar(n,8,"valueID","softPulseFileName",
+                  "type","string")
+      setpar(n,10,"valueID","")
+      setpar(n,12,"valueID","spAmp",
+                  "type","float",
+                  "range",[-85,0])
+      setpar(n,14,"valueID","stepLength",
+                  "type","float",
+                  "range",[2,1000])
+      setpar(n,17,"valueID","rxGain",
+                  "type","integer",
+                  "range",[-20,70],
+                  "menu",["-20","-17","-14","-11","-8","-5","-2","1","4","7","10","13","16","19","22","25","28","31","34","37","40","43","46","49","52","55","58","61","64","67","70"])
+      setpar(n,18,"valueID","rxChannel",
+                  "menu",["1H","13C","19F"])
+      setpar(n,20,"valueID","rxPhase")
+      setpar(n,23,"valueID","nrPnts",
+                  "type","integer",
+                  "range",[2,65536],
+                  "menu",["2","4","8","16","32","64","128","256","512","1024","2048","4096","8192","16384","32768","65536"])
+      setpar(n,26,"valueID","dwellTime",
+                  "menu",[""])
+      setpar(n,29,"valueID","nrScans",
+                  "type","integer",
+                  "range",[1,1e+006])
+      setpar(n,31,"valueID","flatFilter")
+      setpar(n,33,"valueID","accumulate")
+      setpar(n,35,"valueID","usePhaseCycle")
+      setpar(n,37,"valueID","bandwidth",
+                  "tag","disable")
+      setpar(n,39,"valueID","acqTime",
+                  "tag","disable")
+      setpar(n,41,"fgcolor",[0,70,213])
+      setpar(n,43,"valueID","showTimeDomain")
+      setpar(n,45,"valueID","filter")
+      setpar(n,46,"valueID","filterType",
+                  "menu",[""])
+      setpar(n,52,"valueID","tdPhaseCorr")
+      setpar(n,53,"tag","disable")
+      setpar(n,54,"fgcolor",[0,70,213])
+      setpar(n,56,"valueID","showFreqDomain")
+      setpar(n,58,"valueID","dispRange",
+                  "type","float")
+      setpar(n,63,"valueID","fdPhaseCorr")
+      setpar(n,67,"valueID","dataDirectory",
+                  "type","string")
+      setpar(n,71,"valueID","expName",
+                  "type","string")
+      setpar(n,75,"valueID","expNr")
+      setpar(n,79,"valueID","saveData")
+      setpar(n,82,"valueID","incExpNr")
+      setpar(n,85,"objID","ppStatus",
+                  "tooltip","Experiment Status Indicator\rGreen: running\rBlue: processing\rYellow: waiting")
+      setpar(n,86,"objID","rxOverflow",
+                  "tooltip","Receiver Overflow Indicator\rRed: overflow")
+      setpar(n,87,"valueID","run",
+                  "tooltip","Start the experiment.")
+      setpar(n,88,"valueID","stop",
+                  "tooltip","Stop the experiment without saving data.",
+                  "active","true")
+      setpar(n,89,"valueID","finish",
+                  "tooltip","Finish the current phase cycle and save data.",
+                  "active","true")
+      setpar(n,90,"valueID","load",
+                  "tooltip","Load a parameter set for a similar experiment.")
+      setpar(n,91,"valueID","help",
+                  "tooltip","Display HTML help for this experiment.",
+                  "active","true")
+      setpar(n,92,"valueID","showPref",
+                  "tooltip","Display a preferences dialog for the Kea spectrometer.")
+      setpar(n,93,"valueID","size",
+                  "tooltip","Expand or collapse the window size to show all or fewer controls.",
+                  "active","true")
+      setpar(n,94,"valueID","close",
+                  "tooltip","Close the window saving all parameters.")
+
+     # Set other window parameters
+      setwindowpar(n,"bkgmenu",95)
+
+endproc(n)
+
+
+#######################################################
+# Execute the pulse program, collecting nrScans of 
+# data and displaying the result in the 1D plot. 
+#
+# This procedure can be modified to perform more
+# complex functions using the passed parameters:
+#
+# guipar ..... all parameters from the user interface
+# ppList ..... the pulse program parameter list
+# pcList ..... phase-cycle list
+# pcIndex .... indices of phase parameters in ppList
+# varIndex ... indices of variable parameters in ppList
+#
+#######################################################
+
+procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
+
+
+# Make all gui parameters available
+   assignlist(guipar)
+
+# Check RF duty cycle
+   if(ucsRun:highDutyCycle(d1,repTime*1000,guipar))
+      return(0)
+   endif
+
+# Allocate space for output data
+   sumData = cmatrix(totPnts)
+
+# Calculate suitable time and frequency axes
+   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000
+   fAxis = ([0:1:totPnts-1]-totPnts/2)/totTime
+
+# Time domain filter
+   if(filter == "yes")
+      flt = filters:get_filter(filterType,"FTFid",totPnts)
+   else
+      flt = matrix(totPnts)+1
+   endif
+
+# Get plot regions
+   (prt,prf) = ucsPlot:getPlotRegions(guipar,2,wvPP)
+
+# Read in the softpulse file
+   if(not(isfile(softPulseFileName)))
+      message("Error","Can't find softpulse file '$softPulseFileName$ - aborting","error")
+      return
+   endif
+
+   import1dpar("ab","ascii","xyrc","real")
+   pulseData = import1d(softPulseFileName)
+   sz = size(pulseData)
+
+   ampTable = pulseData[0:sz/2-1]
+   ampTable = ucsRun:convertTxGain(spAmp)*ampTable/32768
+   phaseTable = pulseData[sz/2:sz-1]
+
+   adrsAmp = ppList[varIndex[0]]
+   adrsPhase = ppList[varIndex[1]]
+
+   dspwrite("y",adrsAmp,ampTable)
+   dspwrite("y",adrsPhase,phaseTable)
+
+# Reset the timer
+   time(0)  
+
+# Accumulate scans
+   for(scan = 0 to nrScans-1)
+
+    # Note the time at scan start
+      t1 = time() 
+
+    # Set phases for this scan
+      (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
+
+    # Send phase parameters to DSP
+      dspwrite("x",0x00,ppList,wvPort)
+  
+    # Run the pulse program and collect the data
+      (status,data) = ucsRun:getData(totPnts,guipar)
+    # See if stop button/escape key pressed
+      if(status != "ok")
+         return(0)
+      endif
+
+    # Filter the data
+      data = data .* flt
+
+    # Accumlate the data
+      sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
+
+    # Process data
+      (phasedTimeData,spectrum) = ucsRun:transformData(sumData,fAxis,guipar,"fid")
+
+    # Plot the data 
+      ucsPlot:graphTimeAndFreq(prt,prf,tAxis,phasedTimeData,fAxis,spectrum,scan,guipar)
+
+   # Check timing
+      check = ucsRun:checkTimeAndAbort(guipar,t1,scan,pcList,"ignoreLastScan")
+      if(check == "abort")
+         return(0)
+      elseif(check == "finish")
+         scan = scan+1
+         exitfor()
+      endif
+
+   next(scan)
+
+
+endproc("execpp") # Don't remove argument
+
+procedure(selectSoftPulseFile)
+
+   name = getfilename("Open","Select softpulse file","Text file","csv")
+   n = findobj(0,"name","softPulseFileName")
+   setpar(0,n,"text",getcwd()+"\\$name$")
+
+endproc()
+
+
+procedure(getTableSize)
+
+   n = findobj(0,"name","softPulseFileName")
+   name = getpar(0,n,"text")
+
+   import1dpar("ab","ascii","xyrc","real")
+   pulseData = import1d(name)
+   sz = size(pulseData)
+
+endproc(sz/2)

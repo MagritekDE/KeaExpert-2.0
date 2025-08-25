@@ -1,0 +1,212 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>dspwrite</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>DSP DLL Overview</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>The DSP DLL
+consists of commands which provide and interface between Prospa and the
+Magritek DSP board (based on the 100 MHz Freescale DSP56309 chip).</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='margin-left:18.0pt;text-align:center'><img
+width=391 height=233 id="Picture 1" src="Overview_files/image001.jpg"
+alt=DSCN1283></p>
+
+<p class=MsoNormal align=center style='margin-left:18.0pt;text-align:center'><i><span
+lang=EN-US>The Magritek USB2 DSP board</span></i></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>DSP code, which
+can be hand-coded or more conveniently generated using the Kea or Terranova
+pulse programmers, is stored in a disk file in Motorola S-Record format. This
+information must then be loaded into Prospa and sent to the DSP via the USB
+interface.</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>This is done in
+several steps:</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt;text-autospace:none'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>pp = </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>dspreadpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(file)      
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Read the pulse program into Prospa and store as a floating
+point vector</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt;text-autospace:none'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>dspwrite</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;p&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,0x2000,pp)   
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Write the pulse program to the DSP at location p:0x2000</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt;text-autospace:none'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>dsprunpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(0x2000)          
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Run the pulse program (p.p) found at location p:0x2000</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt;text-autospace:none'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>D = </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>dspread</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;x&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,0x10000,N)
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Read N data points collected by the p.p. stored at location
+x:0x10000</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>Parameters are
+also normally stored to the DSP before executing the pulse program and this is
+also done with the dspwrite command e.g.</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#780078'>dspwrite</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;x&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,0x00,ppList)</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><i><span lang=EN-US>The DSP
+memory map</span></i></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>The DSP56309
+uses Harvard architecture i.e. it has separate program (p) and data memories
+(x,y).</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><img width=598 height=331
+id="Picture 2" src="Overview_files/image002.jpg"></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>Program memory</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x000000  8192
+word for the operating system</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x002000  12288
+words for the pulse program</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>X-data memory</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x000000 1024
+words for pulse program parameters</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x000400 6144
+words for operating system stack and variables</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>Y-data memory</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x000000  7168
+words for filter coefficients are stored</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x010000  128 k
+words in external memory for NMR data (64 k complex points)</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>0x030000  128 k
+words in external memory for tables</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US> </span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>Note that if
+tables are not used then 128 k complex data points can be acquired.</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+cd("C:\\Users\\Craig\\Desktop\\Data\\20150129165136")
+lst = getdirlist(".")
+cnt = 0
+for(k = 0 to size(lst)-1)
+   name = lst[k]
+   val = eval(name)-2
+   if(val%3 == 0)
+     cnt = cnt + 1
+   endif
+next(k)
+
+m = cmatrix(65536,cnt)
+
+cnt = 0
+for(k = 0 to size(lst)-1)
+   name = lst[k]
+   val = eval(name)-2
+   if(val%3 == 0)
+     cd(name)
+     (x,y) = load("spectrum.1d")
+     m[~,cnt] = y
+     cd("..")
+     cnt = cnt + 1
+   endif
+
+next(k)
+
+image(m)

@@ -1,0 +1,208 @@
+###################################################
+#             interpolate3d.mac
+#
+# Allows a 3D matrix to be interpolated to a larger
+# size. Note that the original and final matricies
+# must be powers of 2 in size
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+###################################################
+
+
+procedure(interpolate3d)
+
+   n = :windowdefinition()
+   :update_menu(n)
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Interpolate image", -1, -1, 229, 281)
+
+      # Define all controls with basic parameters
+       button(1, 154, 159, 60, 27, "Exit",
+          closewindow(0);)
+       textmenu(2, 62, 153, 58, 200)
+       statictext(3, 27, 103, "left", "Width")
+       statictext(4, 24, 129, "left", "Height")
+       statictext(5, 26, 156, "left", "Depth")
+       textmenu(6, 60, 30, 112, 200,
+          :matrix_list_updated(0);)
+       textmenu(7, 62, 99, 58, 200)
+       textmenu(8, 62, 126, 58, 200)
+       button(9, 154, 77, 60, 27, "Interpolate",
+          :interpolate_data();)
+       button(10, 154, 124, 60, 27, "Help",
+          :show_help();)
+       groupbox(11, "Input 3D Matrix", 6, 4, 209, 61)
+       statictext(12, 50, 33, "right", "Name")
+       groupbox(13, "New dimensions", 6, 69, 137, 120)
+       statusbox(14)
+       groupbox(15, "Output 3D Matrix", 6, 194, 209, 61)
+       textmenu(16, 60, 220, 112, 200,
+          :matrix_list_updated(0);)
+       statictext(17, 50, 223, "right", "Name")
+       button(18, 180, 31, 17, 20, "U",
+          :update_menu(0);)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",6)
+       setpar(n,2,"tab_number",3,
+                   "menu",["32","64","128","256","512","1024","2048"])
+       setpar(n,6,"menu",[""])
+       setpar(n,7,"tab_number",1,
+                   "menu",["32","64","128","256","512","1024","2048"])
+       setpar(n,8,"tab_number",2,
+                   "menu",["32","64","128","256","512","1024","2048"])
+       setpar(n,9,"tab_number",4)
+       setpar(n,10,"tab_number",5)
+       setpar(n,16,"menu",[""])
+
+endproc(n)
+
+procedure(update_menu,n)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      menu3d = sortlist(menu3d)
+      setpar(n,6,"menu",menu3d)
+      setpar(n,6,"text",menu3d[0])
+      setpar(n,16,"menu",menu3d)
+      setpar(n,16,"text",menu3d[0]+"_interp")
+      :matrix_list_updated(n)
+   endif
+
+endproc()
+
+procedure(matrix_list_updated, n)
+
+   name = getpar(n,6,"text")
+   if(name == "")
+      return
+   endif
+   m3d = alias(name,"eval")
+   (w,h,d) = size(m3d)
+   setpar(n,7,"text",w)
+   setpar(n,8,"text",h)
+   setpar(n,2,"text",d)
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\3D","interpolate3d.htm")
+endproc()
+
+####################################################
+# Interpolation
+####################################################
+
+procedure(interpolate_data)
+
+   nameIn = getpar(0,6,"text")
+   nameOut = getpar(0,16,"text")
+   if(nameIn == "" | nameOut == "")
+      return
+   endif
+
+   w2 = getpar(0,7,"value")
+   h2 = getpar(0,8,"value")
+   d2 = getpar(0,2,"value")
+
+   m3d = alias(nameIn,"eval")
+   (w1,h1,d1) = size(m3d)
+
+   if((log2(w2) == round(log2(w2))) & (log2(h2) == round(log2(h2))) & (log2(d2) == round(log2(d2))))
+
+      m1 = :ifft3d(m3d,w1,h1,d1)
+      m3d_int = :fft3d(m1,w1,h1,d1,w2,h2,d2)
+
+      setpar(0,14,"text","Finished")
+      assign(nameOut,real(m3d_int),"global")
+      plot3dslices(nameOut)  
+
+   else
+      message("Error","Data set dimensions are not a power of 2")
+   endif
+
+endproc()
+
+
+###################################################
+# Inverse 3D transform
+###################################################
+
+procedure(ifft3d,m1,w,h,d)
+
+   m2 = cmatrix(w,h,d)
+
+# x transforms
+   for(y = 0 to h-1)
+      for(z = 0 to d-1)
+         m2[~,y,z] = ftshift(ift(m1[~,y,z]))
+      next(z)
+   next(y)
+   
+   
+# y transforms
+   for(x = 0 to w-1)
+      for(z = 0 to d-1)
+         m2[x,~,z] = ftshift(ift(m2[x,~,z]))
+      next(z)
+   next(x)
+
+# z transforms
+   for(x = 0 to w-1)
+      for(y = 0 to h-1)
+         m2[x,y,~] = ftshift(ift(m2[x,y,~]))
+      next(y)
+   next(x)
+
+endproc(m2)
+
+###################################################
+# Forward 3D transform with zero fill
+###################################################
+
+procedure(fft3d,m1,w1,h1,d1,w2,h2,d2)
+
+   rowFt  = cmatrix(w2,h1,d1)
+   colFt  = cmatrix(w2,h2,d1)
+   m2   = cmatrix(w2,h2,d2)
+
+# x transforms
+   for(y = 0 to h1-1)
+      for(z = 0 to d1-1)
+         rowFt[~,y,z] = ft(ftshift(zerofill(m1[~,y,z],w2,"sides")))
+      next(z)
+   next(y)
+
+# y transforms
+   for(x = 0 to w2-1)
+      for(z = 0 to d1-1)
+         colFt[x,~,z] = ft(ftshift(zerofill(rowFt[x,~,z],h2,"sides")))
+      next(z)
+   next(x)
+
+# z transform
+   for(x = 0 to w2-1)
+      for(y = 0 to h2-1)
+         m2[x,y,~] = ft(ftshift(zerofill(colFt[x,y,~],d2,"sides")))
+      next(y)
+   next(x)
+
+endproc(m2)
+

@@ -1,0 +1,26 @@
+#################################################################
+# Returns the experiment duration taking into account
+# the start and end delays
+#################################################################
+
+procedure(GetDuration, exptName)
+
+   par = GetParameters(exptName)
+   par->useStartDelay = gData->curExpt->parameters->useStartDelay
+   par->useEndDelay = gData->curExpt->parameters->useEndDelay
+   assignstruct(par)
+
+   proc = "$exptName$:expectedDuration"
+
+   exptDuration = proc(par)
+   if(type != "script")
+      if(useEndDelay == 0)
+         psTime = GetPulseProgramDuration(exptName,1,list(par))
+         if(repTime < psTime)
+            print("\n   Repetition time is less than pulse sequence time ($psTime$ ms)\n")
+         endif
+         exptDuration = exptDuration - (repTime - psTime)/1000
+      endif
+   endif
+
+endproc(exptDuration)

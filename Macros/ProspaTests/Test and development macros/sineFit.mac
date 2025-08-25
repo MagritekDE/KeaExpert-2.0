@@ -1,0 +1,26 @@
+# Only works if freq is correct
+
+procedure(sineFit)
+
+x = [0:0.01:1]
+y = 1*sin(2*pi*5*x + 0.5)
+plot(x,y)
+amp = 1
+freq = 4.5
+phas = 0.5
+(p1,p2,p3,p1err,p2err,p3err) = nlinfit(x,y,":funcSine",[amp,freq,phas],1,"yes",5)
+
+pr local
+
+endproc()
+
+
+procedure(funcSine, t, p1, p2, p3)
+
+   e = sin(2*pi*t*p2 + p3)
+   y = p1*e
+   dydp1 = e
+   dydp2 = 2*pi*t*p1*cos(2*pi*p2*t + p3)
+   dydp3 = p1*cos(2*pi*p2*t + p3)
+
+endproc(y,dydp1,dydp2,dydp3)

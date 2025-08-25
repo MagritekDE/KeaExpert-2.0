@@ -1,0 +1,51 @@
+procedure(getplotdata_test1,verbose,delay)
+
+   clear1d()
+# 1D real data
+   my = noise(100)
+   mx = linvec(0,1000,100)
+   plot(mx,my)
+   (x,y) = getplotdata("1d")
+   if(x != mx | y != my)
+      return(0, "Invalid result for: getplotdata() #1")
+   endif
+   
+   pause(delay)
+
+# 1D complex data
+   my = noise(100) + i*noise(100)
+   mx = linvec(0,1000,100)
+   plot(mx,my)
+   (x,y) = getplotdata("1d")
+   if(x != mx | y != my)
+      return(0, "Invalid result for: getplotdata() #2")
+   endif
+
+   pause(delay)
+
+  clear2d()
+# 2D real data
+   mi = noise(100,100)
+   mx = [-50,50]
+   my = [20,100]
+   image(mi,mx,my)
+   (m,x,y) = getplotdata("2d")
+   if(m != mi | x != mx | y != my)
+      return(0, "Invalid result for: getplotdata() #3")
+   endif
+
+   pause(delay)
+
+# 2D complex data
+   mi = noise(100,100) + i*noise(100,100)
+   mx = [-50,50]
+   my = [20,100]
+   image(mi,mx,my)
+   (m,x,y) = getplotdata("2d")
+   if(m != mi | x != mx | y != my)
+      return(0, "Invalid result for: getplotdata() #3")
+   endif
+
+   pause(delay)
+
+endproc(1,"")

@@ -1,0 +1,824 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 15 (filtered)">
+<title>closeserial</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+@font-face
+	{font-family:"Cambria Math";
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman",serif;}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman",serif;}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma",sans-serif;}
+span.MsoPlaceholderText
+	{color:gray;}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria",serif;
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma",sans-serif;}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>lhil1d</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>Perform a Lawson
+and Hanson one dimensional inverse Laplace calculation</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:Courier'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>Syntax</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:Courier'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>spectrum = lhil1d(data,
+kernel, smoothing)</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-81.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>data .......  data
+to be inverted. (1 × m)</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-81.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>kernel .....  matrix
+describing the fit function. (m × n)</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-81.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>smoothing ..  regularization
+or smoothing parameter (number, vector 1 × n or matrix – n × n)</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-81.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>spectrum ...  resultant
+relaxation spectrum (1 × n)</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:Courier'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>Description</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:Courier'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>This command implements the
+non-negative least squares (NNLS) algorithm of C. L. Lawson and R. J. Hanson
+(“Solving Least Squares Problems”, Prentice Hall 1974), which allows data
+exhibiting multi-exponential decay with nonnegative amplitudes to be analysed
+in a fairly robust fashion. The command inverts the data producing a spectrum
+of exponentials of decay times <i>T</i> and amplitudes <i>S</i> which provides
+a best fit to the original data <i>D</i> in a least squares sense: </p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><span
+style='font-size:12.0pt;font-family:"Times New Roman",serif'><img width=316
+height=61 src="lhil1d_files/image001.png"></span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>Normally, least squares analysis
+of this kind of data set produces ambiguous results, because the functions being
+fitted (e.g. exponentials) are not orthogonal, i.e. more than one solution is
+possible. The solution also tends to contain a multitude of sharp peaks. The
+Lawson and Hanson algorithm uses a regularization function which seeks to find
+a smooth spectrum of exponentials which still satisfies the original data in
+the chi-squared sense. In addition it forces all solutions to be positive.
+Following is the modified function to be minimized:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span
+style='font-size:12.0pt;font-family:"Times New Roman",serif'><img width=433
+height=61 src="lhil1d_files/image002.png"></span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>The second term in this
+expression corresponds to the regularization function and is an expression of
+the sharpness of the spectral features. Minimizing this expression now requires
+that both the chi-squared <i>and</i> the sharpness be simultaneously minimised.
+The parameter <i>alpha</i> can be used to control the amount of smoothing
+applied to the spectrum. A small value of <i><span style='font-family:Symbol'>a
+</span></i>&nbsp;results in spectra consisting of sharp peaks while a large <i><span
+style='font-family:Symbol'>a </span></i><i>&nbsp;</i>produces broad peaks.</p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;Because the algorithm can
+analyse data containing a wide range of time scales it is important to ensure
+that the data has been evenly sampled when displayed with a logarithmic
+abscissa. Failure to do this may result in invalid peaks appearing in the
+resultant relaxation spectrum. If the data cannot be sampled logarithmically a
+pseudo-logarithmic sampling can be achieved using the Prospa commands logbin or
+pseudologbin. In this case a large number of points are typically acquired and
+then reduced to a more manageable size using these binning algorithms.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>Example</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal>In this example a spectrum consisting of 4 Gaussian peaks is
+generated</p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'>####################################################</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Generates a model 1D T2 correlation
+spectrum</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'>####################################################</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>procedure</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(model)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Specify data set dimension, peak
+sizes and noise level</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   N = 100</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   M = 500</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   w = [0.04,0.04,0.04,0.04]*N </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Peak widths</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   p = [0.2,0.4,0.6,0.8]*N </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Peak
+positions</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   a = [0.2,0.4,0.6,0.8] </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Peak
+amplitudes</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   ns = 0.001</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Generate model time axes</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   xSpec = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Generate model data set</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   A = [0:N-1]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   ySpec = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>matrix</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(N)  </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>for</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(k = 0 </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:blue'>to</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'> </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>size</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(w)-1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>    ySpec = ySpec + a[k]*</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-(A-p[k])^2/w[k]^2)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>next</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(k)A</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>multiplot</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,2,1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>curplot</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,1,1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>draw1d</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;false&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   xaxis = [</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>log10</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>min</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(xSpec)), </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>log10</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>max</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(xSpec))]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xSpec,ySpec)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>axes</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span lang=DE
+style='font-size:10.0pt;font-family:"Courier New";color:green'>xlabel</span><span
+lang=DE style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=DE style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log_(10)(\G(t)_(x))&quot;</span><span
+lang=DE style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=DE style='font-size:
+10.0pt;font-family:"Courier New";color:black'>   </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>ylabel</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Amplitude&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>title</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;Simulated relaxation spectrum&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>draw1d</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;true&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Generate data time axis</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   xData = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   K = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>exp</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(-(1/xSpec)'*xData)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   yData = ySpec*K</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   yData = yData + ns*</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>max</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(yData)*(1+i)*</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>noise</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>curplot</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,2,1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>draw1d</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;false&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xData,yData)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>xlabel</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;t_(x) (s)&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>ylabel</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;Amplitude&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>axes</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>title</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;Simulated relaxation data&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>draw1d</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:gray'>&quot;true&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>endproc</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>Here is the output from this
+macro</p>
+
+<p class=MsoNormal><img width=624 height=231 id="Picture 1"
+src="lhil1d_files/image003.jpg"></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>To invert the relaxation data we use the following code:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Get the data from the current plot</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(x,y) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>getplotdata</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>data = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>real</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(y)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>M = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>size</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>N = 100</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xData = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'> (0.1,5000,M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xSpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>K = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>exp</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(-xData'*(1/xSpec))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Invert the data and display</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>ySpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>lhil1d</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(data,K,0.1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xSpec,ySpec)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>axes</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><img width=624 height=231
+id="Picture 9" src="lhil1d_files/image004.jpg"></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>In this example 0.1 is the
+smoothing value and has been adjusted here to approximate the width of the
+original peaks.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>Using a more complex
+regularization matrix we can approximate the peak shape rather better</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Get the data from the current plot</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(x,y) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>getplotdata</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>data = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>real</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(y)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>M = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>size</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>N = 100</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Make the kernel</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xData = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'> (0.1,5000,M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xSpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>K = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>exp</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(-xData'*(1/xSpec))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Generate the regularization matrix</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>smoothing = 0.1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>reg = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>matrix</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(N,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>for</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(k = 0 </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:blue'>to</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'> N-3)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>    reg[k,k] = smoothing</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>    reg[k+1,k] = -2*smoothing</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>    reg[k+2,k] = smoothing</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:blue'>next</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(k)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Invert the data and display</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>ySpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>lhil1d</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(data,K,reg)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xSpec,ySpec)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>axes</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><img width=624 height=231
+id="Picture 10" src="lhil1d_files/image005.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>Performance</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>This algorithm works well for small spectra
+but will be slow for larger data sets. To reduce the size of the problem the
+data and kernel can reduced by using singular value decomposition:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(x,y) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>getplotdata</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>data = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>real</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(y)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>M = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>size</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>N = 100</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xData = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'> (0.1,5000,M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xSpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>K = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>exp</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(-xData'*(1/xSpec))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Simplify the kernel and data matrices</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(U,V,S) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>svd</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(K)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>KRed = (U'*K)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>dataRed = (U'*data')'</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Invert the data and display</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>ySpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>lhil1d</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(dataRed,KRed,0.1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xSpec,ySpec)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>axes</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>Handling linear
+data sets</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:Courier'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>For large data sets collected with a linear
+spacing the singular value decomposition can be slow. An alternative is to
+logbin the data</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(x,y) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>getplotdata</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xData,y) = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>logbin</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>real</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(y),100)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>data = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>real</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(y)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>M = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>size</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>N = 100</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xData = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,M)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>xSpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>logspace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,5000,N)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>K = </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>exp</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(-xData'*(1/xSpec))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>ySpec = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>lhil1d</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(data,K,.02)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>plot</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(xSpec,ySpec)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>axes</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;xmapping&quot;</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>,</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>In this case the input data set has 50,000 linearly spaced
+data points, however the logbin command reduces these to only 100 resulting in
+a rapid inversion (40 ms cf 6 seconds for the full 50,000 points):</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><img width=610 height=231 id="Picture 13"
+src="lhil1d_files/image006.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><img width=608 height=267 id="Picture 15"
+src="lhil1d_files/image007.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:14.0pt'>See also</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><a href="../../Internal/logbin.htm"><span lang=EN-US>logbin</span></a></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

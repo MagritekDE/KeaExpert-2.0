@@ -1,0 +1,20 @@
+procedure(hft_test1,verbose,delay)
+
+   (x,y) = complex(1024,1,10,0.1)
+    y = y*exp(i*50/180*pi)
+    yft = ft(y)
+
+    yft2 = hft(real(yft))
+plot(yft)
+pause(2)
+plot(yft2)
+
+    p1 = autophase(yft,0,1023,"maximise")
+    p2 = autophase(yft2,0,1023,"maximise")
+
+
+    if(p1 != p2)
+        return(0, "Invalid result for hft_test")
+    endif
+
+endproc(1,"")

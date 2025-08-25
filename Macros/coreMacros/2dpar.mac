@@ -1,0 +1,49 @@
+#############################################
+# Get current 2D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(get)
+
+   cp = curplot("2d")
+   txt = cp->title("getargs")
+   lx = cp->xlabel("getargs")
+   ly = cp->ylabel("getargs")
+   (nc,mode) = cp->contour()
+   (x1,x2,y1,y2) = cp->zoom()
+   xm = cp->axes->xmapping()
+   ym = cp->axes->ymapping()
+   xd = cp->axes->xdirection()
+   yd = cp->axes->ydirection()
+   cm = cp->cmap()
+
+endproc(txt,lx,ly,nc,mode,x1,x2,y1,y2,xm,ym,xd,yd,cm)
+
+#############################################
+# Set 2D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(set,txt,lx,ly,nc,mode,x1,x2,y1,y2,xm,ym,xd,yd,cm)
+
+   cp = curplot("2d")
+   cp->title(txt)
+   cp->xlabel(lx)
+   cp->ylabel(ly)
+   cp->contour(nc,mode)
+   if(nrArgs >= 9)
+      cp->zoom(x1,x2,y1,y2)
+   endif
+   if(nrArgs >= 11)
+      cp->axes->xmapping(xm)
+      cp->axes->ymapping(ym)
+   endif
+   if(nrArgs >= 13)
+      cp->axes->xdirection(xd)
+      cp->axes->ydirection(yd)
+   endif
+   if(nrArgs >= 14)
+      cp->cmap(cm)
+   endif
+
+endproc()

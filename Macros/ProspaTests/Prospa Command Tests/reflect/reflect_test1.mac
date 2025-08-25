@@ -1,0 +1,54 @@
+
+
+procedure(reflect_test1,verbose,delay)
+
+# real 1D to 1D
+   a = [0:1:11]
+   if(reflect(a) != [11:-1:0])
+      return(0, "Invalid result for: reflect_test1 #1")
+   endif 
+
+# real 2D to 2D - default
+   a = [0,1,2;3,4,5;6,7,8]
+   if(reflect(a) != [6,7,8;3,4,5;0,1,2])
+      return(0, "Invalid result for: reflect_test1 #2")
+   endif 
+
+# real 2D to 2D - vertical
+   a = [0,1,2;3,4,5;6,7,8]
+   if(reflect(a,"horiz") != [6,7,8;3,4,5;0,1,2])
+      return(0, "Invalid result for: reflect_test1 #3")
+   endif 
+
+# real 2D to 2D - horizontal
+   a = [0,1,2;3,4,5;6,7,8]
+   if(reflect(a,"vert") != [2,1,0;5,4,3;8,7,6])
+      return(0, "Invalid result for: reflect_test1 #4")
+   endif 
+
+# complex 1D to 1D
+   a = {0:1:11}
+   if(reflect(a) != {11:-1:0})
+      return(0, "Invalid result for: reflect_test1 #5")
+   endif 
+
+# complex 2D to 2D - default
+   a = {0,1,2;3,4,5;6,7,8}
+   if(reflect(a) != {6,7,8;3,4,5;0,1,2})
+      return(0, "Invalid result for: reflect_test1 #6")
+   endif 
+
+# complex 2D to 2D - vertical
+   a = {0,1,2;3,4,5;6,7,8}
+   if(reflect(a,"horiz") != {6,7,8;3,4,5;0,1,2})
+      return(0, "Invalid result for: reflect_test1 #7")
+   endif 
+
+# complex 2D to 2D - horizontal
+   a = {0,1,2;3,4,5;6,7,8}
+   if(reflect(a,"vert") != {2,1,0;5,4,3;8,7,6})
+      return(0, "Invalid result for: reflect_test1 #8")
+   endif 
+
+
+endproc(1,"")

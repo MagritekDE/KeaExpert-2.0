@@ -1,0 +1,336 @@
+####################################################
+#           displaySettings2D.mac
+#
+# This macro is used by the display mode button in 
+# the 2D tool-bar.
+# It allows the type of display to be selected and 
+# parameters for that display mode to be controlled.
+#
+# Last modified 11 June 2013 by Craig Eccles
+#
+####################################################
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(set2DDisplayMode, mode)
+
+   n = :windowdefinition()
+   assignctrls(n)
+
+# Current contouring parameters
+   (nr,mode) = contour() 
+   if(vartype(nr) != "float")
+      nr = size(nr)
+   endif
+
+# Initialise objects
+   (minDsp,maxDsp) = getdatarange("displayed")  # Displayed data range
+   ar = autorange("getargs")
+   setpar(n,20,"text",ar)
+   setpar(n,2,"text",nr)
+   setpar(n,9,"text",realtostr(mode))
+   setpar(n,14,"text","$minDsp,2.2g$")
+   setpar(n,15,"text","$maxDsp,2.2g$")
+
+# Work out slider positions from the current
+# autorange & data range and threshold values
+   :set_sliders(ar,minDsp,maxDsp)
+
+# Disable some controls based on auto-range parameter
+   :enablecontrols(ar)
+
+   showwindow(n)
+
+
+endproc()
+
+####################################################
+# Make sure the appropriate controls are enabled
+####################################################
+
+procedure(enablecontrols,ar)
+
+# Make sure the appropriate controls are enabled
+   if(ar == "on")
+      setpar(0,14,"enable","false")
+      setpar(0,15,"enable","false")
+      setpar(0,16,"enable","false")
+      setpar(0,21,"enable","false")
+      setpar(0,22,"enable","false")
+   else
+      setpar(0,14,"enable","true")
+      setpar(0,15,"enable","true")
+      setpar(0,16,"enable","true")
+      setpar(0,21,"enable","true")
+      setpar(0,22,"enable","true")
+   endif
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D display settings", -1, -1, 437, 187)
+
+      # Define all controls with basic parameters
+      button(1, 370, 76, 45, 29, "Help",
+         :showhelp();)
+      textbox(2, 91, 115, 30)
+      groupbox(3, "Display range", 151, 9, 209, 162)
+      checkbox(4, 90, 144, "no,yes", "no",:logRange())
+      button(5, 369, 24, 45, 29, "Draw",
+         :redraw();)
+      button(6, 369, 128, 45, 29, "Exit",
+         closewindow(0);)
+      groupbox(7, "Contour levels", 10, 94, 130, 77)
+      statictext(8, 162, 69, "left", "min. level")
+      radiobuttons(9, 90, 35, 19, "vertical", "1,2", "1",
+           :redraw();)
+      statictext(10, 161, 39, "left", "max. level")
+      statictext(11, 23, 34, "left", "Intensity plot")
+      statictext(12, 24, 53, "left", "Contour plot")
+      statictext(13, 80, 119, "right", "Nr. of levels")
+      textbox(14, 216, 67, 60,
+        :dummy();)
+      textbox(15, 216, 37, 60)
+      button(16, 178, 101, 80, 24, "Full range",
+         :full_range();)
+      groupbox(17, "Display mode", 9, 9, 132, 72)
+      statictext(18, 301, 23, "center", "0")
+      statictext(19, 192, 142, "left", "Auto range")
+      checkbox(20, 173, 143, "off,on", "off",
+           :auto_range_toggled();)
+      slider(21, 294, 36, 20, 100, "vertical",
+           :slider();)
+      slider(22, 325, 36, 20, 100, "vertical",
+           :slider();)
+      statictext(23, 287, 134, "left", "base")
+      statictext(24, 322, 134, "left", "range")
+      statictext(25, 81, 143, "right", "Log spacing")
+      statictext(26, 332, 23, "center", "100")
+      getmessage(27,
+        :process_message();)
+
+     # Set other control parameters
+      setpar(n,2,"objID","nrContourLevels")
+      setpar(n,4,"objID","logSpacingCtrl")
+      setpar(n,5,"mode","default")
+      setpar(n,21,"type","float",
+                  "range",[-100,100])
+      setpar(n,22,"type","float",
+                  "range",[0,199])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\Core","DisplaySettings2D.htm")
+endproc()
+
+####################################################
+# The autorange checkbox has been toggled
+####################################################
+
+procedure(auto_range_toggled)
+
+   ar = getpar(0,20,"text")
+   autorange(ar)
+   :enablecontrols(ar)
+   :redraw()
+
+endproc()
+
+####################################################
+# Procedure to extract all parameters and redraw plot
+####################################################
+
+procedure(redraw)
+
+   minVal = getpar(0,14,"value")
+   maxVal = getpar(0,15,"value")
+   ar = getpar(0,20,"text")
+   (nr,mode) = contour("getargs") 
+   nr = getpar(0,2,"value")
+   mode = eval(getpar(0,9,"text"))
+
+   curplot("2d")
+   draw2d("false")
+   autorange(ar)
+   imagerange(minVal,maxVal)
+   if(logSpacingCtrl->text == "yes")
+      if(minVal > 0 & maxVal > 0 & maxVal > minVal)
+         contour(logspace(minVal,maxVal,nr),mode)
+      else
+         message("Error","Invalid contour range in log mode","error")
+         draw2d("true")
+         return
+      endif
+   else
+      contour(linspace(minVal,maxVal,nr),mode)
+   endif
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Procedure to draw plot when slider is moved
+####################################################
+
+procedure(slider)
+
+# Get range for current data set
+  (minv,maxv) = getdatarange("current")
+
+# Use colormap and sliders to determine 
+# threshold (a) & range (b) as a percentage
+  map = getcolormap()
+  (w,h) = size(map)
+  if(map[0,h-1] == 1) # +/- colormap
+     a = (getpar(0,21,"value")+100)/2
+     b = getpar(0,22,"value")+1
+  else
+     a = getpar(0,21,"value")
+     b = getpar(0,22,"value")+1
+  endif
+
+# Set sider labels
+  setpar(0,18,"text",a)
+  setpar(0,26,"text",b)
+
+# Use a,b parameters in conjunction 
+# with data range to work out actual
+# threshold and range
+  if(map[0,h-1] == 1) # +/- colormap
+     if(abs(maxv) > abs(minv))
+        threshold = abs(maxv)*a/100
+        range = abs(maxv)*b/100
+     else
+        threshold = abs(minv)*a/100
+        range = abs(minv)*b/100
+     endif
+   else               # +ve colorscale
+     threshold = (maxv-minv)*a/100 + minv
+     range = (maxv-minv)*b/100
+   endif
+
+# Display these values 
+   minv = threshold
+   maxv = threshold + range
+   setpar(0,14,"text","$minv,2.2g$")
+   setpar(0,15,"text","$maxv,2.2g$")
+
+# Redraw the data set using new parameters
+   :redraw()
+
+endproc()
+
+####################################################
+# Full range button has been pressed
+####################################################
+
+procedure(full_range)
+
+   (min,max) = getdatarange("current")
+   setpar(0,14,"text","$min,2.2g$")
+   setpar(0,15,"text","$max,2.2g$")
+
+   map = getcolormap()
+   (w,h) = size(map)
+   if(map[0,h-1] == 1) # +/- colorscale
+      setpar(0,21,"value",-100)
+      setpar(0,22,"value",100)
+      setpar(0,18,"text",0)
+      setpar(0,26,"text",100)
+   else                # +ve colorscale
+      setpar(0,21,"value",0)
+      setpar(0,22,"value",100)
+      setpar(0,18,"text",0)
+      setpar(0,26,"text",100)
+   endif
+
+   :redraw()
+
+endproc()
+
+####################################################
+# Work out slider positions from the 
+# data minimum and maximum values
+####################################################
+
+procedure(set_sliders,ar,minDsp,maxDsp)
+
+  if(ar == "off")
+     (minLev,maxLev) = getdatarange("current")    # Actual data range
+     map = getcolormap()
+     threshold  = minDsp
+     range = maxDsp-minDsp
+     (w,h) = size(map)
+     if(map[0,h-1] == 1) # +/- colormap
+        if(abs(maxLev) > abs(minLev))
+           a = threshold*100/abs(maxLev)
+           a = -100
+           atxt = 0
+           b = range*100/abs(maxLev);
+        else
+           a = threshold*100/abs(minLev)
+           a = -100
+           atxt = 0
+           b = range*100/abs(minLev);
+        endif
+      else
+        a = (threshold - minLev)*100/(maxLev-minLev)
+        atxt = a
+        b = range*100/(maxLev-minLev)
+      endif
+
+      setpar(0,21,"value",round(a))
+      setpar(0,22,"value",round(b))
+      setpar(0,18,"text",round(atxt))
+      setpar(0,26,"text",round(b))
+
+   else
+     :full_range()
+   endif
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,27,"text")
+
+   if(src == "2D Plot" & cmd == "Autorange")
+      ar = autorange("getargs")
+      setpar(0,20,"text",ar)
+      :auto_range_toggled()
+   endif
+
+endproc()
+
+procedure(logRange)
+
+   if(logSpacingCtrl->text == "yes")
+      setpar(0,21,"range",[1,100])
+      setpar(0,21,"value",1)
+   else
+      setpar(0,21,"range",[-100,100])
+      setpar(0,21,"value",0)
+   endif
+   :slider()
+  # :redraw()
+
+endproc()

@@ -1,0 +1,1000 @@
+###########################################################
+# Sequence class for SpinsolveExpert.
+#
+# This replaces and simplifies parts of the ucsCtrl macro
+#
+# V2.00.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+   self->calcBmax         = "seSequence:calcBmax"
+   self->convertTxGain    = "seSequence:convertTxGain"
+   self->convertRxGain    = "seSequence:convertRxGain"
+   self->evaluateList     = "seSequence:evaluateList"
+   self->getDSPParameters = "seSequence:getDSPParameters"
+   self->getFilterCoef    = "seSequence:getFilterCoef"
+   self->getRxParameters  = "seSequence:getRxParameters"
+   self->initAndRunPP     = "seSequence:initAndRunPP"
+   self->setUpSimulator   = "seSequence:setUpSimulator"
+
+   self->variableList = "============================================="
+
+   self->cicNValue        = 4       # Number of stages in digital receiver CIC filter (must match firmware)
+   self->cicMValue        = 2       # Differential delay in digital receiver CIC filter (must match firmware)
+   self->programAdrs      = 0x2000  # Location of current pulse program ('p' memory)
+   self->programSize      = 0       # Size of current pulse program
+   self->filterAdrs       = 0x10    # Location of filter table ('y' memory)
+   self->filterSize       = 0       # Size of current filter table
+   self->parameterAdrs    = 0x10    # Location of parameter list ('x' memory)
+   self->parameterSize    = 0       # Size of parameter list 
+   self->tableStartAdrs   = 0x3000  # Where tables are stored ('y' memory)
+   self->tableEndAdrs     = 0x3000  # Last table value is at this address
+   self->defaultPPEntries = 28      # The number of entries always appearing in the pp list
+
+endproc()
+
+
+#############################################################
+# Initialise and run the pulse program.
+#
+# This procedure:
+# 1. Saves the GUI parameters
+# 2. Updates the common parameters
+# 3. Does some parameter checks
+# 4. Loads the filters list and write to the DSP
+# 5. Loads the pulse program and writes to the DSP
+# 6. Generates and returns the pulse program parameter list
+#    and index lists for phase and variable parameters.
+#
+# Extra parameters may be passed in the case of
+# backdoor calls - i.e. those made without the gui
+#############################################################
+
+procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
+
+   wv_rel = seqInfo->rel
+   wv_var = seqInfo->var
+   wv_pp_list = seqInfo->pp_list
+   wv_pp_name = seqInfo->pp_name
+   wv_phase_list = seqInfo->phase_list
+
+# Setup simulator pulse list
+ #  self->setUpSimulator(wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list)
+   if(gData->procType == "FX3")
+      if(nrArgs == 3)
+         r = gFX3->initAndExecPP(ppPath, ppName)
+      else
+         r = gFX3->initAndExecPP(ppPath, ppName, guipar,wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list)
+      endif
+      return(r)
+   endif
+
+# Initialise the repetition time variables (used by ucsRun:checkTiming)
+   gData->curExpt->totScans = 0
+   gData->curExpt->startTime = time()
+   gData->curExpt->lastTime = gData->curExpt->startTime
+
+# Make all gui parameters accessible
+   assignlist(guipar)
+   if(isvar("wvPort")==0)
+      wvPort = dspsetport()
+   endif
+
+# Check that this is a Spinsolve with a valid DSP parameter block
+   par = gData->specParameters
+   if(par == null)
+      message("No connection to Spinsolve","Make sure that the Spinsolve DLL is installed,\rthe Spinsolve is switched on and the\rUSB interface is connected and working.","error")
+      throw("No connection to Spinsolve")
+   endif
+
+# Some other spectrometer parameters
+   specName     = par->SystemID 
+   HardwareCap  = par->HardwareCap
+
+# Get the Spinsolve preferences
+   lst = list(gData->preferences)
+
+# If x/y/zshim is used in the sequence don't load them from preferences
+   prefShimsUsed = 1
+   if(isvar("xshim") == 1)
+      lst = rmfromlist(lst,"xshim")
+      lst = rmfromlist(lst,"yshim")
+      lst = rmfromlist(lst,"zshim")
+      prefShimsUsed = 0
+   endif
+   assignlist(lst)
+
+# Intialise DSP controlled repTime parameter (no longer possible)
+   wvDSPCtrlRepTime  = 0  
+
+# Initialise data modified flag
+   wvDataModified = "false"
+
+# Get the current plot windows and make them global
+# These will be used for display purposes
+# If there are no plots then set these to null variables
+   try
+      assign("wvPP",curplot("1d")->parent,"global")
+      varstatus("wvPP","hidden")
+   catch
+      assign("wvPP",null,"global")
+   endtry
+
+   try
+      assign("wvPP2",curplot("2d")->parent,"global")
+      varstatus("wvPP2","hidden")
+   catch
+      assign("wvPP2",null,"global")
+   endtry
+
+# Save the final acquisition parameters
+   if(saveData == "true")
+      if(isvar("exptNr"))
+         dir = "$dataDirectory$\\$expName$\\$exptNr$"   
+      elseif(isvar("expNr"))
+         dir = "$dataDirectory$\\$expName$\\$expNr$"  
+      else       
+         dir = "$dataDirectory$\\$expName$"
+      endif   
+      mkdir(dir)
+      file = "$dir$\\acqu.par"
+      fileBak = "$dir$\\acqu.par.bak"
+      try  
+         save(file,sortlist(guipar),"truedoubles")
+         copyfile(file,fileBak) # Backup file
+      catch
+         message("Warning","Can't save acqu.par in folder:\r$dir$\rIs is write protected?","warning")
+      endtry
+   endif
+
+# Determine pulse program suffix 
+   hpaLoc = gData->specParameters->rfAmpLocation[0]
+   if(hpaLoc == "i")
+      pp_name = rmext(wv_pp_name) + "_int.p"
+   elseif(hpaLoc == "e")
+      pp_name = rmext(wv_pp_name) + "_ext.p"
+   else
+      pp_name = rmext(wv_pp_name) + ".p"
+   endif
+
+# Some DSP address values
+   tableAdrsStart = self->tableStartAdrs
+   tableAdrs = tableAdrsStart
+   filterAdrs = self->filterAdrs
+   programAdrs = self->programAdrs
+   parameterAdrs = self->parameterAdrs
+
+# Check for invalid dwelltimes
+   if(dwellTime < 0.5 | dwellTime > 2000)
+      message("Error","Invalid dwelltime - should be between 0.5 and 2000 us","error")
+      throw("")
+   endif
+
+# Get filter coefficients
+   fc = self->getFilterCoef(dwellTime,flatFilter)
+
+# Extract filter parameters
+   dec1   =  fc[0]               
+   dec5   =  fc[1]
+   decFIR =  fc[2]              
+   if(decFIR == 2)
+      decFIR = 1
+   else
+      decFIR = 0
+   endif
+   clk    =  fc[3]
+   truncFIR = fc[4]
+   DelayFIR =  fc[5]
+   tClk    = 1/100e6             
+   tSample = 1/100e6             
+   nrTaps = size(fc)-6
+   fc = submatrix(fc,6,nrTaps+5)
+
+# Try and write the filter coefficients to the Spinsolve
+   try
+      dspwrite("y",filterAdrs,fc)
+   catch
+      pr lasterror()
+      message("No connection to Spinsolve","Make sure that the Spinsolve DLL is installed,\rthe Spinsolve is switched on and the\rUSB interface is connected and working.","error")
+      throw("")
+   endtry
+
+# Calculate receiver gain factor due to FPGA filter settings         
+   N = self->cicNValue
+   M = self->cicMValue          
+   B_max = N*log2(dec1*M)+16
+   fltGain =2^(ceil(B_max)-B_max)
+   GainFIR = 1.50682 # This needs to be set in the filter settings but is not yet
+   if(decFIR == 1)
+      fltGain = GainFIR*fltGain
+   endif
+   rxCalibration =  rxCalibration/fltGain
+   if(N == 1 & flatFilter == "yes") # Fiddle to make the gains the same N = 1 or 4 - needs explanation
+      rxCalibration = rxCalibration / 16
+   endif
+
+# Work out the expected receiver latency                        
+   fixLat = 9*tSample
+   rxLat  = (fixLat)*1e6
+
+# Latency depends on the filter type
+   if(flatFilter == "yes")
+      nrPntsToIgnore = 6
+      rxLat = rxLat + (6 - nrPntsToIgnore)*dwellTime + 1.65
+   else
+      if(N == 4)
+         nrPntsToIgnore = 6
+      else
+         nrPntsToIgnore = 1
+      endif
+      rxLat = rxLat + (3 - nrPntsToIgnore)*dwellTime + 1.65
+   endif
+
+# Work out some filter parameters
+   (truncDec1, Bmax1) = self->calcBmax(N,M,dec1)
+   if(flatFilter == "no")
+      if(N == 4)
+         truncDec1 = truncDec1 + 4
+      endif
+   endif  
+
+# Ratio of Rx to Tx clocks, used in macro which 
+# change Rx and Tx frequencies (note needs
+# to be assigned before wv_rel is assigned
+   freqScaleFactor = 10 
+
+# Evaluate the relationship variables
+# Note that this is the only place this needs to be done for
+# most of the variables. This can be time consuming if wv_rel
+# includes function calls.
+   assignlist(wv_rel)
+
+# Check for repTime or ieTime
+   if(isvar("repTime"))
+     scanDelay = repTime
+   elseif(isvar("ieTime"))
+     scanDelay = ieTime-2.5 # Correct to allow for startCode overhead
+   else
+     scanDelay = 100
+     pr("\n   Warning : neither repTime or ieTime defined in pulse program - using 100 ms\n")
+   endif
+
+# Convert the Rx gain from dB to 16/8 bit hex numbers
+   rxGain = self->convertRxGain(rxGain)
+   rxOffset = 0
+   if(rxGain == null)
+      throw("")
+   endif
+   rxGain1 = rxGain[0]
+   rxGain2 = rxGain[1]
+
+# Get pulse program info and write to DSP
+   file = "$ppPath$\\$pp_name$"
+   if(isfile(file) == 0)
+     message("No DSP file","The DSP pulse program file '$pp_name$'\ris missing. Path is '$ppPath$'","error")
+     throw("")
+   endif
+
+   pp = dspreadpp(file)
+   dspwrite("p",programAdrs,pp)
+
+# Work out how big the parameter table will be. Start with
+# the number of entries in the generic parameter list. Next
+# add space for each parameter based on its first character
+   lst = wv_pp_list
+   fixedEntries = self->defaultPPEntries
+   c = fixedEntries 
+   for(k = 0 to size(lst)-1)
+      var = lst[k]
+      if(var[0] == "f");      c = c + 2
+      elseif(var[0] == "a");  c = c + 1
+      elseif(var[0] == "g");  c = c + 2
+      elseif(var[0] == "p");  c = c + 1
+      elseif(var[0] == "d");  c = c + 1
+      elseif(var[0] == "w");  c = c + 3
+      elseif(var[0] == "n");  c = c + 1
+      elseif(var[0] == "b");  c = c + 1
+      elseif(var[0] == "t");  c = c + 1
+      elseif(var[0] == "m");  c = c + 1
+      endif
+   next(k)
+
+# Allocate space for pulse program and phase cycle lists
+   p = matrix(c,1)  # pp list
+   varIndex = matrix(size(wv_var)) # Variable indices in pp
+   (w,h) = size(wv_phase_list)     # Phase list as defined by user
+   if(h > 1)
+      phaseIndex = matrix(h-1)     # Phase indices in pp (p1, p2 ,p3)
+   else
+      phaseIndex = 0
+   endif
+
+# Receiver phase shift
+   p1Phase = (360+rxPhase)/360*(2^16-1) # <- when rxPhase = 0 p1Phase = 0xFFFF (-1) needed to disable the lock
+
+
+# Check that b1Freq/2 is defined
+   if(not(isvar("b1FreqCh1")) & not(isvar("b1FreqCh2")))
+      throw("b1Freq1/b1FreqCh2 not defined in sequence")
+   endif
+
+# Set the Tx frequencies for Ch2 equal to b1Freq
+# if this variable is not explicitly defined
+   if(not(isvar("b1FreqCh2")))
+      b1FreqCh2 = b1FreqCh1
+      if(getlistindex(guipar,"b1FreqCh2") == -1)
+         guipar = guipar + "b1FreqCh2 = $b1FreqCh2$"
+      endif
+   endif
+
+# If only b1FreqCh2 is defined then set b1Freq to the same value
+   if(not(isvar("b1FreqCh1")))
+      b1FreqCh1 = b1FreqCh2
+      if(getlistindex(guipar,"b1FreqCh2") == -1)
+         guipar = guipar + "b1FreqCh1 = $b1FreqCh2$"
+      endif
+   endif
+
+# Set the Rx frequencies equal to b1Freq
+# if this variable is not explicitly defined
+   if(not(isvar("freqRx")))
+      freqRx = b1FreqCh1
+      if(getlistindex(guipar,"freqRx") == -1)
+         guipar = guipar + "freqRx = $freqRx$"
+      endif
+   endif
+
+# Make these frequencies externally accessible
+   gData->curExpt->b1FreqCh1 = b1FreqCh1
+   gData->curExpt->b1FreqCh2 = b1FreqCh2
+   gData->curExpt->freqRx = freqRx
+
+# Print these frequencies
+   if(gDebug->showLevel > 0)
+      pr("\n   Ch1 freq = $b1FreqCh1,1.7f$ MHz")
+      pr("\n   Ch2 freq = $b1FreqCh2,1.7f$ MHz")
+      pr("\n   Rx  freq = $freqRx,1.7f$ MHz\n")
+   endif
+
+# Convert the Tx and Rx frequencies to spectrometer units 
+   DDSFwordTxCh1 = round((b1FreqCh1 * 2^32d )/1000d) 
+   DDSFwordTxCh2 = round((b1FreqCh2 * 2^32d )/1000d) 
+   DRPFwordRx    = round((freqRx * 2^32d )/1000d) * double(freqScaleFactor) 
+ 
+# Select the receiver channel number
+#   rxSetchannel = (rxChannel=="1H" | rxChannel=="19F")*0x0200
+#   if(rxChannel == "19F")
+#      rxSetGain = 0x0004
+#   elseif(rxChannel == "1H")
+#      rxSetGain = 0x0206
+#   else
+#      rxSetGain = 0x0105
+#   endif
+#
+# # Display the receiver channel
+#  if(gDebug->showLevel > 0)
+#      pr("\n   Receiver channel: $rxChannel$\n")
+#  endif
+
+# Intialise the standard pulse program parameters
+   p[0]  = eval("0x0$rxGain1$00")            # Receiver gain block 1 HF
+   p[1]  = eval("0x0$rxGain2$00")            # Receiver gain block 2 HF
+   p[2]  = dec1                              # Decimation for CIC1 
+   p[3]  = 0                                 # Number of entries in list (used by DSP repTime mode)
+   p[4]  = decFIR                            # Decimation for FIR
+   p[5]  = truncDec1                         # CIC2 gain compensation
+   p[6]  = DelayFIR                          # CIC delay 
+   p[7]  = truncFIR-4                        # FIR gain compensation
+   p[8]  = nrTaps                            # Taps for FIR
+   p[9]  = single((DDSFwordTxCh1 & 0xFFFF0000)/(2^16))   # AD9910 Ch1 Tx frequency   
+   p[10] = single((DDSFwordTxCh1 & 0x0000FFFF))   
+   p[11] = 0 #rxSetchannel                      # Rx channel set                   
+   p[12] = 0 #rxSetGain                         # Rx gain set                               
+   p[13] = single((DRPFwordRx & 0xFFFF0000)/(2^16))  # FPGA Rx frequency  
+   p[14] = single((DRPFwordRx & 0x0000FFFF))   
+   p[15] = single((DDSFwordTxCh2 & 0xFFFF0000)/(2^16))   # AD9910 Ch2 Tx frequency   
+   p[16] = single((DDSFwordTxCh2 & 0x0000FFFF))                              
+   p[17] = p1Phase                           # FPGA Rx Phase
+   p[18] = nrScans                           # Number of scans (used by fast mode)
+   p[19] = scanDelay*0xC350                  # For Spinsolve lock
+   p[20] = round(pgo/0.02-18)                # PGO delay (delay between start of rf command and rf pulse)
+   p[21] = 1                                 # whether gradients are reset at beginning at end of sequence and rf pulse)
+   p[22] = 1                                 # high frequency Kea (always true for UCS)
+   p[23] = nrPntsToIgnore                    # number of points at start of acquisition to skip
+   p[24] = gData->specParameters->jitterCh1  # Anti-jitter parameter for channel 1
+   p[25] = gData->specParameters->jitterCh2  # Anti-jitter parameter for channel 2
+   p[26] = 0                                 # FPGA Firmware version (returned)
+   p[27] = (activateTrigger == "yes")        # Activate trigger flag
+
+# Next add the user defined entries in the list based on the variable name
+   c = fixedEntries
+   for(k = 0 to size(lst)-1)
+      var = lst[k]
+      if(var[0] == "f") # A transmit frequency
+         DDSFword = round((eval(var) * 2^32d )/1000d) 
+         p[c]  = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS frequency
+         p[c+1] = single(DDSFword & 0x0000FFFF) 
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 2
+      elseif(var[0] == "a") # An amplitude
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = self->convertTxGain(eval(var))
+         c = c + 1              
+      elseif(var[0] == "g") # An Rx amp gain
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         gain = self->convertRxGain(eval(var))
+         gain1 = gain[0]
+         gain2 = gain[1]
+         p[c] = eval("0x0$gain1$00")
+         p[c+1] = eval("0x0$gain2$00")
+         c = c + 2   
+       elseif(var[0] == "p") # A phase
+         try
+            p[c] = 0
+            n = eval(var[1:])-1
+            if(n < 0 | n >= size(phaseIndex))
+               message("Error","Invalid phase index '$var$'\rCheck the pulse program.","error")
+               throw("")
+            endif
+            phaseIndex[n] = c
+         catch
+            p[c] = round(eval(var)/90*16384)
+         endtry
+         c = c + 1
+      elseif(var[0] == "d") # A delay in us
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         if(eval(var) <= 0.2)
+            message("Error","Invalid short delay '$var$' (<= 0.2 us)\rCheck the pulse program.","error")
+            throw("")
+         endif
+         p[c] = round(eval(var)*50-1)
+         c = c + 1
+      elseif(var[0] == "w") # Long delay - variable resolution (wait)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         dly = eval(var)
+         if(dly <= 0.2)
+            message("Error","Invalid long delay '$var$' (<= 0.2 us)\rCheck the pulse program.","error")
+            throw("")
+         endif
+         if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+            in = trunc(dly) # number of 1us steps
+            fr = dly - in # fraction part of 1us
+            if(in > 1)
+               p[c] = trunc(dly)-1 # Number of steps
+               p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 95 # Gives 1us step
+            elseif(dly > 0.2)                          #****
+               p[c] = 0
+               p[c+1] = round(dly*100) - 20
+               p[c+2] = 0
+            endif
+         elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+            in = trunc(dly/10) # number of 10us steps
+            fr = dly - 10*in   # left over
+            if(in > 10)
+               p[c] = in-1 # Number of 10us steps
+               p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 995 # Gives 10us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*1000) - 19
+               p[c+2] = 0
+            endif
+         endif
+         c = c + 3
+      elseif(var[0] == "b") # An 8 bit TTL byte
+         p[c] = eval(var)*2^8
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "n") # An integer
+         p[c] = eval(var)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "m") # A data memory address
+         p[c] = eval(var)*2 + 0x10000
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "t") # A table
+         p[c] = tableAdrs+1
+         table = matrix(size(eval(var))+1)
+         table = insert(table,eval(var),1) # Make room for index
+         dspwrite("y",tableAdrs,table) # Table
+         tableAdrs = tableAdrs + size(eval(var)) + 1 # +1 for index
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      endif
+   next(k)
+
+# Check for unknown changeable variables
+   sz = size(wv_var)
+   for(k = 0 to sz-1)
+      if(wv_var[k] != "" & varIndex[k] == 0)
+         message("Error","Changeable variable '$wv_var[k]$' not found. Check name in sequence","error")
+         throw("")
+      endif
+   next(k)
+
+# Entry 3 in the parameter block stores
+# the number of entries in the list
+# The repetition timer flag is stored
+# 1 place beyond the end of the parameter block
+# so it won't be overwritten when parameters are
+# updated. This flag is zeroed by the DSP operating
+# system after the first scan when in DSP controlled
+# repTime mode. It is used to initialise the 
+# repetition timer.
+   p[3] = c
+   dspwrite("x",c,[1])
+
+# Make sure the ADC flag is reset if we are in fast mode
+   dspwrite("x",0x22081,[0])
+ 
+# Store some DSP data and program information globally so it
+# can be used later if programs need to be saved and restored
+
+# How many parameters in x memory
+   self->parameterSize = c
+# How many filter coefficients in y memory
+   self->filterSize = size(fc)
+# The size of the pulse program in p memory
+   self->programSize = size(pp)
+# The last table address in y memory
+   self->tableEndAdrs = tableAdrs 
+
+## Print out pp list (keep for debugging)
+#    for(k = 0 to size(p)-1)
+#      # pr "$k$ $hex(p[k],24)$\n"
+#       pr "$k$ $p[k]$\n"
+#    next(k)
+
+# Convert phase values into 16 bit FPGA units
+# 2^16 == 360 degrees
+   if(usePhaseCycle == "yes")
+      phaseList = wv_phase_list*2^16/4
+   else # Remove phase cycling 
+      phaseList = wv_phase_list[0,:]*2^16/4
+   endif
+
+# Add new parameters to guipar for use elsewhere
+   par = null
+   if(prefShimsUsed)
+      par = ["xshim           = $xshim$",
+             "yshim           = $yshim$",
+             "zshim           = $zshim$",
+             "oshim           = $oshim$"]       
+   endif
+   par = par + ["pgo             = $pgo$",
+                "rxLat           = $rxLat$",
+                "freqScaleFactor = $freqScaleFactor$",
+                "rxGain1         = \"$rxGain[0]$\"",
+                "rxGain2         = \"$rxGain[1]$\""]
+
+# If backdoor call then there are no window variables
+# then these variables then become part of guipar
+   par =  par +   ["wvAutoScale         = \"$autoScale$\"",
+                   "wvUnits             = \"$units$\"",
+                   "wvTimeMin           = $timeMin$",
+                   "wvTimeMax           = $timeMax$",
+                   "wvFreqMin           = $freqMin$",
+                   "wvFreqMax           = $freqMax$",
+                   "wvApplyPreampFactor = \"$calibrateForPreamp$\"",
+                   "wvApplyRxampFactor  = \"$calibrateForRxAmp$\"",
+                   "wvPreampGain        = $preampGain$",
+                   "wvRxAmpCor          = $rxAmpCorrection$",
+                   "wv_pp_name          = \"$wv_pp_name$\"",
+                   "wvMaxDutyCycle      = $maxDutyCycle$",
+                   "wvMaxPSDutyCycle    = $maxPSDutyCycle$",
+                   "wvRxCal             = $rxCalibration$",
+                   "wvFitCurveColor     = $fitColor$",
+                   "wvSpectrumColor     = $spectrumColor$",
+                   "wvDataSymbolColor   = $dataSymbolColor$",
+                   "wvDataSymbolShape   = \"$dataSymbolShape$\"",
+                   "wvDSPCtrlRepTime    = $wvDSPCtrlRepTime$",
+                   "wvPort              = $wvPort$",
+                   "wvSaveDataFiles     = \"$saveDataFiles$\"",
+                   "wvSavePictureFiles  = \"$savePictureFiles$\"",
+                   "wvSaveTextFiles     = \"$saveTextFiles$\"",
+                   "wvSpecName          = \"$specName$\"",
+                   "wvShowSpecName      = \"$showSpecName$\"",
+                   "wvPPMOffset1H       = $ppmOffset1H$",
+                   "wvPPMOffset2H       = $ppmOffset2H$",
+                   "wvPPMOffset3H       = $ppmOffset3H$",
+                   "wvPPMOffset7Li      = $ppmOffset7Li$",
+                   "wvPPMOffset11B      = $ppmOffset11B$",
+                   "wvPPMOffset13C      = $ppmOffset13C$",
+                   "wvPPMOffset14N      = $ppmOffset14N$",
+                   "wvPPMOffset15N      = $ppmOffset15N$",
+                   "wvPPMOffset19F      = $ppmOffset19F$",
+                   "wvPPMOffset23Na     = $ppmOffset23Na$",
+                   "wvPPMOffset27Al     = $ppmOffset27Al$",
+                   "wvPPMOffset29Si     = $ppmOffset29Si$",
+                   "wvPPMOffset31P      = $ppmOffset31P$",
+                   "wvPPMOffset33S      = $ppmOffset33S$",
+                   "wvPPMOffset119Sn    = $ppmOffset119Sn$",
+                   "wvPPMOffset129Xe    = $ppmOffset129Xe$",
+                   "wvGyro1H            = $gyro1H$",
+                   "wvGyro2H            = $gyro2H$",
+                   "wvGyro3H            = $gyro3H$",
+                   "wvGyro7Li           = $gyro7Li$",
+                   "wvGyro11B           = $gyro11B$",
+                   "wvGyro13C           = $gyro13C$",
+                   "wvGyro14N           = $gyro14N$",
+                   "wvGyro15N           = $gyro15N$",
+                   "wvGyro19F           = $gyro19F$",
+                   "wvGyro23Na          = $gyro23Na$",
+                   "wvGyro27Al          = $gyro27Al$",
+                   "wvGyro29Si          = $gyro29Si$",
+                   "wvGyro31P           = $gyro31P$",
+                   "wvGyro33S           = $gyro33S$",
+                   "wvGyro119Sn         = $gyro119Sn$",
+                   "wvGyro129Xe         = $gyro129Xe$"]
+
+# Also make a copy of some of these to the data class instance
+   if(isvar("gData"))
+      gData->ppmOffset1H       = ppmOffset1H
+      gData->ppmOffset13C      = ppmOffset13C
+      gData->ppmOffset19F      = ppmOffset19F
+      gData->ppmOffset31P      = ppmOffset31P
+      gData->gyro1H            = gyro1H
+      gData->gyro13C           = gyro13C
+      gData->gyro19F           = gyro19F
+      gData->gyro31P           = gyro31P
+   endif 
+
+   if(isvar("wvExpStatus") == 0)
+      par = par + ["wvExpStatus = \"\""]
+   endif
+   if(isvar("expNr") == 0)
+      par = par + ["expNr = \"\""]
+   else
+     # print("\nWarning! Parameter expNr found\n")
+    #  print("Sequence is $ppName$\n")
+      par = setlistvalue(par,"expNr","\"\"");
+   endif
+
+# Update guipar with extra lists. Also add a simplified version
+# of the evaluated relationships table without arrays or structures
+   wv_rel = mkparlist(getlistnames(wv_rel))
+   guipar = guipar + par  + wv_rel
+
+# Reset overflow light
+   if(isvar("rxOverflow"))
+      rxOverflow->color([255,255,255,255])
+   endif
+
+# Get full name of pulse program procedure 
+   proc = rmext(wv_pp_name) +":execpp" 
+
+# This flag is used to signal aborts
+   assignlock("wvExpStatus","running","window")
+
+# Run execPP 
+   r = proc(guipar,p,phaseList,phaseIndex,varIndex)
+
+endproc(r)
+
+####################################################
+# Convert receiver gain from dB to hex index
+# The first nibble is the gain of the input rx amp
+# the second nibble is the gain of the second rx amp
+# Gains from 40 dB have the best noise figure since
+# the first amp has maximum gain then.
+# This version works with the high frequency Kea.
+#
+# Input: rxGain .... gain in dB
+# Output: rxGain ... gain as a number suitable for
+#                    receiver amplifier gain block.
+####################################################
+
+procedure(convertRxGain, self, rxGain)
+
+   gains = [-20:3:70]
+
+  # Gain codes
+  rxTable = ["00","01","02","03","04","05",
+             "15","25","35","45","55","65",
+             "75","85","95","A5","B5","C5",
+             "D5","E5","F5","F6","F7","F8",
+             "F9","FA","FB","FC","FD","FE","FF"]
+
+  # Make sure the gain index is correct
+   idx = (rxGain+20)/3
+   if(idx != trunc(idx))
+     idx = round(idx)
+     print("rxGain index is not valid - resetting to $gains[idx]$ dB\n")
+   endif
+
+   rxGain = rxTable[idx]
+
+endproc(rxGain)
+
+###########################################################
+# Get all the parameters required by the digital receiver
+# Also update the filter parameters on the DSP 
+# From V2 still to be added
+###########################################################
+
+procedure(getRxParameters,self)
+
+# Get filter coefficients
+   fc = self->getFilterCoef(self->dwellTime,self->useFIR)
+
+# Extract filter parameters
+   dec1     =  fc[0]               
+   dec5     =  fc[1]
+   decFIR   =  fc[2]              
+   if(decFIR == 2)
+      decFIR = 1
+   else
+      decFIR = 0
+   endif
+   clk      =  fc[3]
+   truncFIR = fc[4]
+   DelayFIR =  fc[5]
+   tClk     = 1/100e6             
+   tSample  = 1/100e6             
+   nrTaps   = size(fc)-6
+   fc       = fc[6:nrTaps+5]
+
+# Try and write the filter coefficients to the Spinsolve
+   dspwrite("y",self->filterAdrs,fc,self->usbPort)
+
+# Calculate receiver gain factor due to FPGA filter settings         
+   N       = 4
+   M       = 2          
+   B_max   = N*log2(dec1*M)+16
+   fltGain = 2^(ceil(B_max)-B_max)
+   GainFIR = 1.50682 #this needs to be set in the filter settings but is not yet
+   if(decFIR == 1)
+      fltGain = GainFIR*fltGain
+   endif
+   rxCalibration = 1
+   rxCalibration = rxCalibration/fltGain
+
+# Work out the expected receiver latency                        
+   fixLat  = 9*tSample
+   rxLat   = (fixLat)*1e6
+
+# Latency depends on the filter type
+   nrPntsToIgnore = 6
+   if(self->useFIR == "yes")
+      rxLat = rxLat + (6 - nrPntsToIgnore)*self->dwellTime + 1.65
+   else
+      rxLat = rxLat + (3 - nrPntsToIgnore)*self->dwellTime + 1.65
+   endif
+   self->rxLat = rxLat
+
+# Work out some filter parameters
+   (truncDec1, Bmax1) = self->calcBmax(N,M,dec1)
+   if(self->useFIR == "false")
+      truncDec1 = truncDec1+4
+   endif
+
+endproc(dec1,decFIR,truncDec1,DelayFIR,truncFIR,nrTaps)
+
+
+###########################################################
+# Calculate some filter parameters 
+###########################################################
+
+procedure(calcBmax,self, N,M,Dec)
+
+   Bmax = ceil(N*log2(Dec*M)+16)
+   if(N == 4)
+      truncDec = Bmax - 36
+   elseif(N == 1)
+      truncDec = Bmax - 23
+   endif
+   if(truncDec < 0)
+      truncDec = 0
+   endif
+
+endproc(truncDec, Bmax)
+
+###################################################################
+#
+# Read some of the parameters from the spectrometer DSP
+#
+###################################################################
+
+procedure(getDSPParameters, self, port, guipar, seqInfo)
+
+# Check if this is a lock experiment
+   if(nrArgs == 3)
+      if(ispar(guipar,"wv_lock_exp"))
+         wv_lock_exp = getlistvalue(guipar,"wv_lock_exp")
+      endif
+   endif
+   if(nrArgs == 4)
+      if(ispar(seqInfo->rel,"isLockExpt"))
+         isLockExpt = eval(getlistvalue(seqInfo->rel,"isLockExpt"))
+      endif
+   endif
+
+# Check for a connection by reading the DSP parameters
+   try
+      par = dspread("p",0xD3FF00,138)
+   catch
+      pr "\n   Can't connect to device on port $port$\n"
+      return(null,null)
+   endtry
+
+# Process the parameters
+   for(k = 0 to size(par)-1)
+      par[k] = par[k]&0x0000FF
+   next(k)
+
+# Get the parameter version
+   parVersion = round(par[0]*100+par[1]*10+par[2])
+   if(parVersion == 200) # Spinsolve block (partial)
+      specType = 3
+      fwVersion = 0x25
+      hwVersion = 43
+      serialNr = 0
+      keaVersion = 2
+      nrChannels = 1
+      jitter1 = par[52] # Proton
+      jitter2 = par[53] # X
+
+      if(isvar("wv_lock_exp")) # Window or guipar variable
+         if(wv_lock_exp == "true")
+           jitter1 = par[51] # Lock
+           jitter2 = 0
+         endif
+      endif
+      if(isvar("isLockExpt")) # Relationships variable
+         if(isLockExpt == 1)
+           jitter1 = par[51] # Lock
+           jitter2 = 0
+         endif
+      endif
+      specName = asciitostr(par[19:34])
+      for(k = size(specName)-1 to 0 step -1)
+         if(specName[k] != " ")
+            specName = specName[0:k]
+            exitfor
+         endif
+      next(k)
+   elseif(parVersion >= 123 & parVersion <= 126)
+      message("Error","You are connected to a Kea spectrometer.\rPlease connect to a Spinsolve.","error")
+      specType = par[3]
+   else
+      message("Error","Unsupported DSP parameter version $parVersion$.","error")
+       specType = -1
+   endif
+
+# Return the parameters as a structure
+   rmvar("par")
+   par = struct("local")
+
+endproc(par)
+
+
+##############################################################
+# Determine the digital receiver filter coefficients and
+# decimation rates for each dwell time "dw". 
+# Parameter "flat" is either "yes" or "no" and specifies
+# whether a flat filter or a peaked filter is to be used.
+##############################################################
+
+procedure(getFilterCoef,self,dw,flat)
+
+   if(flat == "yes" | flat == "true")
+
+      fcList = [50*dw,1,2,1e8,6,20]
+   
+      if(dw == 0.5)
+         v = [0,0,0,0,0,0,0,0,0,0,1881,-8476,25176,-61088,131071,
+              0,0,0,0,0,0,0,0,0,0,645,-3138,8252,-13895,4065] 
+      else
+         v = [0,0,0,0,0,0,0,0,0,0,961,-5931,21199,-57572,131071,
+              0,0,0,0,0,0,0,0,0,0,352,-2221,7089,-13683,5731]  
+      endif
+
+      fcList = join(fcList,v)
+   else
+
+      fcList = [100*dw,1,1,100e6,6,1,1]
+
+   endif
+
+endproc(fcList)
+
+####################################################
+# Convert transmitter level from dB to 14 bit number
+# suitable for the AD9910 DDS
+#
+# Input: txGain ... gain in dB
+# Output txGain ... gain as 14 bit number
+####################################################
+
+procedure(convertTxGain, self, txGain)
+
+  txGain = 2^14*10^(txGain/20)-1
+  if(txGain < 0)
+     txGain = 0
+  endif
+
+  if(txGain >= 2^14)
+     txGain = 2^14-1
+  endif
+
+endproc(round(txGain))
+
+
+##############################################################
+# Pass the pp name and Rf amplitude, phase and duration
+# locations to the simulator.
+##############################################################
+
+procedure(setUpSimulator,self,rel,var,pp_list,pp_name,phase_list)
+ 
+   name = caseset(rmext(pp_name),"lower")  
+
+   newname = scanstr(name,"%1-*") # Remove nucleus suffix if present
+   if(newname != null)
+      name = newname
+   endif
+
+   if(name == "1pulse" | name == "proton")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "1pulseamplitudesweep")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "1pulsedurationsweep")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "findf0")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "t1ir" | name == "t1")
+      setupps("t1ir",[28,33,30,35,38,39,30,31])
+   elseif(name == "t1irsp")
+      setupps("t1ir",[28,33,30,35,38,39,30,31])
+   elseif(name == "monitornoise")
+      setupps("monitornoise",[0,0,0,0])
+   endif
+
+endproc()
+
+
+

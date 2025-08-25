@@ -1,0 +1,307 @@
+###################################################
+# Check a license file 'license' for Prospa
+# 
+# V2.0 C Eccles, March 2014
+#
+# History
+# 1. Removed .txt extension from license files
+# 2. Added option to save up to 5 MAC addresses
+#
+# Not for distribution outside Magritek!
+#
+# Refer to LicenseGenerator macro for license
+# format details.
+###################################################
+
+
+procedure(ReadLicenseFileV2)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   wvHeight = getwindowpar(n,"height")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Read license file V2", -1, -1, 350, 248)
+
+      # Define all controls with basic parameters
+      windowvar(wvHeight,serialNrCtrl)
+      statictext(1, 93, 34, "right", "MAC Address 1:")
+      statictext(2, 92, 143, "right", "Serial number:")
+      statictext(3, 97, 34, "left", "[xx,xx,xx,xx,xx,xx]")
+      statictext(4, 97, 143, "left", "0000000000")
+      button(5, 249, 9, 74, 37, "Select license file",
+         :selectFile();)
+      button(6, 249, 60, 74, 37, "Exit",
+         closewindow(0);)
+      groupbox(7, "Licensed items", 13, 204, 309, 25)
+      statictext(8, 92, 168, "right", "License duration:")
+      statictext(9, 97, 168, "left", "xx days")
+      statictext(10, 93, 54, "right", "MAC Address 2:")
+      statictext(11, 97, 54, "left", "[xx,xx,xx,xx,xx,xx]")
+      statictext(12, 93, 74, "right", "MAC Address 3:")
+      statictext(13, 97, 74, "left", "[xx,xx,xx,xx,xx,xx]")
+      statictext(14, 93, 94, "right", "MAC Address 4:")
+      statictext(15, 97, 94, "left", "[xx,xx,xx,xx,xx,xx]")
+      statictext(16, 93, 113, "right", "MAC Address 5:")
+      statictext(17, 97, 113, "left", "[xx,xx,xx,xx,xx,xx]")
+
+     # Set other control parameters
+      setpar(n,3,"objID","macAdrsCtrl1")
+      setpar(n,4,"objID","serialNrCtrl")
+      setpar(n,11,"objID","macAdrsCtrl2")
+      setpar(n,13,"objID","macAdrsCtrl3")
+      setpar(n,15,"objID","macAdrsCtrl4")
+      setpar(n,17,"objID","macAdrsCtrl5")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(selectFile)
+
+   fileSize = 400
+   matWidth = 20
+   matHeight = 20
+   
+   file = getfilename("load","Select license file","licence files","lic","prospaLicense.lic")
+   if(file == "cancel")
+      return
+   endif
+
+   (coder,shuffleMat) = :getMatrices()
+
+   import1dpar("ab","binary","xyrc","real","fls","byte","machine","littleend")
+   m = import1d(file)
+
+   if(size(m) != fileSize)
+      message("Alert!","License file is wrong size","error")
+      return
+   endif
+   license = reshape(m,matWidth,matHeight)
+
+   mIn = :shuffleIt(license,shuffleMat)
+
+   temp = reshape(mIn,fileSize)
+
+   hashCalc = round(single(hash(temp[0:-5])))
+   hashIn = round(temp[-4:-1]*(2^[24,16,8,0])')
+   if(hashIn != hashCalc)
+      message("Alert!","Hash values are different!","error")
+      return
+   endif
+
+   mIn = xor(mIn,coder)
+
+   tag = mIn[0,0]*256 + mIn[1,0]
+   if(tag != sum(strtoascii("Prospa License")))
+      message("Alert!","Invalid file tag!","error")
+      return
+   endif 
+
+   fileVersion = mIn[2,0]
+    if(fileVersion != 2)
+      message("Alert!","Invalid file version $fileVersion$.\rThis tool only valid for version 2.","error")
+      return
+   endif 
+
+#pr mIn
+# Number of licensed items
+   nrItems = mIn[3,0]
+# Size of each MAC address
+   szMacAdrs = mIn[4,0]
+# Number of the MAC addresses
+   nrMacAdrs = mIn[5,0]
+# Size of serial number
+   szSerial = mIn[6,0]
+# Read in the serial number
+   serialNrCtrl->text("$asciitostr(mIn[[7:szSerial+6],0])$")
+
+# Read in the MAC addresses
+   macAdrsCtrl1->text("")
+   macAdrsCtrl2->text("")
+   macAdrsCtrl3->text("")
+   macAdrsCtrl4->text("")
+   macAdrsCtrl5->text("")
+
+   for(k = 1 to nrMacAdrs)
+      if(k == 1)
+         macAdrsCtrl1->text("$mIn[[0:5],1]$")
+        pr "\n   MAC address 1 is: $mIn[[0:5],1]$ or $hex(mIn[[0:5],1])$\n"
+      endif
+      if(k == 2)
+         macAdrsCtrl2->text("$mIn[[10:15],1]$")
+        pr "\n   MAC address 2 is: $mIn[[10:15],1]$ or $hex(mIn[[10:15],1])$\n"
+      endif
+      if(k == 3)
+         macAdrsCtrl3->text("$mIn[[0:5],2]$")
+        pr "\n   MAC address 3 is: $mIn[[0:5],2]$ or $hex(mIn[[0:5],2])$\n"
+      endif
+      if(k == 4)
+         macAdrsCtrl4->text("$mIn[[10:15],2]$")
+        pr "\n   MAC address 4 is: $mIn[[10:15],2]$ or $hex(mIn[[10:15],2])$\n"
+      endif
+      if(k == 5)
+         macAdrsCtrl5->text("$mIn[[0:5],3]$")
+        pr "\n   MAC address 5 is: $mIn[[0:5],3]$ or $hex(mIn[[0:5],3])$\n"
+      endif
+   next(k)
+
+   pr "\n   Serial number = $asciitostr(mIn[[7:szSerial+6],0])$\n"
+
+   gn = guiwinnr()
+   seteditwin(gn)
+ 
+   n = 100
+   x = 160
+   y = 225
+
+   startRow = 4
+   for(k = startRow to nrItems+startRow-1)
+   
+      m = mIn[~,k]
+      m = m[1:m[0]]
+      statictext(n,x,y,"right","$asciitostr(m)$")
+      pr "\n   Have license for: $asciitostr(m)$\n"
+      y = y + 20
+      n = n + 2 
+   next(k)
+
+   expDay = mIn[0,19]
+   expMonth = mIn[1,19]
+   expYear = mIn[2,19]
+   if(expDay == 0 & expMonth == 0 & expYear == 0)
+      setpar(0,9,"text","permanent")
+   else
+      daysLeft = :findDaysLeft(expDay, expMonth, expYear+2000)
+      if(daysLeft == 1)
+         setpar(0,9,"text","$daysLeft$ day")
+      else
+         setpar(0,9,"text","$daysLeft$ days")
+      endif
+   endif
+
+   setpar(0,7,"height",30+nrItems*20)
+   setwindowpar(0,"height",wvHeight+nrItems*20+5)
+   seteditwin(-gn)
+
+# Open license file
+   exec("explorer",getcwd())
+
+endproc()
+
+############################################################
+# Add nrDays to the current date
+##############################################################
+
+procedure(findDaysLeft, expDay, expMonth, expYear)
+
+   date = getdate("dd:mm:yyyy")
+   (day,month,year) = scanstr(date,"%1:%2:%3")
+   dCur = :dateToDay(eval(day),eval(month),eval(year))
+   dExp = :dateToDay(expDay,expMonth,expYear)
+
+endproc(dExp-dCur)
+
+############################################################
+# All division is integer division, operator % is modulus. 
+# Given integer d, m, y, calculate day number.
+# From http://alcor.concordia.ca/~gpkatch/gdate-algorithm.html
+##############################################################
+
+procedure(dateToDay,d,m,y)
+
+   m = (m + 9) % 12
+   y = y - trunc(m/10)
+   day = 365*y + trunc(y/4) - trunc(y/100) + trunc(y/400) + trunc((m*306 + 5)/10) + (d - 1)
+
+endproc(day)
+
+############################################################
+# Calculate date from day number
+# All division is integer division, operator % is modulus. 
+# Given day number calculate year, month, and day.
+# From http://alcor.concordia.ca/~gpkatch/gdate-algorithm.html
+##############################################################
+
+procedure(dayToDate,day)
+
+   y = trunc((10000*day + 14780)/3652425)
+   ddd = day - (365*y + trunc(y/4) - trunc(y/100) + trunc(y/400))
+   if (ddd < 0) then
+    y = y - 1
+    ddd = day - (365*y + trunc(y/4) - trunc(y/100) + trunc(y/400))
+    endif
+   mi = trunc((100*ddd + 52)/3060)
+   mm = (mi + 2)%12 + 1
+   yy = y + trunc((mi + 2)/12)
+   dd = ddd - trunc((mi*306 + 5)/10) + 1
+
+endproc(dd,mm,yy)
+
+
+procedure(shuffleIt,mIn,sMat)
+
+   (w,h) = size(mIn)
+   mOut = matrix(w,h)
+   for(y = 0 to h-1)
+      for(x = 0 to w-1)
+        pos = sMat[x,y]
+        yn = trunc(pos/w)
+        xn = (pos - yn*w)
+        mOut[xn,yn] = mIn[x,y]
+      next(x)
+   next(y)
+ 
+
+endproc(mOut)
+
+procedure(getMatrices)
+   
+   xorMat = [90,194,60,175,57,214,47,109,204,20,130,120,15,192,58,220,36,40,199,159;
+                  94,167,176,249,59,200,183,247,32,64,146,112,17,223,188,187,56,32,96,6;
+                  124,128,239,187,240,77,95,216,110,5,168,166,13,250,119,180,220,92,176,123;
+                  137,87,183,154,78,101,18,17,239,135,113,88,0,123,140,203,80,180,1,70;
+                  174,23,157,95,223,71,42,35,0,149,61,195,41,60,25,19,143,29,37,65;
+                  238,149,3,187,142,161,201,154,153,240,107,128,24,9,225,91,90,60,255,225;
+                  17,114,160,70,224,144,25,247,183,151,130,224,177,29,226,14,198,85,189,32;
+                  32,69,19,104,67,80,84,54,237,206,85,20,226,184,198,127,118,57,64,238;
+                  21,43,94,144,152,56,0,187,175,193,41,94,33,62,149,105,48,42,129,147;
+                  236,58,178,103,174,247,65,246,155,104,62,37,93,252,152,246,239,72,120,178;
+                  184,217,116,95,192,177,182,117,74,156,153,31,151,8,197,15,25,133,79,54;
+                  231,149,236,84,172,241,180,195,231,247,140,106,183,86,173,52,8,184,97,6;
+                  96,113,117,139,18,4,100,200,45,131,209,213,218,127,74,184,136,188,224,174;
+                  154,54,166,228,236,189,139,245,239,183,172,30,172,63,151,148,110,69,142,214;
+                  93,213,84,113,220,46,129,23,221,212,243,118,11,64,90,169,254,87,112,196;
+                  80,90,212,73,207,98,41,253,158,40,107,6,133,43,12,174,61,242,226,193;
+                  0,124,104,226,35,149,98,201,252,56,97,203,239,149,60,151,211,0,252,144;
+                  130,83,71,172,231,253,211,59,53,100,229,139,175,188,103,194,180,1,160,220;
+                  93,57,15,59,121,164,113,164,39,6,137,34,224,180,154,164,47,136,45,204;
+                  229,97,42,212,15,100,188,237,122,149,32,3,1,255,209,77,129,10,41,146]
+
+   shuffleMat = [8,332,215,56,256,186,106,258,4,282,133,81,210,131,361,26,207,377,151,120;
+                  284,275,188,341,344,380,331,217,273,35,276,75,50,167,61,229,24,280,87,135;
+                  105,111,30,214,127,318,103,180,291,173,252,89,199,297,91,222,55,296,88,352;
+                  79,196,152,391,223,287,299,398,172,333,394,200,220,72,334,66,44,381,243,393;
+                  164,244,384,314,272,153,140,157,40,125,109,48,201,147,365,168,39,137,121,82;
+                  205,129,396,340,33,99,238,306,198,395,283,176,260,203,262,288,327,7,206,195;
+                  184,356,52,366,158,253,236,12,204,389,102,371,69,239,118,67,360,29,122,149;
+                  212,387,77,315,11,22,345,71,264,84,97,397,322,38,114,255,142,372,86,70;
+                  289,249,148,241,189,320,231,257,42,295,59,254,124,197,80,219,181,143,321,304;
+                  247,62,316,116,95,221,335,348,57,292,226,51,187,303,45,150,336,224,328,25;
+                  294,240,390,302,83,317,169,234,330,183,85,218,324,78,41,339,233,107,326,378;
+                  17,248,15,266,144,376,211,134,115,216,274,193,104,338,311,290,279,362,46,27;
+                  2,265,54,98,277,20,313,208,13,23,323,19,370,246,160,337,92,232,286,245;
+                  93,76,74,383,250,379,96,53,162,64,174,126,123,225,228,10,353,132,155,60;
+                  293,308,3,182,32,358,14,49,175,329,179,58,94,63,112,368,170,351,399,347;
+                  309,6,73,350,154,68,145,43,47,34,382,0,301,388,185,300,36,138,278,101;
+                  130,261,90,9,375,263,242,285,369,18,100,310,28,128,141,386,385,5,209,298;
+                  392,343,367,230,307,268,349,117,342,251,373,113,16,374,364,312,165,136,202,177;
+                  359,146,363,166,269,65,191,227,305,259,1,319,213,21,161,159,354,325,270,357;
+                  178,37,163,110,139,281,190,271,267,346,31,192,355,237,194,119,171,235,108,156]
+
+endproc(xorMat,shuffleMat)

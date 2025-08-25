@@ -1,0 +1,53 @@
+procedure(cmpstr_test1,verbose,delay)
+	# call with nothing
+	x = cmpstr() == (null,null)
+	if (1 != x)
+		return (0, "cmpstr fails with no arguments")
+	endif
+	
+	# compare single matching chars
+	if (1 != cmpstr("q","q"))
+		return (0, "single matching chars report non-matched")
+	endif
+	
+	# compare single nonmatching chars
+	if (0 != cmpstr("q","w"))
+		return (0, "single nonmatching chars report matched")
+	endif
+	
+	# compare (a,b) where a is proper prefix of b
+	if (0 != cmpstr("hell", "hello"))
+		return (0, "(a,b), a proper prefix of b, reports matched")
+	endif
+	
+	# compare (a,b) where b is proper prefix of a
+	if (0 != cmpstr("hello", "hell"))
+		return (0, "(a,b), a proper prefix of b, reports matched")
+	endif
+	
+	# compare (a,b) where a is no prefix of b
+	if (0 != cmpstr("hello", "goodbye"))
+		return (0, "(a,b) don't match but report matched")
+	endif
+	
+	# compare matching (a,b) where a == b, len (a) > 1
+	if (1 != cmpstr("hello", "hello"))
+		return (0, "(a,b) match but report unmatched")
+	endif
+	
+	# compare long strings that match
+	if (1 != cmpstr("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+		return (0, "long (a,b) match but report unmatched")
+	endif
+	
+	# compare long strings that don't match
+	if (0 != cmpstr("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"))
+		return (0, "long (a,b) don't match but report matched")
+	endif
+	
+	# compare for case insensitivity
+	if (0 != cmpstr("HELLO", "Hello"))
+		return (0, "(a,b) match, but are of different cases; they report unmatched")
+	endif
+ 
+endproc(1,"")

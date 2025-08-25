@@ -1,0 +1,276 @@
+procedure(waterFallPlot)
+
+   n = :windowdefinition()
+   sizes = [1,2,3,4,5,6,7,8,9,10]
+   setpar(n,16,"name","axes_font_size",
+                "menu",sizes)
+   setpar(n,18,"name","label_font_size",
+                "menu",sizes)
+   lst = :load_parameters()
+   setctrlvalues(0,lst) 
+   :checkFor3DPlot()
+   showwindow(n)
+
+endproc()
+
+# If there is no 3D plot then make one
+procedure(checkFor3DPlot)
+
+   pltObj = curplot("3d")
+   if(pltObj == null)
+      plot3dWin()
+   else
+      pltObj->parent->show("true")
+   endif
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Waterfall Plot", -1, -1, 448, 170)
+
+      # Define all controls with basic parameters
+      textmenu(3, 130, 30, 51, 200)
+      statictext(4, 119, 33, "right", "x-axis decimation")
+      statictext(5, 120, 63, "right", "y-axis decimation")
+      textmenu(6, 130, 60, 51, 200)
+      button(10, 369, 17, 52, 30, "Plot",
+         :apply();
+         closewindow(0);)
+      button(11, 369, 111, 52, 30, "Exit",
+         closewindow(0);)
+      button(12, 369, 64, 52, 30, "Help",
+         help("Macros\core","displaySurface.htm");)
+      groupbox(13, "Mapping", 10, 4, 191, 147)
+      colorbox(15, 297, 29, 20, 20, [0,255,0],
+         :axes_color();)
+      textmenu(16, 293, 87, 40, 200)
+      statictext(17, 287, 89, "right", "Axes font size")
+      textmenu(18, 293, 114, 40, 200)
+      statictext(19, 286, 116, "right", "Label font size")
+      groupbox(23, "Axes properties", 210, 4, 150, 147)
+      statictext(27, 287, 33, "right", "Axes colour")
+      statictext(29, 292, 62, "right", "Make square")
+      checkbox(30, 300, 63, "no,yes", "no")
+      colorbox(31, 110, 112, 20, 20, [255,0,0],
+         :plot_color();)
+      statictext(32, 142, 93, "right", "Plot color")
+
+     # Set other control parameters
+      setpar(n,3,"objID","xDecCtrl",
+                  "valueID","xDec",
+                  "menu",[1,2,4,8,16])
+      setpar(n,6,"objID","yDecCtrl",
+                  "valueID","yDec",
+                  "menu",[1,2,4,8,16])
+      setpar(n,10,"mode","default")
+      setpar(n,15,"valueID","axes_color")
+      setpar(n,16,"valueID","axes_font_size",
+                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+      setpar(n,18,"valueID","label_font_size",
+                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+      setpar(n,30,"valueID","make_square")
+      setpar(n,31,"valueID","plotColor")
+
+     # Set other window parameters
+endproc(n)
+
+
+procedure(apply)
+
+  :save_parameters()
+  :plot_data()
+
+endproc()
+
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   save("waterfall.par",lst)
+   cd(dir)
+
+endproc()
+
+procedure(load_parameters)
+
+   scale_mode = "twod"
+   plotColor = [255,128,0]
+   axes_color = [0,255,0]
+   axes_font_size = 3
+   label_font_size = 4
+   make_square = "yes"
+   xDec = 1
+   yDec = 1
+   lst = mkparlist()
+   lst = rmfromlist(lst,"nrArgs")
+   dir = getcwd()
+   cd(prefdir)
+   cd("Core Macros")
+   if(isfile("waterfall.par"))
+      lst = load("waterfall.par")
+   endif
+   cd(dir)
+
+endproc(lst)
+
+procedure(axes_color)
+
+  col = getcolor(getpar(0,15,"color"))
+  if(col[0] != -1)
+     axes_color = col
+     setpar(0,15,"color",col)
+   endif
+
+endproc()
+
+procedure(plot_color)
+
+  col = getcolor(getpar(0,31,"color"))
+  if(col[0] != -1)
+     plotColor = col
+     setpar(0,31,"color",col)
+  endif
+
+endproc()
+
+procedure(plot_data, off, scl, rot, distance)
+
+# Load parameters from file
+   lst = :load_parameters()
+   assignlist(lst)
+
+# Override scale mode since data may not
+# be display in 2D plot
+   scale_mode = "full"
+
+# Get data and data parameters
+   try
+      (matIn,x,y) = getplotdata("2d","current")
+      matIn = real(matIn)
+      (w,h) = size(matIn)
+      w = trunc((w-1)/xDec)+1
+      h = trunc((h-1)/yDec)+1
+      mats = matrix(w,h)
+      for(k = 0 to h-1)
+         mats[~,k] = decimate(matIn[~,k*yDec],0,xDec)
+      next(k)
+      x1 = x[0]; x2 = x[1]
+      y1 = y[0]; y2 = y[1]
+   catch
+      pr lasterror()
+      message("Error","No 2D data","error")
+      return
+   endtry
+
+   xdir = curplot("2d")->axes->xdirection()
+   ydir = curplot("2d")->axes->ydirection()
+
+   if(vartype(mats) == "cmatrix2d")
+      mats = real(mats)
+   endif
+
+   maxv = max(mats)
+   minv = min(mats)
+   maxd = sqrt(w^2+h^2)
+
+# Get colormap for current data set
+   scale = getcolormap()
+   (ws,hs) = size(scale)
+# cmaptype = 1 means +/- map, 0 means normal
+   cmaptype = scale[0,hs-1]
+
+# Get labels from 2D plot
+   label_x = xlabel("getargs")
+   label_y = ylabel("getargs")
+
+   if(label_x == "")
+      label_x = "x"
+   endif
+
+  if(label_y == "")
+      label_y = "y"
+   endif
+
+# Set up the colormaping range
+   if(scale_mode == "full")
+      cs_max = maxv
+      if(cmaptype == 1)
+        cs_min = 0
+      else
+        cs_min = minv
+      endif
+   elseif(scale_mode == "twod")
+      (cs_min,cs_max) = imagerange("getargs")
+   endif
+
+   if(make_square == "yes")
+      if(w < h)
+         w1 = h
+         h1 = h
+      else
+         w1 = w
+         h1 = w     
+      endif
+   else
+      w1 = w
+      h1 = h    
+   endif     
+
+   if(cs_min >= cs_max)
+      message("Error","Invalid display range")
+      return
+    endif 
+
+   axispar3d(maxd/50,maxd/30,
+             axes_font_size*maxd/100,
+             label_font_size*maxd/80)
+
+   if(nrArgs == 0)
+      fac = 2500/maxd # Prevents clipping
+      x_angle = 44
+      y_angle = 0
+      z_angle = 23
+      x_offset = -w1/2*fac/2.5
+      y_offset = -h1/2*fac/2.5
+      z_offset = 0
+      distance = fac*maxd
+      x_scale = fac/2.5
+      y_scale = fac/2.5
+      z_scale = 300
+   else
+      x_angle = rot[0]
+      y_angle = rot[1]
+      z_angle = rot[2]
+      x_offset = off[0]
+      y_offset = off[1]
+      z_offset = off[2]
+      x_scale = scl[0]
+      y_scale = scl[1]
+      z_scale = scl[2]
+   endif
+  draw3d("false")
+      clear3d()
+      showcmap3d("no")
+      clip3dstatus("on")
+      scale3d(x_scale,y_scale,z_scale)
+      waterfall(mats,plotColor/255,[minv,maxv],xdir,ydir,make_square,1.5)
+      clip3dstatus("off")
+      viewdistance(distance)
+      shift3d(x_offset,y_offset,z_offset)
+      rotate3d(x_angle,y_angle,z_angle)
+      depthcuerange(0,maxd)
+      color3d(axes_color/255)
+      axis3d("x",[0,w1],0,0,[x1,x2],label_x,"centre",xdir)
+      axis3d("y",[0,h1],0,0,[y1,y2],label_y,"centre",ydir)
+      datarange3d(0,w,0,h,0,1)
+   draw3d("true")
+
+endproc()
+

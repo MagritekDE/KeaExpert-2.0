@@ -1,0 +1,111 @@
+######################################################
+# Dialog to display 1 or 2 vectors in the 1D plot
+######################################################
+
+procedure(displayVectors)
+
+   n = :windowdefinition()
+    setwindowpar(n,"type","dialog")
+    setwindowpar(n,"show_menu","false")
+    setwindowpar(n,"focus",2)
+   :update_menu()
+   showdialog(n)
+
+endproc()
+
+##########################################################
+# Define the dialog
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Display 1D vectors", -1, -1, 282, 130)
+
+      # Define all controls with basic parameters
+       statictext(1, 182, 12, "right", "Variable Name")
+       textmenu(2, 115, 28, 71, 200)
+       button(3, 20, 95, 54, 28, "Display",
+          :display();)
+       button(4, 210, 95, 54, 28, "Exit",
+          closedialog();)
+       textmenu(5, 115, 54, 71, 200)
+       checkbox(6, 73, 32, "no,yes", "yes",:toggle_x();)
+       button(7, 90, 95, 100, 28, "Display and Exit",
+          :display();
+          closedialog();)
+       statictext(8, 65, 31, "right", "Use x axis")
+       statictext(9, 106, 32, "right", "x")
+       statictext(10, 106, 58, "right", "y")
+       groupbox(11,"",5,2,250,85)
+
+     # Set other control parameters
+       setpar(n,3,"mode","default")
+       setpar(n,4,"mode","cancel")
+
+endproc(n)
+
+##########################################################
+# Populate menu with names of all current 1D matrices
+##########################################################
+
+procedure(update_menu)
+
+   matMenu = matrixlist(1)
+   sz = size(matMenu) 
+   if(sz > 0)
+      matMenu = sortlist(matMenu)
+      setpar(0,2,"menu",matMenu)
+      setpar(0,5,"menu",matMenu)
+   endif
+
+   if(sz == 1)
+      setpar(0,5,"text",matMenu[0])
+      setpar(0,2,"enable","false")
+      setpar(0,6,"text","no")
+   elseif(sz > 1)
+      setpar(0,2,"text",matMenu[0])
+      setpar(0,5,"text",matMenu[1])
+   endif
+
+endproc()
+
+##########################################################
+# Copy the 1D data set to the named matrix or matrices
+##########################################################
+
+procedure(display)
+
+   nameX = getpar(0,2,"text")
+   nameY = getpar(0,5,"text")
+   useX = getpar(0,6,"text")
+   draw1d("false")
+
+   if(useX == "yes" & nameX != "" & nameY != "")
+      plot(eval(nameX),eval(nameY))
+      title("$nameY$ vs. $nameX$")
+      xlabel("$nameX$")
+      ylabel("$nameY$")
+   elseif (useX == "no" & nameY != "")
+      plot(eval(nameY))
+      title("$nameY$")
+      xlabel("Index")
+      ylabel("$nameY$")
+   endif
+
+   draw1d("true")
+
+endproc()
+
+procedure(toggle_x)
+
+   useX = getpar(0,6,"text")
+
+   if(useX == "yes")
+      setpar(0,2,"enable","true")
+   else
+      setpar(0,2,"enable","false")
+   endif
+
+endproc()

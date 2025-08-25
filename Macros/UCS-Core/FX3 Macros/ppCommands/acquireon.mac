@@ -1,0 +1,141 @@
+###################################################################################
+# Start acquisition of data into the TRex SRAM memory. 
+#
+#    acquireon(mode, nrPnts, [duration])
+#
+#    mode     : Overwrite (or start)/append
+#    nrPnts   : Number of complex points to collect (1 ... 128k)
+#    duration : Optional duration in us when using append mode.  
+#               Must be longer than the acquisition time.
+#
+#    Use subprocedure getAcqTime to return estimate of acquisition time
+#
+#    Duration = 2 us or duration whichever is larger
+#
+###################################################################################
+
+procedure(acquireon, mode, nrPnts=128, duration=0)
+
+   if(vartype(mode) == "float" & nrArgs == 1) # Support DSP syntax
+      nrPnts = mode
+      mode = "overwrite"   
+   endif
+
+   if(wvFX3Info->mode == "run")
+
+      dwellTime = wvFX3Info->dwellTime
+      lineCnt = wvFX3Info->lineCnt
+      adrs = 0
+      trueAcqTime = round(100.0/100.0*:getAcqTime(dwellTime, nrPnts, (wvFX3Info->flatFilter=="yes"))*100.0)
+
+      if(wvFX3Info->board == "TRex") # TRex board
+   
+         if(mode == "start" | mode == "overwrite")
+            ps = [20d,             0x041A3, nrPnts, # Number of points to collect
+                  20d,             0x04081, 0x3,    # DDC and output enable
+                  20d,             0x06081, 0x1,    # Reset FIFO
+                  20d,             0x06081, 0x6,    # FIFO select FIR/CIC as input
+                  20d,             0x041A3, nrPnts, # Number of points to collect
+                  20d,             0x00000, wvFX3Info->currentTTL | 0x10,  # Reset CIC
+                  80d,             0x00000, wvFX3Info->currentTTL | 0x01]  # ADC start
+
+            wvFX3Info->currentTTL = 0x01
+
+         elseif(mode == "append") # No fifo reset and a duration
+            duration = round(duration*100)
+            ps = [20d,             0x041A3, nrPnts,  # Number of points to collect
+                  20d,             0x04081, 0x3,     # DDC and output enable
+                  20d,             0x06081, 0x6,     # FIFO select FIR/CIC as input
+                  20d,             0x041A3, nrPnts,
+                  20d,             0x00000, wvFX3Info->currentTTL | 0x10, # Reset CIC
+                  100d,            0x00000, wvFX3Info->currentTTL | 0x01] # ADC start
+
+            if(duration > 200)
+               ps = join(ps,[double(duration), 0, wvFX3Info->currentTTL]) # ADC stop
+            else
+            #   ps = join(ps,[80d, 0, wvFX3Info->currentTTL]) # ADC stop
+            endif
+
+         else
+            print("Error in acquire\n")
+         endif
+
+      endif
+   
+      wvFX3Info->nrPnts = nrPnts
+
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 2)
+         dwellTime = gSeq->psInfo->guipar->dwellTime
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 2
+     #    gSeq->psInfo->command = gSeq->psInfo->command + ["acquireon,$mode$,$nrPnts$,$dwellTime$,$args[0]$"]
+      else
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+      #   gSeq->psInfo->command = gSeq->psInfo->command + ["acquireon,$mode$,$nrPnts$,$duration$,$args[0]$,$args[1]$"]
+      endif
+
+   elseif(wvFX3Info->mode == "compile")
+
+      if(duration == 0)
+         addPSParameters(nrPnts)
+      else
+         addPSParameters(nrPnts, duration)
+      endif
+
+   endif
+
+endproc()
+
+
+####################################################
+# Return the approximate acquisition time in us
+#
+#    getAcqTime(dwellTIme, nrPnts, useFIRFilter)
+#
+#    dwellTime : sampling interval in us
+#    nrPnts : number of points to collect.
+#    useFIRFilter : 1/0 (flat filter)
+#
+####################################################
+
+procedure(getAcqTime, dwellTime, nrPnts, useFIRFilter)
+
+   ignorePnts = 6
+   
+   MaxSpeed = 65
+   nrTaps = 20
+   if(useFIRFilter)
+      CIC_Scale = 3
+   else
+      CIC_Scale = 11
+   endif
+   
+   FIRScale = 2
+   
+   if(2 * nrPnts > nrTaps + 1)
+      FIRStartDelay = 21 * MaxSpeed
+   else
+      FIRStartDelay = 2 * nrPnts * MaxSpeed
+   endif
+   
+   CICDelay = 10 * (CIC_Scale + 71 + (3 * MaxSpeed)) / 1000
+   FIRDelay = 10 * (50 + FIRScale + FIRStartDelay) / 1000
+   
+   if(useFIRFilter)
+      acqTm = (nrPnts + ignorePnts) * dwellTime + CICDelay + FIRDelay
+   else
+      # Make allowances for CIC shift register delays - how to calculate these values?
+      scaleDwellTime = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+      scaleDelay = [0.11, 0.15, 0.19, 0.27, 0.31, 0.35, 0.39, 0.43, 0.47, 0.51, 0.55, 0.59] + 0.32
+      indx = findindex(scaleDwellTime,dwellTime)
+      CICScaleDelay = scaleDelay[indx]
+      CICScaleDelay = 1 #scaleDelay[indx]
+      acqTm = (nrPnts + ignorePnts) * dwellTime + CICDelay + CICScaleDelay
+   endif
+
+endproc(acqTm+1)

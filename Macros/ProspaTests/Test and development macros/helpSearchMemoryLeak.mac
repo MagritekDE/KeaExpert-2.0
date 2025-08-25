@@ -1,0 +1,21 @@
+   dir = "$appdir$\\Documentation\\Commands"
+   cd(dir)
+   cmdLst = ls("*.htm")
+   lst = list(0)
+   totMatches = 0
+   cnt = 1
+   searchStr = "setpar"
+
+    for(k = 0 to size(cmdLst)-1)
+
+        file = cmdLst[k]
+        txt = load(file,"text")
+        cnt = htmlcountsubstr(txt,"setpar")
+        if(cnt > 0)
+           lst = lst + "$cnt$ Commands\\$rmext(file)$"
+           totMatches = totMatches + cnt
+        endif
+
+    next(k)
+pr totMatches
+pr lst

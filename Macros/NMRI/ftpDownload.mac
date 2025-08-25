@@ -1,0 +1,604 @@
+###################################################
+# Download files from a spectrometer using FTP
+#
+# NOTE: this is set up to work with Bruker AMX/Avance
+# spectrometers. It is assumed that the data is stored
+# in a directory structure of the form:
+#
+# "$datadir$/$username$/nmr/$experiment$/$number$"
+#
+# All files in this directory will be transfered 
+# in binary mode to a local directory of your choice.
+#
+# You may need to modify the datadir variable
+# which defaults to /u/data - see below
+#
+###################################################
+
+procedure(ftpdownload)
+
+   n = :windowdefinition()
+   winnr = n
+   setpar(n,8,"enable","false")
+   setwindowpar(n,"exit_procedure",":exit_procedure()")
+   :load_parameters()
+   showwindow(n)
+   :close_ftp()
+
+# Set remote data directory
+   datadir = "/u/data"
+
+endproc()
+
+###################################################
+# Window definition procedure
+###################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Bruker FTP Download", -1, -1, 400, 243)
+
+      # Define all controls with basic parameters
+       windowvar(winnr,username,datadir)
+       groupbox(1, "Remote  Server", 3, 1, 290, 103)
+       statictext(2, 34, 19, "left", "User")
+       textmenu(3, 10, 36, 70, 200,
+          :update_dataset_menu();)
+       statictext(4, 136, 20, "left", "Dataset")
+       textmenu(5, 83, 36, 142, 200,
+          :update_num_menu();)
+       statictext(6, 246, 20, "left", "Num")
+       textmenu(7, 229, 36, 57, 200,
+          :update_title();)
+       textbox(8, 33, 71, 252)
+       groupbox(9, "Local directory", 3, 111, 290, 53)
+       button(10, 19, 182, 67, 24, "Server Info",
+          :ftp_pref_dialog();)
+       textbox(11, 10, 132, 246)
+       button(12, 261, 133, 23, 21, "...",
+          :get_local_directory();)
+       groupbox(13, "", 302, 1, 86, 217)
+       button(14, 311, 15, 67, 24, "Connect",
+          :open_ftp();)
+       button(15, 311, 47, 67, 24, "Disconnect",
+          :close_ftp();)
+       groupbox(16, "", 3, 165, 290, 53)
+       button(17, 311, 150, 67, 24, "Down-load",
+          :loadfiles();)
+       button(18, 311, 183, 67, 24, "Import",
+          :load_and_import();)
+       button(19, 114, 182, 67, 24, "Help",
+          :show_help();)
+       statusbox(20)
+       statictext(21, 28, 75, "right", "Title")
+       button(22, 209, 182, 67, 24, "Exit",
+          :exit_procedure();
+          closewindow(0);)
+
+     # Set other control parameters
+       setpar(n,3,"menu",[""])
+       setpar(n,5,"menu",[""])
+       setpar(n,7,"menu",[""])
+       setpar(n,11,"name","localdir")
+       setpar(n,14,"mode","default")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\NMRI","ftpdownload.htm")
+endproc()
+
+###################################################
+# The ftp dialog has been closed
+###################################################
+
+procedure(exit_procedure)
+   if(:is_server_list() != 0)
+      :save_parameters(); 
+      rclose();
+   endif
+endproc()
+
+
+###################################################
+# Open ftp connection dialog
+###################################################
+
+procedure(open_ftp)
+
+   if(:is_server_list() == 0)
+      message("Error","Set up server info first")
+      return()
+   endif
+
+   if(risopen() == 1)
+      message("Error","Connection has already opened!")
+   else
+      :ftpconnect_dialog()
+   endif
+
+endproc()
+
+###################################################
+# Get local directory 
+###################################################
+
+procedure(get_local_directory)
+
+   setcwd(getpar(0,11,"text"))
+   folder = setfolder()
+   if(folder != "cancel")
+      setpar(0,11,"text",getcwd())
+   endif
+
+endproc()
+
+
+###################################################
+# Close ftp connection
+###################################################
+
+procedure(close_ftp)
+
+   rclose()
+   :disable_ftp_connect()
+   setpar(winnr,14,"enable","true")
+   setpar(winnr,20,"text","disconnected")
+
+endproc()
+
+###################################################
+# Disable all window controls
+###################################################
+
+procedure(disable_ftp_connect)
+   setpar(winnr,3,"enable","false")
+   setpar(winnr,5,"enable","false")
+   setpar(winnr,7,"enable","false")
+ #  setpar(winnr,8,"enable","false")
+   setpar(winnr,11,"enable","false")
+   setpar(winnr,12,"enable","false")
+   setpar(winnr,14,"enable","false")
+   setpar(winnr,15,"enable","false")
+   setpar(winnr,17,"enable","false")
+   setpar(winnr,18,"enable","false")
+endproc()
+
+###################################################
+# Enable all window controls
+###################################################
+
+procedure(enable_ftp_connect)
+   setpar(winnr,3,"enable","true")
+   setpar(winnr,5,"enable","true")
+   setpar(winnr,7,"enable","true")
+   setpar(winnr,11,"enable","true")
+   setpar(winnr,12,"enable","true")
+   setpar(winnr,14,"enable","false")
+   setpar(winnr,15,"enable","true")
+   setpar(winnr,17,"enable","true")
+   setpar(winnr,18,"enable","true")
+endproc()
+
+###################################################
+# call loadfile, close window and run importData macro
+###################################################
+
+procedure(load_and_import)
+
+   if(:loadfiles())
+      rclose()
+      dir = getpar(winnr,11,"text")
+      closewindow(0)
+      importData(dir)
+   endif
+
+endproc()
+
+
+###################################################
+# Update dataset menu
+###################################################
+
+procedure(update_dataset_menu, username)
+
+# Check for ftp connection
+   if(risopen() == 0)
+      message("Error","No FTP connection at present")
+      return
+   endif
+
+# If a name is supplied
+   if(nrArgs == 1)
+      rcd(datadir)
+      userdirs = sortlist(rdirlist(""))
+      setpar(winnr,3,"menu",userdirs)
+      setpar(winnr,3,"text",username)   
+   else
+      username = getpar(winnr,3,"text")
+   endif
+
+# Get the list of data set names for this username
+   setpar(winnr,20,"text","updating ...")
+   rcd("$datadir$/$username$/nmr")
+   datasetdirs = rdirlist("")
+
+# Update the Dataset menu with this name
+   setpar(winnr,5,"menu",datasetdirs)
+   setpar(winnr,5,"index",1)   
+
+# Update number menu
+   :update_num_menu(datasetdirs[0])
+
+endproc()
+
+
+###################################################
+# Update experimental number menu
+###################################################
+
+procedure(update_num_menu,dataset)
+
+# Check for ftp connection
+   if(risopen() == 0)
+      message("Error","No FTP connection at present")
+      return
+   endif
+
+   setpar(winnr,20,"text","updating ...")
+   username = getpar(winnr,3,"text")
+
+# If a dataset name is not supplied get it
+   if(nrArgs == 0)
+      dataset = getpar(winnr,5,"text")
+   endif
+
+# Read all the directories under the dataset name
+   rcd("$datadir$/$username$/nmr/$dataset$")
+   numdirs = sortlist(rdirlist(""))
+   num = numdirs[0]
+   setpar(winnr,7,"menu",numdirs)
+   setpar(winnr,7,"text",num)   
+
+# Get the data set title file
+   :update_title()
+
+endproc()
+
+######################################################
+# Update the title textbox from the specified folder
+######################################################
+
+procedure(update_title)
+
+   if(risopen() == 0)
+      message("Error","No FTP connection at present")
+      return
+   endif
+
+   setpar(winnr,20,"text","updating ...")
+   username = getpar(winnr,3,"text")
+   dataset = getpar(winnr,5,"text")
+   num = getpar(winnr,7,"text")
+
+   rcd("$datadir$/$username$/nmr/$dataset$/$num$")
+   :gettitle()
+
+   setpar(winnr,20,"text","done!")
+
+endproc()
+
+###################################################
+# Get title if exists
+###################################################
+
+procedure(gettitle)
+
+   if(risfile("pdata/1/title"))
+      titleText = rload("pdata/1/title")
+      setpar(winnr,8,"text",titleText)
+   else
+      setpar(winnr,8,"text","")
+   endif
+
+endproc()
+
+###################################################
+# Copy files from spectrometer to local machine
+###################################################
+
+procedure(loadfiles)
+
+# See if an ftp connection is available
+   if(risopen() == 0)
+      message("Error","No FTP connection at present")
+      return(0)
+   endif
+
+# See if a local directory has been entered
+   dir = getpar(winnr,11,"text")
+   if(isdir(dir) == 0)
+      message("Error","Choose a valid local directory")
+      return(0)
+   endif
+
+   setpar(winnr,20,"text","connecting ...")
+
+# Get username, data name and number
+   username = getpar(winnr,3,"text")
+   dataset = getpar(winnr,5,"text")
+   num = getpar(winnr,7,"text")
+
+# Use this to create a remote filename
+   dirremote = "$datadir$/$username$/nmr/$dataset$/$num$"
+
+# Got to this folder and get the file list
+   rcd(dirremote)
+
+   remoteFiles = rfilelist(".")
+   numoffiles = size(remoteFiles)
+
+# Set the local directory
+   dirlocal = getpar(winnr,11,"text")
+   cd(dirlocal)
+
+# Copy remote files to the local directory
+   for(n = 0 to numoffiles-1)
+      filename = remoteFiles[n]
+      setpar(winnr,20,"text","downloading $filename$ ...")
+      rgetfile("b",filename,filename)
+   next
+
+# Copy title file from pdata
+   if(risfile("pdata/1/title"))
+      rgetfile("b","pdata/1/title","title")
+   endif
+
+   setpar(winnr,20,"text","done!")
+
+endproc(1)
+
+
+###################################################
+# Display an ftp connection dialog
+###################################################
+
+procedure(ftpconnect_dialog)
+
+# Note the parent's window number
+   parent = guiwinnr("getargs")
+
+   :disable_ftp_connect()
+
+   n = window("FTP connection", -1, -1, 304, 138)
+
+       statictext(1, 20, 12, "left", "Server")
+       textmenu(2, 17, 28, 179, 200,
+          :update_dialog_info();)
+       statictext(3, 20, 55, "left", "User")
+       textbox(4, 17, 70, 77)
+       statictext(5, 117, 54, "left", "Password")
+       textbox(6, 115, 70, 81,
+         :open_connection();)
+       button(7, 229, 20, 54, 27, "Connect",
+          :open_connection();)
+       groupbox(8, "", 4, 1, 208, 106)
+       button(9, 229, 64, 54, 27, "Close",
+          closedialog("cancelled");)
+       groupbox(10, "", 219, 1, 72, 106)
+       (servers,users,passwds) = :load_server_preferences()
+
+   # Set default username and password
+       setpar(n,4,"text",users[0])
+       setpar(n,6,"text",passwds[0])
+       setpar(n,6,"password","on")
+       setpar(n,2,"menu",servers)
+       setpar(n,2,"index",1)
+       setpar(n,7,"mode","default")
+       setwindowpar(n,"type","dialog")
+       setwindowpar(n,"focus",7)
+
+    username = showdialog(n)
+
+    guiwinnr(parent) # Make sure parent is current window
+    if(username != "cancelled")
+      :update_dataset_menu(username)
+      :enable_ftp_connect()
+   else
+      :disable_ftp_connect()
+      setpar(winnr,14,"enable","true")
+      setpar(winnr,20,"text","disconnected")
+   endif
+
+endproc()
+
+procedure(update_dialog_info)
+
+   (servers,users,passwds) = :load_server_preferences()
+    indx = getpar(0,2,"index")
+    setpar(0,4,"text",users[indx])
+    setpar(0,6,"text",passwds[indx])
+
+endproc()
+
+
+
+###################################################
+# Open FTP connection and return username
+###################################################
+
+procedure(open_connection)
+
+   server = getpar(0,2,"text")
+   username = getpar(0,4,"text")
+   password = getpar(0,6,"text")
+
+   if(risopen() == 1)
+      message("Error","Connection is already opened!")
+      return("error")
+   else
+      if(ropen(server,username,password) == 0)
+         message("Error","Connection cannot be opened!")
+         return("cancelled")
+      endif
+   endif
+
+   closedialog(username)
+   
+endproc()
+
+
+######################################################
+# Display preferences dialog window
+######################################################
+
+procedure(ftp_pref_dialog)
+
+   parent = guiwinnr("getargs")
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Server connection details", -1, -1, 368, 160)
+
+      # Define all controls with basic parameters
+       statictext(1, 110, 23, "right", "Server address")
+       statictext(2, 191, 23, "right", "Login Name")
+       statictext(3, 269, 23, "right", "Password")
+       textbox(4, 29, 41, 89)
+       textbox(5, 29, 67, 89)
+       textbox(6, 29, 94, 89)
+       textbox(7, 132, 41, 64)
+       textbox(8, 132, 94, 64)
+       textbox(9, 132, 67, 64)
+       textbox(10, 208, 67, 74)
+       textbox(11, 208, 94, 74)
+       textbox(12, 208, 41, 74)
+       button(13, 308, 31, 45, 29, "OK",:save_preferences();closedialog();)
+       button(14, 308, 73, 45, 29, "Cancel",closedialog();)
+       groupbox(15, "", 6, 5, 292, 123)
+       statictext(16, 21, 46, "right", "1")
+       statictext(17, 21, 71, "right", "2")
+       statictext(18, 21, 98, "right", "3")
+
+       setpar(n,10,"password","on")
+       setpar(n,11,"password","on")
+       setpar(n,12,"password","on")
+       setwindowpar(n,"type","dialog")
+       setwindowpar(n,"focus",4)
+
+       setpar(n,4,"name","address1","tab_number",1)
+       setpar(n,5,"name","address2","tab_number",4)
+       setpar(n,6,"name","address3","tab_number",7)
+       setpar(n,7,"name","login1","tab_number",2)
+       setpar(n,8,"name","login3","tab_number",8)
+       setpar(n,9,"name","login2","tab_number",5)
+       setpar(n,10,"name","passwd2","tab_number",6)
+       setpar(n,11,"name","passwd3","tab_number",9)
+       setpar(n,12,"name","passwd1","tab_number",3)
+       setpar(n,13,"tab_number",10,"mode","default")
+       setpar(n,14,"tab_number",11)
+
+    
+
+       :load_server_preferences();
+
+       showdialog(n)
+
+       guiwinnr(parent) # Make sure parent is current window
+
+endproc(n)
+
+procedure(is_server_list)
+
+   dir = getcwd()
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("ftp.par"))
+     cd(dir)
+     return(1)
+   endif
+   
+endproc(0)
+
+procedure(load_server_preferences)
+
+   address1 = "server 1"
+   address2 = "server 2"
+   address3 = "server 3"
+
+   login1 = "login 1"
+   login2 = "login 2"
+   login3 = "login 3"
+
+   passwd1 = "password 1"
+   passwd2 = "password 2"
+   passwd3 = "password 3"
+
+   lst = mkparlist()
+
+   dir = getcwd()
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("ftp.par"))
+     lst = load("ftp.par")
+   endif
+   setctrlvalues(0,lst)
+   cd(dir)
+
+   servers = [getlistvalue(lst,"address1"),getlistvalue(lst,"address2"),getlistvalue(lst,"address3")]
+   logins  = [getlistvalue(lst,"login1"),getlistvalue(lst,"login2"),getlistvalue(lst,"login3")]
+   passwds = [getlistvalue(lst,"passwd1"),getlistvalue(lst,"passwd2"),getlistvalue(lst,"passwd3")]
+
+endproc(servers,logins,passwds)
+
+
+procedure(save_preferences)
+
+   lst = sortlist(getctrlvalues(0))
+   
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   save("ftp.par",lst)
+   cd(dir)
+
+endproc()
+
+procedure(save_parameters)
+
+   lst = [""]
+   dir = getcwd()
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("ftp.par"))
+     lst = load("ftp.par")
+   endif
+   
+   lst = rmfromlist(lst,"localdir")
+   locdir = getpar(0,11,"text")
+   lst = lst + "localdir = \"$locdir$\""
+
+   save("ftp.par",lst)
+   cd(dir)
+
+endproc()
+
+procedure(load_parameters)
+
+   dir = getcwd()
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("ftp.par"))
+     lst = load("ftp.par")
+     setctrlvalues(0,lst)
+   endif
+   cd(dir)
+
+endproc()

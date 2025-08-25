@@ -1,0 +1,280 @@
+####################################################
+#                selectclipplane3d.mac
+#
+# Select the plane in a 3D data set to clip i.e.
+# all values beyond this plane will be invisible
+# This allows hidden surfaces to be viewed
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+####################################################
+
+
+procedure(selectClipPlane3d)
+
+   n = :windowdefinition()
+   :update_window(n)
+   showwindow(n)
+
+   setwindowpar(n,"exit_procedure",":exit_procedure()")
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("3D Clipping Planes", -1, -1, 246, 293)
+
+      # Define all controls with basic parameters
+       windowvar(name)
+       slider(1, 52, 127, 115, 20, "horizontal",
+            :move_plane1();)
+       groupbox(2, "Plane 1", 5, 68, 230, 90)
+       statictext(3, 45, 121, "right", "Plane")
+       statictext(4, 51, 137, "right", "position")
+       groupbox(5, "Plane 2", 4, 163, 230, 90)
+       radiobuttons(6, 42, 93, 40, "horizontal", "off,xy,xz,yz", "off",
+            :init_parameters1();)
+       statictext(7, 157, 92, "right", "YZ")
+       statictext(8, 117, 92, "right", "XZ")
+       statictext(9, 77, 92, "right", "XY")
+       statictext(10, 157, 188, "right", "YZ")
+       statictext(11, 117, 188, "right", "XZ")
+       statictext(12, 77, 188, "right", "XY")
+       radiobuttons(13, 42, 189, 40, "horizontal", "off,xy,xz,yz", "off",
+            :init_parameters2();)
+       statictext(14, 51, 231, "right", "position")
+       statictext(15, 45, 215, "right", "Plane")
+       slider(16, 52, 221, 115, 20, "horizontal",
+            :move_plane2();)
+       statictext(17, 44, 30, "right", "Name")
+       textmenu(18, 53, 27, 147, 200,
+          name = getpar(0,18,"text");
+          :init_parameters1();
+          :init_parameters2();)
+       groupbox(19, "3D Matrix", 5, 1, 230, 61)
+       statictext(20, 37, 92, "right", "OFF")
+       statictext(21, 37, 188, "right", "OFF")
+       statictext(22, 170, 129, "left", "")
+       statictext(23, 170, 223, "left", "")
+       radiobuttons(24, 198, 110, 20, "vertical", "plus,minus", "minus",
+            :move_plane1();)
+       statictext(25, 78, -276, "right", "text")
+       statictext(26, 221, 108, "right", "+")
+       statictext(27, 220, 129, "right", "-")
+       statictext(28, 215, 88, "right", "side")
+       statictext(29, 215, 182, "right", "side")
+       statictext(30, 220, 223, "right", "-")
+       statictext(31, 221, 202, "right", "+")
+       radiobuttons(32, 198, 204, 20, "vertical", "plus,minus", "minus",
+            :move_plane2();)
+       button(33, 47, 261, 48, 25, "Help",
+          :showHelp();)
+       button(34, 142, 261, 48, 25, "Exit",
+          closewindow(0);)
+       button(35, 206, 27, 17, 21, "U",
+          :update_window(0);)
+
+     # Set other control parameters
+       setpar(n,18,"menu",[""])
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+   help("Macros\\3D","selectClipPlanes3D.htm")
+endproc()
+
+procedure(update_window,n)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(n,18,"menu",menu3d)
+      setpar(n,18,"text",menu3d[0])
+      name = menu3d[0]
+      :init_parameters1()
+      :init_parameters2()
+   endif
+
+endproc()
+
+####################################################
+# When exiting the macro turn off clipping
+####################################################
+
+procedure(exit_procedure)
+
+   clip3d(1,0,"off","plus")
+   clip3d(2,0,"off","plus")
+
+endproc()
+
+####################################################
+# Initialize plane 1 parameters
+####################################################
+
+procedure(init_parameters1)
+
+  if(name == "")
+     return
+  endif
+  dir = getpar(0,6,"text")
+  m3d = alias(name,"eval")
+  (w,h,d) = size(m3d)
+
+  if(dir == "off")
+     clip3d(1,0,"off","plus")
+     setpar(0,1,"value",0)
+     setpar(0,22,"text","")
+     return()
+   endif
+
+  if(dir == "xy")
+     setpar(0,1,"range",[1,d-1])
+     setpar(0,1,"value",d-1)
+  elseif(dir == "xz")
+     setpar(0,1,"range",[1,h-1])
+     setpar(0,1,"value",h-1)
+  elseif(dir == "yz")
+     setpar(0,1,"range",[1,w-1])
+     setpar(0,1,"value",w-1)
+  endif
+
+  :move_plane1()
+
+endproc()
+
+####################################################
+# Initialize plane 2 parameters
+####################################################
+
+procedure(init_parameters2)
+
+  if(name == "")
+     return
+  endif
+  dir = getpar(0,13,"text")
+  m3d = alias(name,"eval")
+
+  (w,h,d) = size(m3d)
+
+  if(dir == "off")
+     clip3d(2,0,"off","plus")
+     setpar(0,16,"value",0)
+     setpar(0,23,"text","")
+     return()
+   endif
+
+  if(dir == "xy")
+     setpar(0,16,"range",[0,d-1])
+     setpar(0,16,"value",d-1)
+  elseif(dir == "xz")
+     setpar(0,16,"range",[0,h-1])
+     setpar(0,16,"value",h-1)
+  elseif(dir == "yz")
+     setpar(0,16,"range",[0,w-1])
+     setpar(0,16,"value",w-1)
+  endif
+
+  :move_plane2()
+
+endproc()
+
+####################################################
+# Move plane 1 using the top slider
+####################################################
+
+procedure(move_plane1)
+
+  if(name == "")
+     return
+  endif
+
+# Get matrix dimensions
+   m3d = alias(name,"eval")
+  (w,h,d) = size(m3d)
+
+# Get direction of clipping plane
+   dir = getpar(0,6,"text")
+   if(dir == "off")
+     return()
+   endif
+
+# Get position of clipping plane
+   pos = getpar(0,1,"value")
+   setpar(0,22,"text",pos)
+
+# Get range of data after scaling
+   (xmin,xmax,ymin,ymax,zmin,zmax) = datarange3d("getargs")
+
+# Get side (+/-) to clip
+   side = getpar(0,24,"text")  
+ 
+# Scale the clip plane to the scaled data
+   if(dir == "xy")
+      pos = pos/(d-1)*(zmax-zmin) + zmin
+   elseif(dir == "xz")
+      pos = pos/(h-1)*(ymax-ymin) + ymin
+   elseif(dir == "yz")
+      pos = pos/(w-1)*(xmax-xmin) + xmin
+   endif
+
+# Apply the clipping
+   clip3d(1,-pos,dir,side)
+
+endproc()
+
+####################################################
+# Move plane 1 using the bottom slider
+####################################################
+
+procedure(move_plane2)
+
+  if(name == "")
+     return
+  endif
+
+# Get matrix dimensions
+   m3d = alias(name,"eval")
+  (w,h,d) = size(m3d)
+
+# Get direction of clipping plane
+   dir = getpar(0,13,"text")
+   if(dir == "off")
+     return()
+   endif
+
+# Get position of clipping plane
+   pos = getpar(0,16,"value")
+   setpar(0,23,"text",pos)
+
+# Get range of data after scaling
+   (xmin,xmax,ymin,ymax,zmin,zmax) = datarange3d("getargs")
+
+# Get side (+/-) to clip
+   side = getpar(0,32,"text")  
+ 
+# Scale the clip plane to the scaled data
+   if(dir == "xy")
+      pos = pos/(d-1)*(zmax-zmin) + zmin
+   elseif(dir == "xz")
+      pos = pos/(h-1)*(ymax-ymin) + ymin
+   elseif(dir == "yz")
+      pos = pos/(w-1)*(xmax-xmin) + xmin
+   endif
+
+# Apply the clipping
+   clip3d(2,-pos,dir,side)
+
+endproc()
+
+

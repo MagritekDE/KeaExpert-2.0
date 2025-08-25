@@ -1,0 +1,25 @@
+###########################################################################
+# Run the experiment 'protocol' with its default parameters returning
+# the collected data in r. Returns 1 on success and 0 on abort
+###########################################################################
+
+procedure(RunPilot, parent, protocol, guipar, dataFolder="PilotScan")
+
+# Don't run the pilot if checking update tables
+   if(gFX3->updateDebug)
+      return(1, null)
+   endif
+
+   assignlist(guipar)
+   gView->graphLabel->label("Pilot 1D experiment running ...")
+   if(isvar("exptNr"))
+      r = RunExpt(protocol,["expName = \"$expName$\\$exptNr$\\PilotScan\""],null,0)
+   else
+      r = RunExpt(protocol,["expName = \"$expName$\\$dataFolder$\""],null,0)
+   endif
+   if(wvExpStatus != "running")  
+      return(0, null)
+   endif 
+   gView->graphLabel->label("Experiment '$parent$' running ...")
+
+endproc(1, r)

@@ -1,0 +1,74 @@
+###################################################
+# The WALTZ decoupling sequence block
+#
+# Arguments:
+#
+#  ch ..... channel 1 = 1H or 2 = X
+#  aDec ... amplitude of the pulses
+#  d90 .... duration of 90 pulse
+#  d180 ... duration of 180 pulse
+#  d270 ... duration of 270 pulse
+#  d360 ... duration of 360 pulse
+#  pXp .... +x phase
+#  pXm .... -x phase
+#  d1 ..... delay between pulses (1)
+#  d2 ..... delay between pulse groups (1)
+#  gating . whether the rf amplifier will be gated or not
+#
+###################################################
+
+procedure(WALTZ16, ch, aDec, d90, d180, d270, d360, pXp, pXm, d1=1, d2=1, gating=1)
+
+   if(gating == 0)
+      if(ch == 1)
+         ch = "1nb"
+      else
+         ch = "2nb"
+      endif
+   endif
+
+#Q
+   pulse(ch,aDec,pXm,d270); delay(d1); pulse(ch,aDec,pXp,d360); delay(d1); pulse(ch,aDec,pXm,d180); delay(d1); 
+   pulse(ch,aDec,pXp,d270); delay(d1); pulse(ch,aDec,pXm,d90);  delay(d1); pulse(ch,aDec,pXp,d180); delay(d1);
+   pulse(ch,aDec,pXm,d360); delay(d1); pulse(ch,aDec,pXp,d180); delay(d1); pulse(ch,aDec,pXm,d270); delay(d2); 
+
+#q  
+   pulse(ch,aDec,pXp,d270); delay(d1); pulse(ch,aDec,pXm,d360); delay(d1); pulse(ch,aDec,pXp,d180); delay(d1);
+   pulse(ch,aDec,pXm,d270); delay(d1); pulse(ch,aDec,pXp,d90);  delay(d1); pulse(ch,aDec,pXm,d180); delay(d1); 
+   pulse(ch,aDec,pXp,d360); delay(d1); pulse(ch,aDec,pXm,d180); delay(d1); pulse(ch,aDec,pXp,d270); delay(d2);
+
+#q   
+   pulse(ch,aDec,pXp,d270); delay(d1); pulse(ch,aDec,pXm,d360); delay(d1); pulse(ch,aDec,pXp,d180); delay(d1);
+   pulse(ch,aDec,pXm,d270); delay(d1); pulse(ch,aDec,pXp,d90);  delay(d1); pulse(ch,aDec,pXm,d180); delay(d1);
+   pulse(ch,aDec,pXp,d360); delay(d1); pulse(ch,aDec,pXm,d180); delay(d1); pulse(ch,aDec,pXp,d270); delay(d2);   
+
+#Q
+   pulse(ch,aDec,pXm,d270); delay(d1); pulse(ch,aDec,pXp,d360); delay(d1); pulse(ch,aDec,pXm,d180); delay(d1);
+   pulse(ch,aDec,pXp,d270); delay(d1); pulse(ch,aDec,pXm,d90);  delay(d1); pulse(ch,aDec,pXp,d180); delay(d1);
+   pulse(ch,aDec,pXm,d360); delay(d1); pulse(ch,aDec,pXp,d180); delay(d1); pulse(ch,aDec,pXm,d270); delay(d2); 
+
+endproc()
+
+###################################################
+# Return the length of the WALTZ block in us
+# given the following delays:
+#
+#  d90 .... length of the 90 pulse.
+#  pgo .... delay between start of pulse command
+#           and actual pulse output.
+#  d1 ..... delay between pulses (1)
+#  d2 ..... delay between pulse groups (1)
+#
+###################################################
+
+procedure(duration, d90, pgo, d1=1, d2=1)
+
+   if(gData->procType == "FX3")
+      endDelay = 3
+   else
+      endDelay = 1
+   endif
+
+   dur = (d90*24 + 8*d1 + d2 + 9*pgo + endDelay)*4
+
+endproc(dur)

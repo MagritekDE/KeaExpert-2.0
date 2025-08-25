@@ -1,0 +1,647 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>Manipulating other data types</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>Manuipulating different data types</span></b></p>
+
+<p class=MsoNormal><b><span lang=EN-NZ>&nbsp;</span></b></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>In addition to floating point (real)
+numbers Prospa can also manipulate the following data types:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>long and short integers</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>simple character C strings</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>text class objects</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>complex numbers</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>1, 2, 3 and 4D real and
+complex matrices</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>lists</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>A number of facilities are provided to
+allow you to manipulate these data types.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Firstly <i>ArgScan</i>
+can extract these data types from the argument list. In the case of integers,
+floats and strings it can do this directly. For the other data types it does
+this via Prospa variables. For example to extract a short integer, a long
+integer, a float, a C-string and a text class object&nbsp; from an argument
+list you would include C-code something like this:</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>float</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+MultiArgumentTypeExample(<span style='color:blue'>char</span> *arguments)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> nrArgs;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> si;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>long</span> li;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>float</span> f;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>char</span> str[50];</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+CText txt;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Extract arguments</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs =
+ArgScan(arguments,5,&quot;sint,lint,float,str,ctext&quot;,</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;eeeee&quot;,&quot;dlfst&quot;,&amp;si,&amp;li,&amp;f,str,&amp;txt))
+&lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs); </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+....</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:8.0pt;font-family:"Courier New";
+color:#333399'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>Notice the data type code:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>f
+... float</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>d
+... short integer</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>l
+... long integer</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>s
+... simple string</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>t
+... text class</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Note that <i>ArgScan</i>
+does not check to see if strings have enough space allocated - that's up to
+you. (Generally you should use the text class as this is more reliable – see
+text class section for more details).</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The other data types can be accessed by
+using variables:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>float</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+ComplexArgumentTypeExample(<span style='color:blue'>char</span> *arguments)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+Variable *cnumVar;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+Variable *matrixVar;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Extract arguments</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs =
+ArgScan(arguments,2,&quot;cnum,matrix&quot;,</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&quot;ee&quot;,&quot;vv&quot;,cnumVar,matrixVar)) &lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs); </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+....</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>In this case the
+two arguments will be evaluated and then the results stored in two variables
+called cnumVar and matrixVar. The member variables of these classes may now be
+interrogated using the following functions or C-macros.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:#333399'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:#333399'>&nbsp;&nbsp;
+Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+C++ function&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Equivalent C macro</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get column
+dimension .. </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim1()
+........ VarColSize(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get row
+dimension ..... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim2()
+........ VarRowSize(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get tier
+dimension ....</span><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:blue'> </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim3()
+........ VarTierSize(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get width
+.............</span><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:blue'> </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim1()
+........ VarWidth(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get height
+............</span><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:blue'> </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim2().........
+VarHeight(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get depth
+............. </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetDim3().........
+VarDepth(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get 4th
+dimension .....</span><span lang=EN-NZ style='font-size:10.0pt;font-family:
+"Courier New";color:blue'> </span><span style='font-size:10.0pt;font-family:
+"Courier New"'>var-&gt;GetDim4()......... VarHyper(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get type
+.............. </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetType()
+........ VarType(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get variable
+name</span><span style='font-size:10.0pt;font-family:"Courier New";color:blue'>
+..... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetName()
+........ VarName(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get string
+............ </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetString()
+...... VarString(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get list
+..............</span><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:blue'> </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetList()
+........ VarList(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get real
+number ....... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetReal()
+........ VarReal(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get integer
+........... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetLong()
+........ VarInteger(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get complex
+number .... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetComplex()
+..... VarComplex(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get real 2D
+matrix .... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetMatrix2D()
+.... VarRealMatrix(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get complex 2D
+matrix . </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetCMatrix2D()
+... VarComplexMatrix(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get real 3D
+matrix .... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetMatrix3D()
+.... VarReal3DMatrix(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get complex 3D
+matrix . </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetCMatrix3D()....
+VarComplex3Dmatrix(var)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New";color:#333399'>get real 4D
+matrix .... </span><span style='font-size:10.0pt;font-family:"Courier New"'>var-&gt;GetMatrix4D()
+.... VarReal4DMatrix(var)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:#333399'>get complex 4D matrix . </span><span style='font-size:10.0pt;
+font-family:"Courier New"'>var-&gt;GetCMatrix4D() ... VarComplex4DMatrix(var)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-NZ>Here &quot;var&quot; is a pointer to the
+variable. </span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Coming back to
+the square example - let's look at how we might extend this to handle matrices
+and complex numbers:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*********************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp; This function will square the passed argument if it
+is a scalar or a matrix</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp; The result is returned in the global variable ansVar.
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>*********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>short</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+SquareFunction(<span style='color:blue'>char</span> *parameters)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;
+&nbsp;<span style='color:blue'>short</span> nrArgs;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+Variable var;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> type;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+complex cIn,cOut;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Argument can be a constant float or matrix or a variable
+containing these</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs = ArgScan(parameters,1,&quot;data to
+be squared&quot;,&quot;e&quot;,&quot;v&quot;,&amp;var)) &lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs);&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// See if its a float variable</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>switch</span>(VarType(&amp;var))</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>case</span>(FLOAT): </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ansVar-&gt;MakeAndSetFloat(VarReal(&amp;var)*VarReal(&amp;var));</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>break</span>;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>case</span>(COMPLEX): </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+cIn = VarComplex(&amp;var);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+cOut.r = cIn.r*cIn.r - cIn.i*cIn.i;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+cOut.i = 2*cIn.r*cIn.i;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ansVar-&gt;MakeAndSetComplex(cOut);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>break</span>;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>case</span>(MATRIX2D):</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:green'>// Get some information from the
+variable&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>long</span> rows = VarRowSize(&amp;var);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>long</span> cols = VarColSize(&amp;var);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>float</span>** arrayIn = VarRealMatrix(&amp;var);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:green'>// Allocate space for the output matrix&nbsp;&nbsp; </span></span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>float</span>** arrayOut = MakeMatrix2D(cols,rows);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:green'>// Square input matrix and store in output
+matrix&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>for</span>(<span style='color:blue'>short</span> i =
+0; i &lt; rows; i++)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>for</span>(<span style='color:blue'>short</span> j =
+0; j &lt; cols; j++)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+arrayOut[i][j] = arrayIn[i][j]*arrayIn[i][j];</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:green'>// Return result to the user</span></span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ansVar-&gt;MakeAndLoadMatrix(arrayOut,cols,rows);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FreeMatrix2D(arrayOut,cols,rows);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>break</span>;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+}&nbsp;&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>default</span>:</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ErrorMessage(&quot;Argument to 'square' should be a float, complex number or a
+real matrix&quot;);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(ERR);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+} </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+NumberReturnedValues(1);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>return</span>(OK);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>Some example output is shown below</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&gt; </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>square</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(2+3i)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#780078'>square</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(2+3i) = -5+12i</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&gt; </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>square</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>([1,2,3])</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#780078'>square</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>([1,2,3]) = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp;
+4&nbsp;&nbsp;&nbsp; 9 </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&gt; </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>square</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>([1,2;3,4])</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#780078'>square</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>([1,2;3,4]) = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp; 4 </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;&nbsp; 9&nbsp;&nbsp;&nbsp; 16 </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,25 @@
+# Lists all experiments which are missing MNova export folder
+procedure(listMissingMnovaFolders)
+
+   cd("$appdir$\\Macros")
+   dirs = getdirlist(".")
+   cnt = 0
+   for(k = 0 to size(dirs)-1)
+      cd(dirs[k])
+      subdirs = getdirlist(".")
+      for(m = 0 to size(subdirs)-1)
+         cd(subdirs[m])
+         files = getfilelist(".")
+         isPP = ls("*_pp.mac")
+         isMNova = ls("MNova")
+         if(size(isPP) > 0 & size(isMNova) == 0)
+            pr("\n$getbasedir(getcwd()),30s$ ($getbasepath(getcwd())$)\n")
+            cnt = cnt + 1
+         endif
+         cd("..")
+      next(m)
+      cd("..")
+   next(k)
+   pr("\n\n   *** Number of missing MNova folders: $cnt$\n")
+
+endproc()

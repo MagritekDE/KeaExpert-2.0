@@ -1,0 +1,2117 @@
+#########################################################
+# 
+# Image_decon3D
+# Imaged Deconvolution Experiment (3D)
+#
+# Spin echo with a short phase encode gradient after the 190
+# Lock current and Shims employed
+# Gradient is on a single axis
+# Sampling is from the centre of the echo
+# Signal averaging on the dsp
+#
+# a1 ... amplitude of 90 pulse
+# a2 ... amplitude of 180 pulse
+# d1 ... width of pulse
+# p1 ... phase of 90 pulse
+# p2 ... phase of 180 pulse
+# d2 ... delay between pulses
+# d3 ... delay between 180 and gradient pulse (and between grad and acquisition)
+# d4 ... duration of gradient pulse
+# d6 ... delay for acquisition and TR
+# l1 ... loop variable 
+# w1 ... lock current rise time (100ms)
+# n1 ... number of data points to collect per FID
+# n2 ... amplitude of lock current
+# n3 ... address of DAC output for lock current
+# n4 ... amplitude of x shim current
+# n5 ... address of DAC output for x gradient
+# n6 ... amplitude of y shim current
+# n7 ... address of DAC output for y gradient
+# n8 ... amplitude of z shim current
+# n9 ... address of DAC output for z gradient
+# n10... number of scans
+# n11... amplitude of phase gradient current for x (set in macro)
+# n12... amplitude of phase gradient current for y (set in macro)
+# n13... amplitude of phase gradient current for z (set in macro)
+#
+# Copyright (c) Magritek Ltd 2007
+#
+#########################################################
+
+procedure(Image_decon2D)
+
+   keaNMR:checkversion(107)
+
+   n = :windowdefinition()
+
+   windowvar(wv_dispMode,wv_ctrls,wv_shift,wv_other,wv_rel,
+             wv_pp_list,wv_pp_name,wv_var,wv_tabs)
+   wv_dispMode = "small"  # Initial display mode is collapsed
+   wv_tabs  = ["Pulse sequence","acquisition","processing+display","file settings"] # Tab names
+   wv_ctrls = [5,41,42,62,63,76,77,97,98,103] # Control groups
+   wv_shift = [-15,122,259,396,396] # Amount to shift control groups
+   wv_other = [102,222,619]  # Collapse control and window size
+   wv_saved = "false"
+
+
+   (wv_rel,wv_var,wv_pp_list,wv_pp_name) = :getseqpar()
+
+   keaNMR:setup(n,"Image_decon2D",getmacropath())
+   keaNMR:showTab(1)
+   showwindow(n)
+
+endproc()
+
+#########################################################
+# 
+# Returns important pulse sequence parameters
+#
+# rel ...... relationship between pulse sequence parameters
+# var ...... variable which change during the pulse sequence
+# pp_list .. list of pulse sequence parameters sent to DSP
+# pp_name .. name of DSP pulse program to run
+#
+#########################################################
+
+procedure(getseqpar)
+
+   rel = ["d2 = gap-d1-pgo",
+          "d4 = tgrad-4.4",
+          "d3 = (gap-(d1+pgo)/2-d4-13.2+rxLat)/2",
+          "d5 = repTime*1000 - gap*2 - (d1+pgo)/2",
+          "n1 = nrPnts",
+          "zcalib = 1.62e4",
+          "ycalib = 1.27e4",
+          "xcalib = 1.41e4",
+          "hcalib = 1156",
+          "n2 = round(Ilock/hcalib*(2^15-1))",
+          "n3 = 0",
+          "n4 = round(xshim/xcalib*(2^15-1))",
+          "n5 = 1",
+          "n6 = round(yshim/ycalib*(2^15-1))",
+          "n7 = 2",
+          "n8 = round(zshim/zcalib*(2^15-1))",
+          "n9 = 3",
+          "n10 = nrScans",
+          "w1 = 1e3",
+          "n11 = 0",
+          "n12 = 0",
+          "n13 = 0",
+          "totPnts = nrPnts",
+          "totTime = acqTime"]
+   var = ["n2","n11","n12","n13","n10"]
+   pp_list = ["n1","n3","n2","n5","n4","n7","n6","n9","n8","w1","n10","l1","a1","p1","d1","d2","a2","p2","d3","n11","n12","n13","d4","d5"]
+   pp_name = "Image_decon3D.p"
+
+endproc(rel,var,pp_list,pp_name)
+
+
+#########################################################
+# 
+# Provide an interface to this macro which does not
+# require the use of the window interface
+#
+# User must supply a list of parameter (see help file)
+# and the pulse program name if different from 
+# "$macro$_ext.p"
+#
+#########################################################
+
+procedure(backdoor, guipar)
+
+   dir = getmacropath()+"\\$rmext(getmacroname())$"
+
+   if(nrArgs == 0)
+      guipar = load("$macro$LastExp.par")
+   endif
+
+   (rel,var,pp_list,pp_name) = :getseqpar()
+  
+   (guipar,ppList,pcList,pcIndex,varList) = keaNMR:initialisePPNoGUI(dir,guipar,rel,var,pp_list,pp_name)
+   
+   :execpp(guipar,ppList,pcList,pcIndex,varList)
+
+endproc()
+
+#########################################################
+# 
+# Define the window gui
+#
+#########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Imaged Deconvolution (2D)", -1, -1, 626, 619)
+
+      # Define all controls with basic parameters
+       getmessage(-1,
+         keaNMR:process_message();)
+       button(1, 6, 7, 137, 21, "Pulse sequence",
+          keaNMR:showTab(1);)
+       button(2, 143, 7, 137, 21, "Acquisition",
+          keaNMR:showTab(2);)
+       button(3, 280, 7, 137, 21, "Processing+Display",
+          keaNMR:showTab(3);
+          fn = findobj(0,"name","filter");
+          keaNMR:enableControls(fn+1,fn+3,fn);
+          fn = findobj(0,"name","showFreqDomain");
+          keaNMR:enableControls(fn+1,fn+4,fn);)
+       button(4, 417, 7, 137, 21, "File Settings",
+          keaNMR:showTab(4);)
+       groupbox(5, "Pulse sequence", 6, 6, 608, 130)
+       statictext(6, 60, 31, "center", "B1 Frequency (MHz)")
+       textbox(7, 37, 46, 46)
+       statictext(8, 60, 83, "center", "Repetition time (ms)")
+       textbox(9, 37, 98, 46)
+       statictext(10, 230, 27, "right", "Pulse amplitude 1 (dB)")
+       textbox(11, 236, 23, 40)
+       statictext(12, 230, 53, "right", "Pulse amplitude 2 (dB)")
+       textbox(13, 236, 49, 40)
+       statictext(14, 230, 79, "right", "Pulse length (us)")
+       textbox(15, 236, 75, 40)
+       statictext(16, 230, 105, "right", "Gap between pulses (us)")
+       textbox(17, 236, 101, 40)
+       statictext(18, 375, 27, "right", "FOV in x (mm)")
+       textbox(19, 381, 23, 40)
+       statictext(20, 375, 53, "right", "FOV in y (mm)")
+       textbox(21, 381, 49, 40)
+       statictext(22, 375, 79, "right", "FOV in z (mm)")
+       textbox(23, 381, 75, 40)
+       statictext(24, 469, 27, "right", "x steps")
+       textbox(25, 475, 23, 40)
+       statictext(26, 469, 53, "right", "y steps")
+       textbox(27, 475, 49, 40)
+       statictext(28, 469, 79, "right", "z steps")
+       textbox(29, 475, 75, 40)
+       statictext(30, 375, 105, "right", "Grad. duration (us)")
+       textbox(31, 381, 101, 40)
+       statictext(32, 494, 105, "right", "Freq. Lock")
+       checkbox(33, 500, 104, "no,yes", "no")
+       statictext(34, 562, 27, "right", "x (mA)")
+       textbox(35, 568, 23, 40)
+       statictext(36, 562, 53, "right", "y (mA)")
+       textbox(37, 568, 49, 40)
+       statictext(38, 562, 79, "right", "z (mA)")
+       textbox(39, 568, 75, 40)
+       statictext(40, 562, 105, "right", "l (mA)")
+       textbox(41, 568, 101, 40)
+       groupbox(42, "Acquisition", 6, 143, 608, 130)
+       statictext(43, 81, 189, "center", "Rx Gain (dB)")
+       textmenu(44, 116, 185, 39, 200)
+       statictext(45, 81, 216, "center", "Rx Phase")
+       statictext(46, 81, 228, "center", "(degrees)")
+       textbox(47, 116, 218, 39)
+       statictext(48, 225, 183, "center", "Number of")
+       statictext(49, 225, 197, "center", "complex points")
+       textmenu(50, 272, 185, 62, 200,
+          keaNMR:updateAcqTime();)
+       statictext(51, 225, 216, "center", "Dwell time")
+       statictext(52, 225, 229, "center", "(us)")
+       textmenu(53, 272, 219, 62, 200,
+          keaNMR:filterChange();)
+       statictext(54, 378, 181, "center", "Number")
+       statictext(55, 378, 194, "center", "of scans")
+       textbox(56, 414, 184, 39)
+       statictext(57, 392, 223, "center", "Accumulate")
+       checkbox(58, 428, 224, "no,yes", "no")
+       statictext(59, 522, 167, "center", "Spectral width (kHz)")
+       textbox(60, 498, 181, 46)
+       statictext(61, 522, 218, "center", "Acquisition time (ms)")
+       textbox(62, 498, 232, 46)
+       groupbox(63, "Processing+Display", 6, 280, 608, 130)
+       statictext(64, 234, 308, "right", "Filter time domain")
+       checkbox(65, 242, 309, "no,yes", "no",
+            fn = findobj(0,"name","filter");
+            keaNMR:enableControls(fn+1,fn+3,fn);)
+       statictext(66, 116, 339, "right", "Filter")
+       textmenu(67, 123, 335, 108, 200)
+       button(68, 240, 335, 22, 22, "...",
+          filters();)
+       statictext(69, 234, 371, "right", "Time domain magnitude")
+       checkbox(70, 242, 372, "no,yes", "no")
+       statictext(71, 505, 306, "right", "Show frequency domain data")
+       checkbox(72, 513, 307, "no,yes", "no",
+            fn = findobj(0,"name","showFreqDomain");
+            keaNMR:enableControls(fn+1,fn+4,fn);)
+       statictext(73, 505, 336, "right", "Frequency domain magnitude")
+       checkbox(74, 513, 337, "no,yes", "no")
+       statictext(75, 455, 369, "right", "Display range (kHz)")
+       textbox(76, 465, 366, 61)
+       groupbox(77, "File Settings", 6, 417, 608, 130)
+       statictext(78, 93, 453, "right", "Working")
+       statictext(79, 93, 466, "right", "directory")
+       textbox(80, 105, 454, 187)
+       button(81, 299, 454, 22, 22, "...",
+          keaNMR:setworkingdir();)
+       statictext(82, 100, 490, "right", "Experiment")
+       statictext(83, 85, 503, "right", "name")
+       textbox(84, 105, 493, 103)
+       statictext(85, 284, 490, "right", "Experiment")
+       statictext(86, 274, 503, "right", "number")
+       textbox(87, 292, 493, 25)
+       statictext(88, 361, 453, "center", "Phase-cycle")
+       statictext(89, 361, 466, "center", "name")
+       textmenu(90, 395, 453, 133, 200)
+       button(91, 537, 452, 35, 22, "Edit",
+          keaNMR:editPhases();)
+       statictext(92, 361, 490, "center", "Auto")
+       statictext(93, 361, 503, "center", "increment")
+       checkbox(94, 396, 497, "no,yes", "no")
+       statictext(95, 450, 490, "center", "Save")
+       statictext(96, 450, 503, "center", "data")
+       checkbox(97, 473, 497, "false,true", "true")
+       button(98, 63, 557, 54, 29, "Run",
+          keaNMR:updateAcqTime();
+          keaNMR:disableButtons();
+          (guipar,ppList,pcList,pcIndex,varList) = keaNMR:initialisePP(getmacropath(),getmacroname());
+          :execpp(guipar,ppList,pcList,pcIndex,varList);
+          keaNMR:enableButtons();)
+       button(99, 151, 557, 54, 29, "Stop",
+          keaNMR:enableButtons();)
+       button(100, 239, 557, 54, 29, "Load",
+          :testMem();)
+       button(101, 327, 557, 54, 29, "Help",
+          help("Kea","Image_decon3D");)
+       button(102, 415, 557, 54, 29, "Collapse",
+          keaNMR:setSize(1);)
+       button(103, 503, 557, 54, 29, "Close",
+          guipar = getctrlvalues(0);
+          assignlist(guipar);
+          keaNMR:save_parameters();
+          closewindow(0);)
+
+     # Set other control parameters
+       setpar(n,7,"name","b1Freq",
+                   "type","float",
+                   "range",[0.1,30])
+       setpar(n,9,"name","repTime",
+                   "type","float",
+                   "range",[10,1e+008])
+       setpar(n,11,"name","a1",
+                   "type","float",
+                   "range",[-72,0])
+       setpar(n,13,"name","a2",
+                   "type","float",
+                   "range",[-72,0])
+       setpar(n,15,"name","d1",
+                   "type","float",
+                   "range",[0.5,1000])
+       setpar(n,17,"name","gap",
+                   "type","float",
+                   "range",[2,1.67e+008])
+       setpar(n,19,"name","FOVx",
+                   "type","float",
+                   "range",[0.1,100])
+       setpar(n,21,"name","FOVy",
+                   "type","float",
+                   "range",[0.1,100])
+       setpar(n,23,"name","FOVz",
+                   "type","float",
+                   "range",[0.1,100])
+       setpar(n,25,"name","Ngx",
+                   "type","float",
+                   "range",[1,1024])
+       setpar(n,27,"name","Ngy",
+                   "type","float",
+                   "range",[1,1024])
+       setpar(n,29,"name","Ngz",
+                   "type","float",
+                   "range",[1,1024])
+       setpar(n,31,"name","tgrad",
+                   "type","float",
+                   "range",[2,327670])
+       setpar(n,33,"name","lockFlag")
+       setpar(n,35,"name","xshim",
+                   "type","float",
+                   "range",[-14100,14100])
+       setpar(n,37,"name","yshim",
+                   "type","float",
+                   "range",[-12700,12700])
+       setpar(n,39,"name","zshim",
+                   "type","float",
+                   "range",[-16200,16200])
+       setpar(n,41,"name","Ilock",
+                   "type","float",
+                   "range",[-470,470])
+       setpar(n,44,"name","rxGain",
+                   "type","integer",
+                   "range",[-20,70],
+                   "menu",["-20","-17","-14","-11","-8","-5","-2","1","4","7","10","13","16","19","22","25","28","31","34","37","40","43","46","49","52","55","58","61","64","67","70"])
+       setpar(n,47,"name","rxPhase")
+       setpar(n,50,"name","nrPnts",
+                   "type","integer",
+                   "range",[2,16384],
+                   "menu",["8","16","32","64","128","256","512","1024","2048","4096","8192","16384"])
+       setpar(n,53,"name","bandwidthFile",
+                   "menu",[""])
+       setpar(n,56,"name","nrScans",
+                   "type","integer",
+                   "range",[1,1e+006])
+       setpar(n,58,"name","accumulate")
+       setpar(n,60,"name","bandwidth")
+       setpar(n,62,"name","acqTime")
+       setpar(n,65,"name","filter")
+       setpar(n,67,"name","filterType",
+                   "menu",[""])
+       setpar(n,70,"name","timeMag")
+       setpar(n,72,"name","showFreqDomain")
+       setpar(n,74,"name","freqMag")
+       setpar(n,76,"name","dispRange")
+       setpar(n,80,"name","dataDirectory")
+       setpar(n,84,"name","expName")
+       setpar(n,87,"name","expNr")
+       setpar(n,90,"name","phaseCycle",
+                   "menu",[""])
+       setpar(n,94,"name","incExpNr")
+       setpar(n,97,"name","saveData")
+       setpar(n,98,"name","run")
+       setpar(n,99,"name","stop",
+                   "mode","abort")
+       setpar(n,100,"name","load")
+       setpar(n,101,"name","help")
+       setpar(n,103,"name","close")
+
+endproc(n)
+
+
+#######################################################
+# Execute the pulse program, collecting nrScans of 
+# data and displaying the result in the 1D plot. 
+#
+# This procedure can be modified to perform more
+# complex functions using the passed parameters:
+#
+# guipar ..... all parameters from the user interface
+# ppList ..... the pulse program parameter list
+# pcList ..... phase-cycle list
+# pcIndex .... indices of phase parameters in ppList
+# varIndex ... indices of variable parameters in ppList
+#
+#######################################################
+
+procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
+
+# Make all gui parameters available
+   assignlist(guipar)
+
+# Do some safety checks
+   if(d3 <= 0)
+      message("Error","Pulse sequence timing error!\rReduce gradient duration or increase gap between pulses.","error")
+      return
+   endif
+
+   if(d2 <= 0)
+      message("Error","Pulse sequence timing error!\rIncrease gap between pulses.","error")
+      return
+   endif
+
+   if(d5 <= 0)
+      message("Error","Pulse sequence timing error!\rReduce acquisition time or increase repetition time.","error")
+      return
+   endif
+
+# Storage for accumulated data
+   windowvar(wvSumData,wvTotalTime,wvSteps,wvOutput,wvLock,wvdelf,wvRef)
+   wvSumData = cmatrix(totPnts)
+
+# Calculate suitable time and frequency axes
+   wvTotalTime = ([0:1:totPnts-1]/totPnts)*totTime*1000
+   f = ([0:1:totPnts-1]-totPnts/2+1)/totTime
+
+# Allocate memory for the data
+   wvOutput  = cmatrix(nrPnts,Ngz,Ngx)
+
+# Time domain filter
+   if(filter == "yes")
+      flt = filters:get_filter(filterType,"FTEcho",totPnts)
+   else
+      flt = matrix(totPnts)+1
+   endif
+
+# Make subplots
+   if(showFreqDomain == "yes")
+     multiplot("1d",2,1)
+   else
+     multiplot("1d",1,1)
+   endif
+
+# Some timing calculations
+   tDrift = 10     # Maximum time in s to wait between checking for frequency drift
+   transTime = 100 # Data transfer time in ms
+   maxDSPavg = round((tDrift*1000 - w1/100 - transTime)/repTime)  # Maximum number of DSP averages
+   if nrScans <= maxDSPavg
+      nAvg = 1
+      nDSP = nrScans
+   else
+      nAvg = 2
+      while nrScans/nAvg > maxDSPavg
+         nAvg = nAvg*2
+      endwhile() 
+      nDSP = nrScans/nAvg
+   endif
+nDSP = 1
+   ppList = keaNMR:setPPNumber(ppList,varIndex[4],nDSP)
+
+# Assign more memory for stuff
+   nrSteps   = Ngx*Ngz*nAvg
+   wvLock    = matrix(Ngx*Ngz*nAvg)
+   wvLock    = wvLock + Ilock
+   wvdelf    = matrix(Ngx*Ngz*nAvg)
+
+# Initialise counter
+   wvSteps = 0
+
+# Calibration factors
+   hcalib  = 1156       # Calibration for lock coil (Bruker supply)
+   zcalib  = 1.62e4     # Calibration for yellow (full scal current in mA)               
+   ycalib  = 1.27e4     # Calibration for green (full scale current in mA)
+   xcalib  = 1.41e4     # Calibration for blue  (full scale current in mA)
+   Gxcalib = 0.21      # T/m/A
+   Gycalib = 0.21      # T/m/A
+   Gzcalib = 0.21      # T/m/A
+
+   count = 0
+   if Ngx > 1   
+      delGx = 2*pi/gamma/(FOVx*1e-3)/(tgrad*1e-6)
+      count = count+1
+   else
+      delGx = 0
+   endif
+   pxGrad = ([0:1:Ngx-1]-Ngx/2)*delGx
+   maxx = max(abs(pxGrad))
+   maxIx = maxx/Gxcalib*1000
+
+   if Ngy > 1   
+      delGy = 2*pi/gamma/(FOVy*1e-3)/(tgrad*1e-6)
+      count = count+1
+   else
+      delGy = 0
+   endif
+   pyGrad = ([0:1:Ngy-1]-Ngy/2)*delGy
+   maxy = max(abs(pyGrad))
+   maxIy = maxy/Gycalib*1000
+
+   if Ngz > 1
+      delGz = 2*pi/gamma/(FOVz*1e-3)/(tgrad*1e-6)
+      count = count+1
+   else
+      delGz = 0
+   endif
+   pzGrad = ([0:1:Ngz-1]-Ngz/2)*delGz
+   maxz = max(abs(pzGrad))
+   maxIz = maxz/Gzcalib*1000
+
+   if count > 2
+      message("Error!","Can only perform imaging on two dimensions at once!")
+      keaNMR:enableButtons()
+      return
+   endif
+
+
+# Output parameters to the CLI
+   pr "\n#############################################\n"
+   pr "\n              Gradient Parameters "
+   pr "\n#############################################\n"
+   pr "\n    Maximum gradients"
+   pr "\n         x: $maxx*1000,5.2f$ mT/m"
+   pr "\n         y: $maxy*1000,5.2f$ mT/m"
+   pr "\n         z: $maxz*1000,5.2f$ mT/m"
+   pr "\n    Maximum currents"
+   pr "\n         x: $maxIx,5.2f$ mA"
+   pr "\n         y: $maxIy,5.2f$ mA"
+   pr "\n         z: $maxIz,5.2f$ mA"
+   pr "\n    Fields of View"
+   pr "\n         x: $FOVx,5.2f$ mm" 
+   pr "\n         y: $FOVy,5.2f$ mm"
+   pr "\n         z: $FOVz,5.2f$ mm" 
+   pr "\n    Gradient duration: $tgrad,5.0f$ us"
+   pr "\n    Matrix dimensions: $Ngx,2.0f$x$Ngy,2.0f$x$Ngz,2.0f$"
+   pr "\n\n                 nAvg: $nAvg$\n"
+   pr "\n                 nDSP: $nDSP$"
+   pr "\n#############################################\n" 
+
+   if(maxIz > 500)
+      message("Warning","Z gradient current is large","error")
+      return
+   endif
+
+   if(maxIy > 500)
+      message("Warning","Y gradient current is large","error")
+      return
+   endif
+
+   if(maxIx > 500)
+      message("Warning","X gradient current is large","error")
+      return
+   endif
+
+# Reset the timer
+   time(0)  
+
+   for n = 1 to nAvg
+
+      for(xx = 0 to Ngx-1)
+   
+       # Update z phase gradient
+         n11 = round((pxGrad[xx]/Gxcalib*1000 + xshim)/xcalib * 32767)
+         ppList = keaNMR:setPPNumber(ppList,varIndex[1],n11)
+   
+         #for yy = 0 to Ngy-1
+      
+          # Update y phase gradient
+            n12 = round((pyGrad[0]/Gycalib*1000 + yshim)/ycalib * 32767)
+            ppList = keaNMR:setPPNumber(ppList,varIndex[2],n12)
+            for zz = 0 to Ngz-1
+         
+             # Update z phase gradient
+               n13 = round((pzGrad[zz]/Gzcalib*1000 + zshim)/zcalib * 32767)
+               ppList = keaNMR:setPPNumber(ppList,varIndex[3],n13)
+   
+               wvSumData = cmatrix(nrPnts)
+   
+             # Update the lock current
+               if (lockFlag == "yes")
+                  # Reinitialise imaged decon pp and update gradients and lock current
+                   (guipar,ppList,pcList,pcIndex,varList) = keaNMR:initialisePP(getmacropath(),getmacroname());
+                  ppList = keaNMR:setPPNumber(ppList,varIndex[3],round(n13))
+                  ppList = keaNMR:setPPNumber(ppList,varIndex[2],round(n12))
+                  ppList = keaNMR:setPPNumber(ppList,varIndex[1],round(n11))
+                  ppList = keaNMR:setPPNumber(ppList,varIndex[4],nDSP)
+                  ppList = keaNMR:setPPNumber(ppList,varIndex[0],round(wvLock[wvSteps]/hcalib * 32767))
+               endif
+
+             # Write  parameters to the DSP
+               dspwritepar("x",0x00,ppList)
+
+             # Collect the data
+               (status,data) = keaNMR:get_cdata(totPnts,guipar)
+               if(status != "ok")
+                  keaNMR:enableButtons()
+                  abort("")
+               endif
+
+            # Accumlate the data
+              wvSumData = wvSumData + data.*flt
+
+            # plot so far
+              if(showFreqDomain == "yes")
+                spectrum = keaNMR:processFIDData(wvSumData,f,"no",guipar)
+                keaNMR:graphTimeAndFreq(wvSumData,spectrum,wvTotalTime,f,n*nDSP-1,guipar)
+               else
+                keaNMR:graphTime(wvSumData,totalTime,n*nDSP-1,guipar)
+              endif
+
+            # Update the lock current to account for any frequency drift (unless it is the last step)
+              if (lockFlag == "yes")
+                 if wvSteps != Ngx*Ngz*nAvg-1
+                    (wvRef,wvdelf,wvLock) = :update_lock(wvRef,wvdelf,wvLock,wvSteps)
+                 endif
+              endif
+              wvSteps = wvSteps+1
+   
+             # Add data to output array
+               wvOutput[~,zz,xx] = wvSumData
+
+             # Update 2D plot
+               draw2d("false")
+        #          image(wvOutput[~,~,xx],[0,acqTime*1000],[min(pyGrad),max(pyGrad)])
+                  image(wvOutput[~,~,xx])
+                  xlabel("text","time (ms)","size",12)
+                  ylabel("text","z gradient (T/m)","size",12)
+                  title("Time Domain / k-space Data (x $xx+1$:$Ngx$)")
+               draw2d("true")
+               assign("output",wvOutput,"global")
+            next(zz)
+   
+         #next(yy)
+   
+      next(xx)
+   
+      if(saveData == "true")
+         bak = getcwd()
+         cd(dataDirectory)
+         mkdir(expName)
+         cd(expName)
+         mkdir("$expNr$")
+         cd("$expNr$")
+         save("data.3d",output)
+         cd(bak)
+      endif
+
+   next(n)
+
+  # Plot frequency drift/ lock current values for experiment
+   if (lockFlag == "yes")
+      draw1d("false")
+         curplot("1d",1,1)
+         plot(wvdelf*1000)
+         xlabel("text","Phase step","size",10)
+         ylabel("text","Frequency offset (Hz)","size",10)
+         title("Frequency Drift over Experiment")
+         curplot("1d",2,1)
+         plot(wvLock)
+         xlabel("text","Phase step","size",10)
+         ylabel("text","Lock current (mA)","size",10)
+         title("Lock Current over Experiment")
+      draw2d("true")
+   endif
+
+   keaNMR:titleReset()
+
+# Save the data
+   if(saveData == "true")
+     :saveData()
+   endif
+
+# Increment the experiment number
+   keaNMR:incrementExperiment(incExpNr)
+
+endproc("execpp")
+
+
+#######################################################
+# Save the accumulated time domain data.
+# Note that the x and y variables are window variables
+# which allows data to be saved following an abort.
+#######################################################
+
+procedure(saveData)
+
+# Get GUI parameters
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+   save("data.3d",output)
+   if Ngx = 1
+      save("plot.pt2")
+   endif
+
+   if lockFlag = "yes"
+      save("plot.pt1")    # Save 1D plot
+      save("lock.1d",wvLock)   # Save lock current values to file
+      save("delf.1d",wvdelf)   # Save frequency drift values to file
+   endif
+
+# Output information to the CLI
+   pr "\n   Data saved to folder:"
+   pr "\n     $dataDirectory$\\$expName$\\$expNr$\n"
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")
+
+##########################################################
+# Check frequency by running 1pulse_shim via the backdoor
+##########################################################
+
+procedure(update_lock,ref,delf,Lock,steps)
+
+   bak = getcwd()
+
+   dir = "C:\\Program Files\\Prospa\\Macros\\Kea\\1pulse_shim"
+   cd(dir)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+# Setup lists for the backdoor
+   bdpar = ["saveData = \"false\"",
+            "incExpNr = \"no\"",
+            "phaseCycle = \"FIDNoCycle\"",
+            "expNr = 1",
+            "expName = \"1pulse_shim\"",
+            "dataDirectory = \"$dataDirectory$\"",
+            "dispRange = $dispRange$",
+            "freqMag = \"yes\"",
+            "showFreqDomain = \"yes\"",
+            "timeMag = \"no\"",
+            "filterType = \"\"",
+            "filter = \"no\"",
+            "acqTime = 33.554",
+            "bandwidth = 122.07",
+            "accumulate = \"yes\"",
+            "nrScans = 1",
+            "bandwidthFile = \"131.07\"",
+            "nrPnts = 128",
+            "rxPhase = 0",
+            "rxGain = $rxGain$",
+            "zshim = $zshim$",
+            "yshim = $yshim$",
+            "xshim = $xshim$",
+            "acqDelay = 10",
+            "d1 = $d1$",
+            "a1 = $a1$",
+            "Ilock = $Lock[steps]$",
+            "repTime = 50",
+            "b1Freq = $b1Freq$"]
+
+   (rel,var,pp_list,pp_name) = 1pulse_shim:getseqpar()
+
+# Initialise pp and load into SDP
+# update guipar with pp variables
+   (bdpar,ppList,pcList,pcIndex,varList) = keaNMR:initialisePPNoWV(dir,bdpar,rel,var,pp_list,pp_name)
+
+   assignlist(bdpar)
+
+   (ppList,pAcq) = keaNMR:setPPPhase(ppList,0,pcList,pcIndex)
+
+# Setup the Frequency tracking parameters
+# Submatrix range is the dispRange but enlarged such that nrSub is a power of 2
+   fres   = 1/acqTime
+   zf     = 8          # Zerofill factor for processing
+   nzf    = nrPnts*zf   # Number of points after zerofilling
+   fzf    = ([0:1:nzf-1]-nzf/2)*fres/zf
+   Icalib = 21        # Calibration factor in mA/kHz (Bruker supply)
+   f = ([0:1:totPnts-1]-totPnts/2)/totTime
+   t = [0:1:totPnts-1]*totTime/nrPnts   
+
+# Write parameters to dsp
+   dspwritepar("x",0x00,ppList)
+
+# Run pulse program return "ok" or "abort"
+   status = dsprunpp()
+
+# Read the data
+   if(status == "ok")
+      D = dspread("y",0x10000,totPnts*2)
+   else
+      abort("")
+   endif
+
+# Extract real and imaginary data from D
+   data = cmatrix(totPnts)
+   for(r = 0 to totPnts-1)
+      data[r] = D[2*r] + i*D[2*r+1]
+   next(r)
+
+# Determine frequency shift and adjust lock current accordingly
+  if steps = 0
+      ref = data 
+      delf[steps] = 0
+      Lock[1] = Lock[0]
+  else
+      CF = zerofill(conj(ref).*data,nzf,"end")
+      (maximum,index) = max(real(ft(CF)))
+      delf[steps] = fzf[index]
+      Lock[steps+1] = Lock[steps] - delf[steps]*Icalib 
+  endif
+
+#curplot("2d")
+#title( "Lock Current updated to $Lock[steps+1]$ mA")
+#title( "Hi there")
+
+ cd(bak)
+
+endproc(ref,delf,Lock)
+
+procedure(testMem,path,macroName)
+
+time(0)
+   for(k = 0 to 1000000)
+       :myproc()
+   next(k)
+pr time()
+abort("finished")
+
+endproc()
+#
+#procedure(testMem)
+#
+#for(k = 0 to 1000)
+#  # Check GUI parameters for type and range ###
+#   if(checkcontrols(0) == "error")
+#      return(null)
+#   endif
+#
+#  # Extract pp parameters from GUI ############
+#   guipar = getctrlvalues(0)
+#
+#   assignlist(guipar)
+#
+#  # Overwrite dataDirectory result in case there are some escaped
+#  # backslashes in the pathname
+#   n = findobj(0,"name","dataDirectory")
+#   if(n != -1)
+#      dataDirectory = getpar(0,n,"text")
+#      q = isdir(dataDirectory)
+#     # Check for output directory
+#      if(isdir(dataDirectory) == 0)
+#         message("Error","Working directory doesn't exist")
+#         return(null)
+#      endif
+#
+#     # Check to see if the output directory already exists
+#      dir = getcwd()
+#      cd(dataDirectory)
+#      if (isdir(expName) == 1)
+#         cd(expName)
+#         if (isdir("$expNr$") == 1)
+#            lst = keaNMR:loadPref()
+#            assignlist(lst)
+#            if(warnOnOverwrite == "yes")
+#               r = query("Warning","Your chosen experiment name and number already exists.\rDo you wish to continue and overwrite any previous data?")
+#               if (r = "no")
+#                  abort("")
+#               endif
+#            endif
+#         endif
+#      endif
+#      cd(dir) 
+#   endif
+#
+#  # Save all the gui parameters to the output directory
+#   :save_parameters()
+#
+##   assignlist(guipar)
+#
+#
+### Save the common parameters
+##  keaNMR:saveCommonPar(guipar)
+##
+### Get the preferences
+##   lst = keaNMR:loadPref()
+##   assignlist(lst)
+#
+#next (k)
+#
+#endproc()
+
+
+procedure(save_parameters)
+
+   dir = getcwd()
+   parList = getctrlvalues(0)
+   expName = getlistvalue(parList,"expName")
+   expNr = getlistvalue(parList,"expNr")
+   dataDirectory = getlistvalue(parList,"dataDirectory")
+   if(expName != "not found")
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+      mkdir("$expNr$")
+      cd("$expNr$")
+      pos = getwindowpar(0,"position")
+      name = getwindowpar(0,"macroname")
+      experiment = rmext(name)
+      parList = parList + "position = $pos$" # Add window position
+      parList = parList + "experiment = \"$experiment$\"" # Add experiment name
+      save("acqu.par",parList)
+   endif
+   cd(wvExpDir)
+   save("$wvMacroName$LastExp.par",parList)
+   cd(dir)
+
+   pr size(parList)
+break
+  # :saveCommonPar(parList) # Save the common parameters to the user folder
+
+endproc()
+
+
+#################################################################
+# Save a list of common parameters
+# merging with any current list.
+#################################################################
+
+procedure(saveCommonPar,parList)
+
+
+endproc()
+
+
+procedure(myproc) #,path,macroName)
+
+return
+   wvDataModified = "false"
+
+# Save cwd
+   bak = getcwd()
+
+# Get the parameters and check them
+   guipar = keaNMR:startpp()
+   if(guipar == null)
+      keaNMR:enableButtons()
+      abort("")
+   endif
+   assignlist(guipar)
+
+# Save the common parameters
+  keaNMR:saveCommonPar(guipar)
+
+# Get the preferences
+   lst = keaNMR:loadPref()
+   assignlist(lst)
+
+   wvSaveOnAbort = saveOnAbort
+   wvAutoScale = autoScale
+   wvUnits = units
+   wvTimeMin = timeMin
+   wvTimeMax = timeMax
+   wvFreqMin = freqMin
+   wvFreqMax = freqMax
+   wvApplyPreampFactor = calibrateForPreamp
+   wvApplyRxampFactor = calibrateForRxAmp
+   wvPreampGain = preampGain
+   wvUseCommon = useCommonPar
+
+# Check display range (if it exists)
+   m = findobj(0,"name","dispRange")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0 | rg > bandwidth)
+          message("Error","Display range parameter is invalid.\rMust be between 0 and $bandwidth$ kHz.")
+          keaNMR:enableButtons()
+          abort("")
+      endif
+   endif
+
+# Check itegration width range (if it exists)
+   m = findobj(0,"name","intWidth")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0.001 | rg > bandwidth)
+          message("Error","Integration width parameter is invalid.\rMust be between 0.001 and $bandwidth$ kHz.")
+          keaNMR:enableButtons() 
+          abort("")
+      endif
+   endif
+
+# Load the filter coefficients
+   cd(wvFilterDir)
+   n = findobj(0,"name","bandwidthFile")
+   name = getpar(0,n,"text") + ".imp"
+   try
+      fcList = load(name,"list")
+   catch
+      message("Error","file $name$ not found")
+      keaNMR:enableButtons()
+      abort("")
+   endtry
+   fc = keaNMR:processFilterList(fcList)
+
+# Write the filter coefficients to the DSP
+   dec2   =  fc[0]
+   dec5   =  fc[1]
+   decFIR =  fc[2]
+   clk    =  fc[3]
+   nrTaps = size(fc)-6  
+   fc = submatrix(fc,6,nrTaps+5)
+   tClk    = 2/125e6
+   tSample = 2/125e6
+
+# Try and write the filter coefficients to the Kea
+   try
+     dspwritepar("y",0x10,fc)
+   catch
+     message(" No connection to Kea","Make sure Kea is switched on and the\rUSB interface is connected and working.","error")
+     keaNMR::enableButtons()
+     abort("")
+   endtry
+
+# Work out the expected receiver latency
+   algLat  = (nrTaps*dec2*dec5+4*dec2*dec5-3*dec2+1)/(2*clk) 
+   fixLat  = 10*tClk + tSample*(7+dec2*(7+dec5*(5+decFIR)))+nrTaps*tClk
+   rxLat   = (algLat+fixLat)*1e6
+   pgo     = 1.2 # Pulse gate overhead = 1.2 us
+   guipar = setlistvalue(guipar,"pgo","$pgo$")
+
+# Evaluate the relationship variables
+   assignlist(wv_rel)
+
+# Add the relationship variables to the gui parameters
+   guipar = setlistvalue(guipar,"rxLat","$rxLat$")
+   guipar = guipar + wv_rel
+
+# Get the phase list
+   ch = cacheproc("getargs")
+   cacheproc("false")
+   file = getlistvalue(guipar,"phaseCycle")
+   phaseList = file()*0x10
+   cacheproc(ch)
+
+# Convert the Rx gain from dB to a 8 bit hex number
+   rxGain = keaNMR:convertRxGain(rxGain)
+   if(rxGain == null)
+      keaNMR:enableButtons();
+      abort("")
+   endif
+   rxGain1 = rxGain[1]
+   rxGain2 = rxGain[0]
+
+   guipar = setlistvalue(guipar,"rxGain1","\"$rxGain[1]$\"")
+   guipar = setlistvalue(guipar,"rxGain2","\"$rxGain[0]$\"")
+
+# Convert the Tx gains from dB to a 12 linear bit number
+  lst = wv_pp_list
+  for(k = 0 to size(lst)-1)
+     name = lst[k]
+     if(name[0] == "a")
+       assign(name,keaNMR:convertTxGain(eval(name)),"local")
+     endif
+  next(k)
+ 
+# Get pulse program info and write to DSP
+   cd("$path$\\$rmext(macroName)$")
+   pp = dspsrec(wv_pp_name)
+
+   dspwrite("p",0x1000,pp)
+
+# Define the pulse program parameter list
+
+# Firstwork out how big it will be. Start with
+# the number of entries in default parameter list
+   c = 19  # See below
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f")
+         c = c + 4
+      elseif(var[0] == "a")
+         c = c + 2
+      elseif(var[0] == "g")
+         c = c + 2
+      elseif(var[0] == "p")
+         c = c + 1
+      elseif(var[0] == "d")
+         c = c + 1
+      elseif(var[0] == "w")
+         c = c + 3
+      elseif(var[0] == "n")
+         c = c + 1
+      elseif(var[0] == "b")
+         c = c + 1
+      endif
+   next(k)
+
+# Allocate space for lists 
+   p = matrix(c,1)  # pp list
+   varIndex = matrix(size(wv_var)) # Variable indices in pp
+   (w,h) = size(phaseList)         # Phase list as defined by user
+   phaseIndex = matrix(h)          # Phase indices in pp (p1, p2 ,p3)
+
+# Receiver phase shift
+   p1Phase = (360-rxPhase)/360*(2^16-1)
+   9852Fword = (b1Freq * 2^32 )/125
+   6620Fword = 9852Fword * 2
+
+   p[0]  = eval("0x0$rxGain1$00")          # Receiver gain block 1
+   p[1]  = eval("0x0$rxGain2$00")          # Receiver gain block 2
+   p[2]  = dec2                            # Decimation for CIC2
+   p[3]  = dec5                            # Decimation for CIC5
+   p[4]  = decFIR                          # Decimation for FIR
+   p[5]  = round(log2(dec2^2)-2)           # CIC2 gain compensation
+   p[6]  = round(log2(dec5^5)-5)           # CIC5 gain compensation
+   p[7]  = round(log2(sum(fc)/(2^19))+4)   # FIR gain compensation
+   p[8]  = nrTaps                          # Taps for FIR
+   p[9]  = (9852Fword & 0xFF000000)/(2^24) # 9852 NCO frequency
+   p[10] = (9852Fword & 0x00FF0000)/(2^16)
+   p[11] = (9852Fword & 0x0000FF00)/(2^8)
+   p[12] = (9852Fword & 0x000000FF)
+   p[13]  =(6620Fword & 0xFF000000)/(2^24) # 6620 NCO frequency
+   p[14] = (6620Fword & 0x00FF0000)/(2^16)
+   p[15] = (6620Fword & 0x0000FF00)/(2^8)
+   p[16] = (6620Fword & 0x000000FF)
+   p[17] = trunc(p1Phase/256)              # 6620 NCO Phase word 1
+   p[18] = p1Phase - p[17]*256             # 6620 NCO Phase
+
+# Next add the user defined entries in the list based on the variable name
+   c = 19
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f") # A frequency
+         9852Fword = (eval(var) * 2^32 )/125
+         p[c]  = (9852Fword & 0xFF000000)/(2^24)
+         p[c+1] = (9852Fword & 0x00FF0000)/(2^16)
+         p[c+2] = (9852Fword & 0x0000FF00)/(2^8)
+         p[c+3] = (9852Fword & 0x000000FF)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 4
+      elseif(var[0] == "a") # An amplitude
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = trunc(eval(var)/256)
+         p[c+1] = eval(var) - p[c]*256 
+         c = c + 2
+      elseif(var[0] == "g") # An Rx amp gain
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         gain = keaNMR:convertRxGain(eval(var))
+         gain1 = gain[1]
+         gain2 = gain[0]
+         p[c] = eval("0x0$gain1$00") 
+         p[c+1] = eval("0x0$gain2$00") 
+         c = c + 2
+      elseif(var[0] == "p") # A phase
+         p[c] = 0 #eval(var)
+         phaseIndex[eval(var[1])-1] = c
+         c = c + 1
+      elseif(var[0] == "d") # A delay in us
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = round(eval(var)*50-1)
+      #   p[c] = round(eval(var))
+         c = c + 1
+      elseif(var[0] == "w") # Long delay - variable resolution (wait)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         dly = eval(var)
+         if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+            in = trunc(dly) # number of 1us steps
+            fr = dly - in # fraction part of 1us
+            if(in > 1)
+               p[c] = trunc(dly)-1 # Number of steps
+               p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 95 # Gives 1us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*100) - 20
+               p[c+2] = 0
+            endif
+         elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+            in = trunc(dly/10) # number of 10us steps
+            fr = dly - trunc(dly) # fraction part of 1us
+            if(in > 10)
+               p[c] = in-1 # Number of 10us steps
+               p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 995 # Gives 10us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*1000) - 19
+               p[c+2] = 0
+            endif
+         endif
+         c = c + 3
+      elseif(var[0] == "b") # A 16 bit ttl byte
+         p[c] = eval(var)*2^16
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "n") # A number
+         p[c] = eval(var)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      endif
+   next(k)
+
+   wvDataModified = "false"
+
+# Save cwd
+   bak = getcwd()
+
+# Get the parameters and check them
+   guipar = keaNMR:startpp()
+   if(guipar == null)
+      keaNMR:enableButtons()
+      abort("")
+   endif
+   assignlist(guipar)
+
+# Save the common parameters
+  keaNMR:saveCommonPar(guipar)
+
+# Get the preferences
+   lst = keaNMR:loadPref()
+   assignlist(lst)
+
+   wvSaveOnAbort = saveOnAbort
+   wvAutoScale = autoScale
+   wvUnits = units
+   wvTimeMin = timeMin
+   wvTimeMax = timeMax
+   wvFreqMin = freqMin
+   wvFreqMax = freqMax
+   wvApplyPreampFactor = calibrateForPreamp
+   wvApplyRxampFactor = calibrateForRxAmp
+   wvPreampGain = preampGain
+   wvUseCommon = useCommonPar
+
+# Check display range (if it exists)
+   m = findobj(0,"name","dispRange")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0 | rg > bandwidth)
+          message("Error","Display range parameter is invalid.\rMust be between 0 and $bandwidth$ kHz.")
+          keaNMR:enableButtons()
+          abort("")
+      endif
+   endif
+
+# Check itegration width range (if it exists)
+   m = findobj(0,"name","intWidth")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0.001 | rg > bandwidth)
+          message("Error","Integration width parameter is invalid.\rMust be between 0.001 and $bandwidth$ kHz.")
+          keaNMR:enableButtons() 
+          abort("")
+      endif
+   endif
+
+# Load the filter coefficients
+   cd(wvFilterDir)
+   n = findobj(0,"name","bandwidthFile")
+   name = getpar(0,n,"text") + ".imp"
+   try
+      fcList = load(name,"list")
+   catch
+      message("Error","file $name$ not found")
+      keaNMR:enableButtons()
+      abort("")
+   endtry
+   fc = keaNMR:processFilterList(fcList)
+
+# Write the filter coefficients to the DSP
+   dec2   =  fc[0]
+   dec5   =  fc[1]
+   decFIR =  fc[2]
+   clk    =  fc[3]
+   nrTaps = size(fc)-6  
+   fc = submatrix(fc,6,nrTaps+5)
+   tClk    = 2/125e6
+   tSample = 2/125e6
+
+# Try and write the filter coefficients to the Kea
+   try
+     dspwritepar("y",0x10,fc)
+   catch
+     message(" No connection to Kea","Make sure Kea is switched on and the\rUSB interface is connected and working.","error")
+     keaNMR::enableButtons()
+     abort("")
+   endtry
+
+# Work out the expected receiver latency
+   algLat  = (nrTaps*dec2*dec5+4*dec2*dec5-3*dec2+1)/(2*clk) 
+   fixLat  = 10*tClk + tSample*(7+dec2*(7+dec5*(5+decFIR)))+nrTaps*tClk
+   rxLat   = (algLat+fixLat)*1e6
+   pgo     = 1.2 # Pulse gate overhead = 1.2 us
+   guipar = setlistvalue(guipar,"pgo","$pgo$")
+
+# Evaluate the relationship variables
+   assignlist(wv_rel)
+
+# Add the relationship variables to the gui parameters
+   guipar = setlistvalue(guipar,"rxLat","$rxLat$")
+   guipar = guipar + wv_rel
+
+# Get the phase list
+   ch = cacheproc("getargs")
+   cacheproc("false")
+   file = getlistvalue(guipar,"phaseCycle")
+   phaseList = file()*0x10
+   cacheproc(ch)
+
+# Convert the Rx gain from dB to a 8 bit hex number
+   rxGain = keaNMR:convertRxGain(rxGain)
+   if(rxGain == null)
+      keaNMR:enableButtons();
+      abort("")
+   endif
+   rxGain1 = rxGain[1]
+   rxGain2 = rxGain[0]
+
+   guipar = setlistvalue(guipar,"rxGain1","\"$rxGain[1]$\"")
+   guipar = setlistvalue(guipar,"rxGain2","\"$rxGain[0]$\"")
+
+# Convert the Tx gains from dB to a 12 linear bit number
+  lst = wv_pp_list
+  for(k = 0 to size(lst)-1)
+     name = lst[k]
+     if(name[0] == "a")
+       assign(name,keaNMR:convertTxGain(eval(name)),"local")
+     endif
+  next(k)
+ 
+# Get pulse program info and write to DSP
+   cd("$path$\\$rmext(macroName)$")
+   pp = dspsrec(wv_pp_name)
+
+   dspwrite("p",0x1000,pp)
+
+# Define the pulse program parameter list
+
+# Firstwork out how big it will be. Start with
+# the number of entries in default parameter list
+   c = 19  # See below
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f")
+         c = c + 4
+      elseif(var[0] == "a")
+         c = c + 2
+      elseif(var[0] == "g")
+         c = c + 2
+      elseif(var[0] == "p")
+         c = c + 1
+      elseif(var[0] == "d")
+         c = c + 1
+      elseif(var[0] == "w")
+         c = c + 3
+      elseif(var[0] == "n")
+         c = c + 1
+      elseif(var[0] == "b")
+         c = c + 1
+      endif
+   next(k)
+
+# Allocate space for lists 
+   p = matrix(c,1)  # pp list
+   varIndex = matrix(size(wv_var)) # Variable indices in pp
+   (w,h) = size(phaseList)         # Phase list as defined by user
+   phaseIndex = matrix(h)          # Phase indices in pp (p1, p2 ,p3)
+
+# Receiver phase shift
+   p1Phase = (360-rxPhase)/360*(2^16-1)
+   9852Fword = (b1Freq * 2^32 )/125
+   6620Fword = 9852Fword * 2
+
+   p[0]  = eval("0x0$rxGain1$00")          # Receiver gain block 1
+   p[1]  = eval("0x0$rxGain2$00")          # Receiver gain block 2
+   p[2]  = dec2                            # Decimation for CIC2
+   p[3]  = dec5                            # Decimation for CIC5
+   p[4]  = decFIR                          # Decimation for FIR
+   p[5]  = round(log2(dec2^2)-2)           # CIC2 gain compensation
+   p[6]  = round(log2(dec5^5)-5)           # CIC5 gain compensation
+   p[7]  = round(log2(sum(fc)/(2^19))+4)   # FIR gain compensation
+   p[8]  = nrTaps                          # Taps for FIR
+   p[9]  = (9852Fword & 0xFF000000)/(2^24) # 9852 NCO frequency
+   p[10] = (9852Fword & 0x00FF0000)/(2^16)
+   p[11] = (9852Fword & 0x0000FF00)/(2^8)
+   p[12] = (9852Fword & 0x000000FF)
+   p[13]  =(6620Fword & 0xFF000000)/(2^24) # 6620 NCO frequency
+   p[14] = (6620Fword & 0x00FF0000)/(2^16)
+   p[15] = (6620Fword & 0x0000FF00)/(2^8)
+   p[16] = (6620Fword & 0x000000FF)
+   p[17] = trunc(p1Phase/256)              # 6620 NCO Phase word 1
+   p[18] = p1Phase - p[17]*256             # 6620 NCO Phase
+
+# Next add the user defined entries in the list based on the variable name
+   c = 19
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f") # A frequency
+         9852Fword = (eval(var) * 2^32 )/125
+         p[c]  = (9852Fword & 0xFF000000)/(2^24)
+         p[c+1] = (9852Fword & 0x00FF0000)/(2^16)
+         p[c+2] = (9852Fword & 0x0000FF00)/(2^8)
+         p[c+3] = (9852Fword & 0x000000FF)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 4
+      elseif(var[0] == "a") # An amplitude
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = trunc(eval(var)/256)
+         p[c+1] = eval(var) - p[c]*256 
+         c = c + 2
+      elseif(var[0] == "g") # An Rx amp gain
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         gain = keaNMR:convertRxGain(eval(var))
+         gain1 = gain[1]
+         gain2 = gain[0]
+         p[c] = eval("0x0$gain1$00") 
+         p[c+1] = eval("0x0$gain2$00") 
+         c = c + 2
+      elseif(var[0] == "p") # A phase
+         p[c] = 0 #eval(var)
+         phaseIndex[eval(var[1])-1] = c
+         c = c + 1
+      elseif(var[0] == "d") # A delay in us
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = round(eval(var)*50-1)
+      #   p[c] = round(eval(var))
+         c = c + 1
+      elseif(var[0] == "w") # Long delay - variable resolution (wait)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         dly = eval(var)
+         if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+            in = trunc(dly) # number of 1us steps
+            fr = dly - in # fraction part of 1us
+            if(in > 1)
+               p[c] = trunc(dly)-1 # Number of steps
+               p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 95 # Gives 1us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*100) - 20
+               p[c+2] = 0
+            endif
+         elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+            in = trunc(dly/10) # number of 10us steps
+            fr = dly - trunc(dly) # fraction part of 1us
+            if(in > 10)
+               p[c] = in-1 # Number of 10us steps
+               p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 995 # Gives 10us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*1000) - 19
+               p[c+2] = 0
+            endif
+         endif
+         c = c + 3
+      elseif(var[0] == "b") # A 16 bit ttl byte
+         p[c] = eval(var)*2^16
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "n") # A number
+         p[c] = eval(var)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      endif
+   next(k)
+
+  wvDataModified = "false"
+
+# Save cwd
+   bak = getcwd()
+
+# Get the parameters and check them
+   guipar = keaNMR:startpp()
+   if(guipar == null)
+      keaNMR:enableButtons()
+      abort("")
+   endif
+   assignlist(guipar)
+
+# Save the common parameters
+  keaNMR:saveCommonPar(guipar)
+
+# Get the preferences
+   lst = keaNMR:loadPref()
+   assignlist(lst)
+
+   wvSaveOnAbort = saveOnAbort
+   wvAutoScale = autoScale
+   wvUnits = units
+   wvTimeMin = timeMin
+   wvTimeMax = timeMax
+   wvFreqMin = freqMin
+   wvFreqMax = freqMax
+   wvApplyPreampFactor = calibrateForPreamp
+   wvApplyRxampFactor = calibrateForRxAmp
+   wvPreampGain = preampGain
+   wvUseCommon = useCommonPar
+
+# Check display range (if it exists)
+   m = findobj(0,"name","dispRange")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0 | rg > bandwidth)
+          message("Error","Display range parameter is invalid.\rMust be between 0 and $bandwidth$ kHz.")
+          keaNMR:enableButtons()
+          abort("")
+      endif
+   endif
+
+# Check itegration width range (if it exists)
+   m = findobj(0,"name","intWidth")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0.001 | rg > bandwidth)
+          message("Error","Integration width parameter is invalid.\rMust be between 0.001 and $bandwidth$ kHz.")
+          keaNMR:enableButtons() 
+          abort("")
+      endif
+   endif
+
+# Load the filter coefficients
+   cd(wvFilterDir)
+   n = findobj(0,"name","bandwidthFile")
+   name = getpar(0,n,"text") + ".imp"
+   try
+      fcList = load(name,"list")
+   catch
+      message("Error","file $name$ not found")
+      keaNMR:enableButtons()
+      abort("")
+   endtry
+   fc = keaNMR:processFilterList(fcList)
+
+# Write the filter coefficients to the DSP
+   dec2   =  fc[0]
+   dec5   =  fc[1]
+   decFIR =  fc[2]
+   clk    =  fc[3]
+   nrTaps = size(fc)-6  
+   fc = submatrix(fc,6,nrTaps+5)
+   tClk    = 2/125e6
+   tSample = 2/125e6
+
+# Try and write the filter coefficients to the Kea
+   try
+     dspwritepar("y",0x10,fc)
+   catch
+     message(" No connection to Kea","Make sure Kea is switched on and the\rUSB interface is connected and working.","error")
+     keaNMR::enableButtons()
+     abort("")
+   endtry
+
+# Work out the expected receiver latency
+   algLat  = (nrTaps*dec2*dec5+4*dec2*dec5-3*dec2+1)/(2*clk) 
+   fixLat  = 10*tClk + tSample*(7+dec2*(7+dec5*(5+decFIR)))+nrTaps*tClk
+   rxLat   = (algLat+fixLat)*1e6
+   pgo     = 1.2 # Pulse gate overhead = 1.2 us
+   guipar = setlistvalue(guipar,"pgo","$pgo$")
+
+# Evaluate the relationship variables
+   assignlist(wv_rel)
+
+# Add the relationship variables to the gui parameters
+   guipar = setlistvalue(guipar,"rxLat","$rxLat$")
+   guipar = guipar + wv_rel
+
+# Get the phase list
+   ch = cacheproc("getargs")
+   cacheproc("false")
+   file = getlistvalue(guipar,"phaseCycle")
+   phaseList = file()*0x10
+   cacheproc(ch)
+
+# Convert the Rx gain from dB to a 8 bit hex number
+   rxGain = keaNMR:convertRxGain(rxGain)
+   if(rxGain == null)
+      keaNMR:enableButtons();
+      abort("")
+   endif
+   rxGain1 = rxGain[1]
+   rxGain2 = rxGain[0]
+
+   guipar = setlistvalue(guipar,"rxGain1","\"$rxGain[1]$\"")
+   guipar = setlistvalue(guipar,"rxGain2","\"$rxGain[0]$\"")
+
+# Convert the Tx gains from dB to a 12 linear bit number
+  lst = wv_pp_list
+  for(k = 0 to size(lst)-1)
+     name = lst[k]
+     if(name[0] == "a")
+       assign(name,keaNMR:convertTxGain(eval(name)),"local")
+     endif
+  next(k)
+ 
+# Get pulse program info and write to DSP
+   cd("$path$\\$rmext(macroName)$")
+   pp = dspsrec(wv_pp_name)
+
+   dspwrite("p",0x1000,pp)
+
+# Define the pulse program parameter list
+
+# Firstwork out how big it will be. Start with
+# the number of entries in default parameter list
+   c = 19  # See below
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f")
+         c = c + 4
+      elseif(var[0] == "a")
+         c = c + 2
+      elseif(var[0] == "g")
+         c = c + 2
+      elseif(var[0] == "p")
+         c = c + 1
+      elseif(var[0] == "d")
+         c = c + 1
+      elseif(var[0] == "w")
+         c = c + 3
+      elseif(var[0] == "n")
+         c = c + 1
+      elseif(var[0] == "b")
+         c = c + 1
+      endif
+   next(k)
+
+# Allocate space for lists 
+   p = matrix(c,1)  # pp list
+   varIndex = matrix(size(wv_var)) # Variable indices in pp
+   (w,h) = size(phaseList)         # Phase list as defined by user
+   phaseIndex = matrix(h)          # Phase indices in pp (p1, p2 ,p3)
+
+# Receiver phase shift
+   p1Phase = (360-rxPhase)/360*(2^16-1)
+   9852Fword = (b1Freq * 2^32 )/125
+   6620Fword = 9852Fword * 2
+
+   p[0]  = eval("0x0$rxGain1$00")          # Receiver gain block 1
+   p[1]  = eval("0x0$rxGain2$00")          # Receiver gain block 2
+   p[2]  = dec2                            # Decimation for CIC2
+   p[3]  = dec5                            # Decimation for CIC5
+   p[4]  = decFIR                          # Decimation for FIR
+   p[5]  = round(log2(dec2^2)-2)           # CIC2 gain compensation
+   p[6]  = round(log2(dec5^5)-5)           # CIC5 gain compensation
+   p[7]  = round(log2(sum(fc)/(2^19))+4)   # FIR gain compensation
+   p[8]  = nrTaps                          # Taps for FIR
+   p[9]  = (9852Fword & 0xFF000000)/(2^24) # 9852 NCO frequency
+   p[10] = (9852Fword & 0x00FF0000)/(2^16)
+   p[11] = (9852Fword & 0x0000FF00)/(2^8)
+   p[12] = (9852Fword & 0x000000FF)
+   p[13]  =(6620Fword & 0xFF000000)/(2^24) # 6620 NCO frequency
+   p[14] = (6620Fword & 0x00FF0000)/(2^16)
+   p[15] = (6620Fword & 0x0000FF00)/(2^8)
+   p[16] = (6620Fword & 0x000000FF)
+   p[17] = trunc(p1Phase/256)              # 6620 NCO Phase word 1
+   p[18] = p1Phase - p[17]*256             # 6620 NCO Phase
+
+# Next add the user defined entries in the list based on the variable name
+   c = 19
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f") # A frequency
+         9852Fword = (eval(var) * 2^32 )/125
+         p[c]  = (9852Fword & 0xFF000000)/(2^24)
+         p[c+1] = (9852Fword & 0x00FF0000)/(2^16)
+         p[c+2] = (9852Fword & 0x0000FF00)/(2^8)
+         p[c+3] = (9852Fword & 0x000000FF)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 4
+      elseif(var[0] == "a") # An amplitude
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = trunc(eval(var)/256)
+         p[c+1] = eval(var) - p[c]*256 
+         c = c + 2
+      elseif(var[0] == "g") # An Rx amp gain
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         gain = keaNMR:convertRxGain(eval(var))
+         gain1 = gain[1]
+         gain2 = gain[0]
+         p[c] = eval("0x0$gain1$00") 
+         p[c+1] = eval("0x0$gain2$00") 
+         c = c + 2
+      elseif(var[0] == "p") # A phase
+         p[c] = 0 #eval(var)
+         phaseIndex[eval(var[1])-1] = c
+         c = c + 1
+      elseif(var[0] == "d") # A delay in us
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = round(eval(var)*50-1)
+      #   p[c] = round(eval(var))
+         c = c + 1
+      elseif(var[0] == "w") # Long delay - variable resolution (wait)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         dly = eval(var)
+         if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+            in = trunc(dly) # number of 1us steps
+            fr = dly - in # fraction part of 1us
+            if(in > 1)
+               p[c] = trunc(dly)-1 # Number of steps
+               p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 95 # Gives 1us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*100) - 20
+               p[c+2] = 0
+            endif
+         elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+            in = trunc(dly/10) # number of 10us steps
+            fr = dly - trunc(dly) # fraction part of 1us
+            if(in > 10)
+               p[c] = in-1 # Number of 10us steps
+               p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 995 # Gives 10us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*1000) - 19
+               p[c+2] = 0
+            endif
+         endif
+         c = c + 3
+      elseif(var[0] == "b") # A 16 bit ttl byte
+         p[c] = eval(var)*2^16
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "n") # A number
+         p[c] = eval(var)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      endif
+   next(k)
+
+   wvDataModified = "false"
+
+# Save cwd
+   bak = getcwd()
+
+# Get the parameters and check them
+   guipar = keaNMR:startpp()
+   if(guipar == null)
+      keaNMR:enableButtons()
+      abort("")
+   endif
+   assignlist(guipar)
+
+# Save the common parameters
+  keaNMR:saveCommonPar(guipar)
+
+# Get the preferences
+   lst = keaNMR:loadPref()
+   assignlist(lst)
+
+   wvSaveOnAbort = saveOnAbort
+   wvAutoScale = autoScale
+   wvUnits = units
+   wvTimeMin = timeMin
+   wvTimeMax = timeMax
+   wvFreqMin = freqMin
+   wvFreqMax = freqMax
+   wvApplyPreampFactor = calibrateForPreamp
+   wvApplyRxampFactor = calibrateForRxAmp
+   wvPreampGain = preampGain
+   wvUseCommon = useCommonPar
+
+# Check display range (if it exists)
+   m = findobj(0,"name","dispRange")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0 | rg > bandwidth)
+          message("Error","Display range parameter is invalid.\rMust be between 0 and $bandwidth$ kHz.")
+          keaNMR:enableButtons()
+          abort("")
+      endif
+   endif
+
+# Check itegration width range (if it exists)
+   m = findobj(0,"name","intWidth")
+   if(m != -1)
+      rg = getpar(0,m,"value")
+      if(rg < 0.001 | rg > bandwidth)
+          message("Error","Integration width parameter is invalid.\rMust be between 0.001 and $bandwidth$ kHz.")
+          keaNMR:enableButtons() 
+          abort("")
+      endif
+   endif
+
+# Load the filter coefficients
+   cd(wvFilterDir)
+   n = findobj(0,"name","bandwidthFile")
+   name = getpar(0,n,"text") + ".imp"
+   try
+      fcList = load(name,"list")
+   catch
+      message("Error","file $name$ not found")
+      keaNMR:enableButtons()
+      abort("")
+   endtry
+   fc = keaNMR:processFilterList(fcList)
+
+# Write the filter coefficients to the DSP
+   dec2   =  fc[0]
+   dec5   =  fc[1]
+   decFIR =  fc[2]
+   clk    =  fc[3]
+   nrTaps = size(fc)-6  
+   fc = submatrix(fc,6,nrTaps+5)
+   tClk    = 2/125e6
+   tSample = 2/125e6
+
+# Try and write the filter coefficients to the Kea
+   try
+     dspwritepar("y",0x10,fc)
+   catch
+     message(" No connection to Kea","Make sure Kea is switched on and the\rUSB interface is connected and working.","error")
+     keaNMR::enableButtons()
+     abort("")
+   endtry
+
+# Work out the expected receiver latency
+   algLat  = (nrTaps*dec2*dec5+4*dec2*dec5-3*dec2+1)/(2*clk) 
+   fixLat  = 10*tClk + tSample*(7+dec2*(7+dec5*(5+decFIR)))+nrTaps*tClk
+   rxLat   = (algLat+fixLat)*1e6
+   pgo     = 1.2 # Pulse gate overhead = 1.2 us
+   guipar = setlistvalue(guipar,"pgo","$pgo$")
+
+# Evaluate the relationship variables
+   assignlist(wv_rel)
+
+# Add the relationship variables to the gui parameters
+   guipar = setlistvalue(guipar,"rxLat","$rxLat$")
+   guipar = guipar + wv_rel
+
+# Get the phase list
+   ch = cacheproc("getargs")
+   cacheproc("false")
+   file = getlistvalue(guipar,"phaseCycle")
+   phaseList = file()*0x10
+   cacheproc(ch)
+
+# Convert the Rx gain from dB to a 8 bit hex number
+   rxGain = keaNMR:convertRxGain(rxGain)
+   if(rxGain == null)
+      keaNMR:enableButtons();
+      abort("")
+   endif
+   rxGain1 = rxGain[1]
+   rxGain2 = rxGain[0]
+
+   guipar = setlistvalue(guipar,"rxGain1","\"$rxGain[1]$\"")
+   guipar = setlistvalue(guipar,"rxGain2","\"$rxGain[0]$\"")
+
+# Convert the Tx gains from dB to a 12 linear bit number
+  lst = wv_pp_list
+  for(k = 0 to size(lst)-1)
+     name = lst[k]
+     if(name[0] == "a")
+       assign(name,keaNMR:convertTxGain(eval(name)),"local")
+     endif
+  next(k)
+ 
+# Get pulse program info and write to DSP
+   cd("$path$\\$rmext(macroName)$")
+   pp = dspsrec(wv_pp_name)
+
+   dspwrite("p",0x1000,pp)
+
+# Define the pulse program parameter list
+
+# Firstwork out how big it will be. Start with
+# the number of entries in default parameter list
+   c = 19  # See below
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f")
+         c = c + 4
+      elseif(var[0] == "a")
+         c = c + 2
+      elseif(var[0] == "g")
+         c = c + 2
+      elseif(var[0] == "p")
+         c = c + 1
+      elseif(var[0] == "d")
+         c = c + 1
+      elseif(var[0] == "w")
+         c = c + 3
+      elseif(var[0] == "n")
+         c = c + 1
+      elseif(var[0] == "b")
+         c = c + 1
+      endif
+   next(k)
+
+# Allocate space for lists 
+   p = matrix(c,1)  # pp list
+   varIndex = matrix(size(wv_var)) # Variable indices in pp
+   (w,h) = size(phaseList)         # Phase list as defined by user
+   phaseIndex = matrix(h)          # Phase indices in pp (p1, p2 ,p3)
+
+# Receiver phase shift
+   p1Phase = (360-rxPhase)/360*(2^16-1)
+   9852Fword = (b1Freq * 2^32 )/125
+   6620Fword = 9852Fword * 2
+
+   p[0]  = eval("0x0$rxGain1$00")          # Receiver gain block 1
+   p[1]  = eval("0x0$rxGain2$00")          # Receiver gain block 2
+   p[2]  = dec2                            # Decimation for CIC2
+   p[3]  = dec5                            # Decimation for CIC5
+   p[4]  = decFIR                          # Decimation for FIR
+   p[5]  = round(log2(dec2^2)-2)           # CIC2 gain compensation
+   p[6]  = round(log2(dec5^5)-5)           # CIC5 gain compensation
+   p[7]  = round(log2(sum(fc)/(2^19))+4)   # FIR gain compensation
+   p[8]  = nrTaps                          # Taps for FIR
+   p[9]  = (9852Fword & 0xFF000000)/(2^24) # 9852 NCO frequency
+   p[10] = (9852Fword & 0x00FF0000)/(2^16)
+   p[11] = (9852Fword & 0x0000FF00)/(2^8)
+   p[12] = (9852Fword & 0x000000FF)
+   p[13]  =(6620Fword & 0xFF000000)/(2^24) # 6620 NCO frequency
+   p[14] = (6620Fword & 0x00FF0000)/(2^16)
+   p[15] = (6620Fword & 0x0000FF00)/(2^8)
+   p[16] = (6620Fword & 0x000000FF)
+   p[17] = trunc(p1Phase/256)              # 6620 NCO Phase word 1
+   p[18] = p1Phase - p[17]*256             # 6620 NCO Phase
+
+# Next add the user defined entries in the list based on the variable name
+   c = 19
+   for(k = 0 to size(lst)-1)
+      var = lst[k]  
+      if(var[0] == "f") # A frequency
+         9852Fword = (eval(var) * 2^32 )/125
+         p[c]  = (9852Fword & 0xFF000000)/(2^24)
+         p[c+1] = (9852Fword & 0x00FF0000)/(2^16)
+         p[c+2] = (9852Fword & 0x0000FF00)/(2^8)
+         p[c+3] = (9852Fword & 0x000000FF)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 4
+      elseif(var[0] == "a") # An amplitude
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = trunc(eval(var)/256)
+         p[c+1] = eval(var) - p[c]*256 
+         c = c + 2
+      elseif(var[0] == "g") # An Rx amp gain
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         gain = keaNMR:convertRxGain(eval(var))
+         gain1 = gain[1]
+         gain2 = gain[0]
+         p[c] = eval("0x0$gain1$00") 
+         p[c+1] = eval("0x0$gain2$00") 
+         c = c + 2
+      elseif(var[0] == "p") # A phase
+         p[c] = 0 #eval(var)
+         phaseIndex[eval(var[1])-1] = c
+         c = c + 1
+      elseif(var[0] == "d") # A delay in us
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         p[c] = round(eval(var)*50-1)
+      #   p[c] = round(eval(var))
+         c = c + 1
+      elseif(var[0] == "w") # Long delay - variable resolution (wait)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         dly = eval(var)
+         if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+            in = trunc(dly) # number of 1us steps
+            fr = dly - in # fraction part of 1us
+            if(in > 1)
+               p[c] = trunc(dly)-1 # Number of steps
+               p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 95 # Gives 1us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*100) - 20
+               p[c+2] = 0
+            endif
+         elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+            in = trunc(dly/10) # number of 10us steps
+            fr = dly - trunc(dly) # fraction part of 1us
+            if(in > 10)
+               p[c] = in-1 # Number of 10us steps
+               p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+               p[c+2] = 995 # Gives 10us step
+            elseif(dly > 0.2)
+               p[c] = 0
+               p[c+1] = round(dly*1000) - 19
+               p[c+2] = 0
+            endif
+         endif
+         c = c + 3
+      elseif(var[0] == "b") # A 16 bit ttl byte
+         p[c] = eval(var)*2^16
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      elseif(var[0] == "n") # A number
+         p[c] = eval(var)
+         for(q = 0 to size(wv_var)-1)
+            if(var == wv_var[q])
+               varIndex[q] = c
+            endif
+         next(q)
+         c = c + 1
+      endif
+   next(k)
+#
+#   for(k = 0 to size(p)-1)
+#      pr "$k$ $hex(p[k])$\n"
+#   next(k)
+endproc(guipar,p,phaseList,phaseIndex,varIndex)
+
+
+
+procedure(testproc)
+
+
+endproc()

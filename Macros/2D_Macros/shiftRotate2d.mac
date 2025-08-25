@@ -1,0 +1,270 @@
+####################################################
+#                 shiftrotate2d.mac
+#
+# Shift or rotate the current 2D plot by a 
+# fixed number of data points or 
+# Rotate the plot interactively.
+#
+# Rotate options:
+# 1. Select a new origin.
+# 2. Select a new centre 
+# 3. Drag a point in the plot to a new position 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+
+procedure(shiftRotate2d)
+
+   n = :windowdefinition()
+   windowvar(ylast,xlast,wv_mat,wv_xscale,wv_yscale)
+   setpar(n,3,"text",0)
+   setpar(n,10,"text",0)
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Shift or Rotate matrix", -1, -1, 288, 156)
+
+      # Define all controls with basic parameters
+       windowvar(ylast,xlast,wv_mat,wv_xscale,wv_yscale)
+       button(1, 158, 22, 45, 27, "Shift",
+          delx = round(getpar(0,3,"value"));
+          dely = round(getpar(0,10,"value"));
+          :shift_matrix(delx,dely);)
+       button(2, 158, 53, 45, 27, "Rotate",
+          delx = round(getpar(0,3,"value"));
+          dely = round(getpar(0,10,"value"));
+          :rotate_matrix(delx,dely);)
+       textbox(3, 101, 26, 37)
+       statictext(4, 95, 29, "right", "x shift/rotate")
+       statictext(5, 95, 57, "right", "y shift/rotate")
+       button(6, 26, 114, 45, 27, "Origin",
+          :select_origin();)
+       button(7, 89, 114, 45, 27, "Centre",
+          :select_centre();)
+       groupbox(8, "Fixed shift/rotate", 6, 1, 211, 89)
+       button(9, 227, 64, 45, 27, "Help",
+          :show_help();)
+       textbox(10, 101, 54, 37)
+       button(11, 227, 17, 45, 27, "Undo",
+          :undo();)
+       button(12, 227, 111, 45, 27, "Exit",
+          closewindow(0);)
+       button(13, 152, 114, 45, 27, "Drag",
+          xlast = -1;
+          trackcursor("2d","arrow",":interactive_rotate","drag");)
+       groupbox(14, "Interactive rotation", 6, 92, 210, 58)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",3)
+       setpar(n,2,"tab_number",4)
+       setpar(n,3,"tab_number",1)
+       setpar(n,6,"tab_number",5)
+       setpar(n,7,"tab_number",6)
+       setpar(n,9,"tab_number",9)
+       setpar(n,10,"tab_number",2)
+       setpar(n,11,"tab_number",8)
+       setpar(n,12,"tab_number",10)
+       setpar(n,13,"tab_number",7)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","shiftRotate2d.htm")
+endproc()
+
+####################################################
+# Rotate the plot by an amount delx, dely
+####################################################
+
+procedure(rotate_matrix,delx,dely)
+
+# Get the plot data
+   (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Make a backup for undo command
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+
+# Roate the plot data
+   m2 = rotate(m1,delx,dely)
+
+# And draw it
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(m2,x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Shift the plot by an amount delx, dely
+####################################################
+
+procedure(shift_matrix,delx,dely)
+
+# Get the plot data
+   (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+
+# Make a backup for undo command
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+
+# Shift the plot data
+   m2 = shift(m1,delx,dely)
+
+# And draw it
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(m2,x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Callback for selecting a new origin
+####################################################
+
+procedure(select_origin)
+
+# Get the plot data
+   (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(m1)
+
+# Make a backup for undo command
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+
+# Get the new origin
+  (posx,posy) = getxy("cross")
+
+# Rotate the data
+   m2 = rotate(m1,-posx,-posy)
+
+# And draw it
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(m2,x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Callback for selecting a new centre
+####################################################
+
+procedure(select_centre)
+
+# Get the plot data
+   (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(m1)
+
+# Make a backup for undo command
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+
+# Get the new origin
+  (posx,posy) = getxy("cross")
+
+# Rotate the data
+   m2 = rotate(m1,w/2-posx,h/2-posy)
+
+# And draw it
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(m2,x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Callback for dragging the plot
+####################################################
+
+procedure(interactive_rotate,x,y)
+
+# Get the plot data
+   (m1,xs,ys) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# If first time initialise some window variables
+   if(xlast == -1)
+      xlast = x
+      ylast = y
+      wv_mat = m1
+      wv_xscale = x
+      wv_yscale = y
+   endif
+
+# Work out shift
+   delx = xlast - x
+   dely = ylast - y
+
+# Rotate and draw the plot data
+   draw2d("false")
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      image(rotate(m1,-delx,-dely),xs,ys)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+   xlast = x
+   ylast = y
+
+endproc()
+
+####################################################
+# Restore the matrix before last rotate/shift
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat,wv_xscale,wv_yscale)
+   2dpar:set(txt,lx,ly,nc,mode)
+   draw2d("true")
+
+endproc()

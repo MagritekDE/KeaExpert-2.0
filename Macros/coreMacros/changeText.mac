@@ -1,0 +1,66 @@
+############################################################
+# A window is displayed with two rows of text. The
+# first row is the original text and the second is the 
+# replacement text. An option is to have a drop down
+# menu on the original text to select from some
+# predefined sources.
+#
+# prompt is the title text
+# old is the  text to be changes
+# new is the  replacement text 
+# len is the approximate number of character to display
+# oldOptions is the list of possibities for the old text
+#
+############################################################
+
+procedure(changetext, prompt="Change text", oldStr="Old text:", newStr="New text:", len=10, oldOptions=list(0))
+
+   origWin = guiwinnr()
+
+   w = len*8+170
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(prompt, -1, -1, w, 92, "resizable")
+
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"sizelimits",[w,1000,92,92])
+
+   # Define all controls with basic parameters
+   statictext(1, 80, 19, "right", oldStr)
+   statictext(2, 80, 53, "right", newStr)
+   if(nrArgs == 5)
+      if(oldOptions == "list")
+         textmenu(3, 88, 50, "ww-160", 200)
+         textmenu(4, 88, 15, "ww-160", 200)
+         setpar(0,3,"menu",oldOptions)
+         setpar(0,4,"menu",oldOptions)
+      else
+         textbox(3, 88, 50, "ww-160")
+         textbox(4, 88, 15, "ww-160")
+         setpar(0,4,"text",oldOptions)
+      endif
+   else
+      textbox(3, 88, 50, "ww-160")
+      textbox(4, 88, 15, "ww-160")
+   endif
+   button(5, "ww-62", 13, 52, 26, "Update",:updateText())
+   button(6, "ww-62", 48, 52, 26, "Close",closeDialog("cancel","cancel"))
+
+   setpar(0,5,"mode","default")
+
+   setfocus(n,4) 
+
+   (oldText,newText) = showdialog(n)
+
+
+endproc(oldText,newText)
+
+procedure(updateText)
+
+   newText = getpar(0,3,"text")
+   oldText = getpar(0,4,"text")
+   closedialog(oldText,newText)
+
+endproc()

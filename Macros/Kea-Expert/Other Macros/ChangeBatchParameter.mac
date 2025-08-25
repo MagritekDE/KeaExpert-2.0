@@ -1,0 +1,56 @@
+###########################################################
+# Command to change a parameter in the selected batch
+# files.
+###########################################################
+
+procedure(ChangeParameter)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+    
+   # Get parameter to change and its new value.
+   (parName, parValue) = changeText("Modify parameter", "Par. name:", "Par. value:", 20)
+   if(parName == "cancel")
+      return
+   endif
+
+   bak = getcwd()
+
+   # Change parameters in selected batch files.
+   cd(gBatch->batchFolder)
+   entries = gView->batch->list
+
+   range = gView->batch->selection
+   # Check for reverse selection
+   if(range[0] > range[1])
+      range = [range[1],range[0]]
+   endif
+   
+   for(k = range[0] to range[1]) # Loop over selection range
+   
+      entry = entries[k] 
+      (protocol,comment,exptNr) = gBatch->parseBatchEntry(entry)
+      folder = "$exptNr$ $protocol$ ($comment$)"
+      cd(folder)
+
+      if(isfile("acqu.par"))
+         par = load("acqu.par")
+         if(getlistindex(par,parName) != -1)
+            par = setlistvalue(par,parName,"$parValue$")
+            save("acqu.par",par)
+            pr("\n   Info: Parameter $parName$ updated to $parValue$ in $entry$\n")
+         else
+            pr("\n   Error: Parameter $parName$ not found in $entry$\n")
+         endif
+      endif
+
+      cd("..")
+
+   next(k)
+
+   cd(bak)
+
+
+endproc()
+

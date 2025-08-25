@@ -1,0 +1,28 @@
+procedure(cubic_distortions)
+
+N = 8192
+t = linspace(0,1,N)
+f1 = 100
+f2 = 220
+s = ((2*cos(2*pi*f1*t) + 10*cos(2*pi*f2*t))).*exp(-t)
+s1 = s - 0.003*s^3
+#plot(t,s)
+fAxis = linspace(-0.5*N,0.5*N,N)
+plot(fAxis,mag(ft(s)),"color",[0,128,0])
+hold("on")
+#plot(t,s)
+plot(fAxis,mag(ft(s1)),"color",[255,0,0])
+title("Frequency response")
+xlabel("Frequency Hz")
+ylabel("Amplitude")
+hold("off")
+pause(2)
+s = linspace(0,10,100)
+s1 = s - 0.003*s^3
+plot(s,s1)
+title("Response with cubic term (s-0.003*s^3)")
+xlabel("Input")
+ylabel("Output")
+
+
+endproc()

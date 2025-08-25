@@ -1,0 +1,32 @@
+###############################
+# Check to see that the abort
+# command can abort from 
+# a procedure correctly
+###############################
+
+procedure(test)
+
+  for n = 0 to 10
+   pr n
+   if(n == 2)
+     :sub_tst()
+   endif
+  next(n)
+
+endproc()
+
+# Abort before dividing by zero
+procedure(sub_tst)
+
+   for(k = -10 to 10)
+   
+      if(k == 0)
+         abort("divide by zero")
+      endif
+   
+      b = 10/k   
+      pr "k = $k$\n"
+   
+   next(k)
+
+endproc()

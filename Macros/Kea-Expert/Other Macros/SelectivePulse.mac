@@ -1,0 +1,587 @@
+#####################################################################
+#                            SelectivePulse.mac
+#
+# Displays an  window which allows
+# the development and testing of selective pulses.
+#
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(filter_designer)
+
+   n = :windowdefinition()
+   setwindowpar(n,"titleupdate","false")
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"focus",28)
+
+   :load_parameters()    
+   showwindow(n)
+
+endproc(n)
+
+#####################################################################
+# Define the filter definition window
+#####################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Selective Pulse Designer", -1, -1, 770, 482, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(fpar,menu,len,plotCtrl)
+      groupbox(1, "Pulse list", 10, 4, 202, "wh-200")
+      listbox(2, 19, 29, 128, "wh-240",
+         if(getpar(0,2,"event") == "single_click_down");
+         :copy_details();
+         :draw_fid_filter();
+         endif;)
+      button(3, 226, 48, 45, 25, "Save",
+         :save_parameters();)
+      setpar(0,3,"tooltip","If pulse list parameters have been changed this will make them permanent.")
+
+      button(4, 154, 39, 45, 25, "Delete",
+         :delete_filter();)
+      setpar(0,4,"tooltip","Delete the current item from the list.")
+
+      button(5, 226, 15, 45, 25, "Restore",
+         :load_parameters();)
+      setpar(0,5,"tooltip","If pulse list parameters have been changed but not saved this will restore them.")
+
+      groupbox(6, "Pulse description", 10, "wh-190", 271, 160)
+
+      statictext(7, 80, "wh-165", "right", "Name:")
+      textbox(8, 85, "wh-169", 100)
+      setpar(0,8,"tooltip","The name of the function to appear in the pulse list.")
+      statictext(9, 80, "wh-140", "right", "Function:")
+      textbox(10, 85, "wh-144", 185)
+      setpar(0,10,"tooltip","An expression describing the time domain function in terms of the x axis and number of points N.")
+
+      statictext(14, 80, "wh-115", "right", "Points (N):")
+      textbox(15, 85, "wh-119", 40)
+      setpar(0,15,"tooltip","The number of points in the non-zero filled time domain data set.")
+
+      statictext(13, 210, "wh-65", "right", "Bandwidth (Hz):")
+      textbox(18, 215, "wh-69", 40)
+      setpar(0,18,"readonly","yes")
+      setpar(0,18,"tooltip","Calculated FWHM of the spectral peak - read only.")
+
+      statictext(11, 80, "wh-90", "right", "Duration (ms):")
+      textbox(16, 85, "wh-94", 40)
+      setpar(0,16,"tooltip","The duration of the time domain pulse before zero-filling.")
+
+      statictext(12, 80, "wh-65", "right", "Amp. (dB):")
+      textbox(17, 85, "wh-69", 40)
+      setpar(0,17,"tooltip","Currently not used")
+
+      statictext(19, 210, "wh-90", "right", "Zero fill factor:")
+      textbox(20, 215, "wh-94", 40)
+      setpar(0,20,"text","1","tooltip","Zero filling occurs either side of the time domain data set and smooths the frequency domain peak. Should be a power of 2.")
+
+      button(22, 226, 165, 45, 25, "Recalc",
+         :draw_fid_filter();)
+      setpar(0,22,"tooltip","Recalculate selective pulse and spectrum if parameters are changed.")
+      button(23, 226, 198, 45, 25, "Update",
+         :update_menu();)
+      setpar(0,23,"tooltip","Update the pulse list parameters if they have been changed.")
+
+      button(25, 154, 72, 45, 25, "Up",
+         :move_filter_up();)
+      setpar(0,25,"tooltip","Move the current pulse name up in the list.")
+
+      button(26, 154, 106, 45, 25, "Down",
+         :move_filter_down();)
+      setpar(0,26,"tooltip","Move the current pulse name down in the list.")
+
+      plotCtrl1 = plot1d(27, 290, 10, "ww-300", "wh*0.5-25")
+      button(28, 226, 123, 45, 25, "Close",
+         closewindow(0);)
+      plotCtrl2 = plot1d(29, 290, "wh*0.5-5", "ww-300", "wh*0.5-25")
+      button(30, 226, 90, 45, 25, "Help",
+         :load_help();)
+
+    menu(40, "&Edit", "Copy current plot\tCtrl+C", func1d("copy plot"))
+
+    menu(41, "&View", "Show &data under cursor\tCtrl+D", func1d("display data"),
+              "&Select a rectangular region\tCtrl+S", func1d("select region"),
+              "&Move plot\tCtrl+M", func1d("drag plot"),
+              "Separator", ,
+              "&Select region and zoom\tCtrl+Drag",nop,
+              "&Zoom a region\tCtrl+Z", func1d("zoom region"),
+              "Show &last region\tCtrl+L", func1d("last region"),
+              "Display &all data\tCtrl+A", func1d("full region"),
+              "Separator", ,
+              "Display &real part\tCtrl+R", func1d("toggle real"),
+              "Display &imaginary part\tCtrl+I", func1d("toggle imaginary"),
+              "Display &magnitude\tCtrl+M", func1d("toggle magnitude"))
+
+      statusbox(50)
+
+     # Set other control parameters
+      setpar(n,27,"objID","plotCtrl1")
+      setpar(n,29,"objID","plotCtrl2")
+      setpar(n,27,"statusbox",50)
+      setpar(n,27,"menubar",[40,41])
+      setpar(n,29,"statusbox",50)
+      setpar(n,29,"menubar",[40,41])
+      setwindowpar(n,"menubar",[40,41])
+
+     # Set other window parameters
+endproc(n)
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(load_help)
+   help("Macros\\1D","selectPulseHelp.htm")
+endproc()
+
+#####################################################################
+# Load the filter information from the file 'filter_parameters.lst'
+#####################################################################
+
+procedure(load_parameters)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   dir = rmext(getmacroname())
+   mkdir(dir)
+   cd(dir)
+   if(isfile("selective_pulse_parameters.lst"))
+      fpar = load("selective_pulse_parameters.lst")
+      len = size(fpar)
+      menu = list(len/5)
+      for(in = 0 to len/5-1)
+         menu[in] = fpar[in*5]
+      next(in)
+      setpar(0,2,"list",menu)
+   else
+      len = 0
+      menu = null
+      fPar = null
+   endif
+   cd(bkdir)
+
+
+endproc()
+
+#####################################################################
+# Copy the filter information from the parameter list to the gui
+#####################################################################
+
+procedure(copy_details)
+
+   filter = getpar(0,2,"text")
+
+   for(in = 0 to len/5-1)
+      if(menu[in] == filter)
+         setpar(0,8,"text",filter)
+         setpar(0,10,"text",fpar[in*5+1])
+         setpar(0,15,"text",fpar[in*5+2])
+         setpar(0,16,"text",fpar[in*5+3])
+         setpar(0,17,"text",fpar[in*5+4])
+      endif   
+   next(in)
+
+endproc()
+
+#####################################################################
+# Plot the current filter details
+#####################################################################
+
+procedure(clear_details)
+
+   setpar(0,8,"text","")
+   setpar(0,10,"text","")
+   setpar(0,15,"text","")
+   setpar(0,16,"text","")
+   setpar(0,17,"text","")
+
+endproc()
+
+#####################################################################
+# Plot the current fid filter in the 1D window
+#####################################################################
+
+procedure(draw_fid_filter)
+
+     N = getpar(0,15,"text")
+     duration = getpar(0,16,"text")
+     amp = getpar(0,17,"text")
+     if(N != "-" | N != " ")
+       N = eval(N)
+     else
+       N = 512
+     endif
+     if(duration != "-" | duration != " ")
+       duration = eval(duration)
+     else
+       duration = 1
+     endif
+     if(amp != "-" | amp != " ")
+       amp = eval(amp)
+     else
+       amp = 1
+     endif
+
+     equation = getpar(0,10,"text")
+     if(equation == "")
+        return
+     endif
+
+     x = [0:1:N-1]
+     tAxis = x/N*duration
+     zf = getpar(0,20,"value")
+
+     if(equation != "")
+        func = eval(equation)
+        funczf = fill(func,N*zf,"sides")
+
+        plt = plotCtrl1->subplot(1,1)
+        plt->draw("false")
+        plt->plot(tAxis,func)
+        plt->title("Selective pulse")
+        plt->xlabel("Time (ms)")
+        plt->ylabel("Amplitude")
+        plt->draw("true")
+
+        plt = plotCtrl2->subplot(1,1)
+        plt->draw("false")
+        funczf = fill(func,N*zf,"sides")
+        fAxis = [-N*zf/2:N*zf/2-1]/(duration*zf/1000)
+
+        spec = mag(ft(funczf))
+        plt->plot(fAxis,spec)
+        plt->title("Spectrum")
+        plt->xlabel("Frequency (Hz)")
+        plt->ylabel("Amplitude")
+        plt->draw("true")
+
+     endif
+
+   # Update the bandwidth
+     height = max(spec)
+     left = findindex2(spec, N*zf/2,"left",height/2)
+     right = findindex2(spec, N*zf/2,"right",height/2)
+     setpar(0,18,"text","$(right-left)*(fAxis[1]-fAxis[0])$")
+
+endproc
+
+#####################################################################
+# Remove a filter from the menu and parameter structures
+#####################################################################
+
+procedure(delete_filter)
+
+   filter = getpar(0,2,"text")
+   if(filter == null)
+      return
+   endif
+
+   menuOld = menu
+   fparOld = fpar
+
+# Check for empty menu
+   if(len/5-1 <= 0)
+      setpar(0,2,"list",[""])
+      :clear_details()
+      len = 0
+      return
+   endif
+
+   menu = list(len/5-1)
+   fpar = list(len-5)
+
+# Copy filter menu
+   n = 0
+   for(in = 0 to len/5-1)
+      if(menuOld[in] != filter)
+         menu[n] = menuOld[in]
+         n = n + 1
+      endif
+   next(in)
+
+# Copy parameter menu
+   n = 0
+   for(in = 0 to len-1 step 5)
+      if(fparOld[in] != filter)
+         fpar[n] = fparOld[in]
+         fpar[n+1] = fparOld[in+1]
+         fpar[n+2] = fparOld[in+2]
+         fpar[n+3] = fparOld[in+3]
+         n = n + 5
+      endif
+   next(in)
+
+   len = len-5
+   setpar(0,2,"list",menu)
+   :clear_details()
+
+endproc
+
+#####################################################################
+# Copy the new filter details into the menu and parameter structures
+#####################################################################
+
+procedure(update_menu)
+
+# Read filter name to update
+   filter = getpar(0,8,"text")
+   if(filter == "")
+     return
+   endif
+
+# Search for filter in menu
+   for(in = 0 to len/5-1)
+      if(menu[in] == filter)
+         fpar[in*5+1] = getpar(0,10,"text")
+         fpar[in*5+2] = getpar(0,15,"text")
+         fpar[in*5+3] = getpar(0,16,"text")
+         fpar[in*5+4] = getpar(0,17,"text")
+         return     
+      endif
+   next(in)
+
+# Must be a new filter - add to end
+   fparOld = fpar
+   menuOld = menu
+   menu = list(len/5+1)
+   fpar = list(len+5)
+
+ 
+# Copy existing filter menu
+   for(in = 0 to len/5-1)
+      menu[in] = menuOld[in]
+   next(in)
+
+# Add new menu item
+  menu[len/5] = getpar(0,8,"text")
+
+# Copy existing parameter menu
+   for(n = 0 to len-1 step 5)
+      fpar[n] = fparOld[n]
+      fpar[n+1] = fparOld[n+1]
+      fpar[n+2] = fparOld[n+2]
+      fpar[n+3] = fparOld[n+3]
+      fpar[n+4] = fparOld[n+4]
+   next(in)
+
+ # Add new filter info 
+   fpar[len+0] = getpar(0,8,"text")
+   fpar[len+1] = getpar(0,10,"text")
+   fpar[len+2] = getpar(0,15,"text")
+   fpar[len+3] = getpar(0,16,"text")
+   fpar[len+4] = getpar(0,17,"text")
+
+   len = len + 5
+
+# Update the filter list
+   setpar(0,2,"list",menu)
+
+endproc
+
+#####################################################################
+# Save filter parameters to the file 'filter_parameters.lst'
+#####################################################################
+
+procedure(save_parameters)
+
+   for(in = 0 to len-1)
+      if(fpar[in] = "")
+         fpar[in] = "-"
+      endif
+   next(in)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   dir = rmext(getmacroname())
+   mkdir(dir)
+   cd(dir)
+   save("selective_pulse_parameters.lst",fpar)
+   cd(bkdir)
+   message("Information","Selective pulse parameters saved")
+
+endproc
+
+#####################################################################
+# Swap two filter parameters (much easier if I had a 2D list!)
+#####################################################################
+
+procedure(swap_parameters,n,m)
+
+   n = n * 5
+   m = m * 5
+   temppar = list(5)
+
+   k = 0
+   for(in = n to n+4)
+      temppar[k] = fpar[in]
+      k = k + 1
+   next(in)
+
+   k = m
+   for(in = n to n+4)
+      fpar[in] = fpar[k]
+      k = k + 1
+   next(in)
+
+   k = 0
+   for(in = m to m+4)
+      fpar[in] = temppar[k]
+      k = k + 1
+   next(in)
+
+   for(in = 0 to len/5-1)
+      menu[in] = fpar[in*5]
+   next(in)
+   setpar(0,2,"list",menu)
+
+endproc
+
+#####################################################################
+# Move a line in the menu up and swap appropriate parameters
+#####################################################################
+
+procedure(move_filter_up)
+   in = getpar(0,2,"index")-1
+   if(in != -1 & in > 0)
+      :swap_parameters(in-1,in)
+      setpar(0,2,"index",in)
+   endif
+endproc
+
+#####################################################################
+# Move a line in the menu down and swap appropriate parameters
+#####################################################################
+
+procedure(move_filter_down)
+   in = getpar(0,2,"index")-1
+   if(in != -1 & in < size(menu)-1)
+      :swap_parameters(in,in+1)
+      setpar(0,2,"index",in+2)
+   endif
+endproc
+
+#####################################################################
+# Utility routine to get current filter menu (not used by gui)
+#####################################################################
+
+procedure(get_menu)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   cd(rmext(getmacroname()))
+   if(isfile("filter_parameters.lst"))
+      fpar = load("filter_parameters.lst")
+      len = size(fpar)
+      menu = list(len/8)
+      for(in = 0 to len/8-1)
+         menu[in] = fpar[in*8]
+      next(in)
+      cd(bkdir)
+      return(menu)
+   endif
+
+   cd(bkdir)
+
+endproc([""])
+
+#####################################################################
+# Utility routine to get current filter value
+#####################################################################
+
+procedure(get_filter,name,type,N)
+
+# Additional code to allow exponential broadening with specified linewidth
+# Syntax is exp,lw The linewidth should be in Hz and N should be the time
+# axis in seconds
+   try
+      parameters = parse(name,":")
+      if(size(parameters) == 2)
+         newName = parameters[0]
+         lineWidth = parameters[1]
+         if(newName == "exp")
+            if(vartype(N) == "matrix1d")
+               t = N
+               lw = eval(lineWidth)
+               y = exp(-pi*t*lw)
+               return(y)
+            else
+               message("Warning","Invalid time axis passed to get_filter for filter $name$")
+               return(matrix(N)+1)
+            endif
+         else
+            message("Warning","Unknown apodization filter type $name$ - ignoring")
+            throw("")
+         endif   
+      elseif(size(parameters) != 1)
+         message("Warning","Invalid apodization filter type $name$ - ignoring")
+         throw("")
+      endif 
+   catch
+      err = lasterror()
+      if(err->type != "throw")
+         message("Warning","Invalid apodization filter type $name$ - ignoring")
+         pr err
+      endif
+      if(vartype(N) == "matrix1d")
+        N = size(N)
+      endif
+      return(matrix(N)+1)
+   endtry
+ 
+# Traditional filter but time axis passed
+   if(vartype(N) == "matrix1d")
+      N = size(N)
+   endif
+   x = [0:1:N-1]
+   bkdir = getcwd()
+   cd(getmacropath())
+   cd(rmext(getmacroname()))
+
+   if(isfile("filter_parameters.lst"))
+      fpar = load("filter_parameters.lst")
+      len = size(fpar)
+
+      in = getlistindex(fpar,name)
+
+      if(in != -1)
+         func = fpar[in+1]
+         if(type == "FTFid")
+            p1 = fpar[in+2]
+            p2 = fpar[in+3]
+            p3 = fpar[in+4]
+         else
+            p1 = fpar[in+5]
+            p2 = fpar[in+6]
+            p3 = fpar[in+7]
+         endif
+
+         if(p1 != "-" | p1 != " ")
+            p1 = eval(p1)
+         endif
+         if(p2 != "-" | p2 != " ")
+            p2 = eval(p2)
+         endif
+         if(p3 != "-" | p3 != " ")
+            p3 = eval(p3)
+         endif
+
+         y = eval(func)
+         cd(bkdir)
+         return(y)     
+      endif
+   endif
+ 
+   y = matrix(N)
+   y[~] = 1
+   cd(bkdir)
+
+endproc(y)
+

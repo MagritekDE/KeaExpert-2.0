@@ -1,0 +1,23 @@
+###################################################################################
+#######################################################
+
+procedure(shim16, channel, value)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 2.5
+     # names = ["Gz","Gx","Gy"]
+      names = ["zshim","xshim","yshim",
+               "z2shim","zxshim","zyshim","x2y2shim","xyshim",
+               "z3shim","z2xshim","z2yshim","zx2y2shim","zxyshim","x3shim","y3shim",
+               "B0offset",
+               "","z3yshim","z4shim","","z3xshim","z2xyshim","z2x2y2shim","y4shim","","","","zx3shim","zy3shim","x4shim"]
+      gSeq->psInfo->command = gSeq->psInfo->command + ["shim16,$names[channel]$,$value$,$args[0]$,$args[1]$"]
+
+   endif
+
+endproc()
+
+

@@ -1,0 +1,18 @@
+###################################################################################
+#######################################################
+
+procedure(incindex, table, amount)
+
+   if(gSeq->psInfo->skipCmds == 0)
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 0.5 # Check
+      if(size(args) == 2)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["incindex,$args[0]$,$args[1]$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["incindex,$args[0]$"]
+      endif
+   endif
+
+endproc()
+

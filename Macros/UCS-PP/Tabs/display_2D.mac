@@ -1,0 +1,71 @@
+procedure(display_2D)
+
+   n = window("Display", -1, -1, 600, 160)
+   windowvar(wvExpStatus)
+   :definecontrols(n)
+   :tabPressed()
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 47, 14, "right", "TIME")
+   statictext(2, 95, 37, "right", "Show domain")
+   checkbox(3, 103, 38, "no,yes", "yes")
+   divider(4, 259, 10, 3, 142, "vertical")
+   statictext(5, 347, 14, "right", "FREQUENCY")
+   statictext(6, 342, 43, "right", "Show domain")
+   checkbox(7, 350, 44, "no,yes", "yes",
+        fn = findobj(0,"name","showFreqDomain");
+        ucsCtrl:enableControls(fn+1,fn+13,fn);)
+   checkbox(8, 350, 69, "no,yes", "yes",
+        fn = findobj(0,"name","showPPM");
+        ucsCtrl:enableNDisableControls(fn+5,fn+12,fn+2,fn+4,fn,"yes");)
+
+   statictext(9, 342, 68, "right", "Show PPM")
+   statictext(10, 442, 117, 81, 30, "center", "F1 and F2 display range")
+   textbox(11, 490, 121, 59)
+   statictext(12, 555, 124, "left", "kHz")
+   statictext(13, 474, 14, "center", "F1")
+   statictext(14, 534, 14, "center", "F2")
+   statictext(15, 434, 32, 27, 29, "center", "Max ppm")
+   textbox(16, 453, 36, 42)
+   textbox(17, 513, 36, 42)
+   statictext(18, 434, 71, 24, 29, "center", "Min ppm")
+   textbox(19, 453, 75, 42)
+   textbox(20, 513, 75, 42)
+
+     # Set other control parameters
+   setpar(n,1,"fgcolor",[0,70,213])
+   setpar(n,3,"valueID","showTimeDomain")
+   setpar(n,4,"tag","disable")
+   setpar(n,5,"fgcolor",[0,70,213])
+   setpar(n,7,"valueID","showFreqDomain")
+   setpar(n,8,"valueID","showPPM")
+   setpar(n,11,"valueID","dispRange",
+               "type","float")
+   setpar(n,16,"valueID","dispRangeMaxPPMf1",
+               "type","float")
+   setpar(n,17,"valueID","dispRangeMaxPPMf2",
+               "type","float")
+   setpar(n,19,"valueID","dispRangeMinPPMf1",
+               "type","float")
+   setpar(n,20,"valueID","dispRangeMinPPMf2",
+               "type","float")
+
+     # Set other window parameters
+endproc(20,"Display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run")
+      fnFrq = findobj(0,"name","showFreqDomain")
+      fnPPM = findobj(0,"name","showPPM")
+      ucsCtrl:enableControls(fnFrq+1,fnFrq+3,fnFrq)
+      ucsCtrl:enableNDisableControls(fnPPM+5,fnPPM+12,fnPPM+2,fnPPM+4,fnPPM,"yes")
+   endif;
+
+endproc()

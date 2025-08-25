@@ -1,0 +1,299 @@
+########################################################################
+# Select a peak interactively from a stacked plot and then integrate
+# each of the spectra in this region. 
+# Display the result in a second graph
+#
+# To use this script an experiment must display the stacked plot in pt1
+########################################################################
+
+procedure(integrateRegions, function="None")
+
+   n = :windowdefinition()
+
+   windowvar(wvParentWinNr,wvScriptWinNr)
+   wvParentWinNr = 2
+   wvScriptWinNr = guiwinnr()
+
+   InitScript(getmacropath(),getmacroname())
+   setwindowpar(n,"exit_procedure",":exitWindow")
+   setwindowpar(n,"statusbox",20)
+   setpar(n,6,"text",function)
+   :initWindow()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Integrate peaks", -1, -1, 256, 270)
+
+      # Define all controls with basic parameters
+      button(1, 30, 19, 80, 32, "Add Int.",:addIntegral())
+      button(2, 30, 69, 80, 32, "Rm Int.",:removeIntegral())
+      button(3, 140, 19, 81, 32, "Clear",:clearWindows())
+      button(4, 140, 69, 81, 32, "Close",:exitWindow())
+      groupbox(5, "Fitting function", 10, 118, 231, 123)
+      fitFuncCtrl = radiobuttons(6, 29, 148, 20, "vertical", "None,T2,T1IR,T1SR", "None")
+      statictext(7, 50, 148, "left", "None")
+      statictext(8, 50, 168, "left", "T2 : exp(-t/T2)")
+      statictext(9, 50, 188, "left", "T1IR : (1-2*exp(-t/T1))")
+      statictext(10, 50, 208, "left", "T1SR : (1-exp(-t/T1))")
+      statusCtrl = statusbox(20)
+
+
+endproc(n)
+
+
+#####################################################################
+# Come here when exiting the window. It tidies up the interface and
+# exits the window
+#####################################################################
+
+procedure(exitWindow)
+
+   localWin = wvScriptWinNr
+   guiwinnr(wvParentWinNr)
+   EndScript()
+   closewindow(localWin)
+
+endproc()
+
+#####################################################################
+# This code provides F1 help for special function commands
+#####################################################################
+
+procedure(showHelp, command)
+
+   pr("\n\n--------------------------------------------------------\n\n")
+   pr("              Integrate peaks macro\n\n")
+   pr("  Works with experiments which save a frequency dependent\n")
+   pr("  stacked plot (which is a function of some parameter) as pt1.\n")
+   pr("\n  After pressing the 'Select Peak' button select either\n")
+   pr("  side of the peak of interest. The data in this frequency\n")
+   pr("  range will be integrated for each parameter value and \n")
+   pr("  presented as a separate graph in the lower plot.\n")
+   pr("\n  If a fitting function has been selected, this function\n")
+   pr("  will be fitted to the integral curve and the results\n")
+   pr("  printed on the plot and in the CLI.\n")
+   pr("\n  Pressing the 'Clear' button will clear the lower plot so you can\n")
+   pr("  start again.")
+   pr("\n--------------------------------------------------------\n\n")
+
+endproc()
+
+#####################################################################
+# Initialise the plot windows
+#####################################################################
+
+procedure(initWindow)
+
+   par = wvParentWinNr
+   this = wvScriptWinNr
+
+# Some variables global to the window
+   guiwinnr(this)
+   windowvar(wvColors,wvNrColors,wvPeak)
+   wvColors = [255,0,0;
+               0,128,0;
+               0,128,255;
+               0,0,255;
+               128,0,128]
+   wvNrColors = size(wvColors,2)
+   wvPeak = 0
+
+endproc()
+
+#####################################################################
+# Remove all integrals and fitting lines
+#####################################################################
+
+procedure(clearWindows)
+
+   (name1,name2) = :getPlotNames()
+
+# Set the plot layout keeping the current plot
+   guiwinnr(par)
+   layout = [name1;name2]
+   gPlot->layoutPlots(layout,"keepdata")
+   gPlot->showPlots(layout)
+
+# Clear the second plot
+   pta = eval("gView->g$name1[-1]$->subplot(1,1)")
+   ptb = eval("gView->g$name2[-1]$->subplot(1,1)")
+
+# Make stacked plot the current plot
+   curplot(pta)
+
+   ptb->clear()
+
+# Remove any existing lines or text
+   pta->rmlines()
+   ptb->rmtext()
+
+endproc()
+
+#####################################################################
+# Get the names of the two adjacent plots 
+# (stacked plot and integrals)
+#####################################################################
+
+procedure(getPlotNames)
+
+# Determine current plot name
+   ctrlID = curplot("1d")->parent->ctrlID
+   nr = eval(ctrlID[-1])
+   name1 = "pt$nr$"
+   nextNr = nr + 1
+   if(nextNr > 6)
+      nextNr = 1
+   endif
+   name2 = "pt$nextNr$"
+
+endproc(name1,name2)
+
+#####################################################################
+# Select an integral to remove
+#####################################################################
+
+procedure(removeIntegral)
+
+# Select the integral to remove
+   statusCtrl->text("Select a point inside integral")
+   pos1 = getx("value")
+
+pr pos1
+
+endproc()
+
+########################################################################
+# Select a peak interactively and then integrate each of the spectra
+# in this region. Fit a T1 inversion recovery curve to this and display
+########################################################################
+
+procedure(addIntegral)
+
+   par = wvParentWinNr
+   this = wvScriptWinNr
+
+   guiwinnr(this)
+   fitOption = fitFuncCtrl->text
+
+   (name1,name2) = :getPlotNames()
+   pta = eval("gView->g$name1[-1]$->subplot(1,1)")
+   ptb = eval("gView->g$name2[-1]$->subplot(1,1)")
+
+# Get the stacked plot region
+   (x1,x2,y1,y2) = pta->zoom()
+   mapping = pta->axes->ymapping
+   mn = pta->axes->minaxisvalue
+   mx = pta->axes->maxaxisvalue
+   varLabel = pta->ylabel->text
+  
+# Select the integral regions
+   statusCtrl->text("Select one side of peak")
+   pos1 = getx("value")
+   pta->addline(pos1,-inf,pos1,inf,wvColors[~,wvPeak%wvNrColors],2,"solid")
+   statusCtrl->text("Select other side of peak")
+   pos2 = getx("value")
+   pta->addline(pos2,-inf,pos2,inf,wvColors[~,wvPeak%wvNrColors],2,"solid")
+   if(pos1 > pos2)
+      swapvar(pos1,pos2)
+   endif
+   statusCtrl->text("")
+
+# Get a list of the stackplot traces
+   ids = pta->tracelist()
+   nrExpts = size(ids)
+   peakIntegrals = matrix(nrExpts)
+   symbols = ["opensquare", "square", "opencircle", "circle", "opentriangle", "triangle", "openinvtriangle", "invtriangle", "opendiamond", "diamond", "cross", "plus", "none"]
+   szShapes = size(symbols)
+
+# Get the y range
+   yoff0 = pta->trace(0)->yoffset()
+   yoffn = pta->trace(nrExpts-1)->yoffset()
+   rev = (yoff0 > yoffn)
+
+# For each trace get the peak integral
+   avgPPM = (pos1+pos2)/2
+
+# For each trace get the peak integral
+   if(rev)
+      for(p = 0 to nrExpts-1)
+         (fAxis,spectrum) = pta->trace(ids[p])->getdata()
+         peakIntegrals[nrExpts-1-p]  = 2*integvector(fAxis,real(spectrum),pos1,pos2)
+      next(p)
+   else
+      for(p = 0 to nrExpts-1)
+         (fAxis,spectrum) = pta->trace(ids[p])->getdata()
+         peakIntegrals[p]  = 2*integvector(fAxis,real(spectrum),pos1,pos2)
+      next(p)
+   endif
+
+   if(mapping == "lin")
+      xAxis = linspace(mn,mx,nrExpts)
+   else
+      xAxis = logspace(mn,mx,nrExpts)
+   endif
+
+# Fit the data
+   if(fitOption == "T1IR")
+      (fit,Ea,Ta,errEa,errTa) = t1fit(xAxis,peakIntegrals,"ir")
+      fitStr = "$Ea,1.2g$*(1-2*exp(-t/$Ta,1.2g$))"
+   elseif(fitOption == "T1SR")
+      (fit,Ea,Ta,errEa,errTa) = t1fit(xAxis,peakIntegrals,"vd")
+      fitStr = "$Ea,1.2g$*(1-exp(-t/$Ta,1.2g$))"
+   elseif(fitOption == "T2")
+      (fit,Ea,Ta,errEa,errTa) = t2fit(xAxis,peakIntegrals)
+      fitStr = "$Ea,1.2g$*exp(-t/$Ta,1.2g$)"
+   endif
+
+# Plot the raw data
+   ptb->draw("false") 
+   ptb->hold("on")
+
+   ptb->axes->xdirection("forward")
+   tc = ptb->plot(xAxis,peakIntegrals,
+             "tracetype", "none", "symbolshape", "opensquare",
+             "symbolcolor", wvColors[~,wvPeak%wvNrColors])
+   if(fitOption != "None")
+      ptb->trace(tc)->name("$avgPPM$ raw '$fitStr$'")
+   else
+      ptb->trace(tc)->name("$avgPPM$ raw 'none'")
+   endif
+
+   shiftMat = [-0.5,0;0,-1]
+
+# Add the fitted curve
+   pos = round(size(peakIntegrals)*0.25)
+  # ptb->hold("on")
+   if(fitOption != "None")
+      if(fitOption == "T2")
+         xoff = 0.25*xAxis[-1]
+         yoff = peakIntegrals[pos]*1.2
+      else
+         xoff = 0.75*xAxis[-1]
+         yoff = peakIntegrals[-1]
+      endif
+      ptb->addtext([xoff,yoff],fitStr,shiftMat,"Cambria",8,0,"regular",wvColors[~,wvPeak%wvNrColors])
+      pr("\n   Fitted function at $(pos1+pos2)/2,2.1f$ ppm : $fitStr$\n")
+      tc = ptb->plot(xAxis,fit,"color", wvColors[~,wvPeak%wvNrColors])
+    #  ptb->trace(tc)->name(fitStr)
+
+   endif
+   if(isvar("fitStr"))
+      ptb->trace(tc)->name("$avgPPM$ fit '$fitStr$'")
+   endif
+
+   ptb->title("Peak integrals")
+   ptb->xlabel(varLabel)
+   ptb->ylabel("Integral")
+   ptb->axes->xmapping("linear")
+   ptb->draw("true")
+
+# Use as in index for coloring selected regions and fit curves
+   wvPeak = wvPeak + 1 
+
+endproc()
+

@@ -1,0 +1,104 @@
+procedure(processing_display_std)
+
+   n = window("Processing", -1, -1, 600, 160)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 47, 14, "right", "TIME")
+   statictext(2, 95, 37, "right", "Show domain")
+   checkbox(3, 103, 38, "no,yes", "yes",
+        fnTim = findobj(0,"name","showTimeDomain");
+        fnFlt = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fnTim+1,fnTim+11,fnTim);
+        if(getpar(0,fnTim,"text") == "yes");
+        ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+        endif;)
+   statictext(4, 135, 67, "right", "Apodize FID")
+   checkbox(5, 143, 67, "no,yes", "no",
+        fn = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fn+1,fn+2,fn);)
+   textmenu(6, 20, 89, 112, 200)
+   button(7, 140, 89, 22, 22, "...",
+      filters();)
+   statictext(8, 104, 123, "right", "Zero fill factor")
+   textmenu(9, 110, 119, 51, 200)
+   statictext(10, 186, 48, "left", "Phase correction")
+   statictext(11, 245, 69, "right", "Magnitude")
+   statictext(12, 244, 89, "right", "Auto-phase")
+   statictext(13, 244, 108, "right", "None")
+   radiobuttons(14, 249, 69, 20, "vertical", "mag,autophase,none", "mag")
+   divider(15, 297, 10, 3, 142, "vertical")
+   statictext(16, 387, 14, "right", "FREQUENCY")
+   statictext(17, 393, 36, "right", "Show domain")
+   checkbox(18, 401, 37, "no,yes", "yes",
+        fn = findobj(0,"name","showFreqDomain");
+        ucsCtrl:enableControls(fn+1,fn+13,fn);)
+   statictext(19, 390, 67, "center", "Display scale and range")
+   radiobuttons(20, 328, 93, 30, "vertical", "no,yes", "no",
+        fnPPM = findobj(0,"name","usePPMScale");
+        ucsCtrl:enableNDisableControls(fnPPM+3,fnPPM+6,fnPPM+1,fnPPM+2,fnPPM,"yes");)       
+   textbox(21, 349, 89, 59)
+   statictext(22, 416, 93, "left", "kHz")
+   textbox(23, 349, 119, 31)
+   statictext(24, 397, 123, "right", "to")
+   textbox(25, 408, 119, 31)
+   statictext(26, 465, 122, "right", "ppm")
+   statictext(27, 520, 48, "center", "Phase correction")
+   statictext(28, 542, 68, "right", "Magnitude")
+   statictext(29, 542, 89, "right", "Auto-phase")
+   statictext(30, 541, 109, "right", "None")
+   radiobuttons(31, 546, 70, 20, "vertical", "mag,autophase,none", "mag")
+
+     # Set other control parameters
+   setpar(n,1,"fgcolor",[0,70,213])
+   setpar(n,3,"valueID","showTimeDomain")
+   setpar(n,4,"color",[128,0,0])
+   setpar(n,5,"valueID","filter")
+   setpar(n,6,"valueID","filterType",
+               "menu",[""])
+   setpar(n,9,"valueID","zf",
+               "menu",["1","2","4","8"])
+   setpar(n,10,"color",[128,0,0])
+   setpar(n,14,"valueID","tdPhaseCorr")
+   setpar(n,15,"tag","disable")
+   setpar(n,16,"fgcolor",[0,70,213])
+   setpar(n,18,"valueID","showFreqDomain")
+   setpar(n,19,"color",[128,0,0])
+   setpar(n,20,"valueID","usePPMScale")
+   setpar(n,21,"valueID","dispRange",
+               "type","float")
+   setpar(n,23,"valueID","dispRangeMinPPM",
+               "type","float")
+   setpar(n,25,"valueID","dispRangeMaxPPM",
+               "type","float")
+   setpar(n,27,"color",[128,0,0])
+
+   setpar(n,31,"valueID","fdPhaseCorr")
+
+     # Set other window parameters
+endproc(31,"Processing+Display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+      fnTim = findobj(0,"name","showTimeDomain");
+      fnFrq = findobj(0,"name","showFreqDomain");
+      fnFlt = findobj(0,"name","filter");
+      ucsCtrl:enableControls(fnTim+1,fnTim+11,fnTim);
+      fnPPM = findobj(0,"name","usePPMScale");
+      ucsCtrl:enableControls(fnFrq+1,fnFrq+14,fnFrq);
+      if(getpar(0,fnFrq,"text") == "yes");
+         ucsCtrl:enableNDisableControls(fnPPM+3,fnPPM+6,fnPPM+1,fnPPM+2,fnPPM,"yes");
+      endif;
+      if(getpar(0,fnTim,"text") == "yes");
+         ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+      endif;
+   endif;
+
+endproc()

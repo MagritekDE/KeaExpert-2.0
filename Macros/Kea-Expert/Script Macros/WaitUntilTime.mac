@@ -1,0 +1,16 @@
+##################################################
+# Wait until time() has reach the specified value
+##################################################
+
+procedure(WaitUntilTime, t)
+
+   sdel = t-time()
+   while(time() < t)
+      if(wvExpStatus != "running")
+         return(1)
+      endif
+      del = t-time()
+      pause(0.005)
+   endwhile
+
+endproc(0)

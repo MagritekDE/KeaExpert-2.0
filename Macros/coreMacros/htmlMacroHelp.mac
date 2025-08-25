@@ -1,0 +1,185 @@
+# Display the command help viewer.
+
+procedure(htmlMacroHelp,dir,cmd)
+
+   (x,y,w,h) = :loadwinpos()
+   n = :windowdefinition(x,y,w,h)  
+   :updateGroupList()
+   if(nrArgs == 1)
+      :loadCommand(dir)
+   else
+      :loadCommand("1D","addErrorBars")
+   endif
+   setwindowpar(n,"exit_procedure",
+         ":savewinpos();closewindow(0);")
+   showwindow(n)
+
+endproc()
+
+# Define the window
+# Do not change the window name since this is used by Prospa
+# when displaying help.
+procedure(windowdefinition,x,y,w,h)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Macro Help Viewer", -1, -1, 830, 388,"resize")
+
+      # Define all controls with basic parameters
+       windowvar(wv_group)
+       htmlbox(1, 286, 6, "ww-290", "wh-15")
+       listbox(2, 106, 30, 170, 234,
+          :loadHelp();)
+       listbox(3, 14, 30, 82, 234,
+          :updateCmdList();)
+       button(4, 161, 300, 59, 35, "Close",
+          :savewinpos();
+          closewindow(0);)
+       button(5, 24, 300, 59, 35, "Back",
+          :goback();)
+       statictext(6, 63, 12, "right", "Group")
+       statictext(7, 160, 12, "center", "Help File")
+       button(8, 93, 300, 59, 35, "Forward",
+          :gofwd();)
+       getmessage(9,
+         :process_message();)
+       groupbox(10, "", 13, 272, 217, 83)
+
+     # Set other control parameters
+endproc(n)
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 400; h = 400
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("htmlhelp.par"))
+      lst = load("htmlhelp.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("htmlhelp.par",lst)
+
+endproc()
+
+
+# Update the command list based on the command group selection
+procedure(updateCmdList)
+
+  dir = appdir + "\\Documentation\\Macro Help\\"
+
+  groupList = getpar(0,3,"text")
+  bak = getcwd()
+  cd(groupList)
+
+  lst = getfilelist(".")
+  for(k = 0 to size(lst)-1)
+     lst[k] = rmext(lst[k])
+  next(k)
+
+  setpar(0,2,"list",sortlist(lst))
+  setpar(0,2,"icons",matrix(size(lst))+16)
+  setpar(0,2,"index",1)
+  cd(bak)
+
+endproc()
+
+# Set the command group list
+procedure(updateGroupList)
+
+  cd(appdir + "\\Documentation\\Macro Help")
+  groups = sortlist(getdirlist("."))
+  setpar(0,3,"list",groups)
+  setpar(0,3,"icons",matrix(size(groups))+15)
+
+endproc()
+
+# Load command based on list selection
+procedure(loadHelp)
+
+   dir = appdir + "\\Documentation\\Macro Help\\1D\\"
+
+   event = getpar(0,2,"event")
+   if(event == "single_click_down" | event == "enter_pressed")
+      file = dir + getpar(0,2,"text") + ".htm"
+      setpar(0,1,"url",file)
+   endif
+
+endproc()
+
+# Load a specific command
+procedure(loadCommand,dir,cmd)
+
+
+       
+   setpar(0,3,"text",dir)
+   :updateCmdList()
+
+   if(nrArgs == 1)
+      lst = getpar(0,2,"list")
+      cmd = lst[0]
+   endif
+
+   setpar(0,2,"text",cmd)
+   dir = appdir + "\\Documentation\\Macro Help\\" + dir + "\\"
+   file = dir + cmd + ".htm"
+   setpar(0,1,"url",file)
+
+endproc()
+
+# Go to the last reference
+procedure(goback)
+
+   setpar(0,1,"goback","")
+
+endproc()
+
+# Go to the next reference
+procedure(gofwd)
+
+   setpar(0,1,"goforward","")
+
+endproc()
+
+# Prospa has sent a message to load help for a command
+procedure(process_message)
+
+   (src,cmd) = getpar(0,9,"text")
+   if(src == "HelpCommand")
+      :loadCommand(cmd)
+   endif
+
+endproc()
+
+procedure(testit)
+
+  pr "\n" 
+   cmds = getpar(0,2,"list")
+
+  for(k = 0 to size(cmds)-1)
+     pr ("k = $k$\r")
+     :loadCommand(cmds[k])
+   next(k)
+
+# for(k = 0 to size(cmds)-1)
+#     pr ("k = $k$\r")
+#    lst = listcom()
+#    setpar(0,2,"text",lst[k])
+# next(k)
+
+
+endproc()

@@ -1,0 +1,1238 @@
+###########################################################
+# Plot class for SpinsolveExpert
+#
+# V2.xx.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   mn = getmacroname()
+
+   self->procedureList = "============================================="
+
+# Plot functions
+   self->getPlotID                  = "$mn$:getPlotID"
+   self->getPlotObject              = "$mn$:getPlotObject"
+   self->isValidGraphName           = "$mn$:isValidGraphName"
+   self->loadPlotPref               = "$mn$:loadPlotPref"
+   self->loadAndDisplayData         = "$mn$:loadAndDisplayData"
+   self->loadPlotLayout             = "$mn$:loadPlotLayout"
+   self->loadSavedPlotLayout        = "$mn$:loadSavedPlotLayout"
+   self->layoutPlots                = "$mn$:layoutPlots"
+   self->layoutPlotsFrom1DList      = "$mn$:layoutPlotsFrom1DList"
+   self->layoutPlotsFrom2DList      = "$mn$:layoutPlotsFrom2DList"
+   self->restoreMultiPlot           = "$mn$:restoreMultiPlot"
+   self->savePlotData               = "$mn$:savePlotData"
+   self->savePlotLayout             = "$mn$:savePlotLayout"
+   self->saveAllPlots               = "$mn$:saveAllPlots"
+   self->setPlotLayout              = "$mn$:setPlotLayout"
+   self->setPlotSize                = "$mn$:setPlotSize"
+   self->setPlotView                = "$mn$:setPlotView"
+   self->showPlots                  = "$mn$:showPlots"
+   self->togglePlotSizes            = "$mn$:togglePlotSizes"
+   self->viewCurrentPlot            = "$mn$:viewCurrentPlot"
+   self->viewSpecifiedPlot          = "$mn$:viewSpecifiedPlot"
+
+   self->variableList = "============================================="
+
+# Plot control flags
+   self->plotZoomMode    = "normal"           # Have we zoomed the plot view or not
+   self->plotView        = "multi_plot_view"  # How many plots to show
+   self->curPlotLayout   = null               # The default plot layout with all saved plots
+   self->curPlotsViewed  = null               # Which plots should actually be displayed
+   self->curPlot         = null               # The currently selected plot
+   self->plotSwitchIndex = -1
+   self->curDim          = 1
+
+endproc()
+
+###########################################################
+# Given a region pointer return the name
+###########################################################
+
+procedure(getPlotID, self, region)
+
+   plt = region->parent
+   id = plt->ctrlID
+   if(id == "undefined")
+      return(id)
+   endif
+   num = eval(id[1:-1])
+   if(num >= 1 & num <= gView->nr1DPlots)
+      return("pt$num$")
+   else
+      return("im$num-gView->nr1DPlots$")
+   endif
+
+endproc()
+
+###########################################################
+# Given a plot name return the plot region pointer
+###########################################################
+
+procedure(getPlotObject, self, name, mode)
+
+   if(nrArgs == 2)
+      mode = "simple"
+   endif
+
+   if(mode == "simple")
+      if(name[0:1] == "pt")
+         ctrl = eval("gView->g$name[2]$")
+      elseif(name[0:1] == "im")
+         ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+      else
+         message("Error","Invalid plot/image reference\r\r$name$\k\k in InitPlot command","error")
+         return(null)
+      endif
+      plt = ctrl->subplot(1,1)
+   else
+
+      entry = name
+      name = ""
+      entry = parse(entry,",")
+
+      for(w = 0 to size(entry)-1)
+         val = parse(entry[w],"=")
+         if(size(val) == 2)
+            if(val[0] == "name")
+               name = val[1]
+            endif
+         else             
+            name = val[0]
+         endif
+      next(w)
+
+      if(name[0:1] == "pt")
+         ctrl = eval("gView->g$name[2]$")
+      elseif(name[0:1] == "im")
+         ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+      else
+         message("Error","Invalid plot/image reference\r\r$name$\k\k in InitPlot command","error")
+         return(null)
+      endif
+      plt = ctrl->subplot(1,1)
+   endif
+
+endproc(plt,name)
+
+
+###########################################################
+# Check that name has the form ptxx or imxx with value
+# numbers xx. return 0 if false, 1 if true
+###########################################################
+
+procedure(isValidGraphName, self, name)
+
+   valid = 0
+   if(size(name) > 2)
+      if(name[0:1] == "pt")
+         pn = eval(scanstr(name,"pt%1"))
+         valid = ((pn >= 1) & (pn <= gView->nr1DPlots))
+      elseif(name[0:1] == "im")
+         in = eval(scanstr(name,"im%1"))
+         valid = ((in >= 1) & (in <= gView->nrGraphs-gView->nr1DPlots))
+      endif
+   endif
+
+endproc(valid)
+
+
+###########################################################
+# Load the plot preferences so the plot inherits the correct 
+# colour scheme. Note that Kea has its own plot
+# preferences separate from Prospa
+###########################################################
+
+procedure(loadPlotPref, self)
+
+   expertPref = "$prefdir$\\KeaParameters\\Core Macros"
+   prospaPref = "$appdir$\\Preferences\\Core Macros"
+
+# Load the plot preferences
+   bak = getcwd()
+   if(isdir(expertPref))
+      cd(expertPref)
+      plotPreferences() 
+      tracePreferences()
+   else
+     mkdir(expertPref)
+     srcFile = "$prospaPref$\\plotPreferences.mac"
+     dstFile = "$expertPref$\\plotPreferences.mac"
+     copyfile(srcFile,dstFile)
+     srcFile = "$prospaPref$\\tracePreferences.mac"
+     dstFile = "$expertPref$\\tracePreferences.mac"
+     copyfile(srcFile,dstFile)
+     cd(expertPref)
+     plotPreferences() 
+     tracePreferences()
+   endif
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Load plot data into plots and display
+###########################################################
+
+procedure(loadAndDisplayData, self, layout, inExperiment=0, userLayout=null)
+
+   if(inExperiment == 0)
+      if(gExpt->ppRunning())
+         return(0)
+      endif
+   endif
+
+   if(layout == null)
+      return(0)
+   endif
+
+   curExpt = gData->curExpt
+
+   dataDir = curExpt->dataPath
+   dataFound = 0
+   curDim = 1
+
+   if(isdir(dataDir))
+      cd(dataDir)
+
+      if(vartype(layout) == "list2d")
+
+         (nrCols,nrRows) = size(layout)
+
+         for(y = 0 to nrRows-1)
+      
+            for(x = 0 to nrCols[y]-1)
+   
+               entry = layout[x,y]
+               lst = parse(entry,",")
+               name = entry
+               file = ""
+               type = "FID"
+               par = struct()
+            
+               par->type = "other"
+      
+               for(w = 0 to size(lst)-1)
+                  val = parse(lst[w],"=")
+                  if(size(val) == 2)
+                     str = "par->$val[0]$"
+                     assign(str,val[1],"local")
+                  else
+                     name = val[0]
+                  endif
+               next(w)
+      
+               assignstruct(par)
+      
+             # Get the plot control and plot number
+               if(name[0:1] == "pt")
+                  nr = eval(name[2])
+                  if(y == nrRows-1)
+                     curDim = 1
+                  endif
+               elseif(name[0:1] == "im")
+                  nr = eval(name[2])+gView->nr1DPlots
+                  if(y == nrRows-1)
+                     curDim = 2
+                  endif
+               endif
+               ctrl = eval("gView->g$nr$")
+               par->name = name
+               par->path = dataDir
+               par->modified = 0
+            # Find the location of the experiment macro
+               exptDir = curExpt->ppPath
+               if(isdir(exptDir))
+                  cd(exptDir)
+               endif
+               if(not(isfile(curExpt->protocol+".mac"))) # Try for version 4  
+                  cd("..") # Try for version 3
+                  if(not(isfile(curExpt->protocol+".mac")))  
+                     throw("Experiment macro '$exptInfo->name$' not found")
+                  endif
+               endif
+
+               mac = "$curExpt->protocol$:getPlotInfo"
+               try
+                  fileA = mac(name)
+
+                  if(fileA != null)
+                     file = fileA
+                     par->file = file
+                  endif
+               catch;
+               endtry;
+               ctrl->uservar(par)
+               cd(dataDir)
+               if(isfile(file))
+                  ctrl->usedefaults("false")
+                  ctrl->load(file)
+                  dataFound = 1
+               else
+                  ctrl->multiplot(1,1) 
+                  curplot(ctrl->subplot(1,1)) 
+               endif
+               setwindowpar(0,"menu",ctrl->ctrlNr)       
+            next(x)
+   
+         next(y)
+
+      else
+         abort(" sePlot. Plot layout should be a 2D list\n")
+      endif # layout list type
+
+   endif # Expt directory exists
+
+# Check for an onLoad procedure (user can define what to load)
+   mac = "$curExpt->protocol$:onLoad"
+   if(isproc(curExpt->ppPath,curExpt->protocol,"onLoad"))
+      bak = getcwd()
+      cd(curExpt->ppPath)
+      (dataFound,layout) = mac(layout)
+      cd(bak)
+   endif
+
+# Display the plots userLayout has priority
+   if(layout != null)
+      if(userLayout != null)
+         self->showPlots(userLayout)
+      else
+         self->showPlots(layout)
+      endif
+   endif
+
+# Update the plot labels
+   if(dataFound)
+      assignstruct(curExpt)
+      if(gData->getFolderHierarchy() == "date")
+         txt = "$protocol$ ($suffix$) ($gData->convertDate(dateStamp)$, $gData->convertTime(timeStamp)$)"
+      else
+         txt = "$protocol$ ($suffix$) ($gData->convertDate(gData->curExpt->dateStamp)$, $gData->convertTime(timeStamp)$)"
+      endif
+      gView->graphLabel->label(txt)
+   else
+      gView->graphLabel->label("No data collected")
+   endif
+
+    self->plotView = "multi_plot_view"
+
+endproc(curDim)
+ 
+###########################################################
+# Load the layout method from the experiment
+# interface file. 
+###########################################################
+
+procedure(loadPlotLayout, self, mode, curExpt)
+
+   if(nrArgs == 2)
+      curExpt = gData->curExpt
+   endif
+
+   dir = curExpt->ppPath
+
+   if(dir != null)
+
+      cd(dir)
+      mac = "$curExpt->protocol$_interface.mac"
+      if(isfile(mac) == 0)
+        return(null)
+      endif
+      
+      if(mode == "run")
+         macp = "$mac$:plot_run_layout"
+      else
+         macp = "$mac$:plot_load_layout"
+      endif
+
+      try
+         layout = macp()
+      catch
+         layout = ["pt1"]
+         pr lasterror()
+      endtry
+
+      if(vartype(layout) == "list")
+         if(getlistindex(layout,";") == -1)
+            old = layout
+            layout = list(size(old),1)
+            layout[~,0] = old
+         endif
+      endif
+
+      macp = "$mac$:processing_controls"
+      gProc->curProcList = null
+      if(isproc(dir,mac,"processing_controls"))
+         try
+            gProc->curProcList = macp()
+            if(vartype(gProc->curProcList) == "list")
+               gProc->curProcList = listto2d(gProc->curProcList)
+            endif
+         catch
+            pr lasterror()
+         endtry
+      endif
+
+   else
+
+      message("Error","Can't find pulse program '$curExpt->protocol$'.\rHas the path to this pulse program been added to the pulse-programs list?","error")
+      throw("Can't find pulse program '$curExpt->name$'")
+      return(null)
+  
+   endif
+
+# Make this the current layout
+   self->curPlotLayout = layout
+   self->usePlots = listto1d(layout)
+
+endproc(layout)
+
+###########################################################
+# Load the default layout for an experiment and also 
+# check to see if a different user layout has been saved
+###########################################################
+
+procedure(loadSavedPlotLayout, self)
+
+# Load the default load layout in interface file (if it exists )
+   defaultlayout = self->loadPlotLayout("load",gData->curExpt)
+
+# Check for user defined layout in data file (if it exists)
+   bak = getcwd()
+   cd(gData->curExpt->dataPath)
+   if(isfile("userLayout.mac"))
+      userLayout = userLayout()
+      if(vartype(userLayout) == "list")
+         userLayout = listto2d(userLayout)
+      endif
+   else
+      userLayout = defaultlayout
+   endif
+
+# Set the user layout
+   self->layoutPlots(userLayout)
+
+# Record this information
+   self->curPlotLayout = defaultlayout
+   self->curPlotsViewed = userLayout
+
+# Check if the user layout is different from the default
+# Note currently can't compare 2D lists so convert to strings
+   if("$defaultlayout$" == "$userLayout$")
+      userMode = 0
+   else
+      userMode = 1
+   endif
+
+   cd(bak)
+
+endproc(defaultlayout, userLayout, userMode)
+
+###########################################################
+# Layout the plots using layout method front
+# end.
+###########################################################
+
+procedure(layoutPlots, self, layout, keepPlots)
+
+   if(layout == null)
+      return
+   endif
+
+# If input is a 1D list then run legacy code
+   if(vartype(layout) == "list")
+      if(nrArgs == 2)
+         self->layoutPlotsFrom1DList(layout)
+      else
+         self->layoutPlotsFrom1DList(layout,"keepPlots")
+      endif
+      self->usePlots = layout
+   elseif(vartype(layout) == "list2d")
+      if(nrArgs == 2)
+         self->layoutPlotsFrom2DList(layout)
+      else
+         self->layoutPlotsFrom2DList(layout,"keepPlots")
+      endif
+      self->usePlots = listto1d(layout)
+   else
+      message("Error","Layout should be a 1D or 2D list","error")
+      return(1)
+   endif
+
+   self->curPlotLayout = layout
+
+endproc()
+
+###########################################################
+# Layout the plots using layout method.
+# 2D list passed
+###########################################################
+  
+procedure(layoutPlotsFrom2DList, self, layout, keepPlots)
+
+# Extract layout parameters and store in a structure also check parameter names
+   (nrCols,nrRows) = size(layout)
+   par = structarray(nrRows)
+
+# Hide the plots
+   for(k = 1 to gView->nrGraphs) # Increase for 3D plots
+      graph = eval("gView->g$k$")
+      graph->visible("false")
+   next(k)
+
+# Resize the plots and add the parameter structure
+   for(y = 0 to nrRows-1)
+
+      par[y]->type = "other"
+
+      for(x = 0 to nrCols[y]-1)
+
+      # Extract the parameters
+         entry = parse(layout[x,y],",")
+         for(q = 0 to size(entry)-1)
+
+            val = parse(entry[q],"=")   
+            if(size(val) == 2)
+               assign(val[0],val[1],"local")
+            else             
+               name = val[0]
+            endif
+
+            if(size(val) == 2)
+               str = "par[$y$]->$val[0]$"
+               assign(str,val[1],"local")
+            else             
+               name = val[0]
+            endif
+
+         next(q)
+     
+         assignstruct(par[y])
+
+        # Check for a valid plot/image name
+         if(self->isValidGraphName(name) == 0)
+            message("Error","Invalid name '$name$' in layoutPlots command.\rShould be pt1 ... ptN or im1 ... imN","error")
+            return(1)
+         endif
+
+       # Find control numbers
+         if(name[0:1] == "pt")
+            ctrl = eval("gView->g$name[2]$")
+         elseif(name[0:1] == "im")
+            ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+         else
+            message("Error","Invalid plot/image reference\r\r$layout[k]$\k\k in InitPlot command","error")
+            return(1)
+         endif
+
+      # Get the plot control and assign parameters and initialise
+         if(nrArgs == 2)
+            ctrl->uservar(par[y])
+            ctrl->multiplot(1,1)
+         endif
+
+      # Set plot position and size
+         w = 1/nrCols[y]
+         h = 1/nrRows
+
+         self->setPlotSize(ctrl,["$x+1$","$y+1$","$w$","$h$"])
+
+      next(x)
+
+   next(y)
+
+endproc()
+
+###########################################################
+# Layout the plots using layout method.
+# 1D list passed  
+#
+# Works out the size of each plot
+# and adds a structure containing various
+# parameters such as an associated filename
+###########################################################
+
+procedure(layoutPlotsFrom1DList, self, layout, keepPlots)
+
+   sz = size(layout)
+   par = structarray(sz)
+
+   for(k = 0 to sz-1)
+
+      entry = parse(layout[k],",")
+      par[k]->type = "other"
+      for(w = 0 to size(entry)-1)
+         val = parse(entry[w],"=")
+         if(size(val) == 2)
+            str = "par[$k$]->$val[0]$"
+            assign(str,val[1],"local")
+         else             
+            name = val[0]
+         endif
+      next(w)
+
+      assignstruct(par[k])
+
+     # Check for a valid plot/image name
+         if(self->isValidGraphName(name) == 0)
+         message("Error","Invalid name '$name$' in layoutPlots command.\rShould be pt1 ... ptN or im1 ... imN","error")
+         return(1)
+      endif
+
+   next(k)           
+   
+# Hide the plots
+   for(k = 1 to gView->nrGraphs) # Increase for 3D plots
+      graph = eval("gView->g$k$")
+      graph->visible("false")
+   next(k)
+
+# Count the number of rows and record 
+   layout = layout +";"
+   sz = sz + 1
+   rows = 0
+   rowpos = matrix(gView->nrGraphs) # Must be less than 10 plot/image objects
+   cols = matrix(gView->nrGraphs)   # Number of columns in each row
+   cnt = 1
+   rowpos[0] = 0
+   for(k = 0 to sz-1)
+      if(layout[k] == ";")
+         rowpos[cnt] = k+1
+         rows = rows+1 
+         cnt = cnt + 1  
+      endif
+   next(k)
+
+# Count the columns in each row
+   for(k = 1 to rows)
+      cols[k-1] = rowpos[k]-rowpos[k-1]-1
+   next(k)
+   cols[k] = 0
+
+# Find and resize each subplot
+   colCnt = 0
+   rowCnt = 0
+
+   for(k = 0 to sz-1)
+
+      if(layout[k] != ";")
+
+         entry = parse(layout[k],",") # Ignore filenames
+
+         for(q = 0 to size(entry)-1)
+            val = parse(entry[q],"=")
+
+            if(size(val) == 2)
+               assign(val[0],val[1],"local")
+            else             
+               name = val[0]
+            endif
+         next(q)
+
+         if(colCnt >= cols[rowCnt])
+            colCnt = 0
+            rowCnt = rowCnt + 1
+         endif
+
+         w = 1/cols[rowCnt]
+         h = 1/rows
+         if(name[0:1] == "pt")
+            ctrl = eval("gView->g$name[2]$")
+           # ctrlNr = findobj(0,"objID","pltCtrl$name[2]$")
+         elseif(name[0:1] == "im")
+            ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+
+           # ctrlNr = findobj(0,"objID","pltCtrl$eval(name[2])+gView->nr1DPlots$")
+         else
+            message("Error","Invalid plot/image reference\r\r$layout[k]$\k\k in InitPlot command","error")
+            return(1)
+         endif
+       #  ctrl = getobj(0,ctrlNr)
+         if(nrArgs == 2)
+            ctrl->uservar(par[k])
+            ctrl->multiplot(1,1)
+         endif
+         self->setPlotSize(ctrl,["$colCnt+1$","$rowCnt+1$","$w$","$h$"])
+         colCnt = colCnt + 1
+      endif
+
+   next(k)
+
+endproc()
+
+###########################################################
+# Restore the full multiplot layout view
+###########################################################
+
+procedure(restoreMultiPlot, self)
+
+   self->layoutPlots(self->curPlotLayout,"keepPlots")
+   self->showPlots(self->curPlotLayout)
+
+   setpar(0,gView->plotViewNr,"uncheckitem","viewCurPlot")
+   setpar(0,gView->plotViewNr,"checkitem","viewMultiPlot")
+
+endproc()
+
+##############################################
+# Save the current plot
+##############################################
+  
+procedure(savePlotData, self, plt)
+
+   if(nrArgs == 1)
+      plt = curplot()
+   endif
+
+# Check is we are trying to overwrite FID data
+   par = plt->parent->uservar
+   try
+      if(par->type == "fid")
+         if(query("Warning","This is raw data - are you sure do you want to modify it?") == "no")
+            return
+         endif
+      endif
+   catch
+   endtry
+
+# If the plot file path is not correct then allow the user to choose it
+   if(not(isdir(plt->filepath)))
+      if(vartype(plt) == "plot")
+         name = getfilename("Save","No plot path/filename defined. Select filename for current plot","1D Plot","pt1")
+         if(name != "cancel")
+            save(name)
+            pr ("\n   Data for plot '$self->getPlotID(plt)$' saved\n")
+         endif
+      elseif(vartype(plt) == "image")
+         name = getfilename("Save","No plot path/filename defined. Select filename for current plot","2D Plot","im1")
+         if(name != "cancel")
+            save(name)
+            pr ("\n   Data for image '$self->getPlotID(plt)$' saved\n")
+         endif
+      endif
+      return
+   endif
+
+# Save the plot information
+   cd(plt->filepath)
+   plt->save(plt->filename)
+   try
+      par->modified = 0
+      plt->parent->uservar(par)
+   catch
+   endtry
+
+   if(isfile("view_temp.par"))
+      movefile("view_temp.par","view.par")
+   endif
+   if(isfile("proc_temp.par"))
+      movefile("proc_temp.par","proc.par")
+   endif
+
+   pr ("\n   Data for plot '$self->getPlotID(plt)$' saved\n")
+
+endproc()
+
+##############################################
+# Save all the plots if not raw data
+##############################################
+ 
+procedure(saveAllPlots, self)
+
+   pr("\n")
+
+   for(k = 1 to gView->nrGraphs)
+
+      plotName = "gView->g$k$"
+      plt = eval(plotName)
+
+      if(plt->visible == "true")
+
+         sp = plt->subplot(1,1)
+         par = plt->uservar
+
+         if(isvar("par->type") == 0)
+            par->type = "undefined"
+         endif
+ 
+         if(isdir(sp->filepath) & (par->type != "fid"))
+            cd(sp->filepath)
+            sp->parent->save(sp->filename) # save all subplots)
+            if(k <= gView->nr1DPlots)
+               pr("   Saved pt$k$\n")
+            else
+               pr("   Saved im$k-gView->nr1DPlots$\n")
+            endif
+            try
+               par->modified = 0
+               plt->parent->uservar(par)
+            catch
+            endtry
+         endif
+
+      endif
+
+   next(k)
+
+   self->savePlotLayout(self->curPlotsViewed)
+
+
+endproc()
+
+###########################################################
+# Save the layout macro to the current data folder
+# This will override the default load layout defined in
+# the experiment
+###########################################################
+
+procedure(savePlotLayout, self, layout)
+   
+   bak = getcwd()
+   cd(gData->curExpt->dataPath)
+   printtofile("userLayout.mac")
+      print("procedure(userLayout)\n\n")
+      print("layout = $layout$\n\n")
+      print("endproc(layout)\n")
+   closeprint()
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Modify the current plot layout
+###########################################################
+
+procedure(setPlotLayout, self)
+
+   # Get parameter to change and its new value.
+   newLayout = gettext("Modify plot layout", "$gPlot->curPlotLayout$", 30)
+   if(newLayout == "cancel")
+      return
+   endif
+   try
+      defaultLayout = self->curPlotLayout
+      newLayout = eval(newLayout)
+      self->layoutPlots(newLayout,"keepplots")
+      self->showPlots(newLayout)
+      self->curPlotsViewed = newLayout
+      self->curPlotLayout = defaultLayout
+   catch
+      pr lasterror()
+   endtry
+
+endproc()
+
+
+###########################################################
+# Set the plot size and position for plot 'ctrl'
+# x,y position is either 1, 2, 3 or 4
+# x,y size is either 0.25, 0.33, 0.50 or 1.00
+###########################################################
+
+procedure(setPlotSize, self, ctrl, m)
+
+   try
+   # Plot dimensions
+      x = eval(m[0])
+      y = eval(m[1])
+      w = eval(m[2])
+      h = eval(m[3])
+
+   # Number of plots in x and y directions
+      nrX = round(1/w)
+      nrY = round(1/h)
+
+   # Plot region boundaries
+      if(self->plotZoomMode == "normal")
+         gap       = 10
+         xoffLeft  = 617
+       #  xoffRight = 74 # No processing panel
+         xoffRight = 100 # With panel
+         yoffTop   = 121
+         yoffBase  = 43
+      else
+         gap       = 10
+         xoffLeft  = 20
+       #  xoffRight = 74 # No processing panel
+         xoffRight = 100 # With panel
+         yoffTop   = 121
+         yoffBase  = 43
+      endif
+
+   # Calculate dimensions as a string
+      if(x > 1)
+         xstr = "ww/$(nrX/(x-1))$ + $round(xoffLeft + (x-1)*gap - (x-1)/nrX*(xoffLeft+xoffRight+(nrX-1)*gap))$"
+      else
+         xstr = "$xoffLeft$"
+      endif
+      wstr = "ww/$nrX$-$round((xoffLeft+xoffRight+(nrX-1)*gap)/nrX)$"
+
+      if(y > 1)
+         ystr = "wh/$(nrY/(y-1))$ + $round(yoffTop + (y-1)*gap - (y-1)/nrY*(yoffTop+yoffBase+(nrY-1)*gap))$"
+      else
+         ystr = "$yoffTop$"
+      endif
+      hstr = "wh/$nrY$-$round((yoffTop+yoffBase+(nrY-1)*gap)/nrY)$"
+
+   # Update control dimensions
+      ctrl->xexp(xstr)
+      ctrl->yexp(ystr)
+      ctrl->wexp(wstr)
+      ctrl->hexp(hstr)
+
+   catch
+
+      pr lasterror()
+
+   endtry
+
+endproc()
+
+###########################################################
+# Change how the plots are displayed
+# dim = 1 or 2 (plot dimension)
+# mode == multi_plot_view .... show all plots
+# mode == single_plot_view ... show current plot
+# mode == toggle change to other option
+#         as defined by wvPlotView
+###########################################################
+
+procedure(setPlotView, self, dim, mode)
+
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\BitMaps")
+
+   if(mode == "multi_plot_view") # Display multiple plots
+
+      gView->plotViewCtrl->icon("select_one_plot.png")
+      gView->plotViewCtrl->rmtooltip("")
+      gView->plotViewCtrl->tooltip("View only the current plot.")
+      self->plotView = "multi_plot_view"
+
+   elseif(mode == "single_plot_view") # Display a single plot
+
+      gView->plotViewCtrl->icon("select_multiple_plots.png")
+      gView->plotViewCtrl->rmtooltip("")
+      gView->plotViewCtrl->tooltip("View all plots.")
+      self->plotView = "single_plot_view"
+
+   elseif(mode == "toggle_view") # Switch between single and multiview
+
+      if(self->plotView == "single_plot_view") # Single view => multi view
+   
+         gView->plotViewCtrl->icon("select_one_plot.png")
+         gView->plotViewCtrl->rmtooltip("")
+         gView->plotViewCtrl->tooltip("View only the current plot.")
+         self->layoutPlots(self->curPlotLayout,"keepPlots")
+         self->showPlots(self->curPlotLayout)
+         self->curPlotsViewed = self->curPlotLayout
+         self->plotView = "multi_plot_view"
+
+      else # Multi view => Single view
+  
+         gView->plotViewCtrl->icon("select_multiple_plots.png")
+         gView->plotViewCtrl->rmtooltip("")
+         gView->plotViewCtrl->tooltip("View all plots.")
+         id = self->viewCurrentPlot()
+         self->curPlotsViewed = listto2d(["$id$"])
+         self->plotView = "single_plot_view"
+   
+      endif
+
+   elseif(mode == "switch_plots") # Rotate between single plots
+
+      gView->plotViewCtrl->icon("select_multiple_plots.png")
+      gView->plotViewCtrl->rmtooltip("")
+      gView->plotViewCtrl->tooltip("View all plots.")
+      self->plotView = "single_plot_view"
+
+      layout = self->curPlotLayout
+
+      if(self->plotSwitchIndex == -1)
+         self->plotSwitchIndex = 0
+      else
+         self->plotSwitchIndex = self->plotSwitchIndex+1
+      endif
+
+      if(vartype(layout) == "list2d")
+         (x,y) = gData->listIndexToCoord(layout,self->plotSwitchIndex)
+         if(x == -1)
+            self->plotSwitchIndex = 0
+            x = 0; y = 0;
+         endif
+         plotID = layout[x,y]
+      else # 1D list
+         if(self->plotSwitchIndex >= size(layout))
+            self->plotSwitchIndex = 0
+         endif
+         plotID = layout[self->plotSwitchIndex] 
+         if(plotID == ";")
+             self->plotSwitchIndex = self->plotSwitchIndex + 1
+             if(self->plotSwitchIndex >= size(layout))
+               self->plotSwitchIndex = 0
+            endif
+            plotID = layout[self->plotSwitchIndex]   
+         endif
+      endif
+
+      obj = self->getPlotObject(plotID,"complex")
+      id = self->viewSpecifiedPlot(obj->parent)
+      self->curPlotsViewed = listto2d(["$id$"])
+      self->curPlot = obj->parent
+      curplot(obj)
+
+   endif
+
+endproc()
+
+###########################################################
+# Make the exeriment plots visible
+###########################################################
+
+procedure(showPlots, self, layout)
+
+   if(layout == null)
+      return
+   endif
+
+   if(vartype(layout) == "list2d")
+
+      (nrCols,nrRows) = size(layout)
+   
+     # Make the plots visible
+      for(y = 0 to nrRows-1)
+
+         for(x = 0 to nrCols[y]-1)
+   
+            entry = parse(layout[x,y],",") # Ignore filenames
+      
+            for(w = 0 to size(entry)-1)
+      
+               val = parse(entry[w],"=")
+               if(size(val) == 2)
+                  assign(val[0],val[1])
+               else
+                  name = val[0]
+               endif
+            next(w)
+      
+            if(name[0:1] == "pt")
+               ctrl = eval("gView->g$name[2]$")
+            elseif(name[0:1] == "im")
+               ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+            endif
+            ctrl->visible("true")
+            ctrl->draw("true")
+   
+         next(x)
+
+      next(y)
+
+   elseif(vartype(layout) == "list")
+
+      sz = size(layout)
+   
+     # Make the plots visible
+      for(k = 0 to sz-1)
+   
+         entry = parse(layout[k],",") # Ignore filenames
+   
+         for(w = 0 to size(entry)-1)
+   
+            val = parse(entry[w],"=")
+            if(size(val) == 2)
+               assign(val[0],val[1])
+            else
+               name = val[0]
+            endif
+         next(w)
+   
+         if(name != ";")
+            if(name[0:1] == "pt")
+               ctrl = eval("gView->g$name[2]$")
+            elseif(name[0:1] == "im")
+               ctrl = eval("gView->g$eval(name[2])+gView->nr1DPlots$")
+            endif
+            ctrl->visible("true")
+            ctrl->draw("true")
+
+         endif
+   
+      next(k)
+
+   endif
+
+endproc()
+
+###########################################################
+# Toggle the size of the plot windows
+###########################################################
+
+procedure(togglePlotSizes, self)
+
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\BitMaps")
+
+   nhd = gView->cliDiv->objnr
+
+   gView->mainWin->draw("false")   
+
+# Hide or show experiment info
+   if(self->plotZoomMode == "normal")
+      self->plotZoomMode = "expand"
+      gView->selectInterface(wvDisplayMode)
+
+      if(wvDisplayMode == "normal")
+         for(k = gView->staticCtrlRange[0] to gView->staticCtrlRange[1])
+           if(isobj(0,k))
+              setpar(0,k,"visible","false")
+           endif
+         next(k)
+      else
+         for(k = 1 to gView->userCtrlMaxRng[1])
+            if(isobj(0,k))
+              setpar(0,k,"visible","false")
+            endif
+         next(k)
+         gView->cliDiv->visible("false")
+      endif
+      setpar(0,gView->cli->ctrlNr,"x",10,"y",10,"width",578,"height", "90",
+             "region",[-1,-2,-3,-4])
+      setpar(0,gView->graphLabel->ctrlNr,"x",10,"y",100,"wexp","ww-20","hexp","wh-134")
+      gView->enlargePlotCtrl->icon("shrink_plots.png")
+      gView->enlargePlotCtrl->rmtooltip("")
+      gView->enlargePlotCtrl->tooltip("Shrink plot region")
+   else  
+      self->plotZoomMode = "normal"
+      if(wvDisplayMode == "normal")
+         for(k = gView->staticCtrlRange[0] to gView->staticCtrlRange[1])
+            if(gView->exptModeCtrl->text == "history")
+               if(k < gView->batchRange[0] | k > gView->batchRange[1])
+                  setpar(0,k,"visible","true")
+               endif
+               gView->batchDiv->visible("false")
+            else
+               setpar(0,k,"visible","true")
+            endif
+         next(k)
+      else
+         for(k = 1 to gView->userCtrlMaxRng[1])
+           if(isobj(0,k))
+              setpar(0,k,"visible","true")
+           endif
+         next(k)
+         gView->cliDiv->visible("true")
+      endif
+      setpar(0,gView->cli->ctrlNr,"x", 10,"y", 10, "width", 586, "hexp", "rh-45",
+             "region",[-1,-2,nhd,-4])
+      setpar(0,gView->graphLabel->ctrlNr,"x",605,"y",100,"wexp","ww-615","hexp","wh-134")
+      gView->enlargePlotCtrl->icon("expand_plots.png")
+      gView->enlargePlotCtrl->rmtooltip("")
+      gView->enlargePlotCtrl->tooltip("Enlarge plot region")
+   endif
+
+# Relayout plots
+   if(self->plotView == "multi_plot_view")
+      self->layoutPlots(self->curPlotLayout,"keepPlots")
+      self->showPlots(self->curPlotLayout)
+   else
+      self->layoutPlots(self->curPlotLayout,"keepPlots")
+      self->showPlots(self->curPlotLayout)
+      self->viewSpecifiedPlot(self->curPlot)
+   endif
+
+## Force the CLI to resize correctly by resizing the main window
+   adjustctrls(gView->wn)
+
+# Redraw the window
+   gView->mainWin->draw("true")   
+
+# Fixes a bug in the parameter list which can cause background flashing
+# after they have been hidden and shown again
+   if(gParam->firstParameterCtrl != -1 & self->plotZoomMode == "normal" & wvDisplayMode == "normal")
+      for(k = gParam->firstParameterCtrl to gParam->lastParameterCtrl)
+         vis = getpar(0,k,"visible")
+         setpar(0,k,"visible",vis)
+      next(k)
+   endif
+
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Show the current plot full window
+###########################################################
+
+procedure(viewCurrentPlot, self, dim)
+
+   if(nrArgs == 1)
+      dim = curplot()->dim
+      plt = curplot(dim)->parent
+      if(plt->visible == "false")
+         if(dim == "1d")
+            plt = curplot("2d")->parent  
+         else
+            plt = curplot("1d")->parent 
+         endif
+      endif 
+   else
+   # Get the current plot
+      if(dim == 1)
+         plt = curplot("1d")->parent
+      else
+         plt = curplot("2d")->parent
+      endif
+   endif
+   
+# Hide the plots
+   for(k = 1 to gView->nrGraphs)
+      ctrl = eval("gView->g$k$")
+      ctrl->visible("false")
+   next(k)
+
+# Set the plot to full size
+   self->setPlotSize(plt,["1","1","1","1"])
+
+# Show the plot
+    plt->visible("true")
+    self->curPlot = plt
+
+   setpar(0,gView->plotViewNr,"checkitem","viewCurPlot")
+   setpar(0,gView->plotViewNr,"uncheckitem","viewMultiPlot")
+
+# Return plot ID
+   id = self->getPlotID(plt->subplot(1,1))
+
+endproc(id)
+
+###########################################################
+# Show the current plot full window
+###########################################################
+
+procedure(viewSpecifiedPlot, self,  plt)
+
+   if(plt == null)
+      return
+   endif
+
+# Hide the plots
+   for(k = 1 to gView->nrGraphs)
+      ctrl = eval("gView->g$k$")
+      ctrl->visible("false")
+   next(k)
+
+# Set the plot to full size
+   self->setPlotSize(plt,["1","1","1","1"])
+
+# Show the plot
+   plt->visible("true")
+
+# Return plot ID
+   id = self->getPlotID(plt->subplot(1,1))
+
+endproc(id)

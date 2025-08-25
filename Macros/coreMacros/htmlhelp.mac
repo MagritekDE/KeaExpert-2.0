@@ -1,0 +1,234 @@
+# Display the command help viewer.
+
+procedure(htmlhelp,cmd)
+
+   (x,y,w,h) = :loadwinpos()
+   n = :windowdefinition(x,y,w,h)  
+   :updateGroupList()
+   if(nrArgs == 1)
+      :loadCommand(cmd)
+   else
+      :loadCommand("abort")
+   endif
+   setwindowpar(n,"exit_procedure",
+         ":savewinpos();closewindow(0);")
+   showwindow(n)
+
+endproc()
+
+# Define the window
+# Do not change the window name since this is used by Prospa
+# when displaying help.
+procedure(windowdefinition,x,y,w,h)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Command Help Viewer", -1, -1, 830, 388,"resize")
+
+      # Define all controls with basic parameters
+       windowvar(wv_group)
+       htmlbox(1, 244, 6, "ww-250", "wh-15")
+       listbox(2, 106, 30, 126, 234,
+          :loadHelp();)
+       listbox(3, 14, 30, 82, 234,
+          :updateCmdList();)
+       button(4, 161, 300, 59, 35, "Close",
+          :savewinpos();
+          closewindow(0);)
+       button(5, 24, 300, 59, 35, "Back",
+          :goback();)
+       statictext(6, 63, 12, "right", "Group")
+       statictext(7, 160, 12, "center", "Help File")
+       button(8, 93, 300, 59, 35, "Forward",
+          :gofwd();)
+       getmessage(9,
+         :process_message();)
+       groupbox(10, "", 13, 272, 217, 83)
+
+     # Set other control parameters
+endproc(n)
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 400; h = 400
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("htmlhelp.par"))
+      lst = load("htmlhelp.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("htmlhelp.par",lst)
+
+endproc()
+
+
+# Update the command list based on the command group selection
+procedure(updateCmdList)
+
+  groupList = getpar(0,3,"text")
+  
+  if(groupList == "All")
+     lst = listcom()
+   elseif(groupList == "1D")
+     lst = ["axes","clear1d","curtrace","curplot","draw1d",
+              "getplotdata","getplotstate","getx","grid","hold",
+              "load","loadplotmode","mulitplot","plot","plotpref",
+              "setplotstate","title","tracepref","xlabel","ylabel","zoom1d"]    
+   elseif(groupList == "2D")
+     lst = ["axes","autorange","circle","clear2d","cmap","draw2d",
+              "getdatarange","getplotdata","getplotstate","getxy","grid","image",
+              "imagerange","load","loadplotmode","mulitplot","rectangle",
+              "setplotstate","showcmap","title","tracepref","vectorplot",
+              "xlabel","ylabel","zoom2d"]   
+   elseif(groupList == "3D")
+     lst = ["axis3d","axispar3d","axes3d","bkgcolor3d","box3d","clear3d","clip3d",
+            "clip3dstatus","cmap3d","color3d","cylinder","datarange3d","depthcue",
+            "depthcuerange","draw3d","isosurf","light3d","lines3d","linewidth3d",
+            "plane3d","pref3d","rotate3d","scale3d","segments3d",
+            "shift3d","showcmap3d","sphere","surf2d","textsize3d",
+            "viewdistance"]  
+   elseif(groupList == "Files")
+     lst = ["cd","export1d","export1dpar","export2d","export2dpar","fileinfo","getbasedir",
+            "getcwd","getext","getfolder","getmacroname","getmacropath","import1d",
+            "import1dpar","import2d","import2dpar","import3d","import3dpar","isdir",
+            "isfile","load","ls","mkdir","pathnames","printtofile","pwd","relpath",
+            "rmext","rmfile","save","setcwd","setfolder","simplifydir"]   
+   elseif(groupList == "Fourier")
+     lst = ["ft","ftshift","hft","ift","rft"]     
+   elseif(groupList == "Math")
+     lst = ["abs","conj","eval","evalsubexp","exp","factorial","frac","log10",
+            "loge","log2","hex","integfunc","inv","mag","noise","not","phase",
+            "realtostr","rand","round","sqrt","trunc"]  
+   elseif(groupList == "GUI")
+     lst = ["activatewindow","assignlist","button","checkbox","checkcontrols","colorbox",
+            "closedialog","closewindow","distobj","drawobj","edit","enablecontrol","findobj",
+            "geteditwin","getwindowpar","hidewindow","keepontop","listbox","mkobj","mkparlist",
+            "movewindow","getpar","groupbox","guiwinnr","progressbar","radiobuttons","savelayout", 
+            "seteditwin","setpar","selectobj","setwindowpar","showcmap","showcursor","showdialog",    
+            "showobjects","showwindow","slider","statusbox","statictext","textbox","textmenu",    
+            "window"]  
+   elseif(groupList == "Lists")
+     lst = ["assignlist","getctrlvalues","getlistindex","getlistvalue","getsublist","insertinlist",
+            "ispar","list","listbox","load","mergelists","mkparlist","rmfromlist",
+            "rmprefix","save","setctrlvalues","setlistvalue","sortlist"]
+   elseif(groupList == "Macros")
+     lst = ["else","elseif","enablecontrol","endif","endproc","endwhile",
+            "exitfor","exitwhile","for","if","procedure","return","while"]  
+   elseif(groupList == "Matrices")
+     lst = ["closearray","cmatrix","diag","imag","identity","insert",
+            "integvector","join","linvec","matrix","matrixdim","matrixlist","max",      
+            "min","outer","real","reflect","reshape","rotate","shift",      
+            "size","submatrix","sum","trans","trac","zerofill"]   
+   elseif(groupList == "Misc")
+     lst = ["bell","clear","closeprint","exec","exit","geteditwin","getcolor"
+            "getfilename","getrect","help","helpviewer","listcom","listdlls","message",      
+            "memory","pause","pr","printtofile","query","sound","time",      
+            "rmrect","unloaddlls","windowmargins"] 
+   elseif(groupList == "Strings")
+     lst = ["errorstr","issubstr","parse","scanstr","size","submatrix","realtostr"
+            "replacestr","rmsubstr"]  
+   elseif(groupList == "Trig")
+     lst = ["acos","asin","atan","cos","cosh","sin","sinh","tan","tanh"]        
+   elseif(groupList == "Variables")
+     lst = ["alias","assign","isvar","retvar","rmvar","swapvar","uniquename","varlist","varstatus",        
+            "vartype","windowvar"]        
+   endif
+
+  setpar(0,2,"list",sortlist(lst))
+  setpar(0,2,"icons",matrix(size(lst))+16)
+  setpar(0,2,"index",1)
+
+endproc()
+
+# Set the command group list
+procedure(updateGroupList)
+
+  groups = ["All","1D","2D","3D","Files","Fourier","Math","GUI",
+            "Lists","Macros","Matrices","Misc","Trig","Variables"]
+  setpar(0,3,"list",groups)
+  setpar(0,3,"icons",matrix(size(groups))+15)
+
+endproc()
+
+# Load command based on list selection
+procedure(loadHelp)
+
+   dir = appdir + "\\Documentation\\Command Help\\"
+
+   event = getpar(0,2,"event")
+   if(event == "single_click_down" | event == "enter_pressed")
+      file = dir + getpar(0,2,"text") + ".htm"
+      setpar(0,1,"url",file)
+   endif
+
+endproc()
+
+# Load a specific command
+procedure(loadCommand,cmd)
+
+   setpar(0,3,"text","All")
+   :updateCmdList()
+   setpar(0,2,"text",cmd)
+   dir = appdir + "\\Documentation\\Command Help\\"
+   file = dir + cmd + ".htm"
+   setpar(0,1,"url",file)
+
+endproc()
+
+# Go to the last reference
+procedure(goback)
+
+   setpar(0,1,"goback","")
+
+endproc()
+
+# Go to the next reference
+procedure(gofwd)
+
+   setpar(0,1,"goforward","")
+
+endproc()
+
+# Prospa has sent a message to load help for a command
+procedure(process_message)
+
+   (src,cmd) = getpar(0,9,"text")
+   if(src == "HelpCommand")
+      :loadCommand(cmd)
+   endif
+
+endproc()
+
+procedure(testit)
+
+  pr "\n" 
+   cmds = getpar(0,2,"list")
+
+  for(k = 0 to size(cmds)-1)
+     pr ("k = $k$\r")
+     :loadCommand(cmds[k])
+   next(k)
+
+# for(k = 0 to size(cmds)-1)
+#     pr ("k = $k$\r")
+#    lst = listcom()
+#    setpar(0,2,"text",lst[k])
+# next(k)
+
+
+endproc()

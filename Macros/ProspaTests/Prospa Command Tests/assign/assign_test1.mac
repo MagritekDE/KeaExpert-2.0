@@ -1,0 +1,50 @@
+# Test the assign command
+
+procedure(assign_test1,verbose,delay)
+
+# Make a local and global variable
+   (r,s) = :test()
+   if(r == 0)
+     return(r,s)
+   endif
+
+# Check for non-existance of global
+   if(not(isvar("mGlo")))
+      return(0,"Invalid result 1 for: assign_test1")
+   endif
+
+# Check for existance of local
+   if(isvar("mLoc"))
+      return(0,"Invalid result 2 for: assign_test1")
+   endif
+
+# Check for value of global
+   n = matrix(100)+5
+   if(n != mGlo)
+      return(0,"Invalid result 3 for: assign_test1")
+   endif
+
+# Tidy up
+   rmvar ("mGlo")
+
+endproc(1,"")
+
+# Make a local and a global variable
+
+procedure(test)
+
+   m = matrix(100) + 5
+   assign("mLoc",m,"local")
+   assign("mGlo",m,"global")
+
+# Make sure the local variable is generated
+   if(not(isvar("mLoc")))
+      return(0,"Invalid result 4 for: assign_test1")
+   endif
+
+# Make sure the local variable is correct
+   if(m != mLoc)
+      return(0,"Invalid result 5 for: assign_test1")
+   endif
+
+endproc(1,"")

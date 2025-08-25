@@ -1,0 +1,291 @@
+#######################################################
+#
+# Select a folder
+#
+# In addition to just selecting a folder this utility
+# can also indicate those folders which have special
+# files or subfolders within them
+#
+# startDir ... directory to display initially
+# label ...... text to appear in the title bar
+# default .... which directory to initially select 
+# id ......... name of file or subdirectory which if
+#              present in a directory will cause its
+#              icon to include a prospa logo
+#
+# Still to do:
+#
+# Add drive short cuts
+# Add option to view networked drives
+# Replace buttons at top of window with a toolbar
+# Remember window size
+#
+#
+#  C Eccles August 2010
+#
+# 14 August 2014
+#    1. Attached buttons to bottom of window
+#    2. Restrict resizing
+#    3. Fixed desktop button
+#
+#########################################################
+
+
+procedure (SelectFolder,startDir,label,default,id)
+
+   if(nrArgs == 0)
+      startDir = "."
+      label = "Select folder"
+      id = ""
+      default = ""
+   elseif(nrArgs == 1)
+      startDir = "."
+      label = "Select folder"
+      default = ""
+      id = ""
+   elseif(nrArgs == 2)
+      default = ""
+      id = ""
+   elseif(nrArgs == 3)
+      id = ""
+   endif
+
+   bak = getcwd()
+   cd(startDir)
+   n = :windowdefinition(label)
+   windowvar(wvLastDir,wvType,wvDefault,wvID)
+   wvLastDir = "."
+   wvDefault = default
+   wvID = id
+   setwindowpar(n,"type","dialog")
+   :seticons()
+   :changeFolder(".")
+   setwindowpar(n,"sizelimits",[350,-1,330,-1])
+   folder = showdialog(n)
+   cd(bak)
+
+endproc(folder)
+
+procedure(windowdefinition,label)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(label, -1, -1, 350, 327, "resizable")
+
+     listbox(1, 10, 70, "ww-20", "wh-123",
+         :callback();)
+      button(2, 30, "wh-39", 60, 31, "Select",
+         :getSelection();)
+      button(3, 139, "wh-39", 61, 31, "Help",
+         closedialog("cancel");)
+      button(4, 90, 40, 30, 26, "",
+         :changeFolder("..");)
+      button(5, 10, 40, 30, 26, "",
+         :changeFolder(desktop);)
+      button(6, 50, 40, 30, 26, "",
+         :goback();)
+      textbox(7, 10, 10, "ww-20",
+        :setFolder();)
+      button(8, 130, 40, 30, 26, "new",
+         :newFolder();)
+      button(9, 170, 40, 40, 26, "macros",
+         :changeFolder("$appdir$\\Macros");)
+      button(10, 250, "wh-39", 61, 31, "Cancel",
+         closedialog("cancel");)
+
+
+     # Set other control parameters
+endproc(n)
+
+procedure(seticons)
+
+   bak = getcwd()
+   cd(getmacropath())
+   cd("SelectFolder")
+   setpar(0,4,"icon","upfolder.png")
+   setpar(0,5,"icon","desktop.png")
+   setpar(0,6,"icon","backarrow.png")
+   setpar(0,8,"icon","newfolder.png")
+   cd(bak)
+
+endproc()
+
+procedure(callback)
+
+   event = getpar(0,1,"event")
+   if(event == "single_click_up" | event == "double_click_up" )
+      return();
+   elseif(event == "double_click_down")
+      name = getpar(0,1,"text")
+
+      if(isdir(name)) # Might be a directory of Vista link
+         wvLastDir = getcwd()
+         cd(name)
+         if(isfile("target.Lnk"))
+            name = resolvelink(getcwd()+"\\target.Lnk")
+            if(isdir(name))
+               cd(name)
+            else
+               message("Error","Link is broken","error")
+               return
+            endif
+         endif
+         setpar(0,7,"text",getcwd())
+         :updateList()
+
+      else # Might be file or an XP link
+         if(getext(name) == "lnk")
+            name = resolvelink(name)
+            if(isdir(name))
+               cd(name)
+            else
+               message("Error","Link is broken","error")
+               return
+            endif
+            setpar(0,7,"text",getcwd())
+            :updateList()
+         endif
+      endif
+   endif
+
+endproc()
+
+procedure(updateList)
+
+   bak = getcwd()
+   dirList = sortlist(getdirlist("."))
+   fileList = sortlist(getfilelist("."))
+   szFL = size(fileList)
+   fileIcons = list(szFL)
+   szDL = size(dirList)
+   dirIcons = list(szDL)
+   dirIcons[~] = "folder"
+
+# Update directory icons
+   if(szDL > 0)
+     if(wvID != "")
+         for(k = 0 to szDL-1)
+            cd(dirList[k])
+            if(isdir(wvID) | isfile(wvID))
+                dirIcons[k] = "prospa_file"
+            endif
+            if(isfile("target.Lnk"))
+                dirIcons[k] = "link"
+            endif
+            cd(bak)
+         next(k)
+      else
+         for(k = 0 to szDL-1)
+            cd(dirList[k])
+             if(isfile("target.Lnk"))
+                dirIcons[k] = "link"
+            endif
+            cd(bak)
+         next(k)
+      endif
+   endif
+
+# Update file icons
+   fileIcons[~] = "file"
+   if(szFL > 0)
+      for(k = 0 to szFL-1)
+         if(getext(fileList[k]) == "lnk")
+            # if(isdir(resolvelink(fileList[k])))
+                fileIcons[k] = "link"
+            #    fileList[k] = rmext(fileList[k])
+           #  endif
+         endif
+         cd(bak)
+      next(k)  
+   endif      
+
+   totList = dirList+fileList
+   totIcons = dirIcons+fileIcons
+   setpar(0,1,"list",totList,"icons",totIcons)
+   if(size(totList) > 0)
+      if(getlistindex(totList,wvDefault) == -1)
+         setpar(0,1,"zindex",0)
+      else
+         setpar(0,1,"text",wvDefault)
+      endif
+   endif
+
+endproc()
+
+# Does the string key, which may include wild cards
+# appear as a subdirectory or file in the current directory
+
+#procedure(inDir,key)
+#
+#   sdList = getdirlist(".")
+#   sfList = getfilelist(".")
+#
+#   szD = size(sdList)
+#   szF = size(sfList)
+#
+#   if(szD > 0)
+#      zd = matrix(szD)
+#      if(cmpstr(sdList,wvID) != zd)
+#         return(1)
+#      endif
+#   endif
+#
+#   if(szF > 0)
+#      zf = matrix(szF)
+#      if(cmpstr(sfList,wvID) != zf)
+#         return(1)
+#      endif
+#   endif
+#
+#endproc(0)
+
+procedure(changeFolder,where)
+
+   wvLastDir = getcwd()
+   cd(where)
+   :updateList()
+   setpar(0,7,"text",getcwd())
+
+endproc()
+
+procedure(goback)
+
+   cd(wvLastDir) 
+   setpar(0,7,"text",getcwd())
+   :updateList()
+
+endproc()
+
+procedure(setFolder)
+
+   wvLastDir = getcwd()
+   dir = getpar(0,7,"text")
+   if(isdir(dir))
+     cd(dir)
+     :updateList()  
+   endif
+
+endproc()
+
+procedure(getSelection)
+
+   dir = getpar(0,1,"text")
+   if(dir != null)  
+      if(isdir(dir))
+         dir = getcwd() + "\\" + dir
+         closedialog(dir)
+      endif
+   endif
+
+endproc()
+
+procedure(newFolder)
+
+   name = gettext("Folder name")
+   if(name != "cancel")
+      mkdir(name)
+      :updateList()
+   endif
+
+endproc()
+

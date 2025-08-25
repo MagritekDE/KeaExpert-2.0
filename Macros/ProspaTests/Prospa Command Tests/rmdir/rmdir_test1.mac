@@ -1,0 +1,28 @@
+
+
+procedure(rmdir_test1,verbose,delay)
+
+  mkdir("temp")
+  if(not(isdir("temp")))
+     return(0, "Invalid result for: rmdir_test1 #1")
+  endif 
+
+  rmdir("temp")
+  if(isdir("temp"))
+     return(0, "Invalid result for: rmdir_test1 #2")
+  endif 
+
+  mkdir("temp")
+  mkdir("temp\\test")
+  if(not(isdir("temp\\test")))
+     return(0, "Invalid result for: rmdir_test1 #3")
+  endif 
+
+  rmdir("temp\\test")
+  if(isdir("temp\\test"))
+     return(0, "Invalid result for: rmdir_test1 #4")
+  endif 
+  rmdir("temp")
+
+endproc(1,"")
+

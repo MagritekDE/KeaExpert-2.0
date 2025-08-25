@@ -1,0 +1,78 @@
+############################################################
+#
+# A pulse sequence for generating a frequency response
+# of a filter/amplifier between the transceiver channel 2
+# output and transceiver input.
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["minFreq",         "Min. frequency (MHz)",      "tb", "freq";
+               "maxFreq",         "Max. frequency (MHz)",      "tb", "freq";
+               "nFreqSteps",      "Nr. of frequency steps",    "tb", "integer";
+               "aRF",             "RF amplitude (dB)",         "tb", "pulseamp";
+               "repTime",         "Repetition time (ms)",      "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["fSweep     = linspace(minFreq,maxFreq,nFreqSteps)",
+                    "tFreq1     = gFX3->convertFrequency(fSweep)",
+                    "tFreq2     = gFX3->convertFrequency(fSweep*10)",
+                    "b1FreqCh2  = minFreq",
+                    "dStab      = 10",
+                    "dRecover   = 10",
+                    "nPnts      = nrPnts",
+                    "totPnts    = nFreqSteps",
+                    "totTime    = acqTime"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+      setindex(tFreq1,0)
+      setindex(tFreq2,0)
+      loop("l1",nFreqSteps)       # Loop over all frequencies
+         setrxfreq(tFreq2)               # Set the rx frequency
+         txon("2nb", aRF, p1, tFreq1)    # Turn on the RF and set the tx freq (no gating)
+         delay(dStab)                    # Wait for it to stabilise
+         acquire("integrate",nPnts)      # Acquire the sweep data
+         txoff("2nb")                    # Turn off the RF (no gating)
+         incindex(tFreq1,2)              # Increment the Tx frequency
+         incindex(tFreq2,2)              # Increment the Rx frequency
+         delay(dRecover)                 # Wait for the system to recover
+      endloop("l1")               # End of loop
+   lst = endpp(0)
+
+# Phase cycle list
+  phaseList  = [0,1,2,3;   # Pulse phase
+                0,1,2,3]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain = $rxOptGaindB$"]
+
+endproc(par)

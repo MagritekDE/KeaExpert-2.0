@@ -1,0 +1,133 @@
+#############################################################
+#                     shiftOrigin3d.mac
+#
+# Applies the ftshift command to one axis in a 3D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+#############################################################
+
+procedure(shiftOrigin3d)
+
+   n = :windowdefinition()
+   :updatelist()
+   :update_output_name()
+   showwindow(n)
+
+endproc()
+
+#############################################################
+# Define the window interface
+#############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("FT Origin Shift", -1, -1, 290, 155)
+
+      # Define all controls with basic parameters
+       button(1, 19, 109, 51, 24, "Move x",
+          :move_origin("x");)
+       button(2, 144, 109, 51, 24, "Move z",
+          :move_origin("z");)
+       statictext(3, 35, 27, "left", "Input")
+       button(4, 81, 109, 51, 24, "Move y",
+          :move_origin("y");)
+       textmenu(5, 66, 24, 151, 200,
+          :update_output_name();)
+       button(6, 226, 24, 21, 21, "U",
+          :updatelist();
+          :update_output_name();)
+       button(7, 216, 92, 48, 24, "Help",
+          :show_help();)
+       button(8, 216, 123, 48, 24, "Exit",
+          closewindow(0);)
+       groupbox(9, "Matrices", 7, 3, 270, 81)
+       statictext(10, 27, 55, "left", "Output")
+       textmenu(11, 66, 52, 182, 200,
+          :update_output_name();)
+       groupbox(12, "Axis to move", 10, 89, 195, 56)
+
+     # Set other control parameters
+       setpar(n,5,"menu",[""])
+       setpar(n,11,"menu",[""])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\3D","shiftorigin3d.htm")
+endproc()
+
+#############################################################
+# Update the menu list
+#############################################################
+
+procedure(updatelist)
+   menu3d = matrixlist(4)
+      if(size(menu3d) > 0)
+      setpar(0,5,"menu",menu3d)
+      setpar(0,5,"index",1)
+   endif
+endproc()
+
+#############################################################
+# Update the output name using the input name as a template
+#############################################################
+
+procedure(update_output_name)
+
+   nameIn = getpar(0,5,"text")
+   if(nameIn != "")
+      setpar(0,11,"text",nameIn + "_ftshift")
+   endif
+
+endproc()
+
+#############################################################
+# Apply the move origin command
+#############################################################
+
+procedure(move_origin,axis)
+
+   nameIn = getpar(0,5,"text")
+   if(nameIn == "")
+      return
+   endif
+   m = alias(nameIn,"eval")
+
+   (w,h,d) = size(m)
+
+   if(axis == "x")
+      for(z = 0 to d-1)
+         for(y = 0 to h-1)
+            m[~,y,z] = ftshift(m[~,y,z])
+         next(y)
+      next(z)
+   elseif (axis == "y")
+      for(z = 0 to d-1)
+         for(x = 0 to w-1)
+            m[x,~,z] = ftshift(m[x,~,z])
+         next(x)
+      next(z)
+   else
+      for(y = 0 to h-1)
+         for(x = 0 to w-1)
+            m[x,y,~] = ftshift(m[x,y,~])
+         next(x)
+      next(y)
+   endif
+
+   image(m[~,~,0])
+   title("Shifted Origin")
+
+   nameOut = getpar(0,11,"text")
+   assign(nameOut,m,"global")
+
+endproc()

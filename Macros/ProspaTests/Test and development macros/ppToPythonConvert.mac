@@ -1,0 +1,277 @@
+# Converts all the interface macro interfaceDescription procedures
+# to Python format suitable for use with MagPy
+
+procedure(ppToPythonConvert)
+
+   dir = "$appdir$\\Macros\\Proton"
+  # :convertInterface(dir)
+   :convertPPInfoV4(dir)
+  # :convertPPParameters(dir)
+#   dir = "$appdir$\\Macros\\Kea-NMR"
+#   :convertInterface(dir)
+#   :convertPPInfo(dir)
+#   :convertPPParameters(dir)
+
+endproc()
+
+procedure(convertInterface,dir)
+   
+   cd(dir)
+   d = getdirlist(".")
+   for(k = 0 to size(d)-1)
+      expt = d[k]
+      cd(expt)
+      m = "$expt$_interface.mac"
+      p = "$expt$Interface.py"
+      if(isfile(m))
+         print("converting $m$\n")
+         printtofile(p)
+         print("def interfaceDescription():\n\n")
+         macro = "$expt$_interface:interfaceDescription"
+         id = macro()
+         nrRows = size(id)/5
+         print("   interface = [\n")
+         for(r = 0 to nrRows-1)
+            name = id[r*5]
+            if(name == "90Amplitude")
+               name = "amplitude90"
+            elseif(name == "180Amplitude")
+               name = "amplitude180"
+            endif
+            type = id[r*5+2]
+            if(type == "cb")
+               type = "checkbox"
+               options = "$id[r*5+4]$"
+               options = parse(options,",")
+               out = ""
+               for(q = 0 to size(options)-2)
+                  out = out + "'$options[q]$,',"
+               next(q)
+               out = out + "'$options[q]$'"
+               out = "["+out+"]"
+               str = "               ['$name$','$id[r*5+1]$','$type$','$id[r*5+3]$',$out$]"
+            else
+               if(type == "tb" | type == "tbw")
+                  type = "textbox"
+               elseif(type == "tm" | type == "tmw")
+                  type = "textmenu" 
+               elseif(type == "dv")
+                  type = "divider" 
+               endif 
+               if(id[r*5+4] = "")
+                  str = "               ['$name$','$id[r*5+1]$','$type$','$id[r*5+3]$',[]]"
+               else              
+                  str = "               ['$name$','$id[r*5+1]$','$type$','$id[r*5+3]$',$id[r*5+4]$]"
+               endif
+            endif
+            if(r < nrRows-1)
+               print("$str$,\n")
+            else
+               print("$str$\n               ]\n")
+            endif
+         next(r)
+         print("\n   return(interface)\n")
+         closeprint()
+         txt = load(p,"text")
+         txt = replacestr(txt,"\"","'")
+         txt = replacestr(txt,"double","float")
+         save(p,txt)
+         cd("..")
+   
+       #  break    
+      endif
+         
+   next(k)
+
+endproc()
+
+
+procedure(convertPPInfo,dir)
+
+   cd(dir)
+   files = getfilelist(".")
+   for(k = 0 to size(files)-1)
+      expt = files[k]
+      if(getext(expt) == "mac")
+
+        print("\nconverting $expt$\n")
+        cmd = "$rmext(expt)$:getseqpar"
+        p = "$rmext(expt)$Info.py"
+        try
+           (rel,var,pp_list,pp_name,phase_list) = cmd() 
+
+           cd(rmext(expt))
+           printtofile(p)
+           print("def getPPInfo():\n\n")
+     
+           print("    rel = [\n")
+           for(k = 0 to size(rel)-2)
+              print("       '$rel[k]$',\n")  
+           next(k) 
+           print("       '$rel[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    var = [\n")
+           for(k = 0 to size(var)-2)
+              print("       '$var[k]$',\n")  
+           next(k) 
+           print("       '$var[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    pp_list = [\n")
+           for(k = 0 to size(pp_list)-2)
+              print("       '$pp_list[k]$',\n")  
+           next(k) 
+           print("       '$pp_list[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    pp_name = '$pp_name$'\n")
+   
+           (w,h) = size(phase_list)
+           if(h == 1)
+              print("\n   phase_list = [")
+              for(x = 0 to w-2)
+                print("$phase_list[x]$,")
+              next(x)
+              print("$phase_list[x]$]\n")
+           else
+              print("\n    phase_list = [\n")
+              for(y = 0 to h-1)
+                 print("        [")
+                 for(x = 0 to w-2)
+                   print("$phase_list[x,y]$,")
+                 next(x)
+                 print("$phase_list[x,y]$]")
+                 if(y == h-1)
+                    print("\n        ]")
+                 else
+                    print(",\n")
+                 endif
+              next(y)
+   
+           endif
+           print("\n\n    return(rel,var,pp_list,pp_name,phase_list)\n")
+
+           closeprint()
+           txt = load(p,"text")
+           txt = replacestr(txt,"90Amplitude","amplitude90")
+           txt = replacestr(txt,"180Amplitude","amplitude180")
+           save(p,txt)
+           cd("..") 
+           catch
+           endtry
+            
+         endif()
+          
+   next(k)
+
+
+endproc()
+
+procedure(convertPPInfoV4,dir)
+
+   d = getdirlist(".")
+   for(k = 0 to size(d)-1)
+      expt = d[k]
+      cd(expt)
+
+      file = "$expt$.mac"
+      if(isfile(file))
+
+        print("\nconverting $expt$\n")
+        cmd = "$expt$:getseqpar"
+        p = "$expt$Info.py"
+        try
+           (rel,var,pp_list,pp_name,phase_list) = cmd() 
+
+           cd(rmext(expt))
+           printtofile(p)
+           print("def getPPInfo():\n\n")
+     
+           print("    rel = [\n")
+           for(k = 0 to size(rel)-2)
+              print("       '$rel[k]$',\n")  
+           next(k) 
+           print("       '$rel[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    var = [\n")
+           for(k = 0 to size(var)-2)
+              print("       '$var[k]$',\n")  
+           next(k) 
+           print("       '$var[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    pp_list = [\n")
+           for(k = 0 to size(pp_list)-2)
+              print("       '$pp_list[k]$',\n")  
+           next(k) 
+           print("       '$pp_list[k]$'\n")   
+           print("       ]\n")
+   
+           print("\n    pp_name = '$pp_name$'\n")
+   
+           (w,h) = size(phase_list)
+           if(h == 1)
+              print("\n   phase_list = [")
+              for(x = 0 to w-2)
+                print("$phase_list[x]$,")
+              next(x)
+              print("$phase_list[x]$]\n")
+           else
+              print("\n    phase_list = [\n")
+              for(y = 0 to h-1)
+                 print("        [")
+                 for(x = 0 to w-2)
+                   print("$phase_list[x,y]$,")
+                 next(x)
+                 print("$phase_list[x,y]$]")
+                 if(y == h-1)
+                    print("\n        ]")
+                 else
+                    print(",\n")
+                 endif
+              next(y)
+   
+           endif
+           print("\n\n    return(rel,var,pp_list,pp_name,phase_list)\n")
+
+           closeprint()
+           txt = load(p,"text")
+           txt = replacestr(txt,"90Amplitude","amplitude90")
+           txt = replacestr(txt,"180Amplitude","amplitude180")
+           save(p,txt)
+           cd("..") 
+           catch
+           endtry
+            
+         endif()
+          
+   next(k)
+
+
+endproc()
+
+
+
+procedure(convertPPParameters, dir)
+
+   cd(dir)
+   d = getdirlist(".")
+   for(k = 0 to size(d)-1)
+      expt = d[k]
+      cd(expt)
+      nameIn = "$expt$Default.par"
+      nameOut = "$expt$PyDefault.par"
+      if(isfile(nameIn))
+        print("\nconverting $nameIn$ to $nameOut$\n")
+        txt = load(nameIn,"text")
+        txt = replacestr(txt,"90Amplitude","amplitude90")
+        txt = replacestr(txt,"180Amplitude","amplitude180")
+      #  txt = replacestr(txt,"\"","'")
+        save(nameOut,txt) 
+        cd("..")
+      endif
+   next(k)      
+
+endproc()

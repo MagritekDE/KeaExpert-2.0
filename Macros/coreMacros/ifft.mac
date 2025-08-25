@@ -1,0 +1,127 @@
+###########################################################
+# Inverse 1d fft routine
+###########################################################
+
+procedure(1d,nameIn,nameOut,ftXMode)
+
+   mIn = alias(nameIn,"eval")*1
+
+   if(ftXMode == "none")  
+      mOut = mIn
+   elseif(ftXMode == "FTFid")
+      mOut = ift(mIn)
+   elseif(ftXMode == "FTEcho")
+      mOut = ftshift(ift(mIn))
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+###########################################################
+# Inverse 2d fft routine
+###########################################################
+
+procedure(2d,nameIn,nameOut,ftXMode,ftYMode)
+
+# Get the input matrix
+   mIn = alias(nameIn,"eval")
+  (w,h) = size(mIn)
+
+# Make a local result matrix
+   mOut = cmatrix(w,h)
+
+# Row transforms
+   if(ftXMode == "none")  
+      mOut = mIn
+   elseif(ftXMode == "FTFid")
+      for(y = 0 to h-1)
+         mOut[~,y] = ift(mIn[~,y])
+      next(y)
+   elseif(ftXMode == "FTEcho")
+      for(y = 0 to h-1)
+         mOut[~,y] = ftshift(ift(mIn[~,y]))
+      next(y)
+   endif
+
+# Column transforms
+   if(ftYMode == "FTFid")
+      for(x = 0 to w-1)
+         mOut[x,~] = ift(mOut[x,~])
+      next(x)
+   elseif(ftYMode == "FTEcho")
+      for(x = 0 to w-1)
+         mOut[x,~] = ftshift(ift(mOut[x,~]))
+      next(x)
+   endif
+
+# Assign result to global variable
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+
+###########################################################
+# Inverse 3d fft routine
+###########################################################
+
+procedure(3d,nameIn,nameOut,ftXMode,ftYMode,ftZMode)
+
+# Get the input matrix 
+   mIn = alias(nameIn,"eval")
+  (w,h,d) = size(mIn)
+
+# Make a local result matrix
+   mOut = cmatrix(w,h,d)
+
+# Row transforms
+   if(ftXMode == "none")  
+      mOut = mIn
+   elseif(ftXMode == "FTFid")
+      for(y = 0 to h-1)
+         for(z = 0 to d-1)
+            mOut[~,y,z] = ift(mIn[~,y,z])
+         next(z)
+      next(y)
+   elseif(ftXMode == "FTEcho")
+      for(y = 0 to h-1)
+         for(z = 0 to d-1)
+            mOut[~,y,z] = ftshift(ift(mIn[~,y,z]))
+         next(z)
+      next(y)
+   endif
+
+# Column transforms
+   if(ftYMode == "FTFid")
+      for(x = 0 to w-1)
+         for(z = 0 to d-1)
+            mOut[x,~,z] = ift(mOut[x,~,z])
+         next(z)
+      next(x)
+   elseif(ftYMode == "FTEcho")
+      for(x = 0 to w-1)
+         for(z = 0 to d-1)
+            mOut[x,~,z] = ftshift(ift(mOut[x,~,z]))
+         next(z)
+      next(x)
+   endif
+
+# Tier transforms
+   if(ftZMode == "FTFid")
+      for (x = 0 to w-1)
+         for (y = 0 to h-1)
+            mOut[x,y,~] = ift(mOut[x,y,~])
+         next(y)
+      next(x)
+   elseif(ftYMode == "FTEcho")
+      for(x = 0 to w-1)
+         for(y = 0 to h-1)
+            mOut[x,y,~] = ftshift(ift(mOut[x,y,~]))
+         next(y)
+      next(x)
+   endif
+
+# Assign result to global variable
+   assign(nameOut,mOut,"global")
+
+endproc()

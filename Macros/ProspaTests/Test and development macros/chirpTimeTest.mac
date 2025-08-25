@@ -1,0 +1,51 @@
+procedure(getFreqTable)
+
+   nCHIRPsteps = 100000
+   CHIRPbw = 1
+   G = 0.1 
+   b1Freq = 10
+ 
+time(0)
+    gamma = 42.576
+    SW = CHIRPbw*G*gamma/1e6 #SW in MHz
+    minF = b1Freq-SW/2
+    maxF = b1Freq+SW/2
+    
+    #pr("SW = $SW$"\n)
+    #pr("minF = $minF$"\n)
+    #pr("maxF = $maxF$"\n)
+    
+   fIn = linvec(minF,maxF,nCHIRPsteps)
+   
+#   fOutA = matrix(nCHIRPsteps)
+#   fOutB = matrix(nCHIRPsteps)
+#
+#   DDSFword = round((double(fIn) * 2^32d )/1000d)
+#   fOutA  = single((DDSFword & 0xFFFF0000)/(2^16)) # DDS freq
+#   fOutB  = single(DDSFword & 0x0000FFFF) # DDS freq
+#   fOut = ctor(fOutA+i*fOutB)
+   
+#   q = 0
+#   for(k = 0 to nCHIRPsteps-1)
+#     fOut[q] = fOutA[k]
+#     fOut[q+1] = fOutB[k]
+#     q = q + 2
+#   next(k)
+
+ q = 0
+   fOut = matrix(nCHIRPsteps*2)
+
+   for(k = 0 to nCHIRPsteps-1)
+ 
+      DDSFword = round((fIn[k] * 2^32d )/1000d)
+      fOut[q]  = single((DDSFword & 0xFFFF0000)/(2^16)) # DDS freq
+      fOut[q+1] = single(DDSFword & 0x0000FFFF)
+      q = q + 2
+ 
+   next(k)
+
+
+t2 = time()
+pr("freqTime = $t2$ s\n")
+
+endproc(fOut)

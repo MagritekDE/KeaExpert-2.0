@@ -1,0 +1,26 @@
+###################################################################################
+#######################################################
+
+procedure(txon, channel1, amplitude1, phase1, frequency1=null, channel2=null, amplitude2=null, phase2=null, frequency2=null)
+
+   if(gSeq->psInfo->skipCmds == 0)
+   
+      if(channel1 == "other")
+         channel1 = 1
+      endif
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + pgo
+      if(nrArgs == 3)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txon,$channel1$,$amplitude1$,$phase1$,$args[1]$,$args[2]$"]
+      elseif(nrArgs == 4)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txon,$channel1$,$amplitude1$,$phase1$,$frequency1$,$args[1]$,$args[2]$,$args[3]$"]
+      elseif(nrArgs == 8)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txon,$amplitude1$,$phase1$,$frequency1$,$amplitude2$,$phase2$,$frequency2$,$args[1]$,$args[2]$,$args[3]$,$args[5]$,$args[6]$,$args[7]$"]
+      endif
+
+   endif
+
+endproc()
+

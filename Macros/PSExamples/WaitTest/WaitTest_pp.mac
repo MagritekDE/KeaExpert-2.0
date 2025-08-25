@@ -1,0 +1,85 @@
+############################################################
+#  
+# Generates two RF pulses with a wait command in between
+# Tests the accuracy of the FX3 wait command which
+# should allow any length delays greater than 0.4 us
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
+               "b1Freq",          "1H frequency (MHz)",        "tb",  "freq";
+               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
+               "longDelay",       "Interpulse delay (s)",      "tb",  "double,[6.4e-6,1000]";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime"]
+
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["b1Freq1H     = b1Freq",
+                    "nDataPnts    = nrPnts",
+                    "a90Amp       = 90Amplitude1H",
+                    "d90Dur       = pulseLength1H",
+                    "w1           = (longDelay*1e6d-pgo-1d)",
+                    "totPnts      = nrPnts",
+                    "totTime      = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+## Pulse sequence
+
+   initpp(dir)       
+
+   pulse(1,a90Amp,p1,d90Dur)
+   wait(w1)
+   pulse(1,a90Amp,p1,d90Dur)
+
+   acquire("overwrite",nDataPnts)   # Acquire FID
+
+   lst = endpp(1)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,1,2,3;   # p1 : Pulse phase
+                 0,1,2,3]   # pA : Acquire phase
+
+
+endproc(lst,groups,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par = ["rxGain        = $modelPar->rxGain$",
+          "pulseLength1H = $PulseLength_1H$",
+          "90Amplitude1H = $PowerLevel_1H$",
+          "b1Freq1H      = $Frequency_1H$",
+          "b1Freq13C     = $Frequency_X$"]
+
+endproc(par)
+
+

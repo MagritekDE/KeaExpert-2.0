@@ -1,0 +1,242 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>dspversion</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+@font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+@font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+p.msochpdefault, li.msochpdefault, div.msochpdefault
+	{mso-style-name:msochpdefault;
+	margin-right:0cm;
+	margin-left:0cm;
+	font-size:10.0pt;
+	font-family:"Times New Roman","serif";}
+span.apple-converted-space
+	{mso-style-name:apple-converted-space;}
+span.spelle
+	{mso-style-name:spelle;}
+span.grame
+	{mso-style-name:grame;}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>dspsetmspar</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:18.0pt'>Set parameters in the pulse
+program while running in multi-scan mode</p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>Syntax</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span class=grame><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>dspsetmspar(matrix
+[,port]</span></span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>matrix ... a 1D matrix containing the
+parameters to write to the DSP.</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>port ..... an optional USB port (0,1,2
+...)</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>Description</span></p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:21.3pt'>Due to timing constraint in the fast
+mode only a few parameters should be updated during each scan. These should be
+stored in a 1D matrix before executing this command. The first entry in this
+matrix is a boolean flag. If set to one the pulse program will continue until
+all scans have been completed. If set to zero (e.g. when an abort event is
+received) the pulse program will exit. The second entry is the number of
+parameters to pass (not including the first two). The following entries are the
+actual parameters – there are two entries per parameter, the address in the
+parameter block and the parameter itself. As more parameters are passed longer
+repetition times will be required.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:21.3pt'>&nbsp;</p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>Example</span></p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:21.3pt'>This example updates the spectrometer
+transmit and receive frequencies.</p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   DDSFword = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>round</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(((b1Freq) *
+2^32d )/1000d)        </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   DRPFword = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>round</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(((b1Freq) *
+2^32d )/1000d) *10d    </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>matrix</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(10)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[0] = 1 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Run pulse
+program</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[1] = 4 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Four
+parameters entries are to be updated</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[2] = 9 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Parameter
+index 9</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[3] = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>single</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>((DDSFword &amp;
+0xFFFF0000)/(2^16)) </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Tx freq word 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[4] = 10 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Parameter
+index 10</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[5] = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>single</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>((DDSFword &amp;
+0x0000FFFF))        </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Tx freq word 2</span><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'> </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[6] = 13 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Parameter
+index 13 </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[7] = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>single</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>((DRPFword &amp;
+0xFFFF0000)/(2^16)) </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Rx freq word 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[8] = 14 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Parameter
+index 14</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   sp[9] = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>single</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>((DRPFword &amp;
+0x0000FFFF))        </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Rx freq word 2</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>dspsetmspar</span><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(sp)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:90.0pt'><span style='font-size:10.0pt;
+font-family:Courier;color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;color:black'>See also</span></p>
+
+<p class=MsoNormal><span style='font-size:13.5pt;color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:21.3pt'><span style='color:black'>&nbsp;</span><a
+href="dsprunmspp.htm">dsprunmspp</a><span style='color:black'>, </span><a
+href="dspgetmsdata.htm">dspgetmsdata</a><span style='color:black'>.</span><span
+style='font-family:"Courier New";color:#A31515'> </span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,252 @@
+####################################################
+# Analyse T1 data displayed in the current 1D plot
+#
+# V1.1 C Eccles, December 2013
+#
+# History
+# 1. Made the interface scrollable and increased 
+#    maximum number of points to 200
+#
+####################################################
+
+
+procedure(T1Analysis)
+
+   :update(0)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("T1 analysis of plot data", -1,-1, 262, 330, "resizable")
+
+      # Define all controls with basic parameters
+       windowvar(E,tau)
+       groupbox(1, "", 6, 4, 231, 104)
+       button(2, 99, 69, 52, 24, "Help",
+          :show_help();)
+       button(3, 24, 69, 52, 24, "Update",
+          :update(1);)
+       button(4, 172, 69, 52, 24, "Exit",
+          closewindow(0);)
+
+       statictext(5, 55, 27, "centre", "Inversion")
+       statictext(6, 55, 39, "centre", "recovery")
+       radiobuttons(7, 82, 34,80, "horizontal", "ir,vd","vd",
+           (tau1,E1) = :getdata(tau,E);
+           :plot(tau1,E1);)
+       statictext(8, 137, 27, "centre", "Variable")
+       statictext(9, 137, 39, "centre", "delay")
+       panel(10,5,121,245,"wh-130")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+
+   help("Macros\\1D","t1analysis.htm")
+
+endproc()
+
+####################################################
+# Update the U.I. and do the fit
+# If close == 1 then delete the old window
+# after making a new one (update has been pressed)
+####################################################
+
+procedure(update,close)
+
+# Record current window (if any)
+   oldWin = guiwinnr()
+   if(close)
+      oldx = getwindowpar(oldWin,"x")
+      oldy = getwindowpar(oldWin,"y")
+      oldh = getwindowpar(oldWin,"height")
+   endif
+
+# Make a new one
+   n = :windowdefinition()
+
+# Load the T2 data
+  (tau,amp) = getplotdata("1d")
+   num = size(tau)
+   E = real(amp)
+
+# Limit the number of points otherwise we run out of resources
+   num = size(tau)
+   if(num > 1000)
+      message("Error","More than 1000 data points - can't analyse","error")
+      closewindow(n)
+      return
+   endif
+
+ # Add the title strip
+   y = 0
+   x = 5
+   brown = [128,0,0]
+   statictext(500, x+20, y+12, "centre", "N")       
+   statictext(501, x+68, y+12, "centre", "Time")       
+   statictext(502, x+122, y+12, "centre", "Amplitude")       
+   statictext(503, x+175, y+12, "centre", "Display")    
+   setpar(0,500,"color",brown)
+   setpar(0,501,"color",brown)
+   setpar(0,502,"color",brown)
+   setpar(0,503,"color",brown)
+# And underline   
+   divider(504, x+12, y+25, 195, 3, "horizontal")
+   setpar(0,504,"enable","false")
+
+# Add the dislay check boxes         
+   cn = 13
+   for(cnt = cn to num+cn-1)
+   #    if(E[cnt-cn] >= 0)
+          checkbox(cnt, x+170, y+42+17*(cnt-cn), "no,yes", "yes",
+         (tau1,E1) = :getdata(tau,E);
+         :plot(tau1,E1);)
+   #    else
+   #       checkbox(cnt, x+168, y+42+17*(cnt-cn), "no,yes", "no")
+   #       setpar(0,cnt,"enable","false")
+   #    endif
+   next(cnt) 
+       
+# Add the number time and amplitude labels  
+   c = 0
+   ctrNr = 510
+   for(cnt = num+cn to 2*num+cn-1)
+      s = "$c+1,0.0f$"
+      statictext(ctrNr, x+20, y+42+17*(c), "centre",s )
+      s = "$tau[c],3.3f$"
+      statictext(ctrNr+1, x+68, y+42+17*(c), "centre",s )
+      s = "$E[c],3.3f$"
+      statictext(ctrNr+2, x+122, y+42+17*(c), "centre",s )
+      c = c + 1
+      ctrNr = ctrNr + 3
+   next(cnt)
+
+# Panelize
+   for(k = 12 to ctrNr)
+      try
+         setpar(0,k,"panelparent",10)
+      catch; endtry
+   next(k)
+   setpar(0,10,"panelupdate","")
+
+# Limit window resizing
+   h = y+42+17*(c)
+   setwindowpar(n,"sizelimits",[270,270,330,h+150])
+
+# Shift the new window to old window location
+   if(close)
+      setwindowpar(n,"x",oldx)
+      setwindowpar(n,"y",oldy)
+      setwindowpar(n,"height",oldh)
+   endif
+
+# Show the window
+   showwindow(n)
+   
+# Plot the data and best fit
+   try
+      (tau1,E1) = :getdata(tau,E)
+      :plot(tau1,E1)
+   catch
+   endtry
+
+# Close the old window
+   if(close)
+      closewindow(oldWin)
+   endif
+
+# Make sure new window has the focus
+  setwindowpar(n,"focus",1)
+
+endproc()
+
+
+################################################################
+# Extract the selected data in T and E based on the control 
+# window entries
+################################################################
+
+procedure(getdata,T,E)
+
+   num = size(T)
+
+# Count the number of selected entries
+   n = 0
+   cnt = 13
+   for(c = 0 to num-1)
+       s = getpar(0,c+cnt,"value")
+       if(s = 1)
+         n = n + 1
+       endif
+   next(c)
+
+# Make up arrays from the selected entries
+   Ts = matrix(n)
+   Es = matrix(n)
+
+    n = 0
+    for(c = 0 to num-1)
+       s = getpar(0,c+cnt,"value")
+       if(s = 1)
+         Ts[n] = T[c]
+         Es[n] = E[c]
+         n = n + 1
+       endif
+   next(c)
+
+endproc(Ts,Es)
+
+##############################################
+# Display the selected data points and fitted
+# curve
+##############################################
+
+procedure(plot,tau,E)
+
+# Get the size of the data set
+   num = size(tau)
+   if(num <= 1)
+     return()
+   endif
+
+# Do the fit
+
+  type = getpar(0,7,"text")
+
+  # Display raw data and best fit comparison
+   drawplot("false")
+
+      (fit,E0,T1,E0err,T1err) = t1fit(tau,E,type)
+      t1str = errorstr(T1,T1err,1)
+      e0str = errorstr(E0,E0err,1)
+
+      plot(tau,fit)
+      trace("tracetype","lines",
+            "symbolcolor",[255,255,0])
+
+      axes("ymapping","lin")
+
+
+      hold("on")
+      plot(tau,E)
+
+      title("text","E_(0) = $e0str$     T_(1) = $t1str$","size",11)
+      trace("tracetype","none",
+            "symbolshape","opensquare",
+            "symbolsize",3,
+            "symbolcolor",[255,0,0])
+      ylabel("text","Attenuation (E)","size",11)
+      xlabel("text","Time","size",11)
+      hold("off")
+
+
+   drawplot("true")
+
+endproc()

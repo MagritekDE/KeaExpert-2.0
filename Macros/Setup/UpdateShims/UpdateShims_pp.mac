@@ -1,0 +1,90 @@
+########################################################
+#
+# This pulse sequence sets the gradient controller to 
+# the predefined shim values.
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq1H",     "B1 Frequency (MHz)",     "tb", "freq";
+               "repTime",      "Repetition time (ms)",   "tb", "reptime";
+               "gradstab",     "Shim settle delay (ms)", "tb", "ldelay";
+               "loadShim",     "Load best shims",        "bt",  "loadShims";
+               "xshim",        "x shim value",           "tb",  "float,[-32768,32768]";
+               "yshim",        "y shim value",           "tb",  "float,[-32768,32768]";
+               "zshim",        "z shim value",           "tb",  "float,[-32768,32768]";
+               "z2shim",       "z2 shim value",          "tb",  "float,[-32768,32768]";
+               "zxshim",       "zx shim value",          "tb",  "float,[-32768,32768]";
+               "zyshim",       "zy shim value",          "tb",  "float,[-32768,32768]";
+               "x2y2shim",     "x2-y2 shim value",       "tb",  "float,[-32768,32768]";
+               "xyshim",       "xy shim value",          "tb",  "float,[-32768,32768]";
+               "z3shim",       "z3 shim value",          "tb",  "float,[-32768,32768]";
+               "z2xshim",      "z2x shim value",         "tb",  "float,[-32768,32768]";
+               "z2yshim",      "z2y shim value",         "tb",  "float,[-32768,32768]";
+               "zx2y2shim",    "z(x2-y2) shim value",    "tb",  "float,[-32768,32768]";
+               "zxyshim",      "zxy shim value",         "tb",  "float,[-32768,32768]";
+               "x3shim",       "x3 shim value",          "tb",  "float,[-32768,32768]";
+               "y3shim",       "y3 shim value",          "tb",  "float,[-32768,32768]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["w1 = gradstab*1000.0-acqTime*1000.0",
+                    "n1 = nrPnts",
+                    "n2 = xshim",       # x shim value
+                    "n3 = yshim",       # y shim value
+                    "n4 = zshim",       # z shim value
+                    "n5 = z2shim",      # z2 shim value
+                    "n6 = zxshim",      # zx shim value
+                    "n7 = zyshim",      # zy shim value
+                    "n8 = x2y2shim",    # x2-y2 shim value
+                    "n9 = xyshim",      # xy shim value
+                    "n10 = z3shim",     # z3 shim value
+                    "n11 = z2xshim",    # z2x shim value
+                    "n12 = z2yshim",    # z2y shim value
+                    "n13 = zx2y2shim",  # z(x2-y2) shim value
+                    "n14 = zxyshim",    # zxy shim value
+                    "n15 = x3shim",     # x3 shim value
+                    "n16 = y3shim",     # y3 shim value
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the parameters groups and order
+   groups = ["Pulse_sequence","Acquisition","Processing_Display_Std","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   shim16(1,n2)    # x
+   shim16(2,n3)    # y
+   shim16(0,n4)    # z
+   shim16(3,n5)    # z2
+   shim16(4,n6)    # zx
+   shim16(5,n7)    # zy
+   shim16(6,n8)    # x2-y2
+   shim16(7,n9)    # xy
+   shim16(8,n10)   # z3
+   shim16(9,n11)   # z2x
+   shim16(10,n12)  # z2y
+   shim16(11,n13)  # z(x2-y2)
+   shim16(12,n14)  # zxy
+   shim16(13,n15)  # x3
+   shim16(14,n16)  # y3
+   wait(w1)
+   acquire("overwrite",n1)
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle
+   phaseList = [0;
+                0] 
+
+endproc(lst,groups,interface,relationships,variables,null,phaseList)

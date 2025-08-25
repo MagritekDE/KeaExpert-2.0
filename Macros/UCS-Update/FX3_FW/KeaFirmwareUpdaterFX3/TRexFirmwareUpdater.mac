@@ -1,0 +1,155 @@
+procedure(TReXFirmwareUpdater, fwFolder, fwName, statusCtrl)
+
+   # This program will only work with the new FX3 Controller 
+   FX3memsize8 = 22000   # actual buffersize is 1024*22 = 22528
+   FX3memsize32 = floor(FX3memsize8/4)
+   USBTIMEOUT = 6000 #milliseconds
+   time(0)
+   w = guiwinnr()
+
+   pr "\n   Flashing TRex firmware with file $fwName$."
+
+
+   fx3timeout(USBTIMEOUT)
+   pr "\n   USB timeout increased to $USBTIMEOUT/1000$ s.\n"
+
+    cd(fwFolder)
+
+   # Run Update 
+   if(isfile(fwName))
+
+      statusCtrl->text("Reading file ...")
+
+      # TODO check for hardware compatibility
+      import1dpar("ab","binary","xyrc","real","fls","short","machine","bigend")
+      fwData16 = import1d(fwName) 
+      fwSize16 = size(fwData16)
+      
+      statusCtrl->text("Initialising ...")
+
+      fwData32 = dmatrix(ceil(fwSize16/2))
+      fwSize32 = size(fwData32)  # size in 32bit words (long)
+      fwSize8 = fwSize32 * 4   # size in no. of bytes
+      for(k=0 to size(fwData32)-1)
+          fwData32[k] = double(fwData16[k*2])*2^16 + (double(fwData16[k*2+1])&0x0000FFFF)
+      next(k)
+
+      fwSize8 = fwSize32 * 4   # size in no. of bytes
+      bytesProcessed = 0
+
+      if (fwSize32 > FX3memsize32)
+         # Firmware needs to be split in multiple blocks
+         oversizeFactor = ceil(fwSize32/FX3memsize32)
+         pr "   File size too big. Splitting it in at least $oversizeFactor$ parts.\n"
+         fwBlock = :prepareFWblock(fwData32,bytesProcessed,FX3memsize32,fwSize32)
+      else
+         # FX3 buffer is pretty small so this path is probably not needed
+         pr "   WARNING: filesize is smaller than FX3 buffer size. File might be corrupted.\n"
+         fwBlock = fwData32
+      endif
+
+      blockCount = 1
+      
+      pr "   Transfering first block to Kea.\n"
+
+      fx3write("i",0,fwBlock)
+      #rbtest = fx3read("i",4,1,"double")
+      #pr hex(rbtest[0])
+
+      pr "   TReX chipselect low.\n"
+      fx3write("u",0x30,[0])
+      pr "   Starting FW update with first block.\n   Erasing flash memory\n"
+      fx3write("u",0x100,[0])   # start update procedure with first block 
+      #pause(0.2)
+      updateState = 0
+      eraseCnt = 1
+      while(updateState < 2)
+         pause(.6)
+         retval = fx3read("u",0,1)
+         #pr "Readback from FX3: update state=$retval[0]$\n"
+         updateState = retval[0]
+
+         if(updateState == 0)   # current block not finished yet, wait and request state again
+            pause(.05)
+            if(eraseCnt == 1)
+               statusCtrl->text("Erasing flash .")
+               eraseCnt = eraseCnt + 1
+            elseif(eraseCnt == 2)
+               statusCtrl->text("Erasing flash ..")
+               eraseCnt = eraseCnt + 1
+            elseif(eraseCnt == 3)
+               statusCtrl->text("Erasing flash ...")
+               eraseCnt = 1
+            endif
+          #  pr "." 
+         elseif(updateState == 1) # updateState=1: current block done
+            blockCount = blockCount + 1
+            retval = fx3read("u",1,1)
+            #pr retval
+            bytesProcessed = bytesProcessed + retval[0] # add processed bytes from last block to total
+            #pr bytesProcessed
+            # prepare next block
+            #nextByte = bytesProcessed+1
+            #pr nextByte
+            fwBlock = :prepareFWblock(fwData32,bytesProcessed,FX3memsize32,fwSize32)            
+            pr "Transfering block #$blockCount$ to Kea.\n"
+            #pr hex(fwBlock[0:4])
+            fx3write("i",0,fwBlock)
+            pr "Processing update of block #$blockCount$.\n"
+
+            byteShift = bytesProcessed%4      # data of fwBlock 32bit aligned, processing happens 8bit aligned.
+            #pr byteShift
+            fx3write("u",0x100,[byteShift])   # start update procedure with current block 
+            updateState = 0
+            progress = bytesProcessed/fwSize8
+            statusCtrl->text("Flashing: $round(progress*100)$% done")
+          #  pr "$round(progress*100)$% done.\n"            
+         endif
+      endwhile
+      retval = fx3read("u",1,1)
+      #pr retval
+      bytesProcessed = bytesProcessed + retval[0] - 1 # add processed bytes from last block to total
+      pr "   Update Done after $blockCount$ blocks. $bytesProcessed$ bytes processed.\n"
+
+      TDOdebug = fx3read("u",0xd,1,"double")
+      #pr hex(TDOdebug[0])
+      pr ("   Time taken = $time()$\n")
+
+   endif
+
+   statusCtrl->text("Please restart spectrometer to finalised firmware update")
+
+
+   fx3timeout(3000)
+   pr "   USB timeout set back to 3 s.\n"
+    
+endproc()
+
+
+
+procedure(prepareFWblock, inputData, startAddr8, numWords, fwSize32)
+
+   lastAddr = fwSize32-1
+   # inputData word size is 32 bits, outputData word size is 32 bits
+   outputData = dmatrix(numWords)
+   
+   startAddr32 = floor(startAddr8/4)
+   #pr startAddr32
+   endAddr32 = startAddr32 + numWords - 1
+   
+   if (endAddr32 > lastAddr)
+      pr "   Last block found. Setting endAddr to lastAddr.\n"
+      numWords = lastAddr - startAddr32 + 1
+      #pr lastAddr
+      #pr endAddr32
+      #pr numWords
+   endif
+   
+   if(numWords==1)
+      outputData = inputData[startAddr32]
+      pr "numWords=1\n"
+   else
+      outputData = inputData[startAddr32:(startAddr32+numWords-1)]
+   endif     
+
+endproc(outputData)

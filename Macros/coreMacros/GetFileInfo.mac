@@ -1,0 +1,66 @@
+procedure(GetFileInfo, prompt, paths, pathName, file)
+
+   if(prompt == "")
+      prompt = "Choose path and enter filename"
+   endif
+   origWin = guiwinnr()
+   n = :windowdefinition(prompt)
+   setwindowpar(n,"type","dialog")
+   assignctrls(n)
+   if(nrArgs >= 3)
+      pathCtrl->menu(paths)
+      pathCtrl->text(pathName)
+   endif
+   if(nrArgs == 4)
+      fileCtrl->text(file)
+   endif
+   setwindowpar(n,"sizelimits",[496,-1,-1,-1])
+
+   (path,file) = showdialog(n)
+    guiwinnr(origWin)
+
+endproc(path,file)
+
+procedure(windowdefinition,prompt)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(prompt, -1, -1, 496, 96, "resizable")
+
+      # Define all controls with basic parameters
+      textmenu(1, 66, 20, "ww-165",200)
+      statictext(2, 61, 24, "right", "New path:")
+      button(3, "ww-93", 20, 28, 22, "...",
+         :selectPath();)
+      textbox(4, 66, 50, "ww-270")
+      statictext(5, 61, 53, "right", "New name:")
+      button(6, "ww-50", 17, 44, 27, "OK",
+         closedialog(pathCtrl->text,fileCtrl->text);)
+      button(7, "ww-50", 47, 44, 27, "Cancel",
+         closedialog("cancel","cancel");)
+
+     # Set other control parameters
+      setpar(n,1,"objID","pathCtrl")
+      setpar(n,4,"objID","fileCtrl")
+      setpar(n,6,"mode","default")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(selectPath)
+
+   if(isdir(pathCtrl->text))
+      dir = getfolder(pathCtrl->text,"Select folder")
+   else
+      dir = getfolder(".","Select folder")
+   endif
+   if(dir != "cancel")
+      pathCtrl->text(dir)
+   endif
+   
+endproc()
+
+procedure(finish)
+
+
+endproc()

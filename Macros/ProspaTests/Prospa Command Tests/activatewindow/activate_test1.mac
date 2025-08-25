@@ -1,0 +1,45 @@
+procedure(activate_test1,verbose,delay)
+
+   
+# First window simulates the designer
+   m = window("untitled 1", 100, 100, 266, 289)
+   showwindow(m)
+# Make window to edit
+   n = :windowdefinition()
+   showwindow(n)
+   pause(delay)
+# Edit this window by adding a textmenu
+   seteditwin(n)
+   pause(delay)
+   textmenu(11, 164, 168, 40, 200)
+   pause(delay)
+# Now activate the designer and then the edited window
+   guiwinnr(m)
+   activatewindow("true")
+   pause(delay)
+# Clean up
+   closewindow(n)
+   closewindow(m)
+
+endproc(1,"")
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("untitled 1", 100, 100, 266, 289)
+
+      # Define all controls with basic parameters
+       button(1, 39, 40, 40, 20, "button")
+       colorbox(2, 103, 43, 22, 22, [255,0,0])
+       checkbox(3, 51, 82, "no,yes", "no")
+       groupbox(4, "groupbox", 14, 8, 225, 210)
+       listbox(5, 25, 107, 100, 100)
+       progressbar(6, 211, 27, 16, 100, "vertical")
+       radiobuttons(7, 142, 40, 20, "horizontal", "yes,no", "yes")
+       slider(8, 137, 82, 20, 100, "vertical")
+       statusbox(9)
+       textbox(10, 169, 140, 40)
+
+
+endproc(n)

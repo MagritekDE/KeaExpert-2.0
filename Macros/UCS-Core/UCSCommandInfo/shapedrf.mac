@@ -1,0 +1,46 @@
+###################################################################################
+#######################################################
+
+procedure(shapedrf, arg1, arg2, arg3, arg4, arg5, arg6, arg7 ,arg8)
+
+   if(gSeq->psInfo->skipCmds == 0)
+   
+      args = getargnames()
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+   
+      if(nrArgs == 8) # Dual channel (atable, ptable, phase1, phase2, f1, f2, table_size, table_step)
+   
+         ampTable   = arg1
+         phaseTable = arg2
+         phase1     = arg3
+         phase2     = arg4
+         freq1      = arg5
+         freq2      = arg6
+         szTable    = arg7*2
+         durStep    = arg8
+   
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + pgo + szTable*durStep
+         gSeq->psInfo->command = gSeq->psInfo->command + ["shapedrf,$ph1$,$ph2$,$freq1$,$freq2$,$szTable$,$durStep$,$args[0]$,$args[1]$,$args[2]$,$args[3]$,$args[4]$,$args[5]$,$args[6]$"]
+   
+      else # Single channel (channel, atable, ptable, phase, table_size, table_step [,frequency])
+   
+         channel    = arg1
+         ampTable   = arg2
+         phaseTable = arg3
+         ph         = arg4
+         szTable    = arg5
+         durStep    = arg6
+         if(nrArgs == 7)
+            freq = arg7
+         endif
+   
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + pgo + szTable*durStep
+         gSeq->psInfo->command = gSeq->psInfo->command + ["shapedrf,$channel$,$ph$,$szTable$,$durStep$,$args[1]$,$args[2]$,$args[3]$,$args[4]$,$args[5]$"]
+   
+      endif
+
+   endif
+
+endproc()
+

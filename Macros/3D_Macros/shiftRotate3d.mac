@@ -1,0 +1,382 @@
+####################################################
+#                 shiftrotate3d.mac
+#
+# Shift or rotate the current 3D plot by a 
+# fixed number of data points or 
+# Rotate the plot interactively.
+#
+# Rotate options:
+# 1. Select a new origin.
+# 2. Select a new centre 
+# 3. Drag a point in the plot to a new position 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+################################################
+
+
+procedure(shift3d)
+
+   n = :windowdefinition()
+   :update_menus()
+   setpar(n,3,"text","0")
+   setpar(n,10,"text","0")
+   setpar(n,12,"text","0")
+   :set_matrix()
+   :set_plane()
+   :display_plane()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Shift or Rotate 3D matrix", -1, -1, 303, 294)
+
+      # Define all controls with basic parameters
+       windowvar(mRot,xlast,ylast)
+       button(1, 159, 200, 43, 23, "Shift",
+          delx = round(getpar(0,3,"value"));
+          dely = round(getpar(0,10,"value"));
+          delz = round(getpar(0,12,"value"));
+          :shift_matrix(delx,dely,delz);)
+       button(2, 159, 229, 43, 23, "Rotate",
+          delx = round(getpar(0,3,"value"));
+          dely = round(getpar(0,10,"value"));
+          delz = round(getpar(0,12,"value"));
+          :rotate_matrix(delx,dely,delz);)
+       textbox(3, 99, 199, 37)
+       statictext(4, 93, 202, "right", "x shift/rotate")
+       statictext(5, 93, 232, "right", "y shift/rotate")
+       button(6, 234, 183, 45, 23, "Start",
+          :select_start();)
+       button(7, 234, 220, 45, 23, "Centre",
+          :select_centre();)
+       groupbox(8, "Fixed", 4, 180, 209, 110)
+       button(9, 234, 93, 43, 23, "Help",
+          :show_help();)
+       textbox(10, 99, 229, 37)
+       statictext(11, 93, 261, "right", "z shift/rotate")
+       textbox(12, 99, 258, 37)
+       button(13, 234, 257, 45, 23, "Drag",
+          xlast = -1;
+          if(isvar("mRot") == 0);
+          return;
+          endif;
+          trackcursor("2d","arrow",":interactive_rotate","drag");)
+       statictext(14, 47, 31, "right", "Input")
+       groupbox(15, "Matrices", 4, 4, 209, 85)
+       textmenu(16, 57, 28, 122, 200,
+          :set_matrix();
+          :set_plane();
+          :display_plane();)
+       groupbox(17, "Interactive", 220, 163, 72, 127)
+       button(18, 234, 123, 43, 23, "Exit",
+          closewindow(0);)
+       button(19, 234, 23, 43, 23, "Save",
+          :save_matrix();)
+       statictext(20, 137, 113, "center", "Scan rotated planes")
+       button(21, 234, 53, 43, 23, "Reset",
+          :reset_matrix();)
+       groupbox(22, "Scan planes", 4, 93, 209, 83)
+       slider(23, 64, 128, 142, 30, "horizontal",
+            :display_plane();)
+       statictext(24, 39, 153, "right", "xz")
+       statictext(25, 39, 133, "right", "yz")
+       statictext(26, 39, 113, "right", "xy")
+       radiobuttons(27, 44, 115, 20, "vertical", "xy,yz,xz", "xy",
+            :set_plane();
+            :display_plane();)
+       groupbox(28, "Control", 220, 4, 72, 152)
+       textmenu(29, 57, 56, 145, 200,
+          :set_matrix();
+          :set_plane();
+          :display_plane();)
+       statictext(30, 47, 59, "right", "Output")
+       button(31, 184, 29, 17, 20, "U",
+          :update_menus();
+          :set_matrix();
+          :set_plane();
+          :display_plane();)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",9)
+       setpar(n,2,"tab_number",10)
+       setpar(n,3,"tab_number",6)
+       setpar(n,6,"tab_number",15)
+       setpar(n,7,"tab_number",16)
+       setpar(n,9,"tab_number",13)
+       setpar(n,10,"tab_number",7)
+       setpar(n,12,"tab_number",8)
+       setpar(n,13,"tab_number",17)
+       setpar(n,16,"tab_number",1,
+                   "menu",[""])
+       setpar(n,18,"tab_number",14)
+       setpar(n,19,"tab_number",11)
+       setpar(n,21,"tab_number",12)
+       setpar(n,23,"tab_number",5)
+       setpar(n,27,"tab_number",4)
+       setpar(n,29,"tab_number",3,
+                   "menu",[""])
+       setpar(n,31,"tab_number",2)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\3D","shiftrotate3d.htm")
+endproc()
+
+####################################################
+# Initialise menu names
+####################################################
+
+procedure(update_menus)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(0,16,"menu",menu3d)
+      setpar(0,16,"text",menu3d[0])
+      :set_matrix()
+   endif
+
+endproc()
+
+
+####################################################
+# Rotate the matrix
+####################################################
+
+procedure(rotate_matrix,delx,dely,delz)
+
+   if(isvar("mRot") == 0)
+      return
+   endif
+   mRot = rotate(mRot,delx,dely,delz)
+   :display_plane()
+
+endproc()
+
+####################################################
+# Shift the matrix
+####################################################
+
+procedure(shift_matrix,delx,dely,delz)
+
+   if(isvar("mRot") == 0)
+      return
+   endif
+   mRot = shift(mRot,delx,dely,delz)
+   :display_plane()
+
+endproc()
+
+####################################################
+# Select the origin for the matrix and rotate
+####################################################
+
+procedure(select_start)
+
+   if(isvar("mRot") == 0)
+      return
+   endif
+
+   dir = getpar(0,27,"text")
+   posz = getpar(0,23,"value")
+  (posx,posy) = getxy("cross")
+   if(dir = "xy")
+      mRot = rotate(mRot,-posx,-posy,-posz)
+    elseif(dir = "yz")
+      mRot = rotate(mRot,-posz,-posx,-posy)
+    elseif(dir = "xz")
+      mRot = rotate(mRot,-posx,-posz,-posy)
+   endif
+   :display_plane()
+
+
+endproc()
+
+####################################################
+# Select the centre for the matrix and rotate
+####################################################
+
+procedure(select_centre)
+
+   if(isvar("mRot") == 0)
+      return
+   endif
+
+   dir = getpar(0,27,"text")
+   posz = getpar(0,23,"value")
+   (w,h,d) = size(mRot)
+  (posx,posy) = getxy("cross")
+
+   if(dir = "xy")
+      mRot = rotate(mRot,w/2-posx,h/2-posy,d/2-posz)
+    elseif(dir = "yz")
+      mRot = rotate(mRot,w/2-posz,h/2-posx,d/2-posy)
+    elseif(dir = "xz")
+      mRot = rotate(mRot,w/2-posx,h/2-posz,d/2-posy)
+   endif
+   :display_plane()
+
+endproc()
+
+####################################################
+# Allow interactive rotation in 2D dimensions
+####################################################
+
+procedure(interactive_rotate,x,y,z)
+
+   if(xlast == -1)
+      xlast = x
+      ylast = y
+   endif
+   delx = xlast - x
+   dely = ylast - y
+   delz = 0
+
+   dir = getpar(0,27,"text")
+   (w,h,d) = size(mRot)
+
+   if(dir = "xy")
+      mRot = rotate(mRot,-delx,-dely,0)
+    elseif(dir = "yz")
+      mRot = rotate(mRot,0,-delx,-dely)
+    elseif(dir = "xz")
+      mRot = rotate(mRot,-delx,0,-dely)
+   endif
+
+   :display_plane()
+
+   xlast = x
+   ylast = y
+ 
+
+endproc()
+
+####################################################
+# Display the slice
+####################################################
+
+procedure(display_plane)
+
+   if(isvar("mRot") == 0)
+      return
+   endif
+
+   name = getpar(0,16,"text")
+   plane = getpar(0,23,"value")
+   dir = getpar(0,27,"text")
+
+  (w,h,d) = size(mRot)
+
+   draw2d("false")
+      (nl,mode) = contour("getargs")
+      (left,right,bottom,top) = zoom2d("getargs")
+      if(dir = "xy")
+          image(mRot[~,~,plane])
+       elseif(dir = "yz")
+          image(mRot[plane,~,~])
+       elseif(dir = "xz")
+          image(mRot[~,plane,~])
+       endif
+      contour(nl,mode)
+       title("Rotated matrix ($dir$ plane : $plane$)")
+    #   if(reset == 0)
+   #       zoom2d(left,right,bottom,top)
+   #    endif
+    draw2d("true")
+
+   
+
+endproc()
+
+####################################################
+# Update the rotation matrix
+####################################################
+
+procedure(set_matrix)
+
+   name = getpar(0,16,"text")
+   if(name != "")
+      setpar(0,29,"text",name+"_rot")
+      mat = alias(name,"eval")
+      mRot = mat+0
+   endif
+
+endproc()
+
+####################################################
+# Set the plane direction, plot labels and slider  
+# limits for the current data set
+####################################################
+
+procedure(set_plane)
+
+   name = getpar(0,16,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval")
+   (w,h,d) = size(mat)
+
+   planeDir = getpar(0,27,"text")
+   plane = 0
+   setpar(0,23,"value",plane)
+   if(planeDir = "xy")
+      setpar(0,23,"range",[0,d-1])
+      setpar(0,23,"tickstep",d/10)
+      xlabel("x")
+      ylabel("y")
+   elseif(planeDir = "yz")
+      setpar(0,23,"range",[0,w-1])
+      setpar(0,23,"tickstep",w/10)
+      xlabel("y")
+      ylabel("z")
+   elseif(planeDir = "xz")
+      setpar(0,23,"range",[0,h-1])
+      setpar(0,23,"tickstep",h/10)
+      xlabel("x")
+      ylabel("z")
+   endif
+
+   reset = 1
+
+endproc()
+
+####################################################
+# Save the rotation matrix
+####################################################
+
+procedure(save_matrix)
+
+   name = getpar(0,29,"text")
+   if(name != "")
+      assign(name,mRot,"global")
+      message("Information","Rotated matrix saved")
+   endif
+
+endproc()
+
+####################################################
+# Undo any rotations
+####################################################
+
+procedure(reset_matrix)
+
+   :set_matrix()
+   :display_plane()
+
+endproc()
+

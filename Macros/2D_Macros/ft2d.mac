@@ -1,0 +1,341 @@
+####################################################
+#
+# Apply a forward or reverse 2D Fourier transform
+# to the current 2D plot data.
+#
+# Note plot data must have power of 2 dimensions.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(ft2d)
+
+   n = :windowdefinition()
+   :update_controls()
+   :update_filter_menu()
+   showwindow(n)
+   w_winNr = n
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D FFT of current data", -1, -1, 384, 167)
+
+      # Define all controls with basic parameters
+       windowvar(wv_yscale,wv_xscale,wv_title,wv_mIn,wv_mOut,
+                 wv_pl)
+       button(1, 323, 117, 46, 25, "Exit",
+          closewindow(0);)
+       button(2, 205, 117, 43, 25, "Undo",
+          :undo();)
+       button(7, 108, 117, 81, 25, "Update zerofill",
+          :update_controls();)
+       groupbox(8, "Processing Parameters", 6, 8, 307, 102)
+       statictext(9, 25, 55, "right", "kx")
+       statictext(10, 25, 77, "right", "ky")
+       statictext(11, 87, 31, "right", "Filter")
+       textmenu(12, 35, 49, 95, 200)
+       textmenu(13, 35, 74, 95, 200)
+       statictext(14, 182, 32, "right", "FT Type")
+       textmenu(15, 135, 49, 61, 200)
+       textmenu(16, 136, 74, 61, 200)
+       statictext(17, 242, 32, "right", "Zero Fill")
+       textmenu(18, 201, 49, 50, 200)
+       textmenu(19, 202, 74, 50, 200)
+       statictext(20, 254, 32, "left", "Magnitude")
+       checkbox(21, 273, 64, "no,yes", "no")
+       button(22, 323, 17, 46, 25, "Do FT",
+          :fft2d("forward");)
+       button(23, 323, 54, 46, 25, "Do IFT",
+          :fft2d("reverse");)
+       button(24, 264, 117, 43, 25, "Help",
+          :show_help();)
+       statusbox(25)
+       button(26, 11, 117, 81, 25, "Modify Filters",
+          n = filters();)
+
+     # Set other control parameters
+       setpar(n,12,"name","1dfltr",
+                   "tab_number",1,
+                   "menu",["none","exponential","sinebellsquared","sinebell","gaussian","vee","shsinebellsquared"])
+       setpar(n,13,"name","2dfltr",
+                   "tab_number",4,
+                   "menu",["none","exponential","sinebellsquared","sinebell","gaussian","vee","shsinebellsquared"])
+       setpar(n,15,"name","1dft",
+                   "tab_number",2,
+                   "menu",["none","FTEcho","FTFid"])
+       setpar(n,16,"name","2dft",
+                   "tab_number",5,
+                   "menu",["none","FTEcho","FTFid"])
+       setpar(n,18,"name","1dzf",
+                   "tab_number",3,
+                   "menu",["16","32","64","128","256","512","1024","2048","4096"])
+       setpar(n,19,"name","2dzf",
+                   "tab_number",6,
+                   "menu",["16","32","64","128","256","512","1024","2048","4096"])
+       setpar(n,21,"name","magn")
+       setpar(n,22,"tab_number",7)
+       setpar(n,23,"tab_number",8)
+       setpar(n,24,"tab_number",10)
+       setpar(n,26,"tab_number",9)
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("2DMacros.htm","ft2d")
+endproc()
+
+########################################################
+# Update all controls based on current 2D data set
+########################################################
+
+procedure(update_controls)
+
+   m = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Set output width and height strings
+   (w,h) = size(m)
+   setpar(0,18,"text",w)
+   setpar(0,19,"text",h)
+
+# Set FT type
+   if(getpar(0,15,"index") == -1)
+      setpar(0,15,"text","FTEcho")
+      setpar(0,16,"text","FTEcho")
+   endif
+# Set Filter type
+   if(getpar(0,12,"index") == -1)
+      setpar(0,12,"text","none")
+      setpar(0,13,"text","none")
+   endif
+
+endproc()
+
+
+###################################################
+# 2D fft transform
+###################################################
+
+procedure(fft2d,dir)
+
+  t1 = time()
+
+# Check to see if a 2D data set is present
+   (wv_mIn,wv_xscale,wv_yscale) = getplotdata("2d")
+   if(wv_mIn == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+   pl = plotProc:getLabels()
+   wv_pl = pl
+   
+# Get the window parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+
+# Check for valid zerofill sizes
+   (x1,y1) = size(wv_mIn)
+   if(x1 == 0)
+      return()
+   endif
+
+   if(1dzf < x1) 
+      1dzf = x1
+      setpar(0,18,"text",x1)
+   endif
+   if(2dzf < y1) 
+      2dzf = y1
+      setpar(0,19,"text",y1)
+   endif
+
+# Process wv_mIn -> wv_mOut
+   setpar(0,25,"text","Processing ...")
+   if(dir == "forward")
+      :transform(1dzf,2dzf,1dfltr,2dfltr,1dft,2dft,magn)
+   else
+      :inv_transform(1dzf,2dzf,1dfltr,2dfltr,1dft,2dft,magn)
+   endif
+
+   setpar(0,25,"text","Finished - time taken = $time()-t1$s")
+
+# Display data
+   if(1dft != "none")
+      rngX = [-0.5*x1/wv_xscale[-1],0.5*x1/wv_xscale[-1]]
+   else
+      rngX = wv_xscale
+   endif
+   if(2dft != "none")
+      rngY = [-0.5*y1/wv_yscale[-1],0.5*y1/wv_yscale[-1]]
+   else
+      rngY = wv_yscale
+   endif
+   draw2d("false")
+      image(wv_mOut,rngX,rngY)
+      plotProc:setLabels(pl)
+      if(1dft != "none")
+         xlabel("Frequency f1 (Hz)")
+      endif
+      if(2dft != "none")
+         ylabel("Frequency f2 (Hz)")
+      endif
+      title("transformed data")
+   draw2d("true")
+
+endproc()
+
+###########################################################
+# 2d fft routine : transforms wv_mIn to wv_mOut
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(transform,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn)
+
+   (w1,h1) = size(wv_mIn)
+
+   rowFt  = cmatrix(w2,h1)
+   wv_mOut = cmatrix(w2,h2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+   if(FTtypeX == "none")
+      for (y = 0 to h1-1)
+	   rowFt[~,y] = zerofill(Flt.*wv_mIn[~,y],w2,"sides")+i0
+      next(y)
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         rowFt[~,y] = ft(zerofill(Flt.*wv_mIn[~,y],w2,"end"))
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+	 rowFt[~,y] = ft(ftshift(zerofill(Flt.*wv_mIn[~,y],w2,"sides")))
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+
+   if(FTtypeY == "none")
+      for (x = 0 to w2-1)
+	   wv_mOut[x,~] = zerofill((Flt.*rowFt[x,~]),h2,"sides")+i0
+      next(x)
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         wv_mOut[x,~] = ft(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   wv_mOut[x,~] = ft(ftshift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+# Apply a magnitude calculation is desired
+   if(Magn == "yes")
+      wv_mOut = mag(wv_mOut)
+   endif
+
+endproc()
+
+###########################################################
+# 2d ifft routine : transforms wv_mIn to wv_mOut
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(inv_transform,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn)
+
+   (w1,h1) = size(wv_mIn)
+
+   rowFt  = cmatrix(w2,h1)
+   wv_mOut = cmatrix(w2,h2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+   if(FTtypeX == "none")
+      rowFt = wv_mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         rowFt[~,y] = ift(zerofill(Flt.*wv_mIn[~,y],w2,"end"))
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+	 rowFt[~,y] = ftshift(ift(zerofill(Flt.*wv_mIn[~,y],w2,"sides")))
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+
+   if(FTtypeY == "none")
+      wv_mOut = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         wv_mOut[x,~] = ift(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   wv_mOut[x,~] = ftshift(ift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+# Apply a magnitude calculation is desired
+   if(Magn == "yes")
+      wv_mOut = mag(wv_mOut)
+   endif
+
+endproc()
+
+####################################################
+# Get the latest filter menu
+####################################################
+
+procedure(update_filter_menu)
+
+   filtermenu = filters:get_menu()
+   setpar(0,12,"menu",filtermenu)
+   setpar(0,13,"menu",filtermenu)
+   setpar(0,12,"text",filtermenu[0])
+   setpar(0,13,"text",filtermenu[0])
+
+endproc()
+
+
+####################################################
+# Restore the matrix before last column op
+####################################################
+
+procedure(undo)
+
+   if(wv_mIn != null)
+   #   (txt,lx,ly,nc,mode) = 2dpar:get()
+      draw2d("false")
+      image(wv_mIn,wv_xscale,wv_yscale)
+      plotProc:setAllPar(wv_pl)
+      draw2d("true")
+   else
+      message("Information","No previous plot recorded")
+   endif
+
+endproc()
+
+ 

@@ -1,0 +1,74 @@
+# Make a window with a button in it
+# The move the button and resize it
+# Next change the title
+
+procedure(checkbox_test1,verbose,delay)
+
+   n = :windowdefinition()
+   showwindow(n)
+   :check(n)
+   :visible(n)
+   :movebox(n)
+   closewindow(n)
+
+endproc(1,"")
+
+procedure(windowdefinition)
+
+   n = window("checkbox test", 100, 100, 200, 200)
+       checkbox(1, 57, 45, "no,yes","no")
+
+endproc(n)
+
+# Change the check mark on the box
+
+procedure(check,n)
+
+# Check that value parameter works
+  for m = 0 to 6
+     setpar(n,1,"value",m%2)
+     pause(0.2)
+  next m
+
+# Check that options and text parameters works
+  options  = getpar(n,1,"options")
+  for m = 0 to 6
+     setpar(n,1,"text",options[m%2==0])
+     pause(0.2)
+  next m
+
+endproc()
+
+procedure(visible,n)
+
+# Toggle the enable option
+  options = ["true","false"]
+  for m = 0 to 6
+     setpar(n,1,"enable",options[m%2==0])
+     pause(0.2)
+  next m
+
+# Toggle the visible option
+  options = ["true","false"]
+  for m = 0 to 5
+     setpar(n,1,"visible",options[m%2==0])
+     pause(0.2)
+  next m
+endproc
+
+
+# Move the box around
+
+procedure(movebox,n)
+
+   setpar(n,1,"label","On the move");
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      drawwin(n)
+      pause(0.005)
+   next (theta)
+
+endproc()

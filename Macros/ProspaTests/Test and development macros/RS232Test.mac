@@ -1,0 +1,52 @@
+
+procedure(getTemperatures)
+
+
+   data = ""
+   openserial("COM3",9600,8,"none","1")
+   for(k = 0 to 10)
+   data = data + readserial()
+   (temp1,data) = :extractTemp1(data)
+   (temp2,data) = :extractTemp2(data)
+
+   if(temp1 != "")
+      pr "Temp 1 = $temp1$\n"
+   endif
+   if(temp2 != "")
+      pr "Temp 2 = $temp2$\n"
+   endif
+   next(k)
+
+
+closeserial()
+
+endproc()
+
+procedure(extractTemp1,data)
+
+  temp1 = ""
+  sz = size(data)
+  for(k = 0 to sz-2)
+     if(data[k:k+1] == "1:" & sz > k+11)
+        temp1 = data[k+4:k+10]
+        data = data[k+11:-1] 
+        exitfor()
+     endif
+  next(k)
+      
+endproc(temp1,data)
+
+procedure(extractTemp2,data)
+
+  temp2 = ""
+  sz = size(data)
+  for(k = 0 to sz-2)
+     if(data[k:k+1] == "2:" & sz > k+11)
+        temp2 = data[k+4:k+10]
+        data = data[k+11:-1] 
+        exitfor()
+     endif
+  next(k)
+      
+endproc(temp2,data)
+

@@ -1,0 +1,21 @@
+###################################################################################
+#######################################################
+
+procedure(gradoff, channel)
+
+   if(gSeq->psInfo->skipCmds == 0)
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 2.5
+      names = ["Go","Gz","Gy","Gx"]
+      if(isinteger(channel))
+         gSeq->psInfo->command = gSeq->psInfo->command + ["gradoff,$names[channel]$,$args[0]$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["gradoff,G$channel$,$args[0]$"]
+      endif
+
+   endif
+
+endproc()
+
+

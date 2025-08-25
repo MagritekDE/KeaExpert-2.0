@@ -1,0 +1,230 @@
+##############################################
+# The transform class for SpinsolveExpert
+#
+# V2.0x.xx
+##############################################
+
+##############################################
+# Initialiser for the class
+##############################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+   self->allocate2D  = "seFFT:allocate2D"
+   self->transformF1 = "seFFT:transformF1"
+   self->transformF2 = "seFFT:transformF2"
+   self->transform1D = "seFFT:transform1D"
+   self->fidData2D  = null
+   self->specData2D = null
+   self->rowFTData  = null
+
+   self->variableList = "============================================="
+   self->f1P0  = 0
+   self->f1P1  = 0
+   self->f1Piv = 0
+   self->f2P0  = 0
+   self->f2P1  = 0
+   self->f2Piv = 0
+
+endproc()
+
+
+##############################################
+# Zerofill, filter and transform an FID
+# Optionally autophase or take magntiude
+##############################################
+
+procedure(transform1D, self, fidData, apodFilter, type="FID", halveFirstPoint=1)
+
+# Local copy of experiment parameters
+   par = gData->curExpt->parameters
+
+# Apodize and zero fill
+   if(isvar("par->zf"))
+      zf = par->zf
+   else
+      zf = 1
+   endif
+   sz = size(fidData)
+   preProcData = zerofill(fidData.*apodFilter, zf*sz, "end")
+   
+# Check size
+   sz = size(preProcData)
+   if(frac(log2(sz)) != 0)
+      message("Error","The length of the time domain vector is not a power of 2","error")
+      abort("")
+   endif
+
+# FFT
+   df = 1e6/par->dwellTime
+   if(type == "echo" ) 
+      fData = ft(ftshift(preProcData))/df
+   else
+      fidDataCorr = preProcData
+      if(halveFirstPoint)
+         fidDataCorr[0] = fidDataCorr[0]/2
+      endif
+      fData = ft(fidDataCorr)/df
+   endif
+
+# Auto-phase or magntiude spectrum
+   ph = autoPhase1D:autoPhase1D(fData,8)
+   if(isvar("par->tdPhaseCorr"))
+      if(par->tdPhaseCorr == "autophase")
+         fidData = fidData*exp(i*ph/180*pi)
+      endif
+   endif
+   if(isvar("par->fdPhaseCorr"))
+      if(par->fdPhaseCorr == "autophase")
+         fData = fData*exp(i*ph/180*pi)
+      elseif(par->fdPhaseCorr == "mag")
+         fData = mag(fData)
+      endif
+   endif
+
+endproc(fidData,fData,ph)
+
+##############################################
+# Allocate matricies for 2D transforms
+##############################################
+
+procedure(allocate2D, self, fidXDim, fidYDim, specXDim, specYDim)
+
+   self->fidData2D  = cmatrix(fidXDim,  fidYDim)
+   self->specData2D = cmatrix(specXDim, specYDim)
+   self->rowFTData  = cmatrix(specXDim, fidYDim)
+
+endproc()
+
+##############################################
+# Transform in the F1
+##############################################
+
+procedure(transformF1, self, ftType, origin, filterName, p0=0, p1=0, piv=0, halveFirst=1) 
+
+   (wRowFT,hRowFT) = size(self->rowFTData)
+   (wSpec,hSpec) = size(self->specData2D)
+
+# Determine the apodization filter function
+   if(origin == "Start")
+      f1WindowFunctionType = "FTFid"
+   else
+      f1WindowFunctionType = "FTEcho"
+   endif
+
+   if(ftType == "Hypercomplex" | ftType == "Echo-AntiEcho")
+      hf = hRowFT/2
+   else
+      hf = hRowFT
+   endif
+
+   f1Filter = filters:get_filter(filterName, f1WindowFunctionType, hf)'
+
+# Determine the phase vector
+   if(p0 != 0 | p1 != 0)
+      f1Phase = (exp(i*pi*(p0 + p1*([0:hSpec-1]-piv)/hSpec)/180))'
+   else
+      f1Phase = (matrix(hSpec)+1)'
+   endif
+
+   self->f1P0 = p0
+   self->f1P1 = p1
+   self->f1Piv = piv
+
+# Halve first point
+   if(halveFirst)
+      self->rowFTData[~,0] = self->rowFTData[~,0]/2
+   endif
+
+# Perform the coumn transforms with zero filling and apodization
+   if(ftType == "Complex" & origin == "Start")
+      for(x = 0 to wSpec-1)
+         self->specData2D[x,~] = ft(zerofill(f1Filter.*self->rowFTData[x,~],hSpec,"end")) .* f1Phase
+      next(y)
+
+   elseif(ftType == "Hypercomplex" & origin == "Start")
+      for(y = 0 to hRowFT-2 step 2)
+         rowR = self->rowFTData[~,y]
+         rowI = self->rowFTData[~,y+1]
+         self->rowFTData[~,y/2] = (real(rowR) + i*real(rowI))
+      next(y)
+      for(x = 0 to wSpec-1)
+         self->specData2D[x,~] = ft(zerofill(f1Filter.*self->rowFTData[x,0:hRowFT/2-1],hSpec,"end")) .* f1Phase
+      next(y)
+
+   elseif(ftType == "Echo-AntiEcho" & origin == "Start")
+      for(y = 0 to hRowFT-2 step 2)
+         rowR = self->rowFTData[~,y]
+         rowI = self->rowFTData[~,y+1]
+         self->rowFTData[~,y/2] = ((real(rowR)-real(rowI)) - i*(imag(rowR)+imag(rowI)))
+      next(y)
+      for(x = 0 to wSpec-1)
+         self->specData2D[x,~] = ft(zerofill(f1Filter.*self->rowFTData[x,0:hRowFT/2-1],hSpec,"end")) .* f1Phase
+      next(y)
+
+   elseif(ftType == "Real" & origin == "Start")
+      for(x = 0 to wSpec-1)
+         self->specData2D[x,~] = rft(zerofill(f1Filter.*self->rowFTData[x,~],hSpec*2,"end")) .* f1Phase
+      next(y)
+
+   endif
+
+endproc()
+
+##############################################
+# Transform in the F2 dimension as well
+# as zero fill and phase
+##############################################
+
+procedure(transformF2, self, ftType, origin, filterName, p0=0, p1=0, piv=0, halveFirst=1) 
+
+   (wFID,hFID) = size(self->fidData2D)
+   (wRowFT,hRowFT) = size(self->rowFTData)
+
+# Determine the apodization filter function
+   if(origin == "Start")
+      f2WindowFunctionType = "FTFid"
+   else
+      f2WindowFunctionType = "FTEcho"
+   endif
+   f2Filter = filters:get_filter(filterName, f2WindowFunctionType, wFID)
+
+# Determine the phase vector
+   if(p0 != 0 | p1 != 0)
+      f2Phase = exp(i*pi*(p0 + p1*([0:wRowFT-1]-piv)/wRowFT)/180)
+   else
+      f2Phase = matrix(wRowFT)+1
+   endif
+
+   self->f2P0 = p0
+   self->f2P1 = p1
+   self->f2Piv = piv
+
+# Halve first point
+   if(halveFirst)
+      self->rowFTData[0,:] = self->rowFTData[0,:]/2
+   endif
+
+# Perform the row transforms with zero filling and apodization
+   if(ftType == "Complex")
+
+      if(origin == "Start")
+         for(y = 0 to hFID-1)
+            self->rowFTData[~,y] = ft(zerofill(f2Filter.*self->fidData2D[:,y],wRowFT,"end")) .* f2Phase
+         next(y)
+         
+      elseif(origin == "Center")
+         for(y = 0 to hFID-1)
+            self->rowFTData[~,y] = ft(ftshift(zerofill(f2Filter.*self->fidData2D[:,y],wRowFT,"end"))) .* f2Phase
+         next(y)
+
+      endif
+
+   elseif(ftType == "Real")
+
+      abort("Real F2 transform not supported")
+
+   endif
+
+endproc()

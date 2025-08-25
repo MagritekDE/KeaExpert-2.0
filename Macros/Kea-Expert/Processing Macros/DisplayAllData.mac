@@ -1,0 +1,147 @@
+###########################################################################
+# Display all the data but just the ppm range if defined (1D version)
+###########################################################################
+
+procedure(1D)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# If shift pressed then force full zoom
+  if(iskeypressed("alt"))
+      func1d("full region")
+      return
+   endif
+ 
+# Get the plot object
+   plt = curplot("1d")
+
+   assignlist(getctrlvalues(0))
+
+# See if the current plot is a spectrum
+   zoomed = 0
+   if(plt->axes->xppmscale == "true")
+      if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM") & isvar("usePPMScale"))
+         if(usePPMScale == "yes")
+            plt->zoom(dispRangeMinPPM,dispRangeMaxPPM)
+            zoomed = 1
+         endif
+      elseif(isvar("dispRangePPM") & isvar("centerFreqPPM"))
+         if(usePPMScale == "yes")
+            if(vartype(dispRangePPM) == "float")
+               plt->zoom(centerFreqPPM-dispRangePPM/2,centerFreqPPM+dispRangePPM/2)
+               zoomed = 1
+            elseif(vartype(dispRangePPM) == "string")
+               dispRangePPM = eval(dispRangePPM)
+               if(vartype(dispRangePPM) == "matrix1d")
+                  plt->zoom(dispRangePPM[0],dispRangePPM[1])
+                  zoomed = 1
+               endif
+            endif
+         endif
+      endif
+   endif
+
+# Otherwise just zoom all of it
+   if(zoomed == 0)
+      func1d("full region")
+   endif
+
+endproc()
+
+###########################################################################
+# Display all the data but just the ppm range if defined (2D version)
+###########################################################################
+
+procedure(2D)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# If shift pressed then force full zoom
+  if(iskeypressed("alt"))
+      func2d("full region")
+      return
+   endif
+ 
+# Get the plot object
+   im = curplot("2d")
+
+# Get the data
+  (m,xr,yr) = curplot("2d")->getdata()
+   (w,h) = size(m)
+
+   assignlist(getctrlvalues(0))
+
+# See if the current plot is a spectrum
+   zoomed = 0
+   if(im->axes->xppmscale == "true" & im->axes->yppmscale == "true")
+      if(isvar("dispRangeMinPPMf1") & isvar("dispRangeMaxPPMf1") & isvar("usePPMScale"))       
+         if(usePPMScale == "yes")
+            if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+               x0 = w*(dispRangeMinPPM-xr[0])/(xr[1]-xr[0])
+               x1 = w*(dispRangeMaxPPM-xr[0])/(xr[1]-xr[0])
+               y0 = h*(dispRangeMinPPMf1-yr[0])/(yr[1]-yr[0])
+               y1 = h*(dispRangeMaxPPMf1-yr[0])/(yr[1]-yr[0])
+               if(x0 < 0);  x0 = 0;   endif;
+               if(x1 >= w); x1 = w-1; endif;
+               if(y0 < 0);  y0 = 0;   endif;
+               if(y1 >= h); y1 = h-1; endif; 
+               im->zoom(x0,x1,y0,y1)
+               zoomed = 1
+            else
+               x0 = w*(dispRangeMinPPM-xr[0])/(xr[1]-xr[0])
+               x1 = w*(dispRangeMaxPPM-xr[0])/(xr[1]-xr[0])
+               y0 = h*(dispRangeMinPPM-yr[0])/(yr[1]-yr[0])
+               y1 = h*(dispRangeMaxPPM-yr[0])/(yr[1]-yr[0])
+               if(x0 < 0);  x0 = 0;   endif;
+               if(x1 >= w); x1 = w-1; endif;
+               if(y0 < 0);  y0 = 0;   endif;
+               if(y1 >= h); y1 = h-1; endif; 
+               im->zoom(x0,x1,y0,y1)
+               zoomed = 1
+            endif
+         endif
+      elseif(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+         if(usePPMScale == "yes")  
+            x0 = w*(dispRangeMinPPM-xr[0])/(xr[1]-xr[0])
+            x1 = w*(dispRangeMaxPPM-xr[0])/(xr[1]-xr[0])
+            y0 = h*(dispRangeMinPPM-yr[0])/(yr[1]-yr[0])
+            y1 = h*(dispRangeMaxPPM-yr[0])/(yr[1]-yr[0])
+            if(x0 < 0);  x0 = 0;   endif;
+            if(x1 >= w); x1 = w-1; endif;
+            if(y0 < 0);  y0 = 0;   endif;
+            if(y1 >= h); y1 = h-1; endif; 
+            im->zoom(x0,x1,y0,y1)
+            zoomed = 1
+         endif
+      endif
+   endif
+
+   if(im->axes->xppmscale == "true" & im->axes->yppmscale == "false")
+      if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM") & isvar("usePPMScale"))
+         if(usePPMScale == "yes")
+            x0 = w*(dispRangeMinPPM-xr[0])/(xr[1]-xr[0])
+            x1 = w*(dispRangeMaxPPM-xr[0])/(xr[1]-xr[0])
+           # y0 = h*(dispRangeMinPPM-yr[0])/(yr[1]-yr[0])
+           # y1 = h*(dispRangeMaxPPM-yr[0])/(yr[1]-yr[0])
+            if(x0 < 0);  x0 = 0;   endif;
+            if(x1 >= w); x1 = w-1; endif;
+           # if(y0 < 0);  y0 = 0;   endif;
+           # if(y1 >= h); y1 = h-1; endif; 
+            im->zoom(x0,x1,0,h-1)
+            zoomed = 1
+         endif
+      endif
+   endif
+
+# Otherwise just zoom all of it
+   if(zoomed == 0)
+      func2d("full region")
+   endif
+
+endproc()

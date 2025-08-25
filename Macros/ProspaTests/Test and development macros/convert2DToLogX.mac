@@ -1,0 +1,26 @@
+plt = curplot("2d")
+(m,xr,yr) = plt->getdata()
+(w,h) = size(m)
+x = linspace(xr[0],xr[-1],w)
+bins = round(w/100)
+mBinned = cmatrix(bins,h)
+for(y = 0 to h-1)
+  v = m[~,y]
+  (xb,yrb) = logbin(x,real(v),bins)
+  (xb,yib) = logbin(x,imag(v),bins)
+   mBinned[~,y] = yrb+i*yib
+next(y)
+
+plt->draw("false")
+tl = plt->title->text
+xl = plt->xlabel->text
+yl = plt->ylabel->text
+plt->image(mBinned,[xb[0],xb[-1]],yr)
+plt->axes("xmapping","log")
+plt->axes("ymapping","lin")
+plt->title(tl)
+plt->xlabel(xl)
+plt->ylabel(yl)
+plt->draw("true")
+
+

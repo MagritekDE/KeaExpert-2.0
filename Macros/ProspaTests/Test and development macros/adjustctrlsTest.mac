@@ -1,0 +1,36 @@
+procedure(adjustctrlsTest)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   n = window("AdjustCtrls test", -1, -1, 600, 120, "resizable")
+
+      # Define all controls with basic parameters
+      button(1, "ww/2-25",44, 50, 20, "Left",:adjustSize(1))
+      button(2, "ww/2-25",44, 50, 20, "Right",:adjustSize(0))
+      divider(3,"ww/2",0,4,"wh","vertical")
+      setpar(0,1,"region",[-1,3,-3,-4])
+      setpar(0,2,"region",[3,-2,-3,-4])
+
+endproc(n)
+
+procedure(adjustSize, par)
+
+   if(par == 1)
+   #  getobj(0)->draw("false")
+     setpar(0,3,"x","ww/3")
+     adjustctrls(0)
+    # getobj(0)->draw("true")
+
+   else
+    # getobj(0)->draw("false")
+     setpar(0,3,"x","ww*0.66")
+     adjustctrls(0)
+    # getobj(0)->draw("true")
+   endif
+
+endproc()

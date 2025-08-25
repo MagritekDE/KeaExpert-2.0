@@ -1,0 +1,226 @@
+procedure(StackedPlotSetup)
+
+   n = :windowdefinition()
+   windowvar(rev,wv_xAxis,wv_m)
+   assignctrls(n)
+   if(:init())
+      showwindow(n)
+   endif
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Stacked plot view", -1, -1, 415, 240)
+
+      # Define all controls with basic parameters
+      windowvar(rev,startColorCtrl,endColorCtrl,maxYAxisCtrl,minYAxisCtrl,tiltCtrl,mappingCtrl,maxDispYAxisCtrl,minDispYAxisCtrl)
+      textbox(1, 328, 34, 51)
+      statictext(2, 322, 38, "right", "Minimum y value")
+      textbox(3, 328, 64, 51)
+      statictext(4, 322, 68, "right", "Maximum y value")
+      groupbox(5, "Vertical axis range", 209, 9, 185, 137)
+      radiobuttons(6, 328, 98, 20, "vertical", "lin,log", "lin")
+      statictext(7, 322, 99, "right", "Linear scale")
+      statictext(8, 322, 118, "right", "Logariithmic scale")
+      button(9, 220, 159, 51, 26, "Apply",
+         :apply();)
+      button(10, 290, 159, 51, 26, "Close",
+         closewindow(0);)
+      textbox(11, 80, 140, 51)
+      statictext(12, 74, 144, "right", "Tilt (ppm)")
+      textbox(13, 130, 37, 51)
+      statictext(14, 124, 41, "right", "Minimum y value")
+      textbox(15, 130, 67, 51)
+      statictext(16, 124, 71, "right", "Maximum y value")
+      groupbox(17, "Vertical data range", 11, 9, 185, 102)
+      groupbox(18, "Data display", 11, 119, 185, 112)
+      button(19, 220, 198, 51, 26, "Help")
+      checkbox(20, 148, 205, "0,1", "0")
+      colorbox(21, 80, 200, 22, 22, [255,128,0],
+         :selectColor(21);)
+      statictext(22, 74, 203, "right", "End color")
+      colorbox(23, 80, 170, 22, 22, [0,0,255],
+         :selectColor(23);)
+      statictext(24, 74, 173, "right", "Start color")
+      statictext(25, 153, 173, 53, 26, "center", "White wash plot")
+
+     # Set other control parameters
+      setpar(n,1,"objID","minDispYAxisCtrl")
+      setpar(n,3,"objID","maxDispYAxisCtrl")
+      setpar(n,6,"objID","mappingCtrl")
+      setpar(n,11,"objID","tiltCtrl")
+      setpar(n,13,"objID","minYAxisCtrl")
+      setpar(n,15,"objID","maxYAxisCtrl")
+      setpar(n,20,"objID","whiteWashCtrl")
+      setpar(n,21,"objID","endColorCtrl")
+      setpar(n,23,"objID","startColorCtrl")
+
+      setpar(n,9,"active","true")
+
+      setpar(n,20,"active","true")
+      setpar(n,13,"active","true")
+      setpar(n,15,"active","true")
+
+
+     # Set other window parameters
+endproc(n)
+
+procedure(selectColor, n)
+
+   col = getcolor(getpar(0,n,"color"))
+   if(col != null)
+      setpar(0,n,"color",col)
+   endif
+
+endproc()
+
+procedure(init)
+
+   p = curplot("1d")
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      closewindow(0)
+      return(0)
+   endif
+   trcLst = p->tracelist()
+   (wv_xAxis,y) = p->trace(0)->getdata()
+   ww = p->trace(0)->whitewash()
+   whiteWashCtrl->value(ww)
+   
+   sz = size(trcLst)
+
+   yoff0 = p->trace(0)->yoffset()
+   yoffn = p->trace(sz-1)->yoffset()
+   rev = (yoff0 > yoffn)
+   scol = p->trace(0)->realcolor()
+   ecol = p->trace(sz-1)->realcolor()
+   if(rev)
+      swapvar("scol","ecol")
+      swapvar("yoff0","yoffn")
+   endif
+
+   startColorCtrl->color(scol)
+   endColorCtrl->color(ecol)
+
+   xoffset0 = p->trace(0)->xoffset()
+   xoffsetn = p->trace(sz-1)->xoffset()
+   xrange = p->axes->xrange
+   tilt = (xoffsetn-xoffset0)*(xrange[-1]-xrange[0])
+   if(rev)
+      tilt = -tilt
+   endif
+   tiltCtrl->text(tilt)
+   minYAxis = p->axes->minaxisvalue()
+   maxYAxis = p->axes->maxaxisvalue()
+   minDispYAxisCtrl->text("$minYAxis$")
+   maxDispYAxisCtrl->text("$maxYAxis$")
+
+   minDataY = (yoff0-0.05)/0.9*(maxYAxis-minYAxis)+minYAxis
+   maxDataY = (yoffn-0.05)/0.9*(maxYAxis-minYAxis)+minYAxis
+   minYAxisCtrl->text("$minDataY$")
+   maxYAxisCtrl->text("$maxDataY$")
+   mapping = p->axes->ymapping()
+   mappingCtrl->text(mapping)
+
+   wv_m = matrix(size(wv_xAxis),sz)
+   for(k = 0 to sz-1)
+      (x,y) = p->trace(k)->getdata()
+      wv_m[~,k] = real(y)
+   next(k)
+      
+
+endproc(1)
+
+procedure(apply)
+
+
+   minYAxis = minYAxisCtrl->value
+   maxYAxis = maxYAxisCtrl->value
+   minDispYAxis = minDispYAxisCtrl->value
+   maxDispYAxis = maxDispYAxisCtrl->value
+   mapping = mappingCtrl->text
+   tilt = tiltCtrl->value
+
+   p = curplot("1d")
+   (x1,x2,y1,y2) = p->zoom()
+   xlab = p->xlabel()->text
+   ylab = p->ylabel()->text
+   tlab = p->title()->text
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   p->draw("false")
+   trcLst = p->tracelist()
+   (x,y) = p->trace(0)->getdata()   
+   sz = size(trcLst)  
+   xrange = p->axes->xrange
+   scol = startColorCtrl->color
+   ecol = endColorCtrl->color
+   scol = scol[0:2]
+   ecol = ecol[0:2]
+
+   whiteWash = whiteWashCtrl->value
+
+# Work out y offset range for stacked plots as a fraction of the plot height
+   if(mappingCtrl->text == "lin")
+      minOff = (minYAxis-minDispYAxis)/(maxDispYAxis-minDispYAxis)*0.9+0.05
+      maxOff = (maxYAxis-minDispYAxis)/(maxDispYAxis-minDispYAxis)*0.9+0.05
+   else
+      minOff = (log10(minYAxis)-log10(minDispYAxis))/(log10(maxDispYAxis)-log10(minDispYAxis))*0.9+0.05
+      maxOff = (log10(maxYAxis)-log10(minDispYAxis))/(log10(maxDispYAxis)-log10(minDispYAxis))*0.9+0.05
+   endif
+
+   if(rev)
+
+      for(k = 0 to sz-1)
+
+         n = p->plot(wv_xAxis,wv_m[~,k])    
+         tc = p->trace(n)
+         if(k == 0)
+           p->hold("on")
+         endif
+         tc->xoffset(tilt*(sz-1-k)/((sz-1)*(xrange[-1]-xrange[0])))
+         tc->yoffset((maxOff-minOff)*(sz-1-k)/(sz-1)+minOff)
+         tc->whitewash(whiteWash)
+        # tc->tracewidth(1.501)
+         tc->realcolor(k/(sz-1)*(scol-ecol)+ecol) 
+         p->zoom(x1,x2,y1,y2)
+  
+      next(k)
+      p->hold("off")
+
+   else
+
+      for(k = sz-1 to 0 step -1)  
+   
+         n = p->plot(wv_xAxis,wv_m[~,k])    
+         tc = p->trace(n)
+         if(k == sz-1)
+           p->hold("on")
+         endif
+         tc->xoffset(tilt*k/((sz-1)*(xrange[-1]-xrange[0])))
+         tc->yoffset((maxOff-minOff)*k/(sz-1)+minOff)
+         tc->whitewash(whiteWash)
+         tc->realcolor(k/(sz-1)*(ecol-scol)+scol) 
+         p->zoom(x1,x2,y1,y2)
+      next(k)
+      p->hold("off")
+
+   endif
+
+   p->axes->ymapping(mapping)
+   p->axes->minaxisvalue(minDispYAxis)
+   p->axes->maxaxisvalue(maxDispYAxis)
+   p->xlabel(xlab)
+   p->ylabel(ylab)
+   p->title(tlab)
+   p->draw("true")
+
+endproc()
+

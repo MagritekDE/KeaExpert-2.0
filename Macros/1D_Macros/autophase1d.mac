@@ -1,0 +1,224 @@
+##########################################
+# Return the optimum zeroth order phase 
+# corrected spectrum using bisection
+# to find the phase which gives the
+# maximum baseline extent.
+#
+# Factor specifies how large the 
+# baseline is relative to the SD
+# of the noise at the ends of the
+# spectrum.
+#
+# C Eccles, April-June 2015
+##########################################
+
+procedure(autoPhase1D, spectrum, factor=8, mode=1)
+
+# Allow correction of current data
+   if(nrArgs == 0)
+      plt = curplot("1d")
+      (fAxis,spectrum) = plt->getdata()
+      lbls = plotProc:getAllPar(plt)
+      factor = 8
+   endif
+
+# Threshold is the maximum baseline amplitude based on the
+# average noise level
+   off = 64
+   sz = size(spectrum)
+   N = round(sz/off)
+   lhs = spectrum[0:N-1]
+   rhs = spectrum[-N:-1]
+   threshold = real(factor*(sd(lhs)+sd(rhs))/2)
+
+# A test function
+ #  :testit(spectrum,threshold)
+
+# Find the optimal phase
+   ph = :bisect(spectrum,threshold,mode)
+
+# Reduce to range -180 to 180
+   ph = sign(ph)*frac(ph/360)*360
+   if(ph > 180) 
+      ph = 360-ph
+   elseif(ph < -180)
+      ph = 360+ph
+   endif
+
+# Phase the spectrum
+   phasedSpectrum = spectrum * exp(i*ph/180*pi)
+
+# Allow correction of current data
+   if(nrArgs == 0)
+      plt->draw("false")
+      plt->plot(fAxis,phasedSpectrum)
+      plotProc:setAllPar(lbls,plt)
+      plt->draw("true")
+      pr("\n   Phase correction = $ph$ degrees")
+      return
+   endif
+
+endproc(ph,phasedSpectrum)
+
+##########################################
+# Test function for phasing spectrum
+# using the maximise baseline method
+##########################################
+
+procedure(testit,spectrum,threshold)
+
+   sz = size(spectrum)
+   N = sz/64
+   ax = [-179:180]
+   bl = matrix(360)
+   sn = matrix(360)
+   for(k = 0 to 359)
+      ph = ax[k]
+      ps = real(spectrum * exp(i*(ph)/180*pi))
+      av = 0.5*(avg(ps[0:N-1]) + avg(ps[-N:-1]))
+      bl[k] = sum(abs(ps-av) < threshold)
+      sn[k] = 0.5*(max(ps)+min(ps))
+   next(ph)
+   (v,pos) = min(bl)
+   ph = ax[pos]
+   plot(ax,bl)
+   hold("on")
+   plot(ax,sn,"color",[0,0,255])
+   hold("off")
+   break
+
+endproc()
+
+##########################################
+# Calculate the standard deviation
+# of the vector v
+##########################################
+
+procedure(getsd,v)
+
+   N = size(v)
+   s = sum(v)
+   avg = s/N
+   sd = sqrt(sum((v-avg)^2)/(N-1))
+   
+endproc(sd)
+
+##########################################
+# Find the optimum phase by bisection
+# searching for the maximum baseline 
+# extent.
+##########################################
+
+procedure(bisect, spectrum, threshold, mode)
+
+
+   sz = size(spectrum)
+   N = round(sz/64)
+
+# Start guess
+  # ph = -phase(spectrum[0])*180/pi
+   ph = 0
+   dp = 90
+   maxr = -1e30
+   maxp = maxr
+
+   pdata0 = real(spectrum * exp(i*ph/180*pi))
+
+   av0 = 0.5*(avg(pdata0[0:N-1]) + avg(pdata0[-N:-1])) # Average noise level
+   r0 = sum(abs(pdata0-av0) < threshold)
+   if(mode == 1)
+      v0 = 0.5*(max(pdata0)+min(pdata0))
+   else
+      v0 = sum(pdata0-av0)
+   endif
+
+   while(dp > 0.01) # Stop when step is 0.01 degrees
+
+      pdata1 = real(spectrum * exp(i*(ph-dp)/180*pi))
+      pdata2 = real(spectrum * exp(i*(ph+dp)/180*pi))
+      av1 = 0.5*(avg(pdata1[0:N-1]) + avg(pdata1[-N:-1]))
+      av2 = 0.5*(avg(pdata2[0:N-1]) + avg(pdata2[-N:-1]))
+
+      r1 = sum(abs(pdata1-av1) < threshold)
+      r2 = sum(abs(pdata2-av2) < threshold)
+      if(mode == 1)
+         v1 = 0.5*(max(pdata1)+min(pdata1))
+         v2 = 0.5*(max(pdata2)+min(pdata2))
+      else
+         v1= sum(pdata1-av1)
+         v2= sum(pdata2-av2)
+      endif
+
+    #  pr "ph = $ph$ v0 = $v0$ v1 = $v1$ v2 = $v2$ r1 = $r1$ r2 = $r2$\n"
+      if(v0 < 0) # If first time data 0 center invalid
+         if(v1 > v2) 
+            if(r1 > maxr)
+               maxr = r1
+               maxp = ph-dp
+            endif
+            ph = ph-dp
+            r0 = r1
+            v0 = v1
+            pdata0 = pdata1
+         else
+            if(r2 > maxr)
+               maxr = r2
+               maxp = ph+dp
+            endif
+            ph = ph+dp
+            r0 = r2
+            v0 = v2
+            pdata0 = pdata2
+         endif
+      elseif(v1 > 0 & v2 > 0 & r1 >= r2 & r1 > r0) # Lower try is larger
+         if(r1 > maxr)
+            maxr = r1
+            maxp = ph-dp
+         endif
+         ph = ph-dp
+         r0 = r1
+         v0 = v1
+         pdata0 = pdata1
+      elseif(v1 > 0 & v2 > 0 & r2 > r1 & r2 > r0) # Upper try is larger
+         if(r2 > maxr)
+            maxr = r2
+            maxp = ph+dp
+         endif
+         ph = ph+dp
+         r0 = r2
+         v0 = v2
+         pdata0 = pdata2
+      elseif(r1 > r0 & v1 > 0 & v2 <= 0) # Lower try is valid
+         if(r1 > maxr)
+            maxr = r1
+            maxp = ph-dp
+         endif
+         ph = ph-dp
+         r0 = r1
+         v0 = v1
+         pdata0 = pdata1
+      elseif(r2 > r0 & v1 <= 0 & v2 > 0) # Upper try is valid
+         if(r2 < maxr)
+            maxr = r2
+            maxp = ph+dp
+         endif
+         ph = ph+dp
+         r0 = r2
+         v0 = v2
+         pdata0 = pdata2
+      elseif(v0 > 0) # Last try is smaller
+         if(r0 > maxr)
+            maxr = r0
+            maxp = ph
+         endif
+         ph = ph
+      endif
+
+      dp = dp/2 # Halve step
+
+   endwhile()
+
+
+# Apply final phase
+      
+endproc(maxp)

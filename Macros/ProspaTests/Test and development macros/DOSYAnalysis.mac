@@ -1,0 +1,146 @@
+########################################################################
+# Does a single exponential fit to each column in a DOSY data set which
+# has an initial amplitude > 1/50 of the maximum.
+########################################################################
+
+procedure(DOSYAnalysis)
+
+    cd("$appdir$\\Macros\Kea-Core")
+    cachemacro("keaRun")
+    cacheproc("true")
+
+curplot("1d")
+clear("plot")
+    plt = curplot("2d")
+    (m,xr,yr) = plt->getdata("current")
+
+
+   (w,h) = size(m)
+
+
+   for(x = 0 to w-1)
+      a = m[x,~]'
+      (ph,a) = keaRun:autoPhase(a,"maxreal")
+      m[x,~] = a'
+   next(x)
+
+   for(y = 0 to h-1)
+      a = m[~,y]
+      a = convolve(a,[1,1,1])
+      m[~,y] = a
+   next(y)
+
+   image(m,xr,yr)
+    mm = mag(m)
+
+   delta = 0.007
+   Delta = 0.05
+   G        = [0.0114708,
+               0.0280976,
+               0.0380443,
+               0.0458831,
+               0.0525657,
+               0.0584898,
+               0.0638666,
+               0.0688247,
+               0.0734489,
+               0.0777987,
+               0.0819178,
+               0.0858395,
+               0.0895897,
+               0.0931891,
+               0.0966546,
+               0.1]
+  
+   diffAxis = -(gamma*G*delta)^2*(Delta-delta/3)
+    
+   mx = max(mm[~,0])
+   ppmAxis = linspace(xr[0],xr[-1],w)
+   dOut = matrix(w)
+   c = matrix(w)
+   dErr = matrix(w)
+   for(x = 0 to w-1)
+      a0 = mm[x,0]
+      if(a0 > mx/50)
+         ampAxis = m[x,~]'/a0
+         (dOut[x],c[x],dErr[x]) = :fit(diffAxis,loge(real(ampAxis)))
+         if(dOut[x] == nan)
+            dOut[x] = 0
+            dErr[x] = 0
+            c[x] = 0
+         endif
+       #  pr "$x$ $ppmAxis[x]$ $a0$ $dOut[x]$ $dErr[x]$ $c[x]$\n"
+      endif
+   next(x)
+
+   a = real(m[~,0])
+
+   plt = curplot("1d")
+   plt->hold("off")
+   plt->plot(ppmAxis,dOut,"color",[255,0,0])
+   plt->hold("on")
+   plt->plot(ppmAxis,dErr,"color",[0,128,0])
+   plt->axes->xdirection("reversed")
+
+    cacheproc("false")
+
+   dOut = dOut*1e9
+   dErr = dErr*1e9
+   h = 100
+   diffAxis = linspace(0,3,h)
+   yr = [0,3]
+
+   dOut2D = matrix(w,h)
+
+   for(x = 0 to w-1)
+
+      if(dErr[x] > 0)
+         y = a[x]*exp(-(diffAxis-dOut[x])^2/(2*(dErr[x])^2))
+         dOut2D[x,~] = y'
+      endif
+
+   next(x)
+
+   plt = curplot("2d")
+   plt->image(dOut2D,xr,yr)
+   plt->axes->ydirection("reversed")
+
+endproc()
+
+
+procedure(fit,xs,ys)
+
+    x = double(xs)
+    y = double(ys)
+
+# Calculate various sums
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+     N = size(x)
+
+# Work out slope and intercept
+   delta = sxx*N - sx*sx
+   c = (sxx*sy - sx*sxy)/delta;
+   m = (sxy*N - sx*sy)/delta;
+
+# Work out standard error in slope and intercept
+# start by estimating variance in original data
+   if(N>2)
+      vdat = (syy - 2*m*sxy - 2*c*sy
+              + 2*m*c*sx +m*m*sxx + N*c*c)/(N-2)
+      mErr = (N*vdat/delta)^0.5
+      cErr = (sxx*vdat/delta)^0.5
+   else
+      mErr = 0
+      cErr = 0
+   endif
+
+   m = single(m)
+   c = single(c)
+   mErr = single(mErr)
+   cErr = single(cErr)
+
+endproc(m,c,mErr,cErr)

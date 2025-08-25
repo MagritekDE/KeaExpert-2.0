@@ -1,0 +1,212 @@
+####################################################
+#
+# Fill a rectangular region inside the current 
+# 2D plot with a constant number. 
+#
+# Options:
+# 1. Fill inside or outside the rectangle
+# 2. Fill inside or outside the visible region 
+#
+# Prospa chooses between 1 and 2 based on whether
+# or not a rectangle has been drawn over the plot.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(fillInside2D)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xScale,wv_yScale)
+   setpar(n,7,"text","0")
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Fill region inside 2D plot", -1, -1, 286, 199)
+
+      # Define all controls with basic parameters
+       windowvar(reset,wv_mat,wv_xScale,wv_yScale)
+       button(1, 225, 17, 47, 26, "Fill",
+          :fill_data();)
+       radiobuttons(2, 65, 31, 20, "vertical", "inside,outside", "inside")
+       groupbox(3, "Type of fill", 6, 6, 209, 71)
+       button(4, 226, 54, 47, 26, "Update",
+          :initialise();)
+       statictext(5, 85, 30, "left", "Fill inside region")
+       statictext(6, 85, 50, "left", "Fill outside region")
+       textbox(7, 94, 164, 80)
+       statictext(8, 87, 167, "right", "Fill value")
+       button(9, 225, 128, 47, 26, "Help",
+          :show_help();)
+       groupbox(10, "Fill parameters", 6, 81, 209, 115)
+       statictext(12, 123, 108, "left", "width")
+       button(18, 225, 165, 47, 26, "Exit",
+          closewindow(0);)
+       textbox(19, 157, 130, 46)
+       statictext(21, 119, 134, "left", "height")
+       textbox(28, 57, 130, 46)
+       statictext(29, 20, 134, "left", "y-start")
+       textbox(30, 157, 104, 46)
+       textbox(32, 57, 104, 46)
+       statictext(33, 20, 108, "left", "x-start")
+       button(34, 226, 91, 47, 26, "Undo",
+          :undo();)
+       getmessage(35,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",15)
+       setpar(n,2,"tab_number",6)
+       setpar(n,7,"tab_number",8)
+       setpar(n,9,"tab_number",16)
+       setpar(n,18,"tab_number",17)
+       setpar(n,19,"tab_number",12)
+       setpar(n,28,"tab_number",11)
+       setpar(n,30,"tab_number",10)
+       setpar(n,32,"tab_number",9)
+       setpar(n,34,"tab_number",7)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","fillinside2d.htm")
+endproc()
+
+####################################################
+# Initialise region limits based on drawn rectange
+# or if not defined, the current region
+####################################################
+
+procedure(initialise)
+
+   m = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+   (w,h) = size(m)
+   (x0,y0,x1,y1) = getrect()
+   if(x0 == -1)
+     (x0,x1,y0,y1) = zoom2d("getargs")
+      setpar(0,5,"text","Fill inside visible region")
+      setpar(0,6,"text","Fill outside visible region")
+   else
+      setpar(0,5,"text","Fill inside rectangle")
+      setpar(0,6,"text","Fill outside rectangle")
+   endif
+   setpar(0,32,"text",x0)
+   setpar(0,28,"text",y0)
+   setpar(0,30,"text",x1-x0+1)
+   setpar(0,19,"text",y1-y0+1)
+
+endproc()
+
+####################################################
+# Fill the data
+####################################################
+
+procedure(fill_data)
+
+# Get the plot data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Make a backup for undo command
+   wv_mat = m
+   wv_xScale = x
+   wv_yScale = y
+
+# Save the current 2D plot view parameters
+   (txt,lx,ly,nc,md,x1v,x2v,y1v,y2v) = 2dpar:get()
+
+# Extract the GUI parameters
+   x0 = getpar(0,32,"value")
+   y0 = getpar(0,28,"value")
+   wr = getpar(0,30,"value")
+   hr = getpar(0,19,"value")
+   x1 = x0+wr-1
+   y1 = y0+hr-1
+   
+   mode = getpar(0,2,"text")
+   fillValue = getpar(0,7,"value")
+
+   if(vartype(fillValue) == "complex" &
+      vartype(m) == "matrix2d")
+     message("Unable to complete operation","Fill value is complex while 2D data set is real")
+     return()
+   endif
+
+# Do the fill
+   (w,h) = size(m)
+   if(mode = "outside")
+      if(vartype(m) == "matrix2d")
+        mOut = matrix(w,h)+fillValue
+      else
+        mOut = cmatrix(w,h)+fillValue
+      endif
+      mSub = submatrix(m,x0,x1,y0,y1)
+      mOut = insert(mOut,mSub,x0,y0)
+   else
+      if(vartype(m) == "matrix2d")
+         mSub = matrix(x1-x0+1,y1-y0+1) + fillValue
+      else
+         mSub = cmatrix(x1-x0+1,y1-y0+1) + fillValue
+      endif
+      mOut = insert(m,mSub,x0,y0)
+   endif
+     
+   draw2d("false")
+   image(mOut,x,y)  
+   2dpar:set(txt,lx,ly,nc,md,x1v,x2v,y1v,y2v)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Restore the matrix before last fill
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat,wv_xScale,wv_yScale)
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,35,"text")
+
+   if(src == "2D Plot" & cmd == "DrawRectangle")
+      :initialise()
+   endif
+
+endproc()
+

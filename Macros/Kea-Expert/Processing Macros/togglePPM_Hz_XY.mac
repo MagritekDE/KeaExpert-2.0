@@ -1,0 +1,185 @@
+##############################################
+# Toggle the frequency axes of 2D spectra 
+# between PPM and Hertz. Fixing an axis
+# calibration is also possible.
+#
+# updateLabel - if the button label is to be updated
+# f1Action - "toggle"/"Hz"/"ppm"/"none"
+# f2Action - "toggle"/"Hz"/"ppm"/"none"
+##############################################
+
+procedure(togglePPM_Hz_XY, updateLabel, f2Action="toggle", f1Action="toggle")
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   cp = curplot("2d")
+   obj = cp->parent
+
+# Get the B1 frequency from the main interface
+   assignlist(getctrlvalues(0))
+   if(isvar("nucleus"))
+      try
+         (nucleusf2,nucleusf1) = scanstr(nucleus,"%1-%2")
+         b1FreqF1 = :getB1Freq(nucleusf1,0)
+         b1FreqF2 = :getB1Freq(nucleusf2,0)
+         if(b1FreqF1 == null)
+            message("Error","Unsupported nucleus $nucleusf1$","error")
+            return
+         endif
+         if(b1FreqF2 == null)
+            message("Error","Unsupported nucleus $nucleusf2$","error")
+            return
+         endif
+      catch
+         b1FreqF2 = :getB1Freq(nucleus,0)
+         b1FreqF1 = null
+      endtry
+   else
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+   cp->draw("false")
+
+# Read the current data and parameters
+   (m,x,y) = cp->getdata()
+   (nr,mode) = cp->contour()
+   map = cp->cmap()
+   sz = size(x)
+   xr = cp->axes->xrange()
+   yr = cp->axes->yrange()
+   tl = cp->title->text
+   f2ppm = cp->axes->xppmscale()
+   f1ppm = cp->axes->yppmscale()
+   xlab = cp->xlabel()->text()
+   ylab = cp->ylabel()->text()
+   if(updateLabel)
+      parentLabel = parentCtrl->label()
+   else
+      parentLabel = ""
+   endif
+
+# Determine f1 action variables
+   if(f1Action == "Hz")
+      if(f1ppm == "true") # Currently ppm
+         y = y*b1FreqF1  
+         yr = yr*b1FreqF1
+         f1ppm = "false"
+         ylab = "Frequency f1 (Hz)"
+         if(f1Action == "toggle")
+            parentLabel = "PPM"
+         endif
+      endif
+   elseif(f1Action == "ppm")
+      if(f1ppm == "false") # Currently Hz
+         y = y/b1FreqF1
+         yr = yr/b1FreqF1
+         f1ppm = "true"
+         ylab = "Frequency f1 (ppm)"
+         if(f1Action == "toggle")
+            parentLabel = "Hz"
+         endif
+      endif
+   elseif(f1Action == "toggle")
+      if(f1ppm == "true") # Currently ppm
+         y = y*b1FreqF1  
+         yr = yr*b1FreqF1
+         f1ppm = "false"
+         ylab = "Frequency f1 (Hz)"
+         if(f1Action == "toggle")
+            parentLabel = "PPM"
+         endif
+      else # Currently Hz
+         y = y/b1FreqF1
+         yr = yr/b1FreqF1
+         f1ppm = "true"
+         ylab = "Frequency f1 (ppm)"
+         if(f1Action == "toggle")
+            parentLabel = "Hz"
+         endif
+      endif
+   endif
+
+# Determine f2 action variables
+   if(f2Action == "Hz")
+      if(f2ppm == "true")
+         x = x*b1FreqF2  
+         xr = xr*b1FreqF2
+         f2ppm = "false"
+         xlab = "Frequency f2 (Hz)"
+         if(f2Action == "toggle")
+            parentLabel = "PPM"
+         endif
+      endif
+  elseif(f2Action == "ppm")
+      if(f2ppm == "false")
+         x = x/b1FreqF2
+         xr = xr/b1FreqF2
+         f2ppm = "true"
+         xlab = "Frequency f2 (ppm)"
+         if(f2Action == "toggle")
+            parentLabel = "Hz"
+         endif
+      endif
+   elseif(f2Action == "toggle")
+      if(f2ppm == "true")
+         x = x*b1FreqF2  
+         xr = xr*b1FreqF2
+         f2ppm = "false"
+         xlab = "Frequency f2 (Hz)"
+         if(f2Action == "toggle")
+            parentLabel = "PPM"
+         endif
+      else
+         x = x/b1FreqF2
+         xr = xr/b1FreqF2
+         f2ppm = "true"
+         xlab = "Frequency f2 (ppm)"
+         if(f2Action == "toggle")
+            parentLabel = "Hz"
+         endif
+      endif
+   endif
+
+# Redraw the data
+   cp->cmap(map)
+   cp->image(m,x,y)
+   cp->contour(nr,mode)
+   cp->axes->xppmscale(f2ppm)
+   cp->axes->yppmscale(f1ppm)
+   cp->xlabel(xlab)
+   cp->ylabel(ylab)       
+   cp->axes->xrange(xr)
+   cp->axes->yrange(yr)
+   cp->title(tl)
+   cp->draw("true")
+
+# Update the button label
+   if(updateLabel)
+      parentCtrl->label(parentLabel)
+   endif
+
+endproc()
+
+
+procedure(getB1Freq, name, winNr)
+
+   assignlist(getctrlvalues(winNr))
+
+   if(name == "1H")
+      b1Freq = single(b1Freq1H)
+   elseif(name == "13C")
+      b1Freq = single(b1Freq13C)
+   elseif(name == "19F")
+      b1Freq = single(b1Freq19F)
+   elseif(name == "31P")
+      b1Freq = single(b1Freq31P)
+   else
+      b1Freq = null
+   endif
+
+endproc(b1Freq)
+

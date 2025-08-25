@@ -1,0 +1,43 @@
+#########################################################
+# Present a choice dialog supplying title, text
+# and two button texts. A third button is cancel by 
+# default.
+#########################################################
+
+procedure(choiceDialog, titleText, mainText, button1Txt, button2Txt)
+
+   n = :windowdefinition()
+   setwindowpar(n,"type","dialog")
+   assignctrls(n)
+   button1->label(button1Txt)
+   button2->label(button2Txt)
+   txtCtrl->text(mainText)
+   setwindowpar(n,"title",titleText)
+   result = showdialog(n)
+
+endproc(result)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("untitled 1", -1, -1, 320, 106)
+
+      # Define all controls with basic parameters
+      windowvar(txtCtrl,button2,button1)
+      button(1, 21, 60, 81, 36, "button",
+         closedialog(button1->label());)
+      button(2, 115, 60, 81, 36, "button",
+         closedialog(button2->label());)
+      button(3, 209, 60, 81, 36, "Cancel",
+         closedialog("cancel");)
+      statictext(4, 20, 20, 272, 26, "left", "My text goes here")
+
+     # Set other control parameters
+      setpar(n,1,"objID","button1")
+      setpar(n,2,"objID","button2")
+      setpar(n,4,"objID","txtCtrl")
+
+     # Set other window parameters
+endproc(n)
+

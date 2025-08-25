@@ -1,0 +1,216 @@
+
+
+####################################################
+#                  integrate2d.mac
+#
+# Allows a 2D matrix to be interpolated to a larger
+# size. Note that the original and final matricies
+# must have dimensions which are powers of 2.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+
+procedure(interpolate2d)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xscale,wv_yscale,wv_txt,wv_lx,wv_ly,wv_nc,wv_mode)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+
+###################################################
+# Window definition
+###################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Interpolate image", -1, -1, 322, 113)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mode,wv_nc,wv_ly,wv_lx,wv_txt,wv_yscale,wv_xscale,wv_mat)
+       button(1, 258, 76, 46, 27, "Exit",
+          closewindow(0);)
+       checkbox(2, 268, 33, "no,yes", "no")
+       statictext(3, 24, 32, "left", "Width")
+       statictext(4, 125, 32, "left", "Height")
+       statictext(5, 261, 32, "right", "Filter")
+       button(6, 142, 76, 46, 27, "Undo",
+          :undo();)
+       textmenu(7, 60, 28, 50, 200)
+       textmenu(8, 163, 28, 50, 200)
+       button(9, 12, 76, 60, 27, "Interpolate",
+          :interpolate();)
+       button(10, 200, 76, 46, 27, "Help",
+          :show_help();)
+       button(11, 84, 76, 46, 27, "Update",
+          :initialise();)
+       groupbox(12, "New dimensions", 7, 5, 301, 63)
+
+     # Set other control parameters
+       setpar(n,7,"menu",["32","64","128","256","512","1024","2048"])
+       setpar(n,8,"menu",["32","64","128","256","512","1024","2048"])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","interpolate2d.htm")
+endproc()
+
+####################################################
+# Initialise the GUI boxes based on matrix
+####################################################
+
+procedure(initialise)
+
+# Extract the data from the plot
+   m1 = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Update GUI
+   (w,h) = size(m1)
+   setpar(0,7,"text",w)
+   setpar(0,8,"text",h)
+
+endproc()
+
+####################################################
+# Interpolate data if possible
+####################################################
+
+procedure(interpolate)
+
+# Extract the data from the plot
+   (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Save the matrix for undo operation
+   wv_mat = m1
+   wv_xscale = x
+   wv_yscale = y
+   (wv_txt,wv_lx,wv_ly,wv_nc,wv_mode) = 2dpar:get()
+
+# Get old dimensions
+   (w1,h1) = size(m1)
+
+# Get new dimensions
+   w2 = getpar(0,7,"value")
+   h2 = getpar(0,8,"value")
+
+# Check dimensions
+   if(w2 < w1 | h2 < h1)
+      message("Error","New dimensions must be greater\r than or equal  old ones.","error")
+      return()
+   endif
+
+# Check for valid dimensions & then interpolate
+   if(maths:ispower2(w1) & maths:ispower2(h1) & maths:ispower2(w2) & maths:ispower2(h2))
+      m1 = :ifft2d(m1,w1,h1,w1,h1)
+      if(getpar(0,2,"text") == "yes")
+         m1 = :filter(m1)
+      endif
+      m1 = :fft2d(m1,w1,h1,w2,h2)
+      draw2d("false")
+      image(m1)
+      2dpar:set(wv_txt,wv_lx,wv_ly,wv_nc,wv_mode)
+      draw2d("true")
+   else
+      message("Error","Data set dimensions are not a power of 2")
+   endif
+
+endproc()
+
+
+###################################################
+# Inverse 2D transform with zero fill
+###################################################
+
+procedure(ifft2d,m1,w1,h1,w2,h2)
+
+# Row transforms
+   m2 = cmatrix(w2,h2)
+   for (y = 0 to h1-1)
+     m2[~,y] = ftshift(ift(m1[~,y]))
+   next(y)
+
+# Column transforms
+   for (x = 0 to w2-1)
+      m2[x,~] = ftshift(ift(m2[x,~]))
+   next(x)
+
+endproc(m2)
+
+###################################################
+# Forward 2D transform with zero fill
+###################################################
+
+procedure(fft2d,m1,w1,h1,w2,h2)
+
+# Row transforms
+   m2 = cmatrix(w2,h2)
+   for (y = 0 to h1-1)
+     m2[~,y] = ft(zerofill(m1[~,y],w2,"sides"))
+   next(y)
+
+# Column transforms
+   m3 = matrix(w2,h2)
+   for (x = 0 to w2-1);
+      m3[x,~] = mag(ft(m2[x,~]))
+   next(x)
+
+endproc(m3)
+
+###################################################
+# Apply a sinebell squared filter to the data
+###################################################
+
+procedure(filter,mat)
+
+  (w,h) = size(mat)
+   xv = [0:w-1]
+   yv = [0:h-1]
+   fltx = (cos(0.5*pi*(xv-w/2)/(w/2)))^2
+   flty = ((cos(0.5*pi*(yv-h/2)/(h/2)))^2)'
+
+   for(y = 0 to h-1)
+      mat[~,y] = mat[~,y].*fltx   
+   next(y) 
+  
+   for(x = 0 to w-1)
+      mat[x,~] = mat[x,~].*flty   
+   next(y)   
+
+endproc(mat)
+
+####################################################
+# Restore the matrix before last column op
+####################################################
+
+procedure(undo)
+
+   if(wv_mat != null)
+      draw2d("false")
+      image(wv_mat,wv_xscale,wv_yscale)
+      2dpar:set(wv_txt,wv_lx,wv_ly,wv_nc,wv_mode)
+      draw2d("true")
+   endif
+
+endproc()

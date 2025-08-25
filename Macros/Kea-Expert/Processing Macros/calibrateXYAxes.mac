@@ -1,0 +1,183 @@
+##############################################
+# Calibrate the PPM axes for a 2D plot by 
+# specifying the ppm value for a specific
+# peak in the plot
+##############################################
+
+procedure(calibrateXYAxes, whichAxis)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   if(nrArgs == 0)
+      whichAxis = "both"
+   endif
+
+# Grab offsets from proc.par otherwise use globals
+   (offx,offy) = :loadLocalPar()
+   if(offx == null)
+      offx = wvRefXOffset
+      offy = wvRefYOffset
+   endif
+
+   cp = curplot("2d")
+
+   if((cp->axes->xdirection() == "forward") &
+      (cp->axes->ydirection() == "forward"))
+      togglePPM_Hz_XY(1)
+   endif
+
+   obj = cp->parent
+
+   try
+
+      assignlist(getctrlvalues(0))
+
+      if(isvar("b1Freq1H") == 0)
+         return
+      endif
+
+      b1Freq = single(b1Freq1H)
+      (m,x,y) = cp->getdata()
+      xavg = (x[0]+x[-1])/2
+      yavg = (y[0]+y[-1])/2
+      xr = cp->axes->xrange()
+      yr = cp->axes->yrange()
+      tl = cp->title->text
+
+      if((cp->axes->xdirection() == "reversed") &
+         (cp->axes->ydirection() == "reversed"))
+
+         (selxPPM,selyPPM,refxPPM,refyPPM,saveMode) = CalibrateSpectrum2D(offx,offy,xavg,yavg)
+         if(saveMode == "cancel")
+            return
+         else
+            offx = offx-(selxPPM-refxPPM)
+            offy = offy-(selyPPM-refyPPM)
+         endif
+
+         :saveReference(offx,offy,saveMode)
+
+         if(obj->uservar != null)
+            s = obj->uservar
+            s->modified = 1
+            obj->uservar(s)
+         endif
+
+         x = x - (selxPPM-refxPPM)
+         y = y - (selyPPM-refyPPM)
+
+         cp->draw("false")
+
+         xr = xr - (selxPPM-refxPPM)
+         yr = yr - (selyPPM-refyPPM)
+         (nr,mode) = cp->contour()
+         cp->image(m,x,y)
+         cp->contour(nr,mode)
+         cp->axes->xrange(xr)
+         cp->axes->yrange(yr)
+         cp->xlabel("Frequency f1 (ppm)")
+         cp->ylabel("Frequency f2 (ppm)")
+
+      else
+
+         return
+
+      endif
+
+      cp->title(tl)
+      cp->draw("true")
+         
+
+   catch
+      pr lasterror()
+   endtry
+
+endproc()
+
+procedure(loadLocalPar)
+
+# Load from procpar list
+   path = curplot("2d")->filepath
+
+   if(isdir(path))
+      cd(path)
+      if(isfile("proc_temp.par"))
+         par = load("proc_temp.par")
+      elseif(isfile("proc.par"))
+         par = load("proc.par")
+      else
+         par = null
+      endif  
+   endif
+
+# Extract offsets
+   if(par == null)
+      return(null,null)
+   endif
+
+   try
+      refXOffset = eval(getlistvalue(par,"f2PPMOffset"))
+      refYOffset = eval(getlistvalue(par,"f1PPMOffset"))
+   catch
+      refXOffset = null
+      refYOffset = null
+   endtry
+
+endproc(refXOffset,refYOffset)
+   
+procedure(saveReference, xRef, yRef, saveMode)
+
+   calpar = ["f2PPMOffset = $xRef$",
+             "f1PPMOffset = $yRef$"]
+
+   bak = getcwd()
+
+   if(saveMode == "saveGlobally")
+      cd(prefdir)
+      mkdir("SpinsolveParameters\\Preferences")
+      cd("SpinsolveParameters\\Preferences")
+      file = "ucsPreferences.par" 
+
+   # Save to preferences list
+      if(isfile(file))
+         par = load(file)
+         newlst = mergelists(calpar,par)
+         save(file,sortlist(newlst))
+      else
+         save(file,calpar)
+      endif
+      wvRefXOffset = xRef
+      wvRefYOffset = yRef
+   endif
+
+# Save to procpar list
+   path = curplot("2d")->filepath
+
+   if(isdir(path))
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         par = load(file)
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         par = load(file)
+      else
+         file = "proc_temp.par"
+         par = calpar
+      endif  
+
+     newlst = mergelists(calpar,par)
+     save("proc_temp.par",sortlist(newlst))
+   endif
+
+ #  sendmessage("Macro","procpar update")
+
+   cd(bak)
+
+endproc()
+
+
+

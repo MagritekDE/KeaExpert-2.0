@@ -1,0 +1,637 @@
+################################################
+# Peak picking interface for spectra
+#
+# Allows automatic and manual peak picking
+# along with editing and file saving or loading
+#
+# C Eccles, Magritek 2015-2020
+# 
+################################################
+ 
+################################################
+# Entry procedure. inPlt is the 1D plot 
+# e.g. pt2 containing the spectrum to be picked
+################################################
+ 
+procedure(PeakPicking, inPlt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   if(nrArgs == 0)
+      plt = curplot("1d")
+   else
+      plt = gPlot->getPlotObject(inPlt)
+   endif
+
+   n = :windowdefinition()
+   windowvar(wvPlt,wvPL,wvPeakPos,wvChanged)
+   wvPlt = plt
+   wvPL = null
+   wvPeakPos = null
+   wvChanged = 0
+
+   :loadPar()
+   :loadList(0)
+   setwindowpar(n,"exit_procedure",":exitProc()")
+   showwindow(n)
+
+endproc()
+
+################################################
+# Automatically generated window definition 
+# procedure. Any code added manually will be
+# removed if layout modified interactively
+################################################
+ 
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Peak picking", -1, -1, 435, 220)
+
+      # Define all controls with basic parameters
+      windowvar(wvPlt,fontSizeCtrl,fontColorCtrl,fontStyleCtrl,fontNameCtrl,noiseFactorCtrl,showThresholdCtrl,prominenceCtrl)
+      button(1, 240, 71, 83, 27, "Auto pick",
+         :autoPeakPick();)
+      button(2, 240, 20, 83, 27, "Add peak",
+         :addPeak();)
+      button(3, 240, 122, 83, 27, "Remove peak",
+         :removeOnePeak();)
+      button(4, 240, 173, 83, 27, "Remove all ",
+         :removeAllPeaks();
+         :drawPeakList())
+      button(5, 330, 173, 83, 27, "Close",
+         :exitProc();
+         closewindow(0);)
+      statictext(6, 75, 89, "right", "Font name")
+      textmenu(7, 85, 85, 100, 200)
+      statictext(8, 75, 119, "right", "Font style")
+      textmenu(9, 85, 115, 100, 200)
+      statictext(10, 75, 149, "right", "Font color")
+      textbox(11, 85, 145, 71)
+      button(12, 162, 144, 25, 23, "...",
+         :GetFontColor();)
+      statictext(13, 75, 179, "right", "Font size")
+      textbox(14, 85, 175, 61)
+      statictext(15, 52, 20, 48, 27, "center", "Noise threshold")
+      textbox(16, 85, 24, 31)
+      button(17, 330, 20, 83, 27, "Load list",
+         :loadList();)
+      button(18, 330, 71, 83, 27, "Save list",
+         :saveList();)
+      button(19, 330, 122, 83, 27, "Print to CLI",
+         :printList();)
+      groupbox(20, "", 10, 4, 212, 207)
+      statictext(21, 48, 52, 59, 29, "center", "Peak prominence")
+      textbox(22, 85, 54, 31)
+      checkbox(23, 190, 27, "no,yes", "no")
+  #    statictext(24, 149, 20, 47, 27, "center", "Show threshold")
+      statictext(24, 145, 26, "center", "x noise SD")
+
+      statictext(25, 145, 56, "center", "x noise SD")
+  #    statictext(25, 149, 52, 59, 29, "center", "Min. peak width (Hz)")
+  #    textbox(26, 180, 54, 31)
+
+     # Set other control parameters
+      setpar(n,7,"objID","fontNameCtrl",
+                  "valueID","fontName",
+                  "type","string",
+                  "menu",["Arial","Times","Courier","Cambria","Calibri"])
+      setpar(n,9,"objID","fontStyleCtrl",
+                  "valueID","fontStyle",
+                  "type","string",
+                  "menu",["regular","italic","bold","bolditalic"])
+      setpar(n,11,"objID","fontColorCtrl",
+                  "valueID","fontColor",
+                  "type","array")
+      setpar(n,14,"objID","fontSizeCtrl",
+                  "valueID","fontSize",
+                  "type","integer")
+      setpar(n,16,"objID","noiseFactorCtrl",
+                  "valueID","noiseFactor",
+                  "type","float")
+      setpar(n,22,"objID","prominenceCtrl",
+                  "valueID","prominence",
+                  "type","float")
+      setpar(n,23,"objID","showThresholdCtrl",
+                  "valueID","showThreshold")
+   #   setpar(n,26,"objID","minPeakWidthCtrl",
+   #               "valueID","minPeakWidth",
+  #                "type","float")
+
+     # Set other window parameters
+endproc(n)
+
+################################################
+# Check for changes to peaklist on exit
+################################################
+ 
+procedure(exitProc)
+
+   if(wvChanged & wvPeakPos != null)
+      if(query("Warning","The peak list have been changed.\rDo you want to save them?") == "yes")
+         :saveList()
+      endif
+   endif
+
+   :savePar()
+   wvPlt->hold("off")
+
+endproc()
+
+################################################
+# Select a font color
+################################################
+ 
+procedure(GetFontColor)
+
+   col = getcolor([255,0,0])
+   if(col != null)
+      fontColorCtrl->text("$col[0:2]$")
+   endif
+
+endproc()
+
+################################################
+# Load the last GUI parameters
+################################################
+ 
+procedure(loadPar)
+
+   file = "$prefdir$\\SpinsolveParameters\\PeakPicking.par"
+   if(isfile(file))
+      par = load(file)
+   else
+      fontColor = [0,0,255]
+      fontSize = 8
+      fontName = "Calibri"
+      fontStyle = "regular"
+      noiseFactor = 20
+      prominence = 10
+      showThreshold = "no"
+      par = mkparlist()
+   endif
+
+   setctrlvalues(0,par)
+
+endproc()
+   
+################################################
+# Save the GUI parameters
+################################################
+ 
+procedure(savePar)
+
+   par = getctrlvalues(0)
+   dir = "$prefdir$\\SpinsolveParameters"
+   mkdir(dir)
+   cd(dir)
+   save("PeakPicking.par",par)
+
+endproc()
+
+################################################
+# Automatically find peaks factor times above
+# the noise threshold
+################################################
+ 
+procedure(autoPeakPick, inPlt)
+
+   assignlist(getctrlvalues(0))
+
+# Get data
+  (x,y)= wvPlt->trace(0)->getdata()
+   wvPlt->rmlines()
+   wvPlt->rmtext()
+   y = real(y)
+   sz = size(y)
+
+# Get the noise level
+   nl = sd(y[0:sz/32])
+
+# A peak must be fac times the noise level
+   fac = noiseFactor
+
+   (position,amplitude) = :peakPick(wvPlt, x, y, nl, noiseFactor, 0.5)
+
+# Make this the peak list
+   nrPeaks = size(position)
+   wvPeakPos = matrix(6,nrPeaks)-1
+   for(k = 0 to nrPeaks-1)
+      wvPeakPos[0,k] = x[position[k]]
+      wvPeakPos[1,k] = amplitude[k]
+   next(k)
+
+   :drawPeakList()
+   
+   wvChanged = 1
+
+ #   wvPlt->addtext([10,10],"Ibuprofen",[0,0;0,0],"Cambria",16,0,"italic",[128,0,0],"pixels")
+
+endproc()
+
+################################################
+# Remove one peak from the plot interactively
+################################################
+ 
+procedure(removeOnePeak)
+
+   xPos = getx("value")
+
+# Search for closest peak in the peak list
+   (w,h) = size(wvPeakPos)
+   peak = -1
+   dis = 1e30
+   for(k = 0 to h-1)
+      if(abs(wvPeakPos[0,k]-xPos) < dis)
+        dis = abs(wvPeakPos[0,k]-xPos)
+        peak = k
+      endif
+   next(k)
+  if(peak == -1)
+     message("Error","Peak not found","error")
+     return
+   endif
+
+# Remove peak from list
+   if(h == 1)
+      wvPeakPos = null
+   else
+      if(peak == h-1)
+        wvPeakPos = wvPeakPos[~,[0:peak-1]]
+      elseif(peak == 0)
+        wvPeakPos = wvPeakPos[~,[1:h-1]]
+      else
+         wvPeakPos = join(wvPeakPos[~,[0:peak-1]],wvPeakPos[~,[peak+1:h-1]],"horiz")
+      endif
+   endif
+
+   :drawPeakList()
+   
+   wvChanged = 1
+
+endproc()
+
+################################################
+# Remove all peaks from the plot
+################################################
+
+procedure(removeAllPeaks)
+
+   wvPeakPos = null
+   wvChanged = 1
+  :drawPeakList()
+
+endproc()
+
+################################################
+# Add a single peak to the plot interactively
+################################################
+
+procedure(addPeak)
+
+  assignlist(getctrlvalues(0))
+
+  pos = getx("value")
+
+   if(wvPeakPos == null)
+      wvPeakPos = [pos,-1,-1,-1,-1,-1]
+   else
+      wvPeakPos = join(wvPeakPos,[pos,-1,-1,-1,-1,-1],"horiz")
+   endif
+
+   :updatePeakList()
+
+   :drawPeakList()
+
+   wvChanged = 1
+
+endproc()
+
+procedure(drawPeakList)
+
+  assignlist(getctrlvalues(0))
+# Draw the peak list
+   wvPlt->draw("false")
+
+   (x,y) = wvPlt->trace(0)->getdata()
+   len = max(real(y))/20
+   miny = min(real(y))
+   off = miny - len/2
+
+   ppmScale = (wvPlt->axes->xppmscale() == "true")
+
+# Remove the integral traces
+   lst = wvPlt->tracelist()
+   for(k = 1 to size(lst)-1)
+      wvPlt->rmtrace(lst[k])
+   next(k)
+
+   wvPlt->rmlines()
+   wvPlt->rmtext()
+
+   if(wvPeakPos == null)
+      wvPlt->draw("true")
+      return
+   endif
+
+   (w,h) = size(wvPeakPos)
+
+   for(k = 0 to h-1)
+      pos = wvPeakPos[0,k]
+      if(ppmScale)
+         txt = "$pos,1.2f$"
+      else
+         txt = "$pos,1.1f$"
+      endif
+
+      wvPlt->addline(pos,off,pos,off-len,fontColor,1,"solid")
+      wvPlt->addtext([pos,off-len],txt,[0,-0.5;1.2,0],fontName,fontSize,-90,fontStyle,fontColor)
+   next(k)
+
+   wvPlt->draw("true")
+
+
+endproc()
+
+procedure(updatePeakList)
+
+
+
+
+endproc()
+
+################################################
+# Print out the sorted peak list to the CLI
+################################################
+
+procedure(printList, silent)
+
+   if(nrArgs == 0)
+     silent = 0
+   endif
+
+   pos = sortrows(wvPeakPos)
+
+   if(not(silent))
+      pr("\n  Position (ppm)  Amplitude   FWHM(Hz)  Left (ppm)  Right (ppm)  Integral\n\n")
+      (w,h) = size(pos)
+      for(k = 0 to h-1)
+         pr("\t$pos[0,k],7.3f$\t$pos[1,k],7.3f$\t$pos[2,k],7.3f$\t$pos[3,k],7.3f$\t$pos[4,k],7.3f$\t$pos[5,k],7.3f$\n")
+      next(k)
+   endif
+
+endproc(pos)
+
+################################################
+# Load a peak list from a file
+################################################
+
+procedure(loadList, verbose=1)
+
+   bak = getcwd()
+
+   assignlist(getctrlvalues(0))
+
+# Get the data location
+   curExpt = gData->curExpt
+   if(curExpt != null)
+      dataDir = curExpt->dataPath   
+      cd(dataDir)
+      file = "peakList.dat"
+      if(not(isfile(file)))
+         if(verbose)
+            message("Error","No peak list file defined","error")
+         endif
+         return
+      endif
+      import1dpar("ab","ascii","xyrc","real")
+      lst = import1d("peakList.dat")
+      sz = size(lst)/6
+      wvPeakPos = reshape(lst,6,sz)   
+      :drawPeakList()
+   endif
+
+   cd(bak)
+
+endproc()
+
+################################################
+# Save a peak list to a file
+################################################
+
+procedure(saveList)
+
+# Ignore null list
+   if(wvPeakPos == null)
+      return
+   endif
+
+   bak = getcwd()
+
+# Get the data location
+   curExpt = gData->curExpt
+   if(curExpt != null)
+   
+   # Get the peak list sliently
+      lst = :printList(1)
+      
+   # Save in ascii format
+      dataDir = curExpt->dataPath   
+      cd(dataDir)
+      export2dpar("ab","ascii","xyrc","real")
+      export2d(lst,"peakList.dat")
+
+   endif
+   cd(bak)
+
+   message("Information","Peak list saved to data folder:\r\r'$dataDir$'","info")
+
+   wvChanged = 0
+
+endproc()
+
+
+############################################################
+# Main entry point. Pass:
+# plt - plot reference
+# x,y - data
+# noiseFactor - ignore data below this (this is a number 
+# of noise standard deviations)
+# prominence - peaks must have this prominence (this is a 
+# number of noise standard deviations)
+#
+############################################################
+
+procedure(peakPick, plt, x, y, ns, noiseFactor, prominence)
+
+   assignlist(getctrlvalues(0))
+
+ #  plt->draw("false")
+
+# Peak must be larger than this value
+   noiseThreshold = noiseFactor*ns
+# We want the peak prominence to be larger than this value
+   minHeight = prominence*ns
+
+# Draw the threshold line
+   if(showThreshold == "yes")
+      plt->addline(x[0],noiseThreshold,x[-1],noiseThreshold,[0,128,0])
+   endif
+
+   w = size(x)
+   position =  [0]
+   amplitude =  [0]
+   len = max(y)/10
+   off = len/3
+#   f0 = 42.5
+#   if(plt->axes->xppmscale() == "true")
+#      minWidth = minPeakWidth/(2*f0)*sqrt(1.0/prominence-1.0)
+#   else
+#      minWidth = minPeakWidth/2*sqrt(1.0/prominence-1.0)
+#   endif
+
+   ppmScale = (wvPlt->axes->xppmscale() == "true")
+
+
+   #time(0)
+# Look at each point in the data set
+   for(k = 1 to w-2)
+      if(y[k] > noiseThreshold) # Above noise threshold
+         if(y[k-1] < y[k] & y[k+1] < y[k]) # Local peak 
+            if(:checkProminence(k,x,y,minHeight)) # Check prominence
+             #  if(ppmScale)
+              #    txt = "$x[k],1.2f$"
+              # else
+             #     txt = "$x[k],1.1f$"
+              # endif
+             #  plt->addline(x[k],y[k]+off,x[k],y[k]+len,fontColor,1,"solid")
+             #  plt->addtext([x[k],y[k]+off+len],txt,[0,-0.5;0,0],fontName,fontSize,-90,fontStyle,fontColor)
+               position = join(position,[k])
+               amplitude = join(amplitude,[y[k]])
+            endif
+         endif
+      endif
+   next(k)
+  # pr time()
+  # plt->draw("true")
+
+# Remove the first point in the peak list
+   if(size(position) > 1)
+      position = position[1:-1]
+      amplitude = amplitude[1:-1]
+   else
+      message("Information","No peaks found with these parameters","info")
+   endif
+
+endproc(position,amplitude)
+
+######################################################################
+# The peak must have a prominence >= to the specified value and
+# it must have a peak width >= minWidth at this point
+######################################################################
+
+procedure(checkProminence, pos, x, y, minHeight)
+
+   w = size(x)  # Width of data set
+   val = y[pos] # Height if start point (a possible peak)
+  # del = (x[1]-x[0])
+
+# Check the indicies above the peak
+   minVal = 1e30
+   minPos = 0
+   for(k = pos+1 to w-2)
+ 
+    # Record the lowest point away from the peak
+      if(y[k] < minVal)
+         minVal = y[k]
+         minPos = k
+      endif
+
+    # If a peak is found larger than the original then investigate
+      if(y[k] > y[k-1] & y[k] > y[k+1]) 
+         if(y[k] > val)
+            if(val-minVal > minHeight) # If prominence greater than minHeight then pick
+               if(:checkWidth(minPos-pos,(val-minVal)/val))
+                  exitfor 
+               else
+                  return(0)
+               endif
+            else
+               return(0)   # Prominence is too small so ignore
+            endif
+         endif
+      endif
+
+     # Isolated peak so just check height
+      if(y[k] < 0.5*val)
+         if(val-y[k] > minHeight) # If half height greater than minHeight then pick
+            if(:checkWidth(k-pos,(val-y[k])/val))
+               exitfor 
+            else
+               return(0)
+            endif
+         else
+            return(0)  # Half height is too small so ignore
+         endif
+      endif
+
+   next(k)
+
+# Check the indicies below the peak
+   minVal = 1e30
+   minPos = 0
+   for(k = pos-1 to 1 step -1)
+ 
+    # Record the lowest point away from the peak
+      if(y[k] < minVal)
+         minVal = y[k]
+         minPos = k
+      endif
+
+    # If a peak is found larger than the original then investigate
+      if(y[k] > y[k-1] & y[k] > y[k+1])
+         if(y[k] > val)
+            if(val-minVal > minHeight)# If prominence greater than minHeight then pick
+               if(:checkWidth(pos-minPos,(val-minVal)/val))
+                  exitfor 
+               else
+                  return(0)
+               endif
+            else
+               return(0)   # Prominence is too small so ignore
+            endif
+         endif
+      endif
+
+     # Isolated peak so just check height
+      if(y[k] < 0.5*val)
+         if(val-y[k] > minHeight) # If half height greater than minHeight then pick
+            if(:checkWidth(pos-k,(val-y[k])/val))
+               exitfor 
+            else
+               return(0)
+            endif
+         else
+            return(0)  # Half height is too small so ignore
+         endif
+      endif
+
+   next(k)
+
+endproc(1) # Ok its a peak
+
+# Optional linewidth check, currently turned off
+procedure(checkWidth, halfWidth, prominence)
+
+   return(1)
+   fwhm = 1.5 # Typical line width Hz
+   w0.5 = fwhm/2*sqrt(1/prominence-1)
+   if(halfWidth > w0.5)
+      return(1)
+   endif
+
+endproc(0)

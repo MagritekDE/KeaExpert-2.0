@@ -1,0 +1,77 @@
+N = 2048
+x = [0:N-1]/N
+y1 = exp(i*2*pi*x*100-50*x)
+y2 = exp(i*2*pi*x*100-50*x)
+m = y1'*y2
+threadTest2:CoreTest()
+m = y1'*y2
+threadTest2:FTFullTest()
+
+break
+
+procedure(CoreTest)
+
+   time(0)
+
+
+ #  :FTFullTest()
+
+ 
+   t1 = thread(":FTTest", 0,N)
+   t2 = thread(":FTTest", 1,N)
+   t3 = thread(":FTTest", 2,N)
+   t4 = thread(":FTTest", 3,N)
+   t5 = thread(":FTTest", 4,N)
+   t6 = thread(":FTTest", 5,N)
+   t7 = thread(":FTTest", 6,N)
+   t8 = thread(":FTTest", 7,N)
+
+
+   threadwait(t1)
+   threadwait(t2)
+   threadwait(t3)
+   threadwait(t4)
+   threadwait(t5)
+   threadwait(t6)
+   threadwait(t7)
+   threadwait(t8)
+
+   
+   print("Finished, time = $time()$\n")
+
+   image(m)
+
+endproc()
+
+
+procedure(FTTest, s, N)
+   
+   cores = 8
+   
+   (w,h) = size(m)
+   
+   for(k = s*N/cores to (s+1)*N/cores-1)
+   
+     m[~,k] = ft(m[~,k])
+   
+   next(k)
+   
+endproc()
+
+procedure(FTFullTest)
+   
+   time(0)
+
+   (w,h) = size(m)
+   
+   for(k = 0 to h-1)
+   
+     m[~,k] = ft(m[~,k])
+   
+   next(k)
+
+   print("Finished, time = $time()$\n")
+
+   image(m)
+   
+endproc()

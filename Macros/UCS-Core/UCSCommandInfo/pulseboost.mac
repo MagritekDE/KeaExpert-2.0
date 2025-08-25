@@ -1,0 +1,16 @@
+###################################################################################
+#######################################################
+
+procedure(pulseboost, channel, status)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 2000
+      gSeq->psInfo->command = gSeq->psInfo->command + ["pulseboost,$channel$,$args[1]$"]
+
+   endif
+
+endproc()
+

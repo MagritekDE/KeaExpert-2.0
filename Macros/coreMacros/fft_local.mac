@@ -1,0 +1,327 @@
+##################################################################
+# Core routines for 1D, 2D and 3D Fourier transforms
+#
+# Syntax:
+#
+# 1D mOut = :1d(mIn,[w,[fx,typex,magnitude]])
+#
+# 2D mOut = :2d(mIn,[w,h,[fx,fy,typex,typey,magnitude]])
+#
+# 3D mOut = :3d(mIn,[w,h,d,[fx,fy,fz,typex,typey,typez,magnitude]])
+#
+# mIn ... matrix to be transformed
+# mOut .. transformed matrix
+# w ..... width of transformed matrix
+# h ..... height of transformed matrix
+# d ..... depth of transformed matrix
+# typex . type of x transform "none"/"FTFid"/"FTEcho"
+# typey . type of y transform "none"/"FTFid"/"FTEcho"
+# typez . type of z transform "none"/"FTFid"/"FTEcho"
+#
+# Note: the imput matrix is not modified by these procedures
+#       so can be an alias.
+#
+# Inverse routines
+#
+#  2D mOut = :inv2d(mIn)
+#
+#################################################################
+
+
+
+###########################################################
+# 1d fft routine
+# The filter fxs are applied in the x
+# direction during the transform
+###########################################################
+
+procedure(1d,mIn,w2,fxs,FTtypeX,Magn)
+
+   w1 = size(mIn)
+
+# Check for too few arguments
+   if(nrArgs == 1)
+      w2 = w1
+   endif
+  
+   if(nrArgs <= 3)
+      fxs = "none"
+      FTtypeX = "FTFid"
+      Magn = "no"
+   endif
+
+   mOut = cmatrix(w2)
+
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+
+   if(FTtypeX == "none")
+      mOut = mIn
+   elseif(FTtypeX == "FTFid")
+      mOut = ft(zerofill(Flt.*mIn,w2,"end"))
+   elseif(FTtypeX == "FTEcho")
+      mOut = ft(ftshift(zerofill(Flt.*mIn,w2,"sides")))
+   endif
+
+# Take the magnitude of the result if desired
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+endproc(mOut)
+
+###########################################################
+# 2d fft routine
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(2d,mIn,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn,xAxis=null,yAxis=null)
+
+   (w1,h1) = size(mIn)
+
+# Check for too few arguments
+   if(nrArgs == 1)
+      w2 = w1
+      h2 = h1
+   endif
+  
+   if(nrArgs <= 3)
+      fxs = "none"
+      fys = "none"
+      FTtypeX = "FTEcho"
+      FTtypeY = "FTEcho"
+      Magn = "no"
+   endif
+    
+   rowFt = cmatrix(w2,h1)
+   mOut = cmatrix(w2,h2)
+
+# Row transforms
+   if(xAxis == null)
+      Flt = filters:get_filter(fxs,FTtypeX,w1)
+   else
+      Flt = filters:get_filter(fxs,FTtypeX,xAxis)
+   endif
+
+   if(FTtypeX == null)
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         rowFt[~,y] = ft(zerofill(Flt.*mIn[~,y],w2,"end"))
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+	 rowFt[~,y] = ft(ftshift(zerofill(Flt.*mIn[~,y],w2,"sides")))
+      next(y)
+   endif
+
+# Column transforms
+   if(yAxis == null)
+      Flt = filters:get_filter(fys,FTtypeY,h1)'
+   else
+      Flt = filters:get_filter(fys,FTtypeY,yAxis)'
+   endif
+
+
+   if(FTtypeY == "none")
+      mOut = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         mOut[x,~] = ft(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   mOut[x,~] = ft(ftshift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+# Take the magnitude of the result if desired
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+endproc(mOut)
+
+###########################################################
+# 2d fft routine
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(2dTPPI,mIn,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn)
+
+   (w1,h1) = size(mIn)
+
+# Check for too few arguments
+   if(nrArgs == 1)
+      w2 = w1
+      h2 = h1
+   endif
+  
+   if(nrArgs <= 3)
+      fxs = "none"
+      fys = "none"
+      FTtypeX = "FTEcho"
+      FTtypeY = "FTEcho"
+      Magn = "no"
+   endif
+    
+   rowFt = cmatrix(w2,h1)
+   mOut = cmatrix(w2,h2/2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         rowFt[~,y] = ft(zerofill(Flt.*mIn[~,y],w2,"end"))
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+	 rowFt[~,y] = ft(ftshift(zerofill(Flt.*mIn[~,y],w2,"sides")))
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+
+   if(FTtypeY == "none")
+      mOut = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         mOut[x,~] = rft(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   mOut[x,~] = rft(ftshift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+# Take the magnitude of the result if desired
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+endproc(mOut)
+
+###########################################################
+# 3d fft routine
+# The filter fxs, fys and fys are applied in the x, y and z
+# direction during the transform
+###########################################################
+
+procedure(3d,mIn,w2,h2,d2,fxs,fys,fzs,FTtypeX,FTtypeY,FTtypeZ,Magn)
+
+   (w1,h1,d1) = size(mIn)
+
+# Check for too few arguments
+   if(nrArgs == 1)
+      w2 = w1
+      h2 = h1
+      d2 = d1
+   endif
+  
+   if(nrArgs <= 3)
+      fxs = "none"
+      fys = "none"
+      fzs = "none"
+      FTtypeX = "FTEcho"
+      FTtypeY = "FTEcho"
+      FTtypeZ = "FTEcho"
+      Magn = "no"
+   endif
+
+
+   rowFt  = cmatrix(w2,h1,d1)
+   colFt  = cmatrix(w2,h2,d1)
+   mOut   = cmatrix(w2,h2,d2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         for (z = 0 to d1-1)
+            rowFt[~,y,z] = ft(zerofill(Flt.*mIn[~,y,z],w2,"end"))
+         next(z)
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+         for (z = 0 to d1-1)
+            rowFt[~,y,z] = ft(ftshift(zerofill(Flt.*mIn[~,y,z],w2,"sides")))
+         next(z)
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+   if(FTtypeY == "none")
+      colFt = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(zerofill(Flt.*rowFt[x,~,z],h2,"end"))
+         next(z)
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(ftshift(zerofill((Flt.*rowFt[x,~,z]),h2,"sides")))
+         next(z)
+      next(x)
+   endif
+
+# Tier transforms
+   Flt = filters:get_filter(fzs,FTtypeZ,d1)
+   if(FTtypeZ == "none")
+      mOut = colFt
+   elseif(FTtypeZ == "FTFid")
+      for (x = 0 to w2-1)
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(zerofill(Flt.*colFt[x,y,~],d2,"end"))
+         next(y)
+      next(x)
+   elseif(FTtypeZ == "FTEcho")
+      for (x = 0 to w2-1)
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(ftshift(zerofill((Flt.*colFt[x,y,~]),d2,"sides")))
+         next(y)
+      next(x)
+   endif
+
+# Take the magnitude of the result if desired
+   if(Magn == "yes")
+      tempOut = mOut
+      mOut = matrix(w2,h2,d2)
+      for(z = 0 to d2-1)
+         mOut[~,~,z] = mag(tempOut[~,~,z])
+      next(z)
+   endif
+
+endproc(mOut)
+
+
+###########################################################
+# Inverse 2d fft routine
+###########################################################
+
+procedure(inv2d,m)
+
+   (w,h) = size(m)
+
+   mOut = cmatrix(w,h)
+
+# Row transforms
+   for (y = 0 to h-1)
+      mOut[~,y] = ftshift(ift(m[~,y]))
+   next(y)
+ 
+# Column transforms
+   for (x = 0 to w-1)
+      mOut[x,~] = ftshift(ift(mOut[x,~]))
+   next(x)
+ 
+endproc(mOut)

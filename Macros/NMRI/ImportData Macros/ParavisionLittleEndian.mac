@@ -1,0 +1,262 @@
+#####################################################
+# Procedures to load native Paravision data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# isdata:        returns 1 if Paravision data 0 otherwise
+# getname:       returns name of data file
+# getparameters: returns data parameter list
+# getdata:       returns data
+#
+# Note: little-endian version
+#
+#####################################################
+
+#############################################
+# Return a list of file types supported by 
+# Paravision
+#############################################
+
+procedure(types)
+
+  lst = ["Paravision-LittleEndian"]
+
+endproc(lst)
+
+#############################################
+# Return 1 is the type of data in the current
+# directory is Paravision 0 otherwise
+#############################################
+
+procedure(isdata)
+
+  is_fid     = isfile("fid") | isfile("fid.dat")
+  is_ser     = isfile("ser") | isfile("ser.dat")
+  is_acqp    = isfile("acqp") | isfile("acqp.dat")
+
+  if((is_fid | is_ser) & is_acqp)
+    return(1)
+  endif
+
+endproc(0)
+
+#############################################
+# Paravision data can load without exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("no")
+
+#############################################
+# Returns name of Paravision data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+  if(isfile("fid"))
+     return("fid")
+  endif
+
+  if(isfile("fid.dat"))
+     return("fid.dat")
+  endif
+
+  if(isfile("ser"))
+     return("ser")
+  endif
+
+  if(isfile("ser.dat"))
+     return("ser.dat")
+  endif
+
+endproc("")
+
+#############################################
+# Return Paravision parameters
+#############################################
+
+procedure(getparameters, dataFile)
+
+   filetype = "Paravision-LittleEndian"
+   if(isfile("acqp"))
+      txt = load("acqp","text")
+   else
+      txt = load("acqp.dat","text")
+   endif
+   n = scanstr(txt,"##*ACQ_size=( %1 )*")
+   dim = n+"D"
+
+# Get dimensions
+   if(dim == "1D")
+        1dims = scanstr(txt,"##*ACQ_size=( * )\n%1\n")
+        1dim = eval(1dims) 
+        2dim = 1
+        3dim = 1
+   elseif(dim == "2D")
+       (1dims,2dims) = scanstr(txt,"##*ACQ_size=( * )\n%1 %2\n")
+        1dim = eval(1dims) 
+        2dim = eval(2dims)
+        3dim = 1
+   elseif(dim == "3D")
+       (1dims,2dims,3dims) = scanstr(txt,"##*ACQ_size=( * )\n%1 %2 %3\n")
+        1dim = eval(1dims) 
+        2dim = eval(2dims)
+        3dim = eval(3dims)
+   endif
+
+# Get number of slices
+   nSlices = eval(scanstr(txt,"##*NI=%1\n"))
+
+# Get byte order
+   byteOrder = scanstr(txt,"##*BYTORDA=%1\n*")
+   if(byteOrder == "little")
+      filetype = "Paravision-LittleEndian"
+   else
+      filetype = "Paravision-BigEndian"
+   endif
+
+# Get any digital shift
+   dig_shift = :getdigitalshift("acqp") 
+
+# Modify the first dimension to 
+# reflect number of complex points
+   1dim = 1dim/2
+
+   if(1dim%128 != 0)
+     1dim = (trunc(1dim/128)+1)*128
+   endif
+   
+# Get title (removing newlines)
+   if(isfile("title"))
+      titleText = load("title","text") 
+      titleText = replacestr(titleText,"\n"," ") 
+      titleText = replacestr(titleText,"\r","") 
+   else
+      titleText = "not found"
+   endif
+
+# Check for 3D or nr of slices
+   if(nSlices > 1 & 3dim == 1)
+      3dim = nSlices
+   endif
+
+# Build the parameter list
+   p = ["1dim = $1dim$",
+        "2dim = $2dim$",
+        "3dim = $3dim$",
+        "4dim = 1",
+        "1dzf = $1dim$",
+        "2dzf = $2dim$",
+        "3dzf = $3dim$",
+        "4dzf = 1",
+        "slices = $nSlices$",
+        "fileType = \"$filetype$\"",
+        "matrixIn = \"\"",
+        "1dfltr = \"none\"",
+        "2dfltr = \"none\"",
+        "3dfltr = \"none\"",
+        "1dft = \"FTEcho\"",
+        "2dft = \"FTEcho\"",
+        "3dft = \"FTEcho\"",
+        "digShift = $dig_shift$",
+        "nrType = \"complex\"",
+        "title = \"$titleText$\""]
+
+endproc(p)
+
+#############################################
+# Load Paravision data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+
+   setdataformat(fileType,nrType)
+
+   if(3dim > 1)
+      if(slices > 1)
+         m = import2d(dataFile,1dim*slices,2dim,1)
+         mat = cmatrix(1dim,2dim,slices)
+         for(k = 0 to slices-1)
+            mat[~,~,k] = submatrix(m,k*1dim,(k+1)*1dim-1,0,2dim-1)
+         next(k)
+      else
+         mat = import3d(dataFile,1dim,2dim,3dim)
+      endif
+      assign("curmatrix_3d",matrixIn,"global")
+   elseif(2dim > 1)
+      mat = import2d(dataFile,1dim,2dim)
+      assign("curmatrix_2d",matrixIn,"global")
+   else
+      mat = import1d(dataFile,1dim)
+      assign("curmatrix_1d",matrixIn,"global")
+   endif
+   assign(matrixIn,mat,"global")
+   assign("curmatrix",matrixIn,"global")
+  
+      
+endproc()
+
+#############################################
+# Procedures locally used by this macro
+#############################################
+
+#############################################
+# Extracts a numeric parameter from a Paravision 
+# file returns -1 if parameter not found
+#############################################
+
+procedure(getnumpar,file,name)
+
+   if(isfile("acqp"))
+      txt = load("acqp","text")
+   else
+      txt = load("acqp.dat","text")
+   endif
+   arg = scanstr(txt,"*$name$=%1\r\n")
+   if(arg == null)
+      arg = scanstr(txt,"*$name$=%1\n")
+   endif
+
+   if(arg != null)
+      val = eval(arg)
+   else
+      val = -1
+   endif
+
+endproc(val)
+
+
+#############################################
+# Determine the digital shift for the data
+# set.
+#############################################
+
+procedure(getdigitalshift,file)
+
+   decim = :getnumpar(file,"DECIM")
+   dspfvs = :getnumpar(file,"DSPFVS")
+
+   if(decim == 1)
+      return(0)
+   endif
+
+   dir = getcwd()
+   cd(getmacropath())
+   import2dpar("ab", "ascii", "xyrc","real") 
+   shifts = import2d("digital_filter.dat",4,22)
+   cd(dir)
+
+   x = findindex(shifts[~,0],dspfvs)
+   y = findindex(shifts[0,~]',decim)
+
+endproc(shifts[x,y])
+
+
+
+

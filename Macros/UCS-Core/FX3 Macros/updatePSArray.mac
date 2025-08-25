@@ -1,0 +1,18 @@
+###################################################################################
+# FX3/TRex pulse program macros (alternative to DSP DLL keaPPRun.dll)
+#
+# Join the ps array to the existing one
+###################################################################################
+
+procedure(updatePSArray, ps)
+
+   if(wvFX3Info->ps != null)
+      wvFX3Info->ps = join(wvFX3Info->ps,round(ps))
+   else
+      wvFX3Info->ps = round(ps)
+   endif
+
+   wvFX3Info->lineCnt = wvFX3Info->lineCnt + size(ps)/3
+
+endproc()
+

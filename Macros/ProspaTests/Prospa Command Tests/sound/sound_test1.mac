@@ -1,0 +1,15 @@
+procedure(sound_test1,verbose,delay)
+
+   sps = 8192
+   f = 2300
+   t = linvec(0,sps*50-1,sps*50)/sps
+   f = 500*sin(t*30) + 2300
+   yl = 30000*sin(2*pi*f.*t/8)
+   yr = 30000*sin(2*pi*f.*t)
+   y = matrix(sps*50,2)
+   y[~,0] = yl
+   y[~,1] = yr
+   sound(y,sps,"fixed") 
+
+ 
+endproc(1,"")

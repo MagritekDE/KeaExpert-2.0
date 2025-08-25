@@ -1,0 +1,144 @@
+######################################################
+# 3D control macro
+#
+# Allows user to set:
+#    3D background colour
+#    Depth cueing range
+#    
+######################################################
+
+procedure(preferences3d)
+
+   n = :windowdefinition()
+
+   (xorigin,yorigin,zorigin) = shift3d("getargs")
+   setpar(n,13,"text",-xorigin)
+   setpar(n,14,"text",-yorigin)
+   setpar(n,15,"text",-zorigin)
+   (rotS,scaleS,shiftS,zshiftS) = pref3d("getargs")
+   setpar(n,29,"text",rotS)
+   setpar(n,28,"text",scaleS)
+   setpar(n,27,"text",shiftS)
+   setpar(n,31,"text",zshiftS)
+   (start,end) = depthcuerange("getargs")
+   setpar(n,5,"text",-start)
+   setpar(n,6,"text",-end)
+   setpar(n,9,"text",depthcue("getargs"))
+   c = bkgcolor3d("getargs")*255
+   setpar(0,23,"color",c)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("3D Preferences", -1, -1, 397, 215)
+
+      # Define all controls with basic parameters
+       groupbox(1, "GUI sensitivity", 278, 9, 106, 135)
+       statictext(2, 325, 89, "right", "xyz-shift")
+       statictext(3, 93, 66, "right", "Depth cue start")
+       statictext(4, 91, 102, "right", "Depth cue end")
+       textbox(5, 99, 69, 40)
+       textbox(6, 99, 103, 40)
+       button(7, 172, 165, 46, 32, "Apply",
+          :apply();)
+       button(8, 330, 165, 46, 32, "Exit",
+          closewindow(0);)
+       checkbox(9, 108, 37, "off,on", "off",
+            :toggle_depth_cueing();)
+       statictext(10, 102, 36, "right", "Depth cueing")
+       groupbox(11, "Depth Cueing", 6, 9, 149, 135)
+       groupbox(12, "Rotation Origin", 163, 9, 106, 135)
+       textbox(13, 215, 40, 40)
+       textbox(14, 215, 69, 40)
+       textbox(15, 215, 98, 40)
+       statictext(16, -579, 74, "right", "text")
+       statictext(17, 209, 44, "right", "x-origin")
+       statictext(18, 209, 102, "right", "z-origin")
+       statictext(19, 209, 73, "right", "y-origin")
+       statictext(20, 83, 80, "right", "(brightest)")
+       statictext(21, 82, 115, "right", "(darkest)")
+       groupbox(22, "Background colour", 6, 151, 149, 57)
+       colorbox(23, 23, 173, 23, 23, [0,0,77],
+          :select_color();)
+       statictext(24, 325, 62, "right", "Scale")
+       button(25, 251, 165, 46, 32, "Help",
+          :show_help();)
+       statictext(26, 325, 35, "right", "Rotate")
+       textbox(27, 332, 58, 40)
+       textbox(28, 332, 85, 40)
+       textbox(29, 332, 31, 40)
+       statictext(30, 325, 116, "right", "Distance")
+       textbox(31, 332, 112, 40)
+
+     # Set other control parameters
+       setpar(n,5,"tab_number",2)
+       setpar(n,6,"tab_number",3)
+       setpar(n,7,"tab_number",11)
+       setpar(n,8,"tab_number",13)
+       setpar(n,9,"tab_number",1)
+       setpar(n,13,"tab_number",5)
+       setpar(n,14,"tab_number",6)
+       setpar(n,15,"tab_number",7)
+       setpar(n,23,"tab_number",4)
+       setpar(n,25,"tab_number",12)
+       setpar(n,27,"tab_number",10)
+       setpar(n,28,"tab_number",9)
+       setpar(n,29,"tab_number",8)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("3DHelp","controldialog")
+endproc()
+
+procedure(apply)
+
+   start   = getpar(0,5,"value")
+   end     = getpar(0,6,"value")
+   xorigin = getpar(0,13,"value")
+   yorigin = getpar(0,14,"value")
+   zorigin = getpar(0,15,"value")
+   rotS    = getpar(0,29,"value")
+   scaleS  = getpar(0,28,"value")
+   shiftS  = getpar(0,27,"value")
+   zshiftS = getpar(0,31,"value")
+
+   draw3d("off")
+      depthcuerange(-start,-end)
+      shift3d(-xorigin,-yorigin,-zorigin)
+      pref3d(rotS,scaleS,shiftS,zshiftS)
+      if(getpar(0,9,"text") == "on")
+         depthcue("on")
+      else
+         depthcue("off")
+      endif
+   draw3d("on")
+
+endproc()
+
+procedure(toggle_depth_cueing)
+
+   mode = getpar(0,9,"text")   
+   setpar(0,5,"enable",mode)
+   setpar(0,6,"enable",mode)
+
+endproc()
+
+
+procedure(select_color)
+
+   col = getcolor(getpar(0,23,"color"))
+   if(col[0] != -1)
+      setpar(0,23,"color",col)
+      bkgcolor3d(col)
+   endif
+
+endproc()

@@ -1,0 +1,63 @@
+procedure(vartype_test1,verbose,delay)
+
+   a = 12
+   if(vartype(a) != "float")
+      return(0, "Invalid result for: vartype_test1 #1")
+   endif 
+
+   a = 12+2i
+   if(vartype(a) != "complex")
+      return(0, "Invalid result for: vartype_test1 #2")
+   endif 
+
+   a = "string"
+   if(vartype(a) != "string")
+      return(0, "Invalid result for: vartype_test1 #3")
+   endif 
+
+   a = ["a","b","c","d"]
+   if(vartype(a) != "list")
+      return(0, "Invalid result for: vartype_test1 #5")
+   endif 
+
+   a = [1,2,3,4]
+   if(vartype(a) != "matrix1d")
+      return(0, "Invalid result for: vartype_test1 #6")
+   endif 
+
+   a = {1+i,2+i,3+i}
+   if(vartype(a) != "cmatrix1d")
+      return(0, "Invalid result for: vartype_test1 #7")
+   endif 
+
+   a = [1,2;3,4]
+   if(vartype(a) != "matrix2d")
+      return(0, "Invalid result for: vartype_test1 #8")
+   endif 
+
+   a = {1+i,2+2i;3+3i,4+4i}
+   if(vartype(a) != "cmatrix2d")
+      return(0, "Invalid result for: vartype_test1 #9")
+   endif 
+
+   a = noise(10,10,10)
+   if(vartype(a) != "matrix3d")
+      return(0, "Invalid result for: vartype_test1 #10")
+   endif 
+
+   a = noise(10,10,10) + i
+   if(vartype(a) != "cmatrix3d")
+      return(0, "Invalid result for: vartype_test1 #11")
+   endif 
+
+   a = noise(10,10,10)
+   if(vartype(a) != "matrix3d")
+      return(0, "Invalid result for: vartype_test1 #12")
+   endif 
+
+   a = noise(10,10,10) + i
+   if(vartype(a) != "cmatrix3d")
+      return(0, "Invalid result for: vartype_test1 #13")
+   endif 
+
+endproc(1,"")

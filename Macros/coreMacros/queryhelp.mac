@@ -1,0 +1,32 @@
+procedure(queryhelp, width, height, caption, txt)
+
+   n = :windowdefinition(caption,width, height)
+   setwindowpar(n,"type","dialog")
+   setpar(n,2,"text",txt)
+   setpar(n,2,"x",10)
+   setpar(n,2,"y",10)
+   setpar(n,2,"width",width-20)
+   setpar(n,2,"height",height-60)
+   ret = showdialog(n)
+
+endproc(ret)
+
+procedure(windowdefinition,caption,w,h)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(caption, -1, -1, w, h)
+
+      # Define all controls with basic parameters
+       button(1, 24, "wh-38", 47, 28, "OK",
+          closedialog("OK");)
+       statictext(2, 21, 10, 100, 100, "left", "")
+       button(3, 164, "wh-38", 47, 28, "Cancel",
+          closedialog("Cancel");)
+       button(4, 94, "wh-38", 47, 28, "Help",
+          closedialog("Help");)
+
+     # Set other control parameters
+       setpar(n,1,"mode","default")
+
+endproc(n)

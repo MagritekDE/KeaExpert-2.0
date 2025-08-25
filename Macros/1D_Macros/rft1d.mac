@@ -1,0 +1,31 @@
+####################################################
+#                  rft1d.mac
+#
+# Plot FFT of current real 1D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(rft1d)
+
+   (t,A) = getplotdata("1d")
+   if(t != null)
+      if(maths:ispower2(size(t))) 
+         N = size(t)
+         dt = t[1] - t[0]
+         f = ([0:1:N/2-1])/(N*dt)
+         A[0] = A[0]/2 # Correction for time asymmetry
+         plot(f,rft(A)/(f[-1]-f[0]))
+         title("Fourier transform")
+      else
+         message("Can't complete operation","1D data set size is not a power of 2")
+      endif    
+   else
+      message("Can't complete operation","No 1D data set plotted","error")
+   endif  
+
+endproc()
+

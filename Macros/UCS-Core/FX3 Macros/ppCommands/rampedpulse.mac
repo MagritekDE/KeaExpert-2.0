@@ -1,0 +1,86 @@
+###################################################################################
+# FX3/TRex pulse-program macro (alternative to DSP DLL ucsPPRun.dll)
+#
+# Generate a RF pulse of specified amplitude (dB), phase (0-4)*16384, duration (us)
+# and optionally a frequency (MHz). The pulse parameters also depend on the  
+# channel (1H/X) and the board it is generated on (TRex or Lock). Note that the 
+# ramp is limited to 4 steps
+#
+# wvFX3Info is a window structure variable containing all pulse sequence information
+###################################################################################
+
+procedure(rampedpulse, channel=1, ampdB=-12, phaseValue=0, duration=5, steps=4)
+
+   eventTimeStart=0d
+   if(duration <= 0)
+      throw("Invalid pulse duration: $duration$")
+   endif
+
+   # Convert the amplitude from dB to 14 bit number
+   amplitude = ucsRun:convertTxGain(ampdB)
+ 
+   pgo = 500d  # Pulse gate overhead (5us)
+   
+   eventTime = getAndCheckEventTime(eventTimeStart, "pulse", pgo)
+
+   lineCnt = wvFX3Info->lineCnt
+
+   d = 73 # Clock cycles to update the DDS
+   
+   FPGA_DDS1_Pro0 = 0x118E
+ 
+   if(wvFX3Info->board == "TRex")
+
+      # Set the amplitude and phase
+      if(channel == 1) # Proton channel
+
+         ps = [eventTime - pgo, 0, wvFX3Info->currentTTL | 0x4000]
+         ps = join(ps,[eventTime - pgo + 15d, FPGA_DDS1_Pro0, amplitude*1/steps])
+       #  ps = join(ps,[eventTime - pgo + 15d, 0x118E, amplitude*0.25])
+         ps = join(ps,[eventTime - pgo + 30d, FPGA_DDS1_Pro0, phaseValue])
+
+         ps = join(ps,[eventTime, 0, wvFX3Info->currentTTL | 0x4008])
+
+         for(k = 1 to steps-1)
+            ps = join(ps,[eventTime + 100*k-d, FPGA_DDS1_Pro0, amplitude/steps*(k+1)])
+pr steps*(k+1)
+         next(k)
+
+#         ps = join(ps,[eventTime + 100-d, 0x118E, amplitude*0.50])
+#         ps = join(ps,[eventTime + 200-d, 0x118E, amplitude*0.75])
+#         ps = join(ps,[eventTime + 300-d, 0x118E, amplitude])
+
+#         ps = join(ps,[eventTime + 300-d + duration*100, 0x118E, amplitude*0.75])
+#         ps = join(ps,[eventTime + 400-d + duration*100, 0x118E, amplitude*0.50])
+#         ps = join(ps,[eventTime + 500-d + duration*100, 0x118E, amplitude*0.25])
+
+         for(k = 1 to steps-1)
+            ps = join(ps,[eventTime + 100*(steps-2+k)-d + duration*100, FPGA_DDS1_Pro0, amplitude/steps*(steps-k)])
+pr steps*(k+1)
+
+        next(k)
+
+#         ps = join(ps,[eventTime + 100*(steps-1)-d + duration * 100, 0x118E, amplitude*0.75])
+#         ps = join(ps,[eventTime + 100*(steps)-d + duration * 100, 0x118E, amplitude*0.5])
+#         ps = join(ps,[eventTime + 100*(steps+1)-d + duration * 100, 0x118E, amplitude*0.25])
+
+         T = (2*steps-2)*100 # 600
+         ps = join(ps,[eventTime + T + duration * 100, 0, wvFX3Info->currentTTL])
+         ps = join(ps,[eventTime + T + duration * 100 + 15, FPGA_DDS1_Pro0, 0])
+
+      endif 
+      wvFX3Info->lineCnt = lineCnt + 11
+
+   endif
+   
+# Calculate the eventTime following the pulse
+   eventTime = eventTime + duration * 100 + T
+
+# Add an extra 1 us before the next event can start
+   updateNextEventTime(eventTime, 100)
+
+# Add the pulse code to the rest of the pulse sequence array
+   updatePSArray(ps)
+
+endproc()
+

@@ -1,0 +1,40 @@
+procedure(selectItemFromList, procs, titleTxt="Select item from list", buttonTxt="Select")
+
+   n = :windowdefinition(titleTxt,buttonTxt)
+   setpar(n,1,"list",procs)
+   if(size(procs) > 0)
+      setpar(n,1,"zindex",0)
+   endif
+   selection = showdialog(n)
+
+endproc(selection)
+
+procedure(windowdefinition,titleTxt,buttonTxt)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(titleTxt, -1, -1, 297, 300, "resizable")
+      setwindowpar(n,"type","dialog")
+      # Define all controls with basic parameters
+      listbox(1, 10, 11, "ww-20", "wh-56",:listCallback())
+      button(2, 30, "wh-35", 61, 27, buttonTxt,:pasteSelection())
+      button(3, "ww-91", "wh-35", 61, 27, "Cancel",closedialog(null))
+
+endproc(n)
+
+procedure(pasteSelection)
+
+   selection = getpar(0,1,"text")
+   closedialog(selection)
+
+endproc()
+   
+procedure(listCallback)
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down" | evt == "enter_pressed")
+      selection = getpar(0,1,"text")
+      closedialog(selection)
+   endif
+
+endproc()

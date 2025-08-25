@@ -1,0 +1,332 @@
+<html xmlns:ns0="http://schemas.microsoft.com/office/2004/12/omml">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>getbasedir - get the base directory in a path name</title>
+
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0mm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-US link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>menuk</span></b></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-indent:14.15pt'><span lang=EN-AU>Define a menu
+with a key</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Syntax</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>menuObj = menuk(number,
+name, label, key, command, label, key ...)</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>number ........ the
+menu control number (INT)</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>name .......... the
+menu name (STR)</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>item ..........
+the menu item label (there can be more than one item) (STR)</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>key ........... a
+string used to refer to the menu item externally (STR)</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>command ....... the
+macro comamnd to run when the menu item is selected (COMMAND LIST)</span></p>
+
+<p class=MsoNormal style='margin-left:132.0pt;text-indent:-117.85pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>menuObj .......
+the returned menu object. If defined this will have window scope. (OBJECT)</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-AU
+style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Description</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>    </span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-AU>This version of
+the menu command is useful if you want to modify a menu item, either the item
+label or the check (tick) mark. If the </span><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>key</span><span lang=EN-AU>
+argument is just an empty strig then this command is identical to </span><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>menu</span><span
+lang=EN-AU>.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>User defined GUI
+windows can have a menus. The menus are first formed using this command and
+then added to the parent window using </span><span lang=EN-AU style='font-size:
+10.0pt;font-family:"Courier New"'><a href="setwindowpar.htm">setwindowpar</a></span><span
+lang=EN-AU> as shown in the following example. The menu consists of a label
+which appears in the menu bar and pairs of strings which represent the menu
+item labels and the commands which will be called when the item is selected.
+The item string can also include a keyboard accelerator. This is done by ending
+the label with a tab character </span><span lang=EN-AU style='font-size:10.0pt;
+font-family:"Courier New"'>\t</span><span lang=EN-AU> and the immediately appending
+the accelerator code. Possible codes are:</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>character
+......... ASCII character or those shown below</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Ctrl+character
+.... control key with character</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Shift+character
+... shift key with character</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Alt+character
+..... alt key with character </span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Possible characters
+are the normal ASCII characters plus:</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Function keys . F1 ... F14</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Escape key .... ESC</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Tab key ....... TAB</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Enter key ..... RETURN</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Left arrow .... LEFT</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Right arrow ... RIGHT</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Up Arrow ...... UP</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Down arrow .... DOWN</span></p>
+
+<p class=MsoNormal style='margin-left:28.4pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>Home key ...... HOME</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Insert key ....
+INSERT</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Delete key ....
+DELETE</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-indent:14.2pt'><span
+lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Pause key .....
+PAUSE</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Example</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=448 valign=top style='width:336.0pt;padding:0mm 5.4pt 0mm 5.4pt'>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;n = </span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:green'>window</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;menu
+  test&quot;</span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:black'>, 100, 100, 200, 100)</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:green'>button</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>(1,10,10,50,30,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Close&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:green'>closewindow</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>(0);)</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>menuk</span><span lang=EN-AU style='font-size:10.0pt;font-family:
+  "Courier New";color:black'>(2,</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:gray'>&quot;Edit&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Copy\tCtrl+C&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>pr</span><span lang=EN-AU style='font-size:10.0pt;font-family:
+  "Courier New";color:black'> (</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:gray'>&quot;Copy selected\n&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>),</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:gray'>&quot;Paste\tCtrl+V&quot;</span><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>pr</span><span lang=EN-AU style='font-size:10.0pt;font-family:
+  "Courier New";color:black'> (</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:gray'>&quot;Paste selected\n&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>),</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:gray'>&quot;Cut\tCtrl+X&quot;</span><span lang=EN-AU style='font-size:
+  10.0pt;font-family:"Courier New";color:black'>,</span><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>pr</span><span lang=EN-AU style='font-size:10.0pt;font-family:
+  "Courier New";color:black'> (</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:gray'>&quot;Cut selected\n&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>);)</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>menuk</span><span lang=EN-AU style='font-size:10.0pt;font-family:
+  "Courier New";color:black'>(3,</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:gray'>&quot;Window&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Hide\tF2&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:green'>hidewindow</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>(0);)</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>setwindowpar</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:black'>(n,</span><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;menu&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,[2,3])</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;
+  </span><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>setwindowpar</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:black'>(n,</span><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;show_menu&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;false&quot;</span><span
+  lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+  <p class=MsoNormal style='text-autospace:none'><span lang=EN-AU
+  style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+  <p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+  color:green'>    showwindow</span><span lang=EN-AU style='font-size:10.0pt;
+  font-family:"Courier New";color:black'>(n)</span></p>
+  </td>
+  <td width=222 valign=top style='width:166.2pt;padding:0mm 5.4pt 0mm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+  <p class=MsoNormal><span lang=EN-AU><img border=0 width=232 height=163
+  src="menu_files/image001.jpg"
+  alt="Description: Description: C:\Users\Mike\Documents\Source\Prospa - SVN\Documentation\Internal\menu_files\image001.jpg"></span></p>
+  <p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+  <p class=MsoNormal><span lang=EN-AU><img border=0 width=243 height=173
+  src="menu_files/image002.jpg"
+  alt="Description: Description: C:\Users\Mike\Documents\Source\Prospa - SVN\Documentation\Internal\menu_files\image002.jpg"></span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>In this case,
+there are two menus defined. The Edit menu provides the usual copy, paste, cut
+options while the Window menu allows the F2 key to hide the window. Note that
+these menus override the normal accelerators which work with GUI windows, which
+is why the usual pop-up menu has been disabled and the F2 hide command has been
+added.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>See also</span></p>
+
+<p class=MsoNormal><i><span lang=EN-AU style='font-size:11.0pt;font-family:
+Tahoma'>&nbsp;</span></i></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'><a href="setwindowpar.htm">setwindowpar</a>,
+<a href="menu.htm">menu</a></span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.15pt'><span lang=EN-AU
+style='font-size:11.0pt;font-family:Tahoma'>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

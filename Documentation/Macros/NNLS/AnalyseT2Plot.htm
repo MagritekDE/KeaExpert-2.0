@@ -1,0 +1,549 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>The NNLS analysis</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin-top:24.0pt;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:0cm;
+	margin-bottom:.0001pt;
+	page-break-after:avoid;
+	font-size:14.0pt;
+	font-family:"Cambria","serif";
+	color:#365F91;}
+h2
+	{mso-style-link:"Heading 2 Char";
+	margin-top:12.0pt;
+	margin-right:0cm;
+	margin-bottom:3.0pt;
+	margin-left:0cm;
+	page-break-after:avoid;
+	font-size:14.0pt;
+	font-family:"Arial","sans-serif";
+	font-style:italic;}
+h3
+	{mso-style-link:"Heading 3 Char";
+	margin-top:12.0pt;
+	margin-right:0cm;
+	margin-bottom:3.0pt;
+	margin-left:0cm;
+	page-break-after:avoid;
+	font-size:13.0pt;
+	font-family:"Arial","sans-serif";}
+p.MsoToc1, li.MsoToc1, div.MsoToc1
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoToc3, li.MsoToc3, div.MsoToc3
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:24.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoFooter, li.MsoFooter, div.MsoFooter
+	{mso-style-link:"Footer Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.Heading2Char
+	{mso-style-name:"Heading 2 Char";
+	mso-style-link:"Heading 2";
+	font-family:"Cambria","serif";
+	color:windowtext;
+	font-weight:bold;}
+span.Heading3Char
+	{mso-style-name:"Heading 3 Char";
+	mso-style-link:"Heading 3";
+	font-family:"Cambria","serif";
+	color:windowtext;
+	font-weight:bold;}
+span.FooterChar
+	{mso-style-name:"Footer Char";
+	mso-style-link:Footer;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+ /* Page Definitions */
+ @page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 89.85pt 72.0pt 89.85pt;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1 style='margin-top:0cm;background:#FF6600'><a name="_Toc279751947"></a><a
+name="_Toc366572919"><span style='font-size:20.0pt;color:black'>NNLS –
+AnalyseT2Plot</span></a></h1>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='color:black'>This macro provides an interface
+for inverting one dimensional T2 relaxation data sets using non-negative least
+squares analysis. Data set should have been collected using either the CPMGInt
+(Kea) or T2CPMG (RCA) macros. </span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<h3><a name="_Toc366572920"><span lang=EN-GB>Relaxation spectra</span></a></h3>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>When a
+single relaxation time constant is present it is sufficient to use simple
+non-linear (or linearized) fits. However when there is a range or spectrum of
+relaxation times a different approach must be taken. The non-negative least square
+inverse Laplace algorithm provides this functionality.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<h3><a name="_Toc366572921"><span lang=EN-GB>Non-negative least square analysis</span></a></h3>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Unlike the
+Fourier transform which uniquely converts between time and frequency domain
+data, the inverse Laplace problem, which moves between time domain and relaxation
+time-constant space, is ill-defined, meaning there are a number of solutions,
+all of which fit the original data equally well. The best fit is usually a
+series of short, well-defined spectral peaks. However this often does not make
+sense from a physical point of view – a continuous range of relaxation times is
+more likely. For this reason we should choose a solution which gives spectral
+lines which are as broad as possible, consistent with a good fit and the noise
+level in the original data. i.e. noisy data should produce broader lines than a
+data set with high SNR, reflecting the increased uncertainty.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>In this document we will use the
+demonstration result “saturated” to illustrate the operation of the
+AnalyseT2Plot macro. </p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=551
+height=283 src="AnalyseT2Plot_files/image001.jpg"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>This data set
+consists of 10 000 points linearly spaced from 0.1 to 1000 ms. Each point is
+the integral of 1 CPMG echo which consists of a number of complex data points.
+The overall curve is phased so that the imaginary part (light color) is zero
+and the real part (darker color) is maximised.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<h3><a name="_Toc366572922"><span lang=EN-GB>The Lawson and Hanson NNLS
+analysis</span></a></h3>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Start by
+selecting the data to be analysed by clicking on it with the mouse (it is
+assumed that it has been loaded into a 1D plot window). Then start the
+AnalyseT2Plot macro which is found in the NNLS menu. The following window will
+appear.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=558
+height=358 id="Picture 1" src="AnalyseT2Plot_files/image002.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Next choose the
+analysis method. We will start with the Lawson and Hanson (L&amp;H) option with
+Log binning and weighting:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=123 height=114 src="AnalyseT2Plot_files/image003.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Next set the
+minimum and maximum relaxation time values to the data set limits (i.e. the
+echo time and the maximum reordered time. One hundred relaxation steps are
+usually sufficient. Choose a smoothing parameter of 1 and 200 points to
+analyse.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=210 height=119 src="AnalyseT2Plot_files/image004.png">        <img
+width=154 height=119 src="AnalyseT2Plot_files/image005.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Press the Calculate spectrum button</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=149 height=123 src="AnalyseT2Plot_files/image006.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>This generates a
+number of different graphs. </span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=553
+height=393 src="AnalyseT2Plot_files/image007.jpg"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Top left is the
+relaxation spectrum, top right the cumulative sum of this spectrum, bottom left
+the residuals of the multi-exponential fit with the original data set, and
+bottom left the statistics of these residuals along with the noise statistics
+of the second half of the imaginary part of the original data set (assumed to
+be only noise).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The correct
+smoothing parameter can be chosen by starting with a large value (larger means
+a smoother curve) – say 10 and then decreasing by factors of 10 until the
+standard deviation (SD) of the residuals matches the ideal value (shown in the
+lower left corner of the window and equal to the standard deviation of the data
+noise). In reality this may not be possible and the SD may reach a plateau
+which is larger or smaller than the ideal – this depends on the noise
+statistics. In this case you can run the &quot;Calculate smoothing curve&quot;
+to determine the optimal value:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=231
+height=120 id="Picture 4" src="AnalyseT2Plot_files/image008.png"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>This calculates the SD of the residuals for
+20 values distributed in logarithmic fashion from 0.001 to 10. The results are
+normalised by the standard deviation of the data so a value of 1 is “ideal”. </span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=493 height=257 src="AnalyseT2Plot_files/image009.jpg"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>In this </span>case
+the residuals curve starts to rise at a smoothing parameter of about 2.5. The
+knee point is defined as the smoothing value at which the slope of the log-log
+chi-squared plot is 0.1 and is often a good choice for the smoothing factor.
+Above this the SD ratio is significantly greater that the ideal of 1. The
+effect of different<span style='font-family:Symbol'> </span>smoothing values is
+shown below:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=554
+height=236 src="AnalyseT2Plot_files/image010.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i>ideal smoothing =2.5,
+SD ratio=1.01</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=554
+height=235 src="AnalyseT2Plot_files/image011.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB>over-smoothing
+= 10</span>, SD ratio=1.4</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=554
+height=236 src="AnalyseT2Plot_files/image012.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i>under-smoothing = 0.1,
+SD ratio = 1.0</i></p>
+
+<p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Small smoothing factors give too many
+features while large factors produce a curve which is too smooth and a poorer
+fit.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The &quot;Points
+to analyze&quot; text box can be used to improve the SNR of the data set by
+binning data points together. A pseudo-logarithmic binning is used to providing
+a better sampling of a wide range of echo times. Large numbers of points to
+analyse will slow down the algorithm and move the binning from logarithm to
+linear (see below). 200 bins or points to analyze is usually more than
+sufficient.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=151
+height=119 id="Picture 14" src="AnalyseT2Plot_files/image013.png"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The log binning
+algorithm forces the first two bins to be at one and two times the echo time.
+The remaining points are distributed logarithmically between two times the echo
+time and the final value. As shown below the distribution of bins is reasonably
+logarithmic after about 10 echo times if the bin number is 50. The more bins
+the less logarithmic the spacing will be. Note that the number of points to
+analyze (bins) must be greater than the number of spectral points.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=623
+height=276 id="Picture 15" src="AnalyseT2Plot_files/image014.png"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>There are addition controls in the Analysis
+method section of the interface which allows the log binning to be switched off
+and on and to control whether each bin is correctly weighted by the number of
+points in it. Normally ‘Weight bins’ should be selected.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB><img
+width=122 height=117 src="AnalyseT2Plot_files/image015.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Note that
+computation times will be significantly longer if the binning is turned off but
+the fit is sometimes better.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>In addition to
+the smoothing curve and the standard deviation ratio you should also look at
+the residuals curve and statistics. In the residuals plot there should not be
+any significant oscillations and most of the residuals should fall inside the
+two blue horizontal lines - these correspond to ± 2.5 standard deviations of
+the sample data noise.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=553
+height=197 src="AnalyseT2Plot_files/image016.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The statistics curves should lie on top of
+each other and should look Gaussian in shape.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=300
+height=226 id="Picture 17" src="AnalyseT2Plot_files/image017.png"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Oscillations in the residuals curve or
+misplaced statistics curves are often produced if the smoothing value is too
+high:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=553
+height=206 src="AnalyseT2Plot_files/image018.jpg"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB>Setting
+the smoothing  value to 50 results in oscillations ...</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=300
+height=219 src="AnalyseT2Plot_files/image019.png"></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB>and
+poor residual statistics (orange curve)</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>There is a temptation with T2 measurements
+to try and determine spectral values outside the measured range. This should be
+avoided as it will often give spurious peaks which have no physical
+significance. </span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<h3><a name="_Toc366572923"></a><a name="_Toc279751948"><span lang=EN-GB>The
+Lexus Analysis</span></a></h3>
+
+<p class=MsoNormal><b><i><span lang=EN-GB>&nbsp;</span></i></b></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>An alternative
+method is called &quot;Lexus&quot; and is an enhanced version of the
+Butler-Reed-Dawson algorithm. This technique also has the advantage of
+providing logarithmic binning of data points. As a consequence of this only 50
+to 200 “points to analyse” are required. The Lexus algorithm will often produce
+better results at short relaxation times than the L&amp;H method so it is worth
+trying both.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=545
+height=386 src="AnalyseT2Plot_files/image020.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>There are two
+methods for calculating the spectrum. The first called &quot;Weight&quot; uses
+a parameter of the same name to determine the spectral smoothing. Larger Weight
+values result in broader peaks. In this sense if works like the smoothing
+parameter in the Lawson and Hanson method. The second method &quot;SNR&quot;
+automatically adjusts the Weight parameter until the standard deviation of the
+residuals is close to the original data. The closeness is defined by the
+parameter RSig. 1.02 is the recommended value. This technique is similar to
+using the smoothing curve in the L&amp;H method but generally a lot quicker. If
+you obtain the message</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=269
+height=159 id="Picture 5" src="AnalyseT2Plot_files/image021.png"></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>then try
+adjusting the parameters until a valid solution is produced (sometimes a change
+of the algorithm URF/Asymp will help).</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Typically the
+L&amp;H and Lexus methods give similar results if the parameters are carefully
+chosen:</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=553
+height=224 src="AnalyseT2Plot_files/image022.jpg"></p>
+
+<h3><a name="_Toc366572924">Peak integration</a></h3>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>Spectral peaks can be integrated to find their contribution
+to the overall signal.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>First choose the “Select a rectangular region” option from
+     the View menu. The cursor will change to show a square. (^R)</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>Next draw a rectangle around the peak to integrate.</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal>Finally select the integrate peak option from the
+     Calculate menu (^P)</li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=465
+height=223 src="AnalyseT2Plot_files/image023.png"></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The integral (in microvolts and as a percentage of total)
+and location will be displayed in the status bar.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=251
+height=39 src="AnalyseT2Plot_files/image024.png"></p>
+
+</div>
+
+</body>
+
+</html>

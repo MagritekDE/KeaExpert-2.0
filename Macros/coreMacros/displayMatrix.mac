@@ -1,0 +1,138 @@
+######################################################
+# Dialog to display a matrix in the 2D plot
+######################################################
+
+procedure(displayMatrix)
+
+   n = :windowdefinition()
+    setwindowpar(n,"type","dialog")
+    setwindowpar(n,"show_menu","false")
+    setwindowpar(n,"focus",2)
+   :update_menu()
+   showdialog(n)
+
+endproc()
+
+##########################################################
+# Define the dialog
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Display 2D matrix", -1, -1, 282, 155)
+
+      # Define all controls with basic parameters
+       statictext(1, 200, 12, "right", "Variable Name")
+       textmenu(2, 132, 28, 71, 200)
+       button(3, 20, 120, 54, 28, "Display",
+          :display();)
+       button(4, 210, 120, 54, 28, "Exit",
+          closedialog();)
+       textmenu(5, 132, 54, 71, 200)
+       checkbox(6, 73, 58, "no,yes", "yes",:include_axes();)
+       button(7, 90, 120, 100, 28, "Display and Exit",
+          :display();
+          closedialog();)
+       statictext(8, 65, 57, "right", "Add axes")
+       statictext(9, 126, 32, "right", "Matrix")
+       statictext(11, 126, 58, "right", "x-axis")
+       statictext(12, 126, 84, "right", "y-axis")
+       groupbox(13,"",5,2,250,110)
+       textmenu(14, 132, 80, 71, 200)
+
+     # Set other control parameters
+       setpar(n,3,"mode","default")
+       setpar(n,4,"mode","cancel")
+
+endproc(n)
+
+##########################################################
+# Populate menu with names of all current 1D matrices
+##########################################################
+
+procedure(update_menu)
+
+   matMenu = matrixlist(2)
+   vecMenu = matrixlist(1)
+   matSz = size(matMenu) 
+   vecSz = size(vecMenu) 
+   if(matSz > 0)
+      matMenu = sortlist(matMenu)
+      setpar(0,2,"menu",matMenu)
+   endif
+
+   if(vecSz > 0)
+      vecMenu = sortlist(vecMenu)
+      setpar(0,5,"menu",vecMenu)
+      setpar(0,14,"menu",vecMenu)
+   endif
+
+   if(matSz >= 1)
+      if(vecSz == 0)
+         setpar(0,2,"text",matMenu[0])
+         setpar(0,5,"enable","false")
+         setpar(0,14,"enable","false")
+      elseif(vecSz == 1)
+         setpar(0,2,"text",matMenu[0])
+         setpar(0,5,"text",vecMenu[0])
+         setpar(0,14,"text",vecMenu[0])
+      elseif(vecSz >= 2)
+         setpar(0,2,"text",matMenu[0])
+         setpar(0,5,"text",vecMenu[0])
+         setpar(0,14,"text",vecMenu[1])
+      endif
+   endif
+
+endproc()
+
+##########################################################
+# Copy the 1D data set to the named matrix or matrices
+##########################################################
+
+procedure(display)
+
+   nameM = getpar(0,2,"text")
+   nameX = getpar(0,5,"text")
+   nameY = getpar(0,14,"text")
+   useAxes = getpar(0,6,"text")
+
+   draw2d("false")
+
+   if(useAxes == "yes" & nameM != "")
+      if(nameX != "" & nameY != "")
+         image(eval(nameM),eval(nameX),eval(nameY))
+         title("$nameM$")
+         xlabel("$nameX$")
+         ylabel("$nameY$")
+      else
+         image(eval(nameM))
+         title("$nameM$")
+         xlabel("x index")
+         ylabel("y index")
+      endif
+   elseif (useAxes == "no" & nameM != "")
+      image(eval(nameM))
+      title("$nameM$")
+      xlabel("x index")
+      ylabel("y index")
+   endif
+
+   draw2d("true")
+
+endproc()
+
+procedure(include_axes)
+
+   useX = getpar(0,6,"text")
+
+   if(useX == "yes")
+      setpar(0,5,"enable","true")
+      setpar(0,14,"enable","true")
+   else
+      setpar(0,5,"enable","false")
+      setpar(0,14,"enable","false")
+   endif
+
+endproc()

@@ -1,0 +1,82 @@
+procedure(nonLinFitTest)
+hold("off")
+
+cachemacro(getmacroname(),"local")
+cacheproc("true")
+x = linspace(0,1000,1000)
+#y = 10*exp(-x/100) + noise(size(x))*1
+y = 10*exp(-(x-400)^2/(100*1^2)) + noise(size(x))*1
+y = 10*x + 2000 + noise(size(x))*5000
+plot(x,y)
+
+time(0)
+(val,pos) = max(y)
+idx = findindex(y,exp(-1)*val)
+
+#(p1,p2,p3) = :funcGaussEst(x,y)
+#(p1,p2,p3,p1err,p2err,p3err) = nlinfit(x,y,":funcGauss",[p1,p2,p3],1,"yes",5)
+#(p1,p2,p1err,p2err) = nlinfit(x,y,":funcExp",[val,idx],1,"yes",5)
+(p1,p2,p1err,p2err) = nlinfit(x,y,":linFunc",[(y[-1]-y[0])/(x[-1]-x[0]),y[0]],1,"yes",5)
+print p1,p2
+#print(p1,p1err,p2,p2err,p3,p3err)
+#f = :funcExpCalc(x,p1,p2)
+#f = :funcGaussCalc(x,p1,p2,p3)
+f = p1*x+p2
+hold("on")
+plot(x,f,"color",blue)
+print(time())
+#time(0)
+#gaussfit(x,y,0,"yes",100)
+#t2fit(x,y,0,"yes",20,max(y),max(x))
+#print(time())
+endproc()
+
+procedure(funcExp, x, p1, p2)
+
+   e = exp(-x/p2)
+   y = p1*e
+   dydp1 = e
+   dydp2 = p1*x*e/(p2^2) 
+
+endproc(y,dydp1,dydp2)
+
+procedure(funcExpCalc, x, p1, p2)
+
+   e = exp(-x/p2)
+   y = p1*e
+
+endproc(y)
+
+procedure(funcGauss, x, p1, p2, p3)
+
+   a = (x-p2)/p3
+   e = exp(-(a^2)/2)
+   f = p1*e*a
+   y = p1*e
+   dydp1 = e
+   dydp2 = f/p3
+   dydp3 = f*a/p3
+
+endproc(y,dydp1,dydp2,dydp3)
+
+procedure(funcGaussEst, x, y)
+
+   (p1,p2) = max(y)
+   idx = findindex2(y,p2,"right",p1/2)
+   p3 = (idx-p2)/sqrt(-2*log10(0.5))
+
+endproc(p1,p2,p3)
+
+procedure(funcGaussCalc, x, p1, p2, p3)
+
+   y = p1*exp(-((x-p2)^2)/(2*p3^2))
+
+endproc(y)
+
+procedure(linFunc, x, p1, p2)
+
+   y = p1*x + p2
+   dydp1 = x
+   dydp2 = 1
+
+endproc(y,dydp1,dydp2)

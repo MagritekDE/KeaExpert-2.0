@@ -1,0 +1,85 @@
+########################################################
+#
+# Frequency sweep pulse program used for probe tuning
+# on the internal duplexer
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y)
+  interface = ["centFreq",    "Centre frequency (MHz)",   "tb",  "freq";
+               "freqWidth",   "Frequency width (MHz)",    "tb",  "float,[0.01,50]";
+               "nFreqSteps",  "Number of freq. steps",    "tb",  "integer";
+               "aRF",         "RF amplitude",             "tb",  "float,[-72,0]";
+               "repTime",     "Repetition time (ms)",     "tb",  "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nPnts      = nrPnts",
+                    "b1FreqCh1  = centFreq-freqWidth/2",
+                    "fSweep     = linspace(b1FreqCh1,b1FreqCh1+freqWidth,nFreqSteps)",
+                    "tFreq1     = gFX3->convertFrequency(fSweep)",
+                    "tFreq2     = gFX3->convertFrequency(fSweep*10)",
+                    "totPnts    = nFreqSteps",
+                    "dStab      = 60",
+                    "dRecover   = 2000",
+                    "totTime    = acqTime",
+                    "specialMode = \"wobble\""]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Acquisition","Amplitude_Control","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+   mode = "w" + mode
+pr mode
+# Pulse sequence
+   initpp(dir)                    # Reset internal parameter list
+
+      delay(10000)
+      cleardata(nFreqSteps)
+      setindex(tFreq1,0)
+      setindex(tFreq2,0)
+      loop("l1",nFreqSteps)         # Measure at nFreqSteps
+         setrxfreq(tFreq2)            # Set the receiver frequency
+         txon(mode,aRF,p1,tFreq1)     # Switch on Tx channel 1
+         delay(dStab)                 # Wait for stability
+         acquire("integrate",nPnts)      # Acquire and integrate
+         txoff(mode)                  # Switch off the Tx
+         incindex(tFreq1,2)           # Increment Tx frequency
+         incindex(tFreq2,2)           # Increment Rx frequency
+         delay(dRecover)              # Wait for HPA to recover
+      endloop("l1")                 # Next measurement
+
+   lst = endpp(0)                 # Return parameter list
+
+# Phase cycle
+   phaseList = [0;
+                0]
+
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = KeaParameterUpdater:readSpecPar()
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["centFreq = $frequencyCh1$"]
+
+endproc(par)

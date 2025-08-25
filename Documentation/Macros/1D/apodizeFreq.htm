@@ -1,0 +1,149 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>adderrorbars</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+h1
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman";}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB>
+
+<div class=Section1>
+
+<h1><span lang=EN-NZ>apodizeFreq</span></h1>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>This macro can be used to smooth or sharpen
+frequency domain 1D data sets. It does this by applying an inverse Fourier
+transform to the data set, multiplying by a filter (i.e. apodization) function
+and then applying a forward Fourier transform. Because of the two Fourier
+transform steps the data set must be a power of 2 in length.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=319 valign=top style='width:239.25pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=278 height=190
+  src="apodizeFreq_files/image001.gif" border=0></span></p>
+  </td>
+  <td width=319 valign=top style='width:239.3pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=278 height=190
+  src="apodizeFreq_files/image002.gif" border=0></span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-NZ
+style='font-size:11.0pt'>The effect of applying exponential broadening to a
+spectrum</span></i></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The macro has several built in filters. The
+macro equations are listed below:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>exponential&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp(-abs(x-p1)*p2)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>sinebell&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>cos(0.5*pi*(x-p1)/(N-p1))</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>sinebellsquared&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>cos(0.5*pi*(x-p1)/(N-p1))^2</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>gauss&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp(-(x-p1)^2*p2^2)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>gaussdeconv&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp((x-p1)*p3-(x-p1)^2*p2^2)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>In these equations p1 = 0, p2 is taken from
+the first slider (labelled Broadening) and p3 from the second slider (labelled
+Narrowing).</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ><img
+width=347 height=159 src="apodizeFreq_files/image003.jpg" border=0></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-NZ
+style='font-size:11.0pt'>The 1D apodization interface</span></i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>When using the Gaussian deconvolution
+filter, non-zero noise at the end of the data set means that you will need to
+add sufficient broadening to prevent the data set from going to infinity.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=319 valign=top style='width:239.25pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+  <p class=MsoNormal><span lang=EN-NZ><img width=313 height=143
+  src="apodizeFreq_files/image004.jpg" border=0></span></p>
+  </td>
+  <td width=319 valign=top style='width:239.3pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=278 height=190
+  src="apodizeFreq_files/image005.gif" border=0></span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-NZ
+style='font-size:11.0pt'>Gaussian deconvolution applied to reduce the
+line-width and so enhance resolution</span></i><span lang=EN-NZ
+style='font-size:11.0pt'>.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>At all times the apodization macro is
+working on the data set which was present when you first ran the macro. However
+if you want to work on a new data set without restarting the macro you will
+need to press the Update button before applying the broadening.</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+</div>
+
+</body>
+
+</html>

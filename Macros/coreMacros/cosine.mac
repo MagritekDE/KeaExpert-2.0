@@ -1,0 +1,22 @@
+#########################################
+# Generates a decaying cosine function
+# 
+# N ......... number of data point
+# acqTime ... length of function in seconds
+# freq ...... frequency of function in Hz 
+# T2 ........ 1/e point
+#########################################
+
+procedure(cosine,N,acqTime,freq,T2)
+
+   if(nrArgs == 0)
+      pr "\n\n   Generates exponentially decaying cosine function\n\n"
+      pr "   Syntax:\n\n   (x,y) = cosine(N,acqTime,freq,T2)\n\n"
+      return
+   endif
+
+   x = [0:1:N-1]/N*acqTime
+   pi = 3.14159
+   y = cos(2*pi*freq*x).*exp(-x/T2)
+
+endproc(x,y)

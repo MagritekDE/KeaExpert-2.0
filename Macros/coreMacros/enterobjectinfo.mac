@@ -1,0 +1,465 @@
+###############################################
+# Dialog to modify control parameters
+# user passes window number and control number
+###############################################
+
+procedure(enterobjectinfo,win,obj)
+
+ #  edWin = geteditwin()
+   ctrlType =  getpar(win,obj,"controltype")
+   name = ctrlType + "_dialog"
+   name = replacestr(name," ","_")
+   name = ":" + name
+   objlist = name()
+   nrObjs = size(objlist)/4
+
+   w = 180 + 60
+   h = nrObjs*30+20
+   if(h < 180) 
+      h = 180
+   endif
+   n = window("$caseset(ctrlType,\"first\")$ parameters ($obj$)",-1,-1,w,h)
+   setwindowpar(n,"type","dialog")
+
+   groupbox(1,"Parameters",5,5,160,h-10)
+   y = 11
+   button(2,w-65,y,50,34,"Apply",:apply())
+   button(3,w-65,y+40,50,34,"Apply+\rClose",:apply(); closedialog())
+   button(4,w-65,y+80,50,34,"Help")
+   button(5,w-65,y+120,50,34,"Close",closedialog())
+   setpar(0,3,"mode","default")
+   m0 = 6
+   m = m0
+   x0 = 10
+   y0 = 30
+   for(k = 0 to nrObjs-1)
+      y = y0 + k*25
+      type = objlist[k*4+1]
+      par = objlist[k*4+3]
+      statictext(m,x0+50,y+5,"right",objlist[k*4])
+      if(type == "textbox")
+         textbox(m+1,x0+60,y,80)
+      elseif(type == "colorbox")
+         colorbox(m+1,x0+60,y,20,20,[0,0,0],:getacolor())
+      elseif(type == "textmenu")
+         if(ctrlType == "slider" | 
+           ctrlType == "progress bar" | 
+           ctrlType == "updown control" |
+           ctrlType == "divider")
+            textmenu(m+1,x0+60,y,80,100,:orientProc())
+         else
+            textmenu(m+1,x0+60,y,80,100)
+         endif
+
+         menuItems = eval(objlist[k*4+2])
+         setpar(n,m+1,"menu",menuItems)
+         setpar(n,m+1,"text",menuItems[0])
+      endif
+      setpar(n,m+1,"ctrlID",par+"Obj")
+      m = m + 2
+   next(k)
+
+   :init(win,obj,objlist,m0)
+
+   windowvar(wv_win, wv_obj, wv_objlist, wv_m0)
+   wv_win = win
+   wv_obj = obj
+   wv_objlist = objlist
+   wv_m0 = m0
+   showdialog(n)
+   editobj(win,obj) # Reselect object
+   setfocus(win) # Make window the focus
+
+endproc()
+  
+
+procedure(init,win,obj,objlist,m0)
+
+    nrObjs = size(objlist)/4
+
+   m = m0
+   for(k = 0 to nrObjs-1)
+      par = objlist[k*4+3]
+      type = objlist[k*4+1]
+      value = getpar(win,obj,par)
+      if(type == "textbox")
+         if(vartype(value) == "list")
+             str = ""
+             sz = size(value)
+             for(k = 0 to sz-2)
+                str = str + value[k] + ","
+             next(k)
+              value = str + value[sz-1]
+         elseif(vartype(value) == "matrix1d")
+             value = "$value[0]$,$value[1]$"
+         endif
+         setpar(0,m+1,"text",value)
+      elseif(type == "colorbox")
+         setpar(0,m+1,"color",value)
+      elseif(type == "textmenu")
+         setpar(0,m+1,"text",value)
+      endif
+      m = m + 2
+   next(k)
+
+endproc()
+ 
+procedure(apply)
+
+   nrObjs = size(wv_objlist)/4
+
+   setpar(wv_win,wv_obj,"draw","false")
+
+   try
+      m = wv_m0
+      for(k = 0 to nrObjs-1)
+         type = wv_objlist[k*4+1]
+         format = wv_objlist[k*4+2]
+         par = wv_objlist[k*4+3]
+         if(type == "textbox")
+            value = getpar(0,m+1,"text")
+         elseif(type == "colorbox")
+            value = getpar(0,m+1,"color")
+         elseif(type == "textmenu")
+            value = getpar(0,m+1,"text")
+         endif
+         if(par == "range" | par == "tabinfo")
+            value = eval("[$value$]")
+         endif
+         if(format == "float")
+            value = eval(value)
+         endif
+         if(format == "integer")
+            value = round(eval(value))
+         endif
+         setpar(wv_win,wv_obj,par,value)
+         m = m + 2
+      next(k)
+
+   catch
+      msg = "$caseset(lasterror()->description,\"first\")$.  "
+      message("Error",msg,"error")
+   endtry
+
+   setpar(wv_win,wv_obj,"draw","true")
+
+endproc()
+
+procedure(getacolor)
+
+   obj = parentobj()
+   col = obj->color
+   col =  getcolor(col)
+   obj->color(col)
+
+endproc()
+
+procedure(button_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "label","textbox","string","label",
+              "mode","textmenu","[\"normal\",\"default\",\"active\",\"abort\"]","mode",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(color_box_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "color","colorbox","vector","color",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID"]
+
+endproc(objlist)
+
+procedure(grid_control_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "columns","textbox","integer","columns",           
+              "rows","textbox","integer","rows",
+              "colhdrsize","textbox","integer","colheaderheight",
+              "collabels?","textbox","string","showcollabels",
+              "rowhdrsize","textbox","integer","rowheaderwidth",
+              "rowlabels?","textbox","string","showrowlabels",   
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID"]
+
+endproc(objlist)
+
+procedure(group_box_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "label","textbox","string","label",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(progress_bar_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "range","textbox","string","range",
+              "direction","textmenu","[\"horizontal\",\"vertical\"]","orientation",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(plot1d_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(plot2d_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(plot3d_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(picture_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(cli_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(text_editor_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(slider_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "range","textbox","string","range",
+              "direction","textmenu","[\"horizontal\",\"vertical\"]","orientation",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(text_box_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(status_box_dialog)
+
+   objlist = ["object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(list_box_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+
+procedure(text_menu_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+
+
+procedure(static_text_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "multi-line","textmenu","[\"no\",\"yes\"]","multiline",
+              "text","textbox","string","text",
+              "position","textmenu","[\"left\",\"centre\",\"right\"]","justification",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+
+procedure(check_box_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "options","textbox","string","options",
+              "initial","textbox","string","init",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(radio_button_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "spacing","textbox","integer","spacing",
+              "direction","textmenu","[\"horizontal\",\"vertical\"]","orientation",
+              "options","textbox","string","option_string",
+              "initial","textbox","string","init",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(updown_control_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+      #        "base","textbox","string","base",
+      #        "step size","textbox","string","stepsize",
+     #         "no. steps","textbox","string","nrsteps",
+              "direction","textmenu","[\"horizontal\",\"vertical\"]","orientation",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+
+procedure(divider_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "direction","textmenu","[\"horizontal\",\"vertical\"]","orientation",
+              "tabinfo","textbox","string","tabparent",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+
+procedure(tab_dialog)
+
+   objlist = ["left","textbox","string","x_exp",
+              "top","textbox","string","y_exp",
+              "width","textbox","string","w_exp",
+              "height","textbox","string","h_exp",
+              "tab names","textbox","string","tablist",
+              "object ID","textbox","string","ctrlID", 
+              "value ID","textbox","string","valueID"]
+
+endproc(objlist)
+
+procedure(orientProc)
+
+   assignctrls(0)
+   w =  w_expObj->value 
+   h =  h_expObj->value 
+   if(orientationObj->text == "vertical")
+      if(w > h)
+         w_expObj->text(h)
+         h_expObj->text(w)   
+      endif
+   else
+      if(h > w)
+         w_expObj->text(h)
+         h_expObj->text(w)     
+      endif  
+   endif  
+
+endproc()

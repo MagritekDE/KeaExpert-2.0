@@ -1,0 +1,37 @@
+procedure(keepFocusTest)
+
+  w1 = window("win 1", 100,100,300,200)
+       button(1,10,10,40,20,"Press",:proc1())
+       windowvar(var1)
+       var1 = "window 1"
+       showwindow(w1)
+
+  w2 = window("win 2", 500,100,300,200)
+       windowvar(var2)
+       var2 = "window 2"
+       showwindow(w2)
+
+endproc()
+
+procedure(proc1)
+
+   w1 = findwin("title","win 1")
+   w2 = findwin("title","win 2")
+  # keepfocus("true")
+  # guiwinnr(w2)
+   pause(0.1)
+   getobj(w2)->winvar->var2 = "hi there"
+   pr getobj(w2)->winvar->var2
+  # keepfocus("false")
+
+endproc()
+
+# Alternative version
+#procedure(proc1)
+#
+#   w1 = findwin("title","win 1")
+#   w2 = findwin("title","win 2")
+#   pause(0.1)
+#   pr getobj(w2)->winvar->var2
+#
+#endproc()

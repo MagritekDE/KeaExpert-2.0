@@ -1,0 +1,1545 @@
+###############################################################################
+#
+# Allow the user to read and update the Kea DSP/FX3
+# parameter lists. Checks are included to ensure valid 
+# values.
+#
+# Last updated 11/7/2025 C Eccles
+#
+# Version History
+#
+#
+###############################################################################
+
+procedure(KeaParameterUpdater, device="FX3")
+
+# If a KeaParameter updater window already exists use it
+# if path and file are provided.
+   n = findwin("partialTitle","Kea Parameter reader/writer")
+   if(n >= 0)
+      hidewindow(n)
+      showwindow(n)
+      return
+   endif
+
+# Make the user interface
+   n = :windowdefinition(device)
+   :makeUIV200(0,0)
+   if(isvar("gData->permissions"))
+#      if(gData->permissions->canWriteDSPPar == "no")  
+#         setpar(n,2,"enable","false")
+#      endif
+   endif
+
+# Define max/min window sizes and show the window
+   setwindowpar(n,"sizelimits",[743,743,330,600])
+
+# Define a procedure to handle parameter file drag and drop
+   setwindowpar(n,"dragndropproc",":dragNDrop") 
+
+   showwindow(n)
+
+endproc()
+
+#########################################################
+# Access the parameter data without requiring the GUI
+# Returns a populated list of DSP parameters 
+# The system type as a string
+# The hardware capabilites as a binary string
+#########################################################
+
+procedure(backdoor, activeChannel=1)
+
+   parList = :getParameterList()
+   par = :readSpecPar(parList,0,activeChannel);
+   HardwareCap = eval(getlistvalue(par,"HardwareCap"))
+   HWbin = :dec2bin(HardwareCap)
+
+endproc(par,sysType,HWbin)
+
+# Data is packed into 24 bits then 32,
+# and finally byte reversed on the FX3
+
+procedure(convertAdrs, adrsIn)
+
+   base = trunc(trunc(adrsIn/3*4)/4)*4
+   offset = frac(adrsIn/3*4)*3
+   adrsOut = round(base+4-1-offset)
+
+endproc(adrsOut)
+
+
+#########################################################
+# Return the 32 bit number dec in binary string format
+#########################################################
+
+procedure(dec2bin,decimal)
+
+   A = double(round(decimal))
+   binary = matrix(32)
+   for (bit = 0 to 31)
+      if((2d^bit & A)>0)
+         binary[bit] = 1
+      endif
+   next(bit)
+
+endproc(binary)
+
+##############################################################
+# Delete all panel controls in this window
+##############################################################
+
+procedure(deleteControls)
+
+   win = getobj(0)
+   nrCtrl = win->nrctrls
+   lst = win->ctrllist
+   for(k = 0 to nrCtrl-1)
+      if(lst[k] >= 200)
+         rmobj(0,lst[k])
+      endif
+   next(k)
+
+endproc()
+
+
+############################################
+# User has dropped a file onto the UI
+# so load the parameters. Both raw and par
+# files are accepted
+############################################
+
+procedure(dragNDrop, path, file, extension, objNr)
+
+# Load the parameter file
+   try
+      bak = getcwd()
+      cd(path)
+      if(extension == "raw")
+         import1dpar("ab", "ascii",  "xyrc", "real")
+         raw = import1d(file)
+         lst = :readSpecPar(parList=null, guiCall=1, activeChannel=1, returnRaw=0, raw)
+      elseif(extension == "par")
+         lst = load(file,"truedoubles")
+      else
+         message("Error","Invalid file for drag and drop (.par or .raw only)","error")
+         cd(bak)
+         return
+      endif
+      cd(bak)
+   catch
+      message("Error","Problems loading parameter file","error")
+      pr lasterror()
+      return
+   endtry
+
+# Check with user
+   if(query("Warning","Parameters will be overwritten - continue?") == "no")
+      return
+   endif
+
+# Update UI
+  # :updateUITabs(lst)
+   getobj(0)->draw("false")
+   :makeUIV200(lst)
+   setctrlvalues(0,:getDefaults("all"));
+   setctrlvalues(0,lst)
+   tabs->currentpage(0)
+   getobj(0)->draw("true")
+
+    
+endproc()
+
+############################################
+# Convert a signed float to a 2s complement 
+# 16 bit integer
+############################################
+
+procedure(FloatToInt16,n)
+
+  if(n > 32767)
+     n = 32767
+  elseif(n < 0)
+     n = 65536+n  
+     if(n < 32768)
+        n = 32768
+     endif
+  endif
+
+endproc(n)
+
+############################################
+# Convert an signed float to a 2s  
+# complement 8 bit integer
+############################################
+
+procedure(FloatToInt8,n)
+
+   if(n > 127)
+      n = 127
+   elseif(n < 0)
+      n = 256+n
+      if(n < 128)
+         n = 128
+      endif  
+   endif
+
+endproc(n)
+
+############################################
+# Convert an unsigned float to a 2s  
+# complement 16 bit integer
+############################################
+
+procedure(FloatToUInt16,n)
+
+  if(n > 2^16-1)
+     n = 2^16-1
+  elseif(n < 0)
+     n = 0  
+  endif
+
+endproc(n)
+
+############################################
+# Convert an unsigned float to a 2s  
+# complement 24 bit integer
+############################################
+
+procedure(FloatToUInt24,n)
+
+  if(n > 2^24-1)
+     n = 2^24-1
+  elseif(n < 0)
+     n = 0  
+  endif
+
+endproc(n)
+
+############################################
+# Convert an unsigned float to a 2s  
+# complement 8 bit integer
+############################################
+
+procedure(FloatToUInt8,n)
+
+  if(n > 2^8-1)
+     n = 2^8-1
+  elseif(n < 0)
+     n = 0  
+  endif
+
+endproc(n)
+
+
+##############################################################
+# A list of all the Kea parameters in the order they
+# are stored in the spectrometer parameter memory space
+##############################################################
+
+procedure(getParameterList)
+
+                #   Variable-name         default-value  type      scale_factor  byte_adrs
+      parList = ["SystemID",                  "0",    "ascii16",       "1",     
+                 "HardwareCap",               "0",    "bits32",        "1",     
+
+                 "jitterCh1",                 "0",    "uint8",         "1",      
+                 "jitterCh2",                 "0",    "uint8",         "1",      
+
+                 "frequencyCh1",              "0",    "uint16",        "1000",   
+                 "pulseLengthCh1",            "1",    "uint16",        "10",    
+                 "pulseAmplitudeCh1",         "-85",  "int16",         "10",    
+                 "frequencyCh2",              "0",    "uint16",        "1000",   
+                 "pulseLengthCh2",            "1",    "uint16",        "10",    
+                 "pulseAmplitudeCh2",         "-85",  "int16",         "10",    
+
+                 "xMaxGrad",                  "0",    "int32",         "100",      
+                 "yMaxGrad",                  "0",    "int32",         "100",      
+                 "zMaxGrad",                  "0",    "int32",         "100",      
+                 "oMaxGrad",                  "0",    "int32",         "100",      
+
+                 "xShim",                     "0",    "int32",         "10000",      
+                 "yShim",                     "0",    "int32",         "10000",      
+                 "zShim",                     "0",    "int32",         "10000",      
+                 "oShim",                     "0",    "int32",         "10000",      
+
+                 "receiverCal",               "660",  "uint16",        "1",     
+                 "preampGain",                "65",   "uint16",        "1",    
+                 "rxAmpCor",                  "1.25", "uint16",        "100",      
+                 "rxOptGaindB",               "40",   "uint16",        "1",
+
+                 "pgo",                       "5",    "uint16",        "10",      
+                 "rfAmpLocation",             "i",    "ascii16",       "1"]        
+
+
+endproc(parList)
+
+
+#########################################################
+# If we aren't connected use the last saved DSP parameters
+#########################################################
+
+procedure(getSavedKeaParameters)    
+
+   cd(prefdir)
+   mkdir("KeaParameters")
+   cd("KeaParameters")
+   if(isfile("currentkeaParameters.par"))
+      lst = load("currentkeaParameters.par","truedoubles")
+   else
+      lst = null
+   endif
+
+endproc(lst)
+
+################################################
+# Display the hardware capabilities array
+# in a popup window and allow the user to 
+# modify this.
+################################################
+
+procedure(hardWareCap)
+
+   n = parentCtrl->ctrlNr-1
+   hwCap1 = getpar(0,n,"text")
+   hwCap2 = getpar(0,n+3,"text")
+   tabList = tabs->tablist()
+
+# Determine the current X-channel names based on numbered channel nuclei
+   sz = size(tabList)
+   MAX_CHANNELS = 5
+   channels = list(MAX_CHANNELS+1)
+   for(k = 0 to MAX_CHANNELS)
+      channels[k] = ""
+   next(k)
+   for(k = 1 to MAX_CHANNELS)
+      nr = findobj(0,"name","Channel_X$k$_Nucleus") 
+      if(nr == -1)
+         exitfor
+      endif
+      channels[k] = getpar(0,nr,"text") 
+   next(k)
+
+# Open the hardware capabilities dialog
+   (hwCap1, hwCap2, channels) = HardwareCapabilites1(hwCap1,hwCap2,channels)
+
+# Based on the results set the HW cap text entries and generate the X-channel tabs
+   if(hwCap1 >= 0)
+      setpar(0,n,"text","$round(hwCap1),.17g$")
+      setpar(0,n+3,"text","$round(hwCap2),.17g$")
+      setpar(0,n-2,"text",:systype(hwCap1,hwCap2))
+      sz = size(channels)
+      assignlist(channels)
+      getobj(0)->draw("false")
+
+   # Generate the tabs based on he X-channels and HW cap flags
+      wvTabMode = "$sz$XChannels"
+      par = getctrlvalues(0)
+      :makeUIV200(hwCap1, hwCap2);
+      setctrlvalues(0,par);
+      tabs->currentpage(0);
+
+   # Name the X-channel nuclei (if any)
+      for(k = 1 to sz)
+         nr = findobj(0,"name","Channel_X$k$_Nucleus") 
+         if(nr != -1) 
+            var = "channel$k$Name"
+            if(isvar(var))
+               setpar(0,nr,"text",eval("channel$k$Name"))
+            else
+               message("Aborted!","One or more X-channels skipped (X-channels must be consecutive).", "error")
+               getobj(0)->draw("true")
+               return(null, null)
+            endif
+         endif
+      next(k)
+
+      getobj(0)->draw("true")
+
+   # Change the window vertical dimension to force a scroll bar to appear if necessary
+      dim = getobj(0)->dimensions()
+      getobj(0)->dimensions([dim[0],dim[1],dim[2],dim[3]-1])
+      getobj(0)->dimensions(dim)
+
+   endif
+
+endproc(hwCap1,hwCap2)
+
+#############################################################
+# Import shim parameters from Standard Kea software
+#############################################################
+
+procedure(importKeaShims)
+
+   parFile = "shimparameters.par"
+   exeFile = "GetShimParameters.exe"
+   bak = getcwd()
+   cd(prefdir)
+   dir = "$prefdir$\\KeaParameters\\GetShimParameters"
+   if(isdir(dir))
+      cd(dir)
+      if(isfile(parFile))
+         rmfile(parFile)
+      endif
+      if(isfile(exeFile))
+         exec(exeFile)
+      else
+         message("Error","GetShimParameters executable not found","error")
+         cd(bak)
+         return
+      endif
+     # Wait for file to be created
+      t = time()
+      while(time()-t < 5)
+        if(isfile(parFile))
+          exitwhile()
+        endif
+        pause(0.1)
+      endwhile
+     # Load shim parameters and displayed
+      if(isfile(parFile))    
+         lst = load(parFile)
+         setctrlvalues(0,lst)
+      else
+         message("Error","Shim parameter file not found","error")
+         cd(bak)
+         return
+      endif
+   else
+      message("Error","GetShimParameters folder not found","error")
+      cd(bak)
+      return
+   endif
+
+   message("Success!","Shim Parameters have been imported","info")
+
+endproc()
+
+
+################################################
+# Allow shims to be loaded from database or 
+# simple Prospa parameter file
+################################################
+
+procedure(importShims)
+
+   result = ShimSettings()
+   if(result == "Import from Kea")
+     :importKeaShims()
+   elseif(result == "Import from Prospa")
+     :loadShims()
+   endif
+
+endproc()
+
+############################################
+# Convert a 2s complement 16 bit integer
+# to a normal signed float
+############################################
+
+procedure(Int16ToFloat,n)
+
+  if(n >= 32768)
+    n = n-65536   
+  endif
+
+endproc(n)
+
+
+############################################
+# Convert a 2s complement 8 bit integer
+# to a normal signed float
+############################################
+
+procedure(Int8ToFloat,n)
+
+  if(n >= 128)
+    n = n-256   
+  endif
+
+endproc(n)
+
+############################################
+# Load the DSP parameters from a file
+# and update the UI. The parameters can be
+# in the form of parameter list (from the
+# GUI or a binary file (from the DSP). In
+# the first case the UI is updated based
+# on the HW cap flags in the parameters
+# In the second case it is like loading
+# from the DSP.
+############################################
+
+procedure(loadPar, par=null)
+ 
+# Load from file if par == null
+   if(par == null)
+
+      bak = getcwd()
+      response = query("Choose location","Load from preferences folder (Yes),\r\ror from default parameter folder (No)?","yes","yes/no/cancel")
+      if(response == "yes")
+         cd("$prefdir$\\KeaParameters")
+      elseif(response == "no")
+         cd("$getmacropath()$\\KeaParameterFiles")
+      else
+         return
+      endif
+      file = getfilename("Open","Select DSP parameter file","GUI parameter file,Raw parameter file","par,raw")
+      if(file != "cancel")
+         if(getext(file) == "par")
+            lst = load(file,"truedoubles")
+         else
+            import1dpar("ab", "ascii",  "xyrc", "real")
+            raw = import1d(file)
+            lst = :readSpecPar(parList=null, guiCall=1, activeChannel=1, returnRaw=0, raw)
+            HWCF1 = getlistvalue(lst,"HardwareCap1")
+            HWCF2 = getlistvalue(lst,"HardwareCap2")
+            HWCF1 = gettext("Enter new HW flag 1 if desired", HWCF1)
+            HWCF2 = gettext("Enter new HW flag 2 if desired", HWCF2)
+            lst = setlistvalue(lst,"HardwareCap1",HWCF1)
+            lst = setlistvalue(lst,"HardwareCap2",HWCF2)
+         endif
+      else
+         cd(bak)
+         return
+      endif
+   else
+      lst = par
+   endif
+
+ #  :updateUITabs(lst)
+   getobj(0)->draw("false")
+   :makeUIV200(lst)
+  # setctrlvalues(0,:getDefaults("all"));
+   setctrlvalues(0,lst)
+   tabs->currentpage(0)
+   getobj(0)->draw("true")
+
+
+endproc()
+
+#########################################
+# Import the shim settings from a prospa
+# parameter file
+#########################################
+
+procedure(loadShims)
+
+   bak = getcwd()
+   shimDir = "$prefdir$\\KeaParameters\\Shims"
+   cd(shimDir)
+
+   name = getfilename("load","Select shim file to load","Shim file","par")
+   if(name != "cancel")
+      lst = load(name)
+      setctrlvalues(0,lst)
+   endif
+   cd(bak)
+
+endproc() 
+
+
+############################################################
+# Make the user interface based on the contents of guiList
+############################################################
+
+procedure(makeUI,guiList,panelNr,startNr)
+
+   n = guiwinnr()
+   win = getobj(n)
+   pnl = getobj(panelNr)
+# Reset the panel scroll to the top
+# so controls are placed in the correct positions
+   setpar(n,panelNr,"panelset",1)
+   setpar(n,panelNr,"panelset",0)
+   seteditwin(n,"fast")
+
+ #  setpar(n,panelNr,"panelupdate","")
+   q = startNr
+   x = 140
+   y = 30
+   sz = size(guiList)
+
+# Loop through guiList adding controls
+   for(k = 0 to sz-5 step 5)
+
+      label = guiList[k]
+      name = guiList[k+1]
+      type = guiList[k+2]
+
+      range = guiList[k+3]
+      dataType = guiList[k+4]
+
+      if(dataType == "")
+         dataType = "undefined"
+      endif
+
+      if(type == "tb" | type == "tbd") # Make a textbox and label
+
+         start = q
+         statictext(q,x,y+3,"right",label)
+         textbox(q+1,x+10,y,60)
+         setpar(n,q,"panelparent",panelNr)
+         setpar(n,q+1,"panelparent",panelNr)
+         setpar(n,q+1,"name",name)
+         if(range != "")
+            setpar(n,q+1,"range",eval(range))
+         endif
+
+         if(name == "HardwareCap")
+            button(q+2,x+80,y,22,22,"...")
+            setpar(n,q+2,"procedure",":hardWareCap")
+            setpar(n,q+2,"panelparent",panelNr)
+            setpar(n,q+1,"type","double")
+            q = q + 1
+         endif
+
+         if(type == "tbd")
+            setpar(n,q+1,"type","double")
+         endif
+
+         q = q + 2
+         y = y + 26
+         for(w = start to q-1)
+            setpar(n,w,"visible","true")
+         #   setpar(n,w,"type",dataType)
+         next(w)
+
+      elseif(type == "tm") # Make a textmenu and label
+
+         statictext(q,x,y+3,"right",label)
+         textmenu(q+1,x+10,y,60,100)
+         setpar(n,q,"panelparent",panelNr)
+         setpar(n,q+1,"panelparent",panelNr)
+         setpar(n,q+1,"name",name)
+         if(range != "")
+            setpar(n,q+1,"menu",eval(range))
+         endif
+         setpar(n,q,"visible","true")
+         setpar(n,q+1,"visible","true")
+         setpar(n,q+1,"type",dataType)
+
+         y = y + 26
+         q = q + 2
+
+     # Put a spacer between groups of related controls
+      elseif(type == "divider")
+
+         divider(q,x-130,y,260,3,"horizontal")
+         setpar(n,q,"panelparent",panelNr)
+         setpar(n,q,"enable","false")
+         setpar(n,q,"visible","true")
+         y = y + 10
+         q = q + 1
+
+      elseif(type == "space")
+
+         y = y + 10
+
+     # Put a title between groups of related controls
+      elseif(type == "title")
+
+         statictext(q,x-115,y-5,"left",label)
+         setpar(0,q,"color",[128,0,0])
+         divider(q+1,x-130,y,260,3,"horizontal")
+
+         setpar(n,q,"panelparent",panelNr)
+         setpar(n,q,"enable","true")
+         setpar(n,q,"visible","true")
+
+         setpar(n,q+1,"panelparent",panelNr)
+         setpar(n,q+1,"enable","false")
+         setpar(n,q+1,"visible","true")
+
+         y = y + 16
+         q = q + 2
+
+      elseif(type == "newCol") # Start a new column
+
+         x = x + 300
+         y = 30
+
+      endif
+
+   next(k)
+
+   seteditwin(-n,"fast")
+
+# Make the panel aware of the new controls
+   setpar(n,panelNr,"panelupdate","")
+
+# Make some controls read only
+   m = findobj(0,"name","ProcFWVersion")
+   setpar(0,m,"readonly","true")
+   m = findobj(0,"name","TRexFWVersion")
+   setpar(0,m,"readonly","true")
+
+endproc()
+
+############################################################
+# The contents of structure 's' contain the information
+# for each tab
+############################################################
+
+procedure(makeUITabs, s)
+
+   sz = size(s)
+   for(k = 0 to sz-1)
+      (name,value) = getstructitem(s,k)
+      :makeUI(value, 101 + k, 200 + 200*k)
+   next(k)
+
+endproc()
+
+#######################################################################
+# Define the user interface. Fields are
+#
+# label, variable, controlType, range, specialButtonCallback
+#
+# arg1 can be a list which stored the hardware capability words
+# or these can be passed explicitly in arg1 and arg2 (hwCap1, hwCap2)
+#######################################################################
+
+procedure(makeUIV200, arg1, arg2)
+
+
+# Lists for each possible tab
+
+                 # Title                            Variable                Control type   Range/menu 
+
+
+     mainInfo =    [" System information ",           "",                           "title",    "",                  "",
+                    "System ID",                      "SystemID",                   "tb",       "",                  "",
+   
+                    "Hardware capabilities",          "HardwareCap",                "tbd",      "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " Firmware versions ",            "",                           "title",    "",                  "",
+                    "$gData->procType$ Firmware Version",  "ProcFWVersion",              "tb",       "",                  "",
+                    "TRex Firmware Version",          "TRexFWVersion",              "tb",       "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " TRex jitter parameters ",       "",                           "title",    "",                  "",
+                    "Jitter Ch-1",                    "jitterCh1",                  "tb",       "[0,255]",           "",
+                    "Jitter Ch-2",                    "jitterCh2",                  "tb",       "[0,255]",           "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " Channel 1 parameters ",         "",                           "title",    "",                  "",
+                    "Frequency  (MHz)",               "frequencyCh1",               "tbd",      "",                  "",
+                    "90 Pulse Length  (us)",          "pulseLengthCh1",             "tb",       "",                  "",
+                    "90 Power Level  (dB)",           "pulseAmplitudeCh1",          "tb",       "[-85,0]",           "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " ",                              "",                           "space",    "",                  "",
+                    " Channel 2 parameters ",         "",                           "title",    "",                  "",
+                    "Frequency  (MHz)",               "frequencyCh2",               "tbd",      "",                  "",
+                    "90 Pulse Length  (us)",          "pulseLengthCh2",             "tb",       "",                  "",
+                    "90 Power Level  (dB)",           "pulseAmplitudeCh2",          "tb",       "[-85,0]",           "",
+
+                    "",                               "",                           "newCol",   "",                  "",
+   
+                    " Gradients/Shims ",              "",                           "title",    "",                  "",
+                    "Max x-grad (mT/m)",              "xMaxGrad",                   "tbd",      "",                  "",
+                    "Max y-grad (mT/m)",              "yMaxGrad",                   "tbd",      "",                  "",
+                    "Max z-grad (mT/m)",              "zMaxGrad",                   "tbd",      "",                  "",
+                    "Max o-grad (mT/m)",              "oMaxGrad",                   "tbd",      "",                  "",
+                    "",                               "",                           "space",    "",                  "",
+                    "x-shim (16-bit)",                "xShim",                      "tbd",      "[-32767,32768]",    "integer",
+                    "y-shim (16-bit)",                "yShim",                      "tbd",      "[-32767,32768]",    "integer",
+                    "z-shim (16-bit)",                "zShim",                      "tbd",      "[-32767,32768]",    "integer",
+                    "o-shim (16-bit)",                "oShim",                      "tbd",      "[-32767,32768]",    "integer",
+                    "",                               "",                           "space",    "",                  "",
+                    "",                               "",                           "space",    "",                  "",
+                    " Receiver Calibration ",         "",                           "title",    "",                  "",
+                    "Rx Calibration",                 "receiverCal",                "tb",       "",                  "float",
+                    "Preamp Gain",                    "preampGain",                 "tb",       "",                  "float",
+                    "Rx Amp Correction",              "rxAmpCor",                   "tb",       "",                  "float",
+                    "Optimal gain (dB)",              "rxOptGaindB",                "tb",       "[-20,70]",          "integer",
+                    "",                               "",                           "space",    "",                  "",
+                    "",                               "",                           "space",    "",                  "",
+                    " RF amplifier information ",     "",                           "title",    "",                  "",
+                    "Pulse gate overhead : pgo (us)", "pgo",                        "tb",       "",                  "float",
+                    "External/internal RF amp (e/i)", "rfAmpLocation",              "tb",       "",                  ""]
+   :deleteControls()
+   
+   tabs->inittabs(["Kea Parameters"])
+   s = struct(mainInfo=mainInfo)
+   :makeUITabs(s)
+
+
+endproc()
+
+######################################################
+# Convert address of Kea parameter on PC to FX3 
+######################################################
+
+procedure(pcToFX3Adrs, param = "MagTempOffsetVolts")
+
+   parList = :getParameterList()
+
+   8bit = ["uint8","int8"]
+   16bit = ["uint16","int16","uint16Volts"]
+   24bit = ["uint24","int24","uint24Temp"]
+   32bit = ["bits32"]
+   128bit = ["ascii16"]
+
+   byteCnt = 3
+   word24Cnt = 0
+
+   print("\n\n --- Address converter: PC to FX3 ---")
+
+   for(k = 0 to size(parList)-4 step 4)
+
+      name = parList[k]
+      type = parList[k+2]
+
+      if(getlistindex(8bit,type) >= 0)
+         bits = 8
+      elseif(getlistindex(16bit,type) >= 0)
+         bits = 16
+      elseif(getlistindex(24bit,type) >= 0)
+         bits = 24 
+      elseif(getlistindex(32bit,type) >= 0)
+         bits = 32 
+      elseif(getlistindex(128bit,type) >= 0)
+         bits = 128
+      else
+         print("Error for type $type$\n")
+      endif
+
+      if(name == param)
+
+         if(bits == 8)
+
+            adrs = [byteCnt]
+            adrs1 = :convertAdrs(byteCnt)
+        
+            pr ("\n   Parameter: '$param$'")
+            pr ("\n   PC address  : $adrs$\n")
+            pr ("   FX3 address : [$adrs1$]\n")
+            return
+
+         elseif(bits == 16)
+
+            adrs = [byteCnt+1,byteCnt]
+
+            adrs1 = :convertAdrs(byteCnt)
+            adrs2 = :convertAdrs(byteCnt+1)
+
+            pr ("\n   Parameter: '$param$'")
+            pr ("\n   PC address  [hi,lo]: $adrs$\n")
+            pr ("   FX3 address [hi,lo]: [$adrs1$,$adrs2$]\n")
+            return
+
+         elseif(bits == 24)
+     
+            adrs = [byteCnt+2,byteCnt+1,byteCnt]
+
+            adrs1 = :convertAdrs(byteCnt)
+            adrs2 = :convertAdrs(byteCnt+1)
+            adrs3 = :convertAdrs(byteCnt+2)
+
+            pr ("\n   Parameter: '$param$'")
+            pr ("\n   PC address  [hi,mid,lo]: $adrs$\n")
+            pr ("   FX3 address [hi,mid,lo]: [$adrs1$,$adrs2$,$adrs3$]\n")
+            return
+
+         elseif(bits == 32)
+     
+            adrs = [byteCnt+3,byteCnt+2,byteCnt+1,byteCnt]
+
+            adrs1 = :convertAdrs(byteCnt)
+            adrs2 = :convertAdrs(byteCnt+1)
+            adrs3 = :convertAdrs(byteCnt+2)
+            adrs4 = :convertAdrs(byteCnt+3)
+
+            pr ("\n   Parameter: '$param$'")
+            pr ("\n   PC address  [hi .. lo]: $adrs$\n")
+            pr ("   FX3 address [hi .. lo]: [$adrs1$,$adrs2$,$adrs3$,$adrs4$]\n")
+            return
+
+         elseif(bits == 128)
+
+            pr "\n   Parameter: '$param$'"
+            adrs = [15:-1:0]+byteCnt
+            pr ("\n   PC address   [hi .. lo]: $adrs$\n")
+            pr ("   FX3 address [hi ... lo]: [") 
+            adrsOut = matrix(16)
+            for(k = 15 to 0 step -1)
+               adrsOut[k] = :convertAdrs(adrs[k])
+               if(k == 0)
+                  pr ("$adrsOut[k]$]")
+               else
+                  pr ("$adrsOut[k]$,")
+               endif
+            next(k)
+            return
+
+         endif
+
+      endif
+
+      byteCnt = byteCnt + bits/8
+
+   next(k)
+
+ endproc()
+
+
+############################################
+# Read the various firmware versions from 
+# the spectrometer and return as a list
+############################################
+
+procedure(readFWVersions)
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+   proc = :readProcFWVersion()
+   trex = :readTRexVersion()
+
+   fwList = ["ProcFWVersion      = \"$proc$\"",
+             "TRexFWVersion     = \"$trex$\""]
+
+   if(isvar("gExpt"))
+      gExpt->resumeMonitoring()
+   endif
+
+endproc(fwList)
+
+#################################################
+# Read the packed parameter data from the
+# spectrometer processor - 3 blocks are read
+# in (756 bytes) for FX3, 2 for DSP (504 bytes)
+#################################################
+
+procedure(readParFromSpecProcessor)
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+   par = null
+
+   if(gData->procType == "DSP")
+
+   # Read in the DSP parameter data (ignore block 1 - use in legacy mode)
+     # parBlkAdr_1 = 0xD3FF00
+      parBlkAdr_2 = 0xD3FC00   
+      parBlkAdr_3 = 0xD3FD00
+      sz = 84*2
+   
+    #  par1 = dspread("p",parBlkAdr_1,sz)
+      par2 = dspread("p",parBlkAdr_2,sz)
+      par3 = dspread("p",parBlkAdr_3,sz)
+   
+     # par = join(par1,par2)
+      par = join(par2,par3)
+   
+      for(k = 0 to size(par)-1)
+         par[k] = par[k]&0x0000FF
+      next(k)
+
+   elseif(gData->procType == "FX3")
+
+      szBoundary = 64
+      szBlock = 16
+      parIn = matrix(szBlock*16)
+      par = matrix(szBlock*16*3)
+      for(k = 0 to 15)
+         p = fx3read("f",k*szBoundary, szBlock)
+         parIn[k*szBlock:(k+1)*szBlock-1] = p
+      next(k)
+      for(k = 0 to size(par)-1 step 3)
+         par[k+2] = (parIn[k/3]&0xFF0000)/2^16
+         par[k+1] = (parIn[k/3]&0x00FF00)/2^8
+         par[k+0] = (parIn[k/3]&0x0000FF)
+      next(k)
+   endif
+
+   if(isvar("gExpt"))
+      gExpt->resumeMonitoring()
+   endif
+
+endproc(par)
+
+############################################
+# Read the DSP firmware version 
+############################################
+
+procedure(readProcFWVersion)
+
+   if(gData->procType == "DSP")
+
+      try
+         (fwMagVer1,fwMinVer1) = dspfwversion()
+         (fwMagVer2,fwMinVer2) = dspfwversion()
+         if(fwMagVer1 == fwMagVer2)
+            return("$hex(fwMagVer1,8)$v$fwMinVer1$")
+         else
+            message("Error","This firmware does not support this function.","error")
+         endif
+      catch
+         message("Error","No connection to a spectrometer","error")
+         abort("")
+      endtry
+
+   else
+
+      try
+         fwVer = fx3read("V",0,1)
+         return(fwVer[0])
+      catch
+         message("Error","No connection to a spectrometer","error")
+         abort("")
+      endtry
+
+   endif
+
+endproc("")
+
+
+############################################
+# Read the parameters from the connected DSP
+# Legacy interface
+############################################
+
+procedure(readSpecPar, parList=null, guiCall=0, returnRaw=0, par=null)
+
+   try
+
+      if(isvar("gData->procType"))
+         if(gData->procType == "")
+            throw("")
+         endif
+      endif
+
+      if(par == null)
+         par = :readParFromSpecProcessor()
+         if(par == null)
+            return(null)
+         endif
+      endif
+
+      parVersion = round(par[0]*100+par[1]*10+par[2])
+
+      lst = ["parVersion = $parVersion$"]
+ 
+      if(parList == null)
+         parList = :getParameterList()
+      endif
+
+      if(parVersion == 127) # Kea FX3/DSP new version
+   
+         sz = size(parList) 
+         c = 3
+         for(k = 0 to sz-1 step 4)
+            name = parList[k]
+            default = parList[k+1]
+            type = parList[k+2]
+            scale = eval(parList[k+3])
+
+            if(type == "ascii16")
+   
+               str = asciitostr(par[c:c+15])
+               lst = lst + ["$name$ = \"$str$\""]
+               c = c + 16
+  
+            elseif(type == "bits32" | type == "int32")
+   
+               num = (par[c]*2d^24+par[c+1]*2d^16+par[c+2]*2d^8+par[c+3])/scale
+               lst = lst + ["$name$ = $round(num)$"]
+               c = c + 4
+   
+            elseif(type == "uint8")
+   
+              num = par[c] 
+              lst = lst + ["$name$ = $num$"]
+               c = c + 1
+   
+            elseif(type == "uint16")
+   
+               num = (par[c]*2^8+par[c+1])/scale
+               lst = lst + ["$name$ = $num$"]
+               c = c + 2
+   
+            elseif(type == "int16")
+               num = :Int16ToFloat((par[c]*2^8+par[c+1]))/scale
+               lst = lst + ["$name$ = $num$"]
+               c = c + 2
+   
+            elseif(type == "uint24")
+   
+               num = (par[c]*2^16+par[c+1]*2^8+par[c+2])/scale
+               lst = lst + ["$name$ = $num$"]
+               c = c + 3
+  
+            endif
+   
+         next(k)
+
+         if(isvar("gData->connected"))
+            gData->connected = 1
+         endif
+         connected = 1
+
+      else # Not a Kea parameter list
+       
+         r = query("Error","Invalid parameter version - not a Kea system. \rAre you sure you want to write a Kea DSP parameter block?","no")
+         if(r = "no")
+            return(null)
+         endif()
+   
+      endif
+
+   catch # No connection so just get the saved parameters
+
+      if(isvar("gData->connected"))
+
+         lst = :getSavedKeaParameters()
+         if(lst == null) # No saved parameters
+            return(null)
+         endif
+         gData->connected = 0
+         connected = 0
+         id = getlistvalue(lst,"SystemID")
+         print("\n   No connection to Kea - reading saved parameters for $id$\n")
+
+      else
+
+         throw("") # Production version
+
+      endif
+
+   endtry
+
+ #  hwCap = eval(getlistvalue(lst,"HardwareCap"))
+
+   # If called from this UI then update interface to show corrected setpoints
+   if(guiCall == 1)   
+      setctrlvalues(0,lst)
+   endif
+
+# Return now if not called from UI
+   if(guiCall == 0 | guiCall == 2)
+      return(lst)
+   endif
+
+# Add the firmware version numbers
+   if(gData->connected)
+      fwVersions = :readFWVersions()
+      lst = lst + fwVersions
+   endif
+
+endproc(struct(lst))
+
+############################################
+# Read the TRex firmware version
+############################################
+
+procedure(readTRexVersion)
+
+   if(gData->procType == "DSP")
+
+      try
+         ver = dspread("x",0x020083,1)
+         return(ver[0])
+      catch
+         message("Error","No connection to spectrometer?","error")
+         abort("")
+      endtry
+
+   else
+
+      try
+         fwVer = fx3read("E",0x83,1)
+         return(fwVer[0])
+      catch
+         message("Error","No connection to a spectrometer","error")
+         abort("")
+      endtry
+
+   endif
+
+endproc("")
+
+#########################################################
+# Save to the current dsp parameter file
+#########################################################
+
+procedure(saveKeaParameters, specPar)    
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("KeaParameters")
+   cd("KeaParameters")
+   save("currentkeaParameters.par",sortlist(specPar),"truedoubles")
+   cd(bak)
+
+endproc()
+
+############################################
+# Save the displayed DSP parameters in the
+# UI to a file. If the user chooses a bin
+# type file then it will save the raw DSP
+# binart data
+############################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd("$getmacropath()$\\KeaParameterFiles")
+   file = getfilename("Save","Save DSP parameter file","GUI parameter file,Raw parameter file","par,raw")
+   if(file != "cancel")
+
+      if(getext(file) == "par")
+         lst = getctrlvalues(0)
+         save(file,sortlist(lst),"truedoubles")
+   
+         if(not(isvar("gData->connected")))
+      #--------------for statistics
+            Model=getlistvalue(lst,"HardwareCapWord")
+            SysID=getlistvalue(lst,"SystemID")
+            Magnet=scanstr(workdir,"*Inside%1")
+            Folder=scanstr(workdir,"*Inside%1-*")
+      
+            freq=getlistvalue(lst,"Frequency_1H")
+      
+            cd(workdir)
+            try
+               ListPar=load("Status_and_Calibration_$SysID$.par")
+            catch
+               message("!!!","Couldn't find file \"Status_and_Calibration_$SysID$.par\" ","warning")
+               cd(bak)
+               return()
+            endtry
+            #---save local
+            bb=cd("$appdir$\\ReferenceValues")
+            mkdir(Folder)
+            cd(Folder)
+            save("$Model$_$SysID$_$Magnet$.par",sortlist(ListPar))      
+            #---save on server
+            serverPath="\\\\nas-magritek\\production-files\\Backup_TestStations\\ReferenceValues"
+            aa=cd(serverPath)
+            mkdir(Folder)
+            cd(Folder)
+            save("$Model$_$SysID$_$Magnet$.par",sortlist(ListPar)) 
+         endif
+
+      else # Save the 1k parameter data in raw format (no processing)
+
+         par = :readParFromSpecProcessor()
+         export1dpar("ab", "ascii",  "xyrc", "real")
+         export1d(par,file)
+
+      endif
+
+   endif
+   cd(bak)
+
+endproc()
+
+############################################
+# Define the basic GUI 
+# (no parameter controls)
+############################################
+
+procedure(windowdefinition, device)
+
+   versionNr = 1.00
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Kea Parameter reader/writer V$versionNr,1.2f$", -1, -1, 735, 600, "resizable")
+       windowvar(wvSpec,wvVersionNr)
+       wvVersionNr = versionNr
+
+      if(gData->procType == "")
+         setwindowpar(n,"title","Kea Parameter reader/writer (No Connection) V$versionNr,1.2f$")
+      else
+         setwindowpar(n,"title","Kea Parameter reader/writer ($gData->procType$) V$versionNr,1.2f$")
+      endif
+
+     # Make the tab interface and initialise
+      tabs = tab(100, 5, 7, 620, "wh-10")
+      tabs->inittabs(["Kea Parameters"])
+
+     # Make the panels and attached to the tabs
+      for(k = 1 to 1)
+         page = panel(100+k, 12, 36, 614, "wh-48")
+         page->tabparent([100,k-1])
+      next(k)
+
+      tabs->currentpage(0)
+
+      # Define all controls with basic parameters
+      button(1, "ww-80", 10, 71, 42, "Read $gData->procType$ parameters",
+         par = :readSpecPar(null,1);
+         if(par == null);
+            message("No connection to Kea","Make sure that the USB DLL is installed,\nthe Kea is switched on and the\rUSB interface is connected and working.","error");
+            abort("");
+         endif;
+         getobj(0)->draw("false");
+        # :updateUITabs(par);
+         :makeUIV200(par);
+         setctrlvalues(0,list(par));
+         tabs->currentpage(0);
+         getobj(0)->draw("true"))
+
+      button(2, "ww-80", 58, 71, 42, "Write $gData->procType$ parameters",
+        # bak = getcwd();
+        # raw = :readParFromSpecProcessor();
+        # fileName = "dspPar (V$wvVersionNr,1.2f$) ($getdate(\"yy-mm-dd\")$) ($getTime(\"%02d%02d%02d\")$).raw";
+        # dir = "$prefdir$\\KeaParameters\\keaParameters";
+       #  mkdir(dir);
+       #  cd(dir);
+        # export1dpar("ab", "ascii",  "xyrc", "real");
+        # export1d(raw,fileName);
+        # cd(bak);
+         :writeDSPPar();)
+      button(3, "ww-80", 106, 71, 34, "Load from file",
+         :loadPar();)
+      button(4, "ww-80", 146, 71, 34, "Save to file",
+         :savePar();)
+      button(5, "ww-80", 186, 71, 34, "Reset tab parameters",
+         if(query("Warning","This will reset the parameters in this tab!\rContinue?") == "yes");
+         setctrlvalues(0,:getDefaults("tab"));
+         endif;)
+      button(6, "ww-80", 226, 71, 34, "Reset all parameters",
+         if(query("Warning","This will reset all parameters!\rContinue?") == "yes");
+         setctrlvalues(0,:getDefaults("all"));
+         endif;)
+
+      button(7, "ww-80", 266, 71, 34, "Close", closewindow(0);)
+
+
+      setpar(n,1,"tooltip","Read the parameters from the connected spectrometer.")
+      setpar(n,2,"tooltip","Write the parameters in this interface to the connected spectrometer.")
+      setpar(n,3,"tooltip","Load parameters from a file into this interface.")
+      setpar(n,4,"tooltip","Save the parameters in this interface into a file.")
+      setpar(n,5,"tooltip","Set the parameters in the current tab to default and safe values.")
+      setpar(n,6,"tooltip","Set parameters in all tabs to default and safe values.")
+
+endproc(n)
+
+############################################
+# Write the parameters to the connected DSP
+############################################
+
+procedure(writeDSPPar)
+
+   if(gData->procType == "")
+      print("\n   No connection to Kea - aborting command\n")
+      return
+   endif
+
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+
+# Read the UI parameter values
+   lst = getctrlvalues(0)
+
+   bak = getcwd()
+
+# Extract the HW 1 cap flag temperatures and frequencies
+   HardwareCap = getlistvalue(lst,"HardwareCap")
+   HWbin = :dec2bin(eval(HardwareCap))
+
+   assignlist(lst)
+   
+# Allocate space for the array which will be written to the DSP
+   nrBlocks = 2
+   szAll = 84*3*nrBlocks # Number of parameter bytes (multiple of 3)
+  
+   par = matrix(szAll)       # all parameters over multiple pages
+
+   par[0] = 0x01  # DSP par version number part 1
+   par[1] = 0x02  # DSP par version number part 2
+   par[2] = 0x07  # DSP par version number part 3
+
+# Read the complete list of parameters which are stored on the DSP
+   parList = :getParameterList()
+   szParList = size(parList)
+
+# Loop over this list seeing if each parameter is present in the UI
+# If it is then write this parameter to the DSP otherwise write the default value
+   c = 3
+   for(k = 0 to szParList-1 step 4)
+      
+      name = parList[k]
+      default = parList[k+1]
+      type = parList[k+2]
+      scale = eval(parList[k+3])
+
+      m = findobj(0,"name",name)
+
+      if(m == -1)
+         txt = default
+      else
+         txt = getpar(0,m,"text")
+      endif
+
+      if(type == "ascii16")
+         if(txt == "")
+            message("Error","String parameter '$name$' is blank - aborting","error")
+            return
+         endif
+         str = strtoascii(txt)
+         sz = size(txt)
+         par[c:c+15] = matrix(16)
+         par[c:c+sz-1] = str
+         c = c + 16
+
+      elseif(type == "bits32" | type == "int32")
+
+         value = round(eval(txt+"d")*scale)
+         par[c] = single((value&0xFF000000)/(2^24))
+         par[c+1] = single((value&0x00FF0000)/(2^16))
+         par[c+2] = single((value&0x0000FF00)/(2^8))
+         par[c+3] = single((value&0x000000FF))
+         c = c + 4
+
+      elseif(type == "uint8")
+
+         value = round(:FloatToUInt8(eval(txt)*scale))
+         par[c] = single(value&0x000000FF)
+         c = c + 1
+
+      elseif(type == "uint16")
+
+         value = round(:FloatToUInt16(eval(txt)*scale))
+         par[c] = single((value&0x0000FF00)/(2^8))
+         par[c+1] = single(value&0x000000FF)
+         c = c + 2
+
+      elseif(type == "int16")
+
+         value = round(:FloatToInt16(eval(txt)*scale))
+         par[c] = single((value&0x0000FF00)/(2^8))
+         par[c+1] = single(value&0x000000FF)
+         c = c + 2
+
+      elseif(type == "uint24")
+         value = round(:FloatToUInt24(eval(txt)*scale))
+         par[c+0] = single((value&0x00FF0000)/(2^16))
+         par[c+1] = single((value&0x0000FF00)/(2^8))
+         par[c+2] = single((value&0x000000FF))
+         c = c + 3
+
+      endif
+
+   next(k)
+
+   if(query("Warning","This will write the current parameters to DSP/FX3 flash memory.\rMake sure you have a backup first!\rDo you wish to continue?","no") == "no")
+      return
+   endif
+
+# Save parameters to FLASH memory in spectrometer
+ #  try
+      :writeParToSpecProcessor(par)
+ #  catch
+ #     message("Error","Can't write to Spectrometer - check connection/DLL.","error")
+ #     return
+ #  endtry
+
+# Copy to gData
+   if(isvar("gData->connected"))
+      gData->specParameters = struct(:readSpecPar(null,2))
+      gData->specID = gData->specParameters->SystemID  
+       if(isvar("wvFX3Info"))
+         wvFX3Info->dspPar = gData->specParameters
+      endif 
+   endif
+
+# Update the Expert title
+   if(isvar("gView"))
+      gView->checkUSBConnection()
+   endif
+
+# Save these parameters to preferences
+   :saveKeaParameters(getctrlvalues(0))
+
+   message("Information","Spectrometer parameter flash has been updated!","info")
+
+   cd(bak)
+
+endproc()
+
+############################################
+# Write the parameters to the connected 
+# Kea processor
+############################################
+
+procedure(writeParToSpecProcessor, par)
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+ # Pack the parameters into 24 bit words
+   parOut = matrix(size(par)/3)
+   n = 0
+   szParList = size(parOut)
+   for(k = 0 to size(par)-3 step 3)
+     parOut[n] = par[k] + par[k+1]*(2^8) + par[k+2]*(2^16)
+     n = n + 1
+   next(k)
+
+   if(gData->procType == "DSP")
+
+   # Copy parameters to DSP y-memory
+      sz = 84
+      dspwrite("y",0*sz,parOut[0*sz:1*sz-1])
+      dspwrite("y",1*sz,parOut[1*sz:2*sz-1])
+     # dspwrite("y",2*sz,parOut[2*sz:3*sz-1])
+    #  dspwrite("y",3*sz,parOut[3*sz:4*sz-1])
+   
+   # Run program to copy from DSP y-memory to DSP FLASH
+      cd("$getmacropath()$\\$rmext(getmacroname())$")
+      pp = dspreadpp("config7.p")
+      dspwrite("p",0x2000,pp)
+      status = dsprunpp(0x2000)
+
+   elseif(gData->procType == "FX3")
+
+      szBoundary = 64
+      szBlock = 16
+      p = matrix(16)
+
+      # Pad parOut to 256 words so we can write 16 blocks
+      parOut = join(parOut, matrix(256-size(parOut)))
+      for(k = 0 to 15)  
+         p = parOut[k*szBlock:(k+1)*szBlock-1]
+#         for(q = 0 to size(p)-1)
+#            pr("$k*szBlock + q$ $hex(p[q],32)$\n")
+#         next(q)
+         fx3write("f",k*szBoundary, p)
+         pause(0.005)
+      next(k)
+
+   endif
+
+   if(isvar("gExpt"))
+      gExpt->resumeMonitoring()
+   endif
+
+endproc()
+
+############################################
+# Write zero to all text boxes > n = 200
+############################################
+
+procedure(zeroParameters)
+
+   ctrls = getobj(0)->ctrllist()
+   for(k = 0 to size(ctrls)-1)
+      n = ctrls[k]
+      type = getobj(0,n)->objtype()
+      if(n > 200 & type == "text box")
+         getobj(0,n)->text("0")
+      endif
+   next(k)
+
+endproc()

@@ -1,0 +1,608 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>Extracting control values</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 89.85pt 72.0pt 89.85pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><font size=5
+face="Times New Roman"><span style='font-size:20.0pt;font-weight:bold'>Extracting
+control values</span></font></b></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-align:justify'><font size=3
+face="Times New Roman"><span style='font-size:12.0pt'>Once a window has been
+defined we need some way of extracting the values associated with each control.
+This might be the text in a textbox or the position of a slider.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-align:justify'><font size=3
+face="Times New Roman"><span style='font-size:12.0pt'>If we know the control
+number we can use the command getpar to extract the control value. This method
+has been described in the document &quot;Editing the Window&quot;.  However in
+some cases it is not desirable to use this method – especially if you are
+likely to modify the user interface a lot. – in which case the control numbers
+might change. In this case there are several other possibilities.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=4 face="Times New Roman"><span style='font-size:
+14.0pt'>Using the control's Value ID</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Each control can have a value identity string associated with it. This
+can be added in the design phase using the window editor. e.g. for a textbox used
+for controlling the frequency of an experiment we might name the value ID
+&quot;frequency&quot;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=5 face="Times New Roman"><span style='font-size:
+20.0pt'><img width=240 height=256
+src="Extracting%20control%20values_files/image001.jpg"></span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>When the parent window is saved a new setpar option will be added for
+this control</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>setpar</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(n,3,</span></font><font size=2 color=gray
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;valueID&quot;</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>,</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;frequency&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>If we need to extract the value of this control (and any other controls
+which have value IDs assigned we can use the following command</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>par = </span></font><font
+size=2 color=green face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:green'>getctrlvalues</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(winNr)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>This will return a parameter list of the form:</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 face="Courier New"><span style='font-size:10.0pt;
+font-family:"Courier New"'>par = [&quot;valueID = value&quot;, ... ]</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>This list can then be assigned to local variables using the command</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>assignlist</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(par)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&quot;frequency&quot; will then become a local variable with the last
+entered value assigned to it. In addition if we specify the expected data type
+and range we can run the </span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>checkcontrols</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(winNr)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>command before calling getctrlvalues to check if the entered values are
+appropriate.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=blue
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:blue'>if</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span></font><font
+size=2 color=green face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:green'>checkcontrols</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(winNr) != </span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;ok&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>  </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>return</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=blue
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:blue'>endif</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>par = </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>getctrlvalues</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>()</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>assignlist</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(par)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=4 face="Times New Roman"><span style='font-size:
+14.0pt'>Using the control's Object ID</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-align:justify'><font size=3
+face="Times New Roman"><span style='font-size:12.0pt'>The getctrlvalue can only
+return the controls value – nothing else. In many cases this is enough but if
+you wish to modify the control or obtain other information then you need the
+controls object variable. This can be extracted directly when the control is
+defined e.g.</span></font></p>
+
+<p class=MsoNormal style='text-align:justify'><font size=3
+face="Times New Roman"><span style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>freqCtrl = </span></font><font
+size=2 color=green face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:green'>textbox</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(3,70,130,40)</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Or it can more conveniently be defined using a setpar command by adding
+an entry to the control editor.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'><img width=240 height=256
+src="Extracting%20control%20values_files/image002.jpg"></span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>When the parent window is saved a new setpar option will be added for
+this control</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>setpar</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(n,3,</span></font><font size=2 color=gray
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;objID&quot;</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>,</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;freqCtrl&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>The window variable freqCtrl will then be defined automatically when the
+window is displayed – or if you need it earlier with the command </span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>assignctrls</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(winNr)</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Once you have the control object you can use</span></font><i><font
+size=4><span style='font-size:13.0pt;font-style:italic'> </span></font></i>a<span
+lang=EN-NZ>rrow notation to access or modify window or control properties. For
+example:</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>freqCtrl-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>text</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;12.34&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>freqCtrl-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>type</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;float&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>freqCtrl-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>range</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>([0,100])</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>text = freqCtrl-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>text</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>()</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>type = freqCtrl-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>type</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>()</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>range = freqCtrl-&gt;</span></font><font
+size=2 color="#f04000" face="Courier New"><span style='font-size:10.0pt;
+font-family:"Courier New";color:#F04000'>range</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>()</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>The orange colouring indicates that this is a defined
+control command or parameter and that help is available (press F1 when the
+cursor is on this name).</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>An alternative method for obtaining the object is </span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>freqCtrl = </span></font><font
+size=2 color=green face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:green'>getobj</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(n,1)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>Leaving off the 1 will return the object for the
+window n.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Lists of the accessible window and control parameters can be found in
+the Class documentation folder.</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span lang=EN-NZ
+style='font-size:12.0pt'>Note that although the same results can be obtained
+using the setpar/getpar syntax:</span></font></p>
+
+<p class=MsoNormal><font size=2 face="Courier New"><span lang=EN-NZ
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=green
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>textbox</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(3,70,130,40)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=green
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>setpar</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(n,1,</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;text&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>,</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;12.34&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=green
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>setpar</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(n,1,</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;type&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>,</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;float&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=green
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>setpar</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(n,1,</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;range&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>,[0,100])</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>text = </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>getpar</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(n,1,</span></font><font size=2 color=gray
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;text&quot;</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>type = </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>getpar</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(n,1,</span></font><font size=2 color=gray
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;type&quot;</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>range = </span></font><font
+size=2 color=green face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:green'>getpar</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(n,1,</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;range&quot;</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-align:justify'><font size=3
+face="Times New Roman"><span style='font-size:12.0pt'>many people will find the
+variable name method easier to read. It also provides more logical access to
+parameters which are currently only available using the concept of current
+controls i.e. at any one time in Prospa there is a current text editor and current
+1D and 2D plots. These are the last controls selected interactively by the
+user. For example you can modify the current plot in a macro using the command</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>curplot</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>()</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Commands such as plot, trace, axes, grid, title, xlabel and ylabel can
+then be used to access or modify the appearance of the selected plot. The only
+problem is that if the current plot changes (perhaps because the user has
+selected another plot) these commands will no longer access the original plot.
+However these commands can be accessed for a specific plot using the control object-variable
+concept:</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>pt1 = </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(1,10,10,500,200)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>pt1-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>title</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>-&gt;</span></font><font
+size=2 color="#f04000" face="Courier New"><span style='font-size:10.0pt;
+font-family:"Courier New";color:#F04000'>text</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(</span></font><font size=2 color=gray face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;My
+plot&quot;</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>pt1-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>title</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>-&gt;font(</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;Times Roman&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>pt1-&gt;</span></font><font
+size=2 color="#f04000" face="Courier New"><span style='font-size:10.0pt;
+font-family:"Courier New";color:#F04000'>title</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>-&gt;</span></font><font size=2 color="#f04000" face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:#F04000'>fontsize</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(12)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>or alternatively</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>pt1 = </span></font><font size=2 color=green face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span></font><font
+size=2 color=black face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(1,10,10,500,200)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>title1 = pt1-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>title</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>title1-&gt;</span></font><font size=2 color="#f04000"
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:#F04000'>text</span></font><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span></font><font
+size=2 color=gray face="Courier New"><span style='font-size:10.0pt;font-family:
+"Courier New";color:gray'>&quot;My plot&quot;</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal style='text-autospace:none'><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>title1-&gt;font(</span></font><font size=2 color=gray
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&quot;Times Roman&quot;</span></font><font size=2 color=black
+face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></font></p>
+
+<p class=MsoNormal><font size=2 color=black face="Courier New"><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>title1-&gt;</span></font><font
+size=2 color="#f04000" face="Courier New"><span style='font-size:10.0pt;
+font-family:"Courier New";color:#F04000'>fontsize</span></font><font size=2
+color=black face="Courier New"><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(12)</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>title1 is now a control <i><span style='font-style:italic'>sub-variable</span></i>.
+</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=3 face="Times New Roman"><span style='font-size:
+12.0pt'>Even if the current plot changes these commands will still act on plot
+#1.</span></font></p>
+
+</div>
+
+</body>
+
+</html>

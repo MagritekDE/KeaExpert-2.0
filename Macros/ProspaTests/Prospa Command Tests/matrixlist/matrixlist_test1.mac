@@ -1,0 +1,50 @@
+procedure(matrixlist_test1,verbose,delay)
+
+if(isvar("v1"))
+   rmvar "v1"
+endif
+
+if(isvar("a"))
+   rmvar "a"
+endif
+if(isvar("x"))
+   rmvar "x"
+endif
+if(isvar("y"))
+   rmvar "y"
+endif
+
+a = matrix(10)
+b = matrix(10,10)
+c = matrix(10,10,10)
+
+ac = cmatrix(10)
+bc = cmatrix(10,10)
+cc = cmatrix(10,10,10)
+
+lst = sortlist(matrixlist(1))
+if(lst != ["a","ac"])
+  return(0, "Invalid result for: matrixlist_test1 #1")
+endif  
+
+lst = sortlist(matrixlist(2))
+if(lst != ["b","bc"])
+  return(0, "Invalid result for: matrixlist_test1 #2")
+endif 
+
+lst = sortlist(matrixlist(4))
+if(lst != ["c","cc"])
+  return(0, "Invalid result for: matrixlist_test1 #3")
+endif   
+
+lst = sortlist(matrixlist(3))
+if(lst != ["a","ac","b","bc"])
+  return(0, "Invalid result for: matrixlist_test1 #4")
+endif  
+
+lst = sortlist(matrixlist(7))
+if(lst != ["a","ac","b","bc","c","cc"])
+  return(0, "Invalid result for: matrixlist_test1 #5")
+endif  
+
+endproc(1,"")

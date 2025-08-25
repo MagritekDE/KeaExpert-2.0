@@ -1,0 +1,535 @@
+###########################################################
+# Display a 1D plot viewer.
+#
+# This is a modification of the normal Prospa 1D window
+# with functions specifc for comparing 1D spectra.
+#
+# Author: C Eccles
+# Copyright Magritek 2022-23
+#
+###########################################################
+
+procedure(1DPlotViewer, multiTraceLoad="false")
+
+t1 = time()
+# Allow editing
+   if(iskeypressed("shift"))
+      if(gData->permissions->canEditScripts == "yes")
+         bak = getcwd()
+         EditorWin()
+         cd(getmacropath())
+         ed(getmacroname())
+         cd(bak)
+      endif
+      return(1)
+   endif
+
+   if(multiTraceLoad == "false")
+   # Copy the current plot
+      plt = curplot()
+      if(plt->parent->visible == "false")
+         message("Error","Please select a 1D plot","error")
+         return
+      endif
+      func1d("copy plot")
+   endif
+
+# See if the plot viewer is already opened
+   nr = findwin("title","1D Plot Viewer")
+   if(nr >= 0)
+      if(multiTraceLoad == "false")
+         curwin(nr)
+         curplot(locPlot->subplot(1,1))
+         func1d("paste into plot")
+         curtrace()->realcolor(wvColors[~,wvTraceCnt])
+         label = "$gData->curExpt->protocol$ ($gData->curExpt->suffix$)"
+         curtrace()->name(label)
+         wvTraceCnt = wvTraceCnt + 1
+         if(wvTraceCnt == 9)
+            wvTraceCnt = 0
+         endif
+         return
+      else
+         guiwinnr(nr)
+      endif  
+   endif 
+
+# Load the previous window position
+   if(nr == -1)
+      gPlot->loadPlotPref()
+      (x,y,w,h) = :loadwinpos()
+      m = 1
+      n = :windowdefinition(m)
+      windowvar(wvColors,wvTraceCnt)
+
+      wvTraceCnt = 0
+   # https://www.heavy.ai/blog/12-color-palettes-for-telling-better-stories-with-your-data
+      wvColors = [0xE6,0x00,0x49;
+                  0x0B,0xB4,0xFF;
+                  0x50,0xE9,0x91;
+                  0xe6,0xD8,0x00;
+                  0x9B,0x19,0xF5;
+                  0xFF,0xA3,0x00;
+                  0xDC,0x0A,0xB4;
+                  0xB3,0xD4,0xFF;
+                  0x00,0xBF,0xA0]
+  
+   # Update various window parameters
+      setwindowpar(n,"titleupdate","false")
+      setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"toolbar",m+2)
+      setwindowpar(n,"statusbox",m+1)
+      setwindowpar(n,"keepInFront","true")
+      setwindowpar(n,"menubar",[m+11:m+16])
+      setwindowpar(n,"dragndropproc","1DPlotView:dragNDrop")
+      setwindowpar(n,"focus",m)
+      setwindowpar(n,"exit_procedure",":exitWindow()")
+      setwindowpar(n,"show_menu","false")
+   else
+      n = nr
+   endif
+
+   if(multiTraceLoad == "false")
+      :initPlot(plt)
+   else # Load multiple data sets from the 
+      selection = gView->history->selection
+      if(selection[1] > selection[0])
+         s = 1
+      else
+         s = -1
+      endif
+      entries = gView->history->list
+      curIdx = gView->history->index()
+      plt = locPlot->subplot(1,1)
+      trcList = plt->tracelist()
+      xdir = plt->axes->xdirection
+      for(idx = selection[0] to selection[1] step s)
+         if(idx > 0) # Ignore title
+            entry = entries[idx]
+            path = gView->dirList[idx]
+            exptDir = getbasedir(path)
+            (stamp,protocol,label) = scanstr(exptDir,"%1 %2 (%3)")
+            cd(path)
+            if(idx == selection[0]) # Select which file to load
+               files = ls("*.pt1")
+               plotFileName = gettext("Select plot to load",files[-1],20,files)
+            endif
+            curplot(hiddenPlot->subplot(1,1))
+            if(isfile(plotFileName))   
+               load(plotFileName)
+               xdir = hiddenPlot->subplot(1,1)->axes->xdirection
+               func1d("copy plot")
+               curwin(n)
+               curplot(locPlot->subplot(1,1))
+               if(idx == selection[0] & size(trcList) == 0)
+                  func1d("paste plot")
+               else
+                  func1d("paste into plot")
+               endif
+               tl = curplot()->tracelist()
+               if(selection[1] != selection[0])
+                  curtrace()->realcolor(wvColors[~,wvTraceCnt])
+                  curtrace()->name(label)
+                  wvTraceCnt = wvTraceCnt + 1
+                  if(wvTraceCnt == 9)
+                     wvTraceCnt = 0
+                  endif 
+               endif      
+            endif 
+         endif
+      next(idx)
+      plt = locPlot->subplot(1,1)
+      plt->showimag("false")
+      plt->axes->xdirection(xdir)
+   endif
+
+# Display the window allowing for the toolbar
+   showwindow(n,"recalc") 
+
+#pr time()-t1
+
+endproc()
+
+###########################################################
+# Define a window
+###########################################################
+
+procedure(windowdefinition, m)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("1D Plot Viewer", -1,-1,300,200,"resizable")
+
+   locPlot = plot1d(m,0,0,"ww","wh")
+
+   statusbox(m+1,"ww/3","ww*0.6667","ww-45","-1")
+
+   toolbark(m+2, "toolbar1D", "Open plot", "", func1d("load plot"),
+              "Save plot",  "", func1d("save plot"),
+              "Print plot", "",  func1d("print plot"),
+              "Separator", "", "",
+              "Zoom plot",  "", func1d("zoom region"),
+              "Last zoom",  "", func1d("last region"),
+              "Full region",  "", func1d("full region"),
+              "Separator",  "", "",
+              "Modify trace and symbols",  "", modifyTraceParameters(),
+              "Modify ticks and labels",  "", PlotParameters("Ticks"),
+              "Modify plot colours",  "", PlotParameters("Colors"),
+              "Separator",  "", "",
+              "Corner axes",  "corner_axes", func1d("corner axes"),
+              "Border axes",  "border_axes", func1d("border axes"),
+              "Crossed axes",  "crossed_axes", func1d("crossed axes"),
+              "Separator",  "", "",
+              "Linear x scale",  "linear_axis", func1d("linear x scale"),
+              "Logarithmic x scale",  "log_axis", func1d("log x scale"),
+              "Separator",  "", "",
+              "Overlapping plots", "hold",  func1d("overlapping plots"),
+              "Separator",  "", "",
+              "Data display",  "display_data", func1d("display data"),
+              "Region selection",  "select_region", func1d("select region"),
+              "Move plot",  "drag_plot", func1d("drag plot"),
+              "Separator",  "", "")
+
+    menu(m+3, "traceMenu", "Modify trace and symbols ...\tCtrl+T", modifyTraceParameters(),
+              "Copy trace data to vector ...\tShift+V", copy1DtoMatrix(),
+              "Copy trace data to new 1D window ...\tCtrl+N", copy1DtoNewWin("trace"),
+              "Separator", ,
+              "Remove data set", func1d("remove current data"))
+
+    menu(m+4, "bkgMenu", "Display vector ...", displayVectors(),
+              "Keep this region, remove others", func1d("remove other subplots"),
+              "Remove all data from region", func1d("remove all data"))
+
+    menu(m+5, "axesMenu", "Axes font", PlotParameters("Axes"),
+              "Axes range", PlotParameters("Range"),
+              "Tick and label spacing ...", PlotParameters("Ticks"),
+              "Log/lin mapping", PlotParameters("Mapping"),
+              "Grids", PlotParameters("Grid"))
+
+    menu(m+6, "titleMenu", "Modify title ...", PlotParameters("Title"))
+
+    menu(m+7, "labelMenu", "Modify labels ...", PlotParameters("Labels"))
+
+    menu(m+8, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+              "Reduce vertical\tShift+down", func1d("reduce vertical"),
+              "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+              "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+    menu(m+9, "Move", "Move up\tup", func1d("move down"),
+              "Move down\tdown", func1d("move up"),
+              "Move right\tright", func1d("move right"),
+              "Move left\tleft", func1d("move left"))
+    menu(m+10, "Multiplot", "1 plot\tCtrl+Shift+S", func1d("multiplot 1*1"),
+              "1 row by 2 columns\tCtrl+Shift+H", func1d("multiplot 1*2"),
+              "2 rows by 1 column\tCtrl+Shift+D", func1d("multiplot 2*1"),
+              "2 rows by 2 columns\tCtrl+Shift+G", func1d("multiplot 2*2"),
+              "m rows by n columns\tCtrl+Shift+M", func1d("multiplot m*n"))
+    menu(m+11, "&File", "&Open Plot ...\tCtrl+O", func1d("load plot"),
+              "&Save Plot ...\tCtrl+S", func1d("save plot"),
+              "Save as &Image ...\tCtrl+I", func1d("save as image"),
+              "&Print Plot ...\tCtrl+P", func1d("print plot"))
+    menu(m+12, "&Edit", "Copy all plots\tCtrl+Shift+C", func1d("copy all plots"),
+              "Delete all plots\tCtrl+D", func1d("delete all plots"),
+              "Separator", ,
+              "Copy current plot\tCtrl+C", func1d("copy plot"),
+              "Cut current plot\tCtrl+X", func1d("cut plot"),
+              "Paste to current plot\tCtrl+V", func1d("paste plot"),
+              "Paste into current plot\tCtrl+Shift+V", func1d("paste into plot"))
+
+    menuk(m+13, "&View", "Show &data under cursor\td", "display_data", func1d("display data"),
+              "&Select a rectangular region\ts","select_region", func1d("select region"),
+              "&Move plot\tm","drag_plot", func1d("drag plot"),
+              "Separator", , ,
+              "&Zoom a region\tz", "zoom_region",func1d("zoom region"),
+              "Show &last region\tl", "show_last", func1d("last region"),
+              "Display &all data\ta", "display_all", func1d("full region"),
+              "Separator", , ,
+              "Display &real part\tr", "show_real", func1d("toggle real"),
+              "Display &imaginary part\ti", "show_imaginary", func1d("toggle imaginary"),
+              "Display &magnitude\tn", "show_magnitude", func1d("toggle magnitude"),
+              "Separator", , ,
+              "Display &border\tb","show_border", func1d("toggle border"),
+              "Separator", , ,
+              "Display fi&xed range\tx","fixed_range", func1d("toggle fixed range"),
+              "Separator", , ,
+              "Antialiasin&g\tg","antialiasing", func1d("toggle antialiasing"),
+              "Show legend\te", "show_legend", :toggleLegend(),
+              "Sync axes", "sync_axes",:toggleAxesSync(),
+              "Lock grid", "lock_grid", :toggleGridLock(),
+              "Separator", , ,
+              "Pull_right", "", m+10,
+              "&View one plot\tv", "", func1d("view one plot"),
+              "&Full view\tf", "", func1d("show all plots"),
+              "Overlapping plots\to", "hold" ,func1d("overlapping plots"),
+              "Separator", , ,
+              "Pull_right", "", m+9,
+              "Pull_right", "", m+8,
+              "Separator", , ,
+              "Show next window\tCtrl+Tab", "",  shownextwindow(0),
+              "Show last window\tCtrl+Shift+Tab", "", showlastwindow(0),
+              "Hide window\tCtrl+W", "",  hidewindow(0);)
+    menu(m+14, "&Pref", "Tick &spacing ...\tShift+S", PlotParameters("Ticks"),
+              "&Mapping ...\tShift+M", PlotParameters("Mapping"),
+              "&Grid ...\tShift+G", PlotParameters("Grid"),
+              "Axes &range ...\tShift+R", PlotParameters("Range"),
+              "Plot margi&ns ...\tShift+N", PlotParameters("Margins"),
+              "Separator", ,
+              "&Title text and font ...\tShift+T", PlotParameters("Title"),
+              "X and Y &labels and font ...\tShift+L", PlotParameters("Labels"),
+              "&Axes font ...\tShift+A", PlotParameters("Axes"),
+              "Separator", ,
+              "Plot &colours ...\tShift+C",PlotParameters("Colors"),
+              "&Trace settings ...\tCtrl+T", modifyTraceParameters(),
+              "Make plot &black and white\tShift+B", makePlotBlackAndWhite("1d"),
+              "Separator", ,
+              "Load plot preferences ...\tCtrl+Shift+L", loadPlotPreferences("1d"),
+              "Save plot preferences ...\tCtrl+Shift+S", savePlotPreferences("1d"))
+
+    menu(m+15, "&Processing", "Macro Help", help("Macros\\SpinsolveExpert\\Processing Macros\\1D",""),
+              "Separator", ,
+              "Manual Phase ...\tCtrl+Shift+P",manualPhase1d(),
+              "1D Stats ...\tCtrl+Shift+1",stats1d(),
+              "Separator", ,
+              "user menu", "$appdir$\\Macros\\Spinsolve-Expert\\Processing Macros\\1D")
+
+
+    menu(m+16, "&Help", "Window &help", help("User Interface\1D Plot","Introduction.htm"))
+
+
+    hiddenPlot = plot1d(m+17,0,0,10,10)
+    setpar(n,m+17,"visible","false")
+    curplot(locPlot->subplot(1,1))
+
+
+# Set toolbar, statusbox and menu box  1D plot
+   setpar(n,m+13,"checkitem",0)
+   setpar(n,m+13,"checkitem",8)
+   setpar(n,m+13,"checkitem",9)
+   setpar(n,m+13,"checkitem",11) 
+   setpar(n,m+13,"name","plot_view_menu")          
+   setpar(n,m+2,"name","plot_toolbar") 
+   setpar(n,m+2,"checkitem",13) 
+   setpar(n,m+2,"checkitem",16) 
+   setpar(n,m+2,"checkitem",21) 
+         
+   setpar(n,m,"toolbar",m+2)
+   setpar(n,m,"statusbox",m+1)
+   setpar(n,m,"menubar",[m+11:m+16])
+   setpar(n,m,"traceMenu",m+3)
+   setpar(n,m,"bkgMenu",m+4)
+   setpar(n,m,"axesMenu",m+5)
+   setpar(n,m,"titleMenu",m+6)
+   setpar(n,m,"labelMenu",m+7)
+
+
+endproc(n)
+
+####################################################
+# Initialise the plot with the current 1D plot from
+# the expert interface
+####################################################
+
+procedure(initPlot, plt)
+
+   curplot()->parent->draw("false")
+   func1d("paste plot")
+   tl = curplot()->tracelist()
+   if(size(tl) == 1)
+      curtrace()->realcolor(wvColors[~,wvTraceCnt])
+      label = "$gData->curExpt->protocol$ ($gData->curExpt->suffix$)"
+      curtrace()->name(label)
+      wvTraceCnt = wvTraceCnt + 1
+   endif
+   curplot()->parent->draw("true")
+
+endproc()
+
+####################################################
+# If a plot file is dropped onto the GUI then
+# display it. If the control key is help down
+# then overlay multiple files.
+# If a folder is dropped in the 1DPlot then make
+# this the current 1D plot folder.
+####################################################
+
+procedure(dragNDrop,path,file,ext)
+
+   if(file == "")
+      if(isdir(path))
+         pathnames("plot1d",path)
+      endif
+   else
+      bak = getcwd()
+      if(ext == "pt1")
+         cd(path)
+         if(iskeypressed("control"))
+            cp = curplot("1d")
+            hw = getobj(0,wvHiddenWin)
+            hw->load(file)
+            curplot(hw->subplot(1,1))
+            func1d("copy plot")
+            curplot(cp)
+            func1d("paste into plot")
+         else
+            load(file)
+         endif
+      elseif(ext == "1d")
+         cd(path)
+         try
+           (x,y) = load(file)
+         catch
+            y = load(file)
+            x = linspace(0,size(y)-1,size(y))
+         endtry
+         if(iskeypressed("control"))
+            hold("on")
+            plot(x,y)
+            hold("off")
+         else
+            plot(x,y)
+         endif
+      else
+         pr("\n   Invalid extension for 1D plot drag and drop\n")
+      endif
+      cd(bak)
+   endif
+ 
+endproc()
+
+
+###########################################################
+# Load button icons
+###########################################################
+
+procedure(loadIcons)
+
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\Bitmaps")
+   cursorButton->icon("data_select.png")
+   regionButton->icon("region_select.png")
+   dragButton->icon("drag_plot.png")
+   zoomButton->icon("zoom_plot.png")
+   zoomUpButton->icon("uparrow.png")
+   zoomDownButton->icon("downarrow.png")
+   zoomDownButton->icon("downarrow.png")
+   zoomDownButton->icon("downarrow.png")
+   lastZoomButton->icon("unzoom_plot.png")
+   fullZoomButton->icon("showall_plot.png")
+
+endproc()
+
+###########################################################
+# Update current 1D view if 2D plot is modified
+###########################################################
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,100,"text")
+   callingwin = getpar(0,100,"source")
+   parentwin = guiwinnr()
+   
+   if(src == "2D Plot" & cmd != "SelectImage" & callingwin == parentwin)
+
+   endif
+
+endproc()
+
+###########################################################
+# Make sure the current plots are reset
+###########################################################
+
+procedure(exitWindow)
+
+   try
+      curplot(wvCur1D)
+   catch
+   endtry
+
+   :savewinpos()
+
+endproc()
+
+#################################################
+# Save the current window position
+#################################################
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("1PlotViewer.par",lst)
+
+endproc()
+
+#################################################
+# Load the last window position
+#################################################
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 840; h = 572
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("1PlotViewer.par"))
+      lst = load("1PlotViewer.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)
+
+
+procedure(toggleLegend)
+
+   plt = :makeLocalPlotCurrent()
+   if(plt->showlegend() == "true")
+      plt->showlegend("false")
+   else
+      plt->showlegend("true")
+   endif
+
+endproc()
+
+procedure(toggleAxesSync)
+
+   plt = :makeLocalPlotCurrent()
+
+   if(plt->syncaxes() == "true")
+      plt->syncaxes("false")
+   else
+      plt->syncaxes("true")
+   endif
+
+endproc()
+
+procedure(toggleGridLock)
+
+   plt = :makeLocalPlotCurrent()
+   if(plt->lockgrid() == "true")
+      plt->lockgrid("false")
+   else
+      plt->lockgrid("true")
+   endif
+ 
+
+endproc()
+
+procedure(makeLocalPlotCurrent)
+
+   win = curwin()
+   n = win->nr
+   if(curplot()->parent->parent == win)
+      plt = curplot()
+   else
+      m = findobj(n,"type","1D plot window")
+      plt = getobj(n,m)->subplot(1,1)
+      curplot(plt)
+   endif
+
+endproc(plt)

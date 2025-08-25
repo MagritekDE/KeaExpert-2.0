@@ -1,0 +1,2234 @@
+
+#include <wtypes.h>
+//#include <windows.h>
+#pragma pack(push,8)
+#include "CyAPI.h"
+#pragma pack(pop)
+#include "../Global files/includesDLL.h"
+#include "stdafx.h"
+#include <time.h>
+#include <stdio.h>
+#include <tchar.h>
+
+#define VERSION 0.2 
+
+// Locally defined procedure and global variables
+EXPORT short AddCommands(char*, char*, DLLParameters*);
+EXPORT void  ListCommands(void);
+EXPORT bool GetCommandSyntax(char* cmd, char* syntax);
+short FX3Comm(DLLParameters* par, char* args);
+short FX3Write(DLLParameters* par, char* args);
+short FX3Read(DLLParameters* par, char *args);
+short FX3Open(DLLParameters* par, char *args);
+short FX3Close(DLLParameters* par, char *args);
+short FX3Unpack(DLLParameters* par, char *args);
+
+bool WriteToEndPoint(CCyUSBEndPoint *endPoint,BYTE* data, long len);
+bool WriteToUSB(CCyUSBDevice *USBDevice, char dataLocation, char mode, long adrs,  BYTE* data, long len);
+bool ReadFromEndPoint(CCyUSBEndPoint *endPoint, BYTE* data, long &len);
+bool EnumerateEndpointForTheSelectedDevice(CCyUSBDevice	*USBDevice, int deviceNr);
+int SurveyExistingDevices();
+
+
+short AcquireData(DLLParameters*,char *args);
+short DualChannelRFPulse(DLLParameters*,char *args);
+short ChannelOneRFPulse(DLLParameters*,char *args);
+short ClearData(DLLParameters*,char *args);
+short CloseHandle(DLLParameters* par, char *args);
+short DecrementTableIndex(DLLParameters*,char *args);
+short SingleChannelRFPulse(DLLParameters* par,char *args);
+short EndPP(DLLParameters*,char *args);
+short ExecuteAndWait(DLLParameters*,char*);
+short GetHelpFolder(DLLParameters*,char *args);
+short GetPPVersion(DLLParameters*,char *args);
+short IncFrequency(DLLParameters*,char *args);
+short IncrementTableIndex(DLLParameters*,char *args);
+short IncRxFrequency(DLLParameters*,char *args);
+short IncTxAmplitude(DLLParameters*,char *args);
+short IncTxFrequency(DLLParameters*,char *args);
+short InitialisePP(DLLParameters*,char*);
+short LoopEnd(DLLParameters*,char *args);
+short LoopStart(DLLParameters*,char *args);
+short MakeADelay(DLLParameters*,char*);
+short MakeALongDelay(DLLParameters*,char *args);
+short RFPulse(DLLParameters*,char*);
+short RampedRFPulse(DLLParameters*,char*);
+short NoOperation(DLLParameters* par, char *args);
+short RampedGradient(DLLParameters* par, char *args);
+short RampedDiffGradient(DLLParameters* par, char *args);
+short ResetMemoryPointer(DLLParameters*,char *args);
+short SelectAmplitude(Interface *itfc ,FILE* fp, CText amp, CText channel);
+short SelectAmplitudeRamped(Interface *itfc ,FILE* fp, CText amp, CText steps, CText channel, long &stepsNr);
+short SelectDuration(Interface *itfc ,FILE* fp, char *reg, CText duration);
+short SelectFrequency(Interface *itfc, FILE*fp, CText freq, CText channel);
+short SelectNumber(Interface *itfc ,FILE* fp, CText num, char *dst, long min, long max);
+short SelectPhase(Interface *itfc ,FILE* fp, CText phase, CText channel);
+short SelectRxAmplifier(DLLParameters*,char *args);
+short SetRxFreq(DLLParameters*,char *args);
+short SetRxGain(DLLParameters*,char *args);
+short SetTableIndex(DLLParameters*,char *args);
+short SetTTL(DLLParameters*,char *args);
+short SetTxFreq(DLLParameters*,char *args);
+short SetTxFreqs(DLLParameters* par, char *args);
+short ShapedRFPulse(DLLParameters*,char *args);
+short ShapedRFSingleChannel(DLLParameters* par, char *args);
+short ShapedRFDualChannel(DLLParameters* par, char *args);
+short SwitchOffTx(DLLParameters*,char *args);
+short SwitchOnBothTxChannels(DLLParameters*,char *args);
+short SwitchOnOneTxChannel(DLLParameters*,char *args, short nrargs);
+short SwitchOnTx(DLLParameters*,char *args);
+short TTLOff(DLLParameters*,char *args);
+short TTLOn(DLLParameters*,char *args);
+short TTLPulse(DLLParameters*,char*);
+short TTLTranslate(DLLParameters*,char *args);
+short UpdateFrequencies(DLLParameters*,char *args);
+short WaitForTrigger(DLLParameters*,char *args);
+void InsertUniqueStringIntoList(char *str, char ***list, long &position);
+short SwitchOnShim16(DLLParameters*,char*);
+short RampedShim16(DLLParameters* par, char *args);
+short SelectShim16(Interface *itfc ,FILE* fp, CText grad);
+short ChirpedRF(DLLParameters* par, char *args);
+short AcquireDataOn(DLLParameters* par, char *args);
+short AcquireDataOff(DLLParameters* par, char *args);
+short SwitchOnGradient(DLLParameters*,char*);
+short SwitchOffGradient(DLLParameters*,char*);
+short SwitchOnDiffGradient(DLLParameters*,char*);
+short SwitchOffDiffGradient(DLLParameters*,char*);
+short RampedGradient16(DLLParameters* par, char *args);
+short EnableDiffGradient(DLLParameters* par, char *args);
+short DisableDiffGradient(DLLParameters* par, char *args);
+short ResetShims(DLLParameters* par, char *args);
+short DSPTest(DLLParameters* par, char *args);
+short Lockoff(DLLParameters* par, char *args);
+short Lockon(DLLParameters* par, char *args);
+short WaltzStart(DLLParameters* par, char *args);
+short WaltzEnd(DLLParameters* par, char *args);
+short WaltzDecoupling(DLLParameters* par, char *args);
+short WaltzDecPulse(DLLParameters*,char*);
+short WaltzDecSetUp(DLLParameters*,char*);
+short StopLockAndSaturate(DLLParameters*,char*);
+
+struct
+{
+   _int64 eventTime;
+	_int64 lastCommandEndTime;
+	_int64 nextCommandTime;
+	_int32 lineCnt;
+//	std::vector<_int32> ps; 
+	bool inLoop;
+	float pgo;
+}
+psInfo;
+
+double GetMsTime();
+long nint(float num);
+
+static CCyUSBDevice *USBDevice = 0;
+
+char **parList; // Parameter list - built up by pp commands
+long szList;    // Number of entries in parameter list
+
+/*******************************************************************************
+Extension procedure to add commands to Prospa 
+********************************************************************************/
+
+EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
+{
+   short r = RETURN_FROM_DLL;
+
+   if(!strcmp(command,"fx3write"))              r = FX3Write(dpar,parameters);      
+   else if (!strcmp(command, "fx3read"))        r = FX3Read(dpar, parameters);
+   else if (!strcmp(command, "fx3comm"))        r = FX3Comm(dpar, parameters);
+   else if (!strcmp(command, "fx3open"))        r = FX3Open(dpar, parameters);
+   else if (!strcmp(command, "fx3close"))       r = FX3Close(dpar, parameters);
+   else if (!strcmp(command, "fx3unpack"))      r = FX3Unpack(dpar, parameters);
+
+
+	else if(!strcmp(command,"acquire"))           r = AcquireData(dpar,parameters);  
+ /*  else if(!strcmp(command,"acquireon"))         r = AcquireDataOn(dpar,parameters);  
+   else if(!strcmp(command,"acquireoff"))        r = AcquireDataOff(dpar,parameters); 
+   else if(!strcmp(command,"chirprf"))           r = ChirpedRF(dpar,parameters);      
+   else if(!strcmp(command,"cleardata"))         r = ClearData(dpar,parameters); */     
+   else if(!strcmp(command,"delay"))             r = MakeADelay(dpar,parameters);   
+ /*  else if(!strcmp(command,"decindex"))          r = DecrementTableIndex(dpar,parameters); 
+   else if(!strcmp(command,"diffgradenable"))    r = EnableDiffGradient(dpar,parameters);  
+   else if(!strcmp(command,"diffgraddisable"))   r = DisableDiffGradient(dpar,parameters);  
+   else if(!strcmp(command,"diffgradon"))        r = SwitchOnDiffGradient(dpar,parameters); 
+   else if(!strcmp(command,"diffgradoff"))       r = SwitchOffDiffGradient(dpar,parameters); 
+   else if(!strcmp(command,"diffgradramp"))      r = RampedDiffGradient(dpar,parameters);   
+   else if(!strcmp(command,"endloop"))           r = LoopEnd(dpar,parameters); */     
+   else if(!strcmp(command,"endpp"))             r = EndPP(dpar,parameters);  
+ //  else if(!strcmp(command,"execwait"))          r = ExecuteAndWait(dpar,parameters);
+ //  else if(!strcmp(command,"gradon"))            r = SwitchOnGradient(dpar,parameters);  
+ /*  else if(!strcmp(command,"gradoff"))           r = SwitchOffGradient(dpar,parameters); 
+   else if(!strcmp(command,"gradramp"))          r = RampedGradient(dpar,parameters);   
+   else if(!strcmp(command,"dsptest"))           r = DSPTest(dpar,parameters);   
+   else if(!strcmp(command,"helpfolder"))        r = GetHelpFolder(dpar,parameters);  
+   else if(!strcmp(command,"incindex"))          r = IncrementTableIndex(dpar,parameters);   
+   else if(!strcmp(command,"inctxamp"))          r = IncTxAmplitude(dpar,parameters);   
+   else if(!strcmp(command,"incrxfreq"))         r = IncRxFrequency(dpar,parameters);   
+   else if(!strcmp(command,"inctxfreq"))         r = IncTxFrequency(dpar,parameters);*/
+   else if(!strcmp(command,"initpp"))            r = InitialisePP(dpar,parameters);  
+ /*  else if(!strcmp(command,"lockoff"))           r = Lockoff(dpar,parameters);     
+   else if(!strcmp(command,"lockon"))            r = Lockon(dpar,parameters);  
+   else if(!strcmp(command,"loop"))              r = LoopStart(dpar,parameters);     
+   else if(!strcmp(command,"memreset"))          r = ResetMemoryPointer(dpar,parameters);     
+   else if(!strcmp(command,"nop"))               r = NoOperation(dpar,parameters);     
+   else if(!strcmp(command,"ppversion"))         r = GetPPVersion(dpar,parameters); */     
+   else if(!strcmp(command,"pulse"))             r = RFPulse(dpar,parameters);    
+ /*  else if(!strcmp(command,"rampedpulse"))       r = RampedRFPulse(dpar,parameters); 
+   else if(!strcmp(command,"selectrxamp"))       r = SelectRxAmplifier(dpar,parameters);   
+   else if(!strcmp(command,"setindex"))          r = SetTableIndex(dpar,parameters);   
+   else if(!strcmp(command,"setrxfreq"))         r = SetRxFreq(dpar,parameters);   
+   else if(!strcmp(command,"setrxgain"))         r = SetRxGain(dpar,parameters);   
+   else if(!strcmp(command,"settxfreq"))         r = SetTxFreq(dpar,parameters); 
+   else if(!strcmp(command,"settxfreqs"))        r = SetTxFreqs(dpar,parameters); 
+   else if(!strcmp(command,"shapedrf"))          r = ShapedRFPulse(dpar,parameters);  
+   else if(!strcmp(command,"shim16"))            r = SwitchOnShim16(dpar,parameters); 
+   else if(!strcmp(command,"shimramp16"))        r = RampedShim16(dpar,parameters); 
+   else if(!strcmp(command,"stoplockandsat"))    r = StopLockAndSaturate(dpar,parameters); 
+   else if(!strcmp(command,"ttl"))               r = TTLOn(dpar,parameters);      
+   else if(!strcmp(command,"ttlon"))             r = TTLOn(dpar,parameters);      
+   else if(!strcmp(command,"ttloff"))            r = TTLOff(dpar,parameters);      
+   else if(!strcmp(command,"ttlpulse"))          r = TTLPulse(dpar,parameters);      
+   else if(!strcmp(command,"ttltranslate"))      r = TTLTranslate(dpar,parameters);      
+   else if(!strcmp(command,"trigger"))           r = WaitForTrigger(dpar,parameters);       
+   else if(!strcmp(command,"txoff"))             r = SwitchOffTx(dpar,parameters);   
+   else if(!strcmp(command,"txon"))              r = SwitchOnTx(dpar,parameters);  */
+   else if(!strcmp(command,"wait"))              r = MakeALongDelay(dpar,parameters);      
+ /*  else if(!strcmp(command,"waltzdec"))          r = WaltzDecoupling(dpar,parameters);  
+   else if(!strcmp(command,"waltzdecpulse"))     r = WaltzDecPulse(dpar,parameters);    
+   else if(!strcmp(command,"waltzdecsetup"))     r = WaltzDecSetUp(dpar,parameters);  
+   else if(!strcmp(command,"waltzstart"))        r = WaltzStart(dpar,parameters);      
+   else if(!strcmp(command,"waltzend"))          r = WaltzEnd(dpar,parameters); */ 
+
+   return(r);
+}
+
+/*******************************************************************************
+Extension procedure to list commands in DLL 
+********************************************************************************/
+
+EXPORT void  ListCommands(void)
+{
+   TextMessage("\n\n   FX3 DLL module (V%1.2f)\n\n",VERSION);
+   TextMessage("   fx3write .............. write binary data to the fx3\n");
+   TextMessage("   fx3read ............... read binary data from the fx3\n");
+   TextMessage("   fx3comm................ a general write/read to/from the fx3\n");
+   TextMessage("   fx3open ............... make a connection to the fx3\n");
+   TextMessage("   fx3close .............. close connection to the fx3\n");
+   TextMessage("   fx3unpack ............. reorganise data received from fx3\n");
+
+
+   TextMessage("   acquire ............ acquire some data\n");
+ /*  TextMessage("   acquireon .......... start acquiring or append some data\n");
+   TextMessage("   acquireoff ......... pause or finish acquiring the data\n");
+   TextMessage("   chirprf ............ make a frequency and amplitude moduated RF pulse\n");
+   TextMessage("   cleardata .......... clear data memory\n");
+   TextMessage("   decindex ........... decrement a table index\n");*/
+   TextMessage("   delay .............. generate a short delay\n");
+   //TextMessage("   diffgradenable ..... enable the diffusion gradient\n");
+   //TextMessage("   diffgraddisable .... disable the diffusion gradient\n");
+   //TextMessage("   diffgradon ......... set the diffusion gradient amplitude\n");
+   //TextMessage("   diffgradoff ........ zero the diffusion gradient amplitude\n");
+   //TextMessage("   diffgradramp ......  use a linear ramp to control the diffusion gradient amplitude\n");
+   //TextMessage("   endloop ............ end a loop\n");
+   TextMessage("   endpp .............. finish the pulse program\n");
+ //  TextMessage("   execwait ........ execute a program and wait for it to exit\n");
+ /*  TextMessage("   gradon ............. switch on the gradient\n");
+   TextMessage("   gradoff ............ switch off the gradient\n");
+   TextMessage("   gradramp ........... use a linear ramp to control the gradient amplitude\n");
+   TextMessage("   incrxfreq .......... increment the rx frequency\n");
+   TextMessage("   inctxfreq .......... increment the tx frequency\n");*/
+   TextMessage("   initpp ............. initialise pulse program\n");
+   //TextMessage("   incindex ........... increment a table index\n");
+   //TextMessage("   inctxamp ........... increment tx amplitude\n");
+   //TextMessage("   lockoff ............ switch off the lock\n");
+   //TextMessage("   lockon ............. switch on the lock\n");
+   //TextMessage("   loop ............... start a loop\n");
+   //TextMessage("   memreset ........... reset memory pointer\n");
+   //TextMessage("   ppversion .......... returns the version number of this DLL\n");
+   TextMessage("   pulse .............. generate an RF pulse\n");
+ /*  TextMessage("   rampedpulse ........ generate an RF pulse with ramped ends\n");
+   TextMessage("   selectrxamp ........ select rx amplifier to use\n");
+   TextMessage("   setindex ........... set a table index\n");
+   TextMessage("   setrxfreq .......... set the receive frequency\n");
+   TextMessage("   setrxgain .......... set the receive amplifier gain\n");
+   TextMessage("   settxfreq .......... set the pulse frequency\n");
+   TextMessage("   settxfreqs ......... set the pulse frequencies for both channels\n");
+   TextMessage("   shapedrf ........... make a phase and amplitude moduated RF pulse\n");
+   TextMessage("   shim16 ............. set a shim current\n");
+   TextMessage("   shimramp16 ......... ramp one of the shim currents\n");
+   TextMessage("   stoplockandsat ..... stop and saturated the lock\n");
+   TextMessage("   ttlon .............. switch on a TTL level\n");
+   TextMessage("   ttloff ............. switch off a TTL level\n");
+   TextMessage("   ttlpulse ........... generate TTL pulse\n");
+   TextMessage("   ttltranslate ....... translate TTL pin number to byte code\n");
+   TextMessage("   trigger ............ wait for trigger input\n");
+   TextMessage("   txoff .............. turn off the transmitter output\n");
+   TextMessage("   txon ............... turn on the transmitter output\n");*/
+   TextMessage("   wait ............... generate a long delay\n");
+   //TextMessage("   waltzdec ........... generate a WALTZ16 decoupling sequence\n");
+   //TextMessage("   waltzdecpulse ...... generate an RF pulse with fast ramped ends\n");
+   //TextMessage("   waltzdecsetup ...... setup code needed to generate waltzpulse\n");  
+   //TextMessage("   waltzend ........... finished the WALTZ16 decoupling sequence\n");
+   //TextMessage("   waltzstart ......... initialise the WALTZ16 decoupling sequence\n");}
+
+}
+
+/*******************************************************************************
+Extension procedure to return syntax in DLL 
+********************************************************************************/
+
+EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
+{
+   syntax[0] = '\0';
+   if (!strcmp(cmd, "fx3write"))              strcpy(syntax, "fx3write(STR i/e/f, INT address, MATRIX1D data)");
+   else if (!strcmp(cmd, "fx3read"))          strcpy(syntax, "MATRIX1D data = fx3read(STR i/e/f, INT address, INT nrValues)");
+   else if (!strcmp(cmd, "fx3open"))          strcpy(syntax, "INT result = fx3open()");
+   else if (!strcmp(cmd, "fx3comm"))         strcpy(syntax, "INT result = fx3comm(STR mode, STR option, INT address, INT nrValues)"); 
+   else if (!strcmp(cmd, "fx3close"))         strcpy(syntax, "INT result = fx3close()");
+   else if (!strcmp(cmd, "fx3unpack"))        strcpy(syntax, "CMATRIX1D result = fx3unpack(STR mode, MATRIX1D input)");
+
+
+	else if(!strcmp(cmd,"acquire"))                   strcpy(syntax,"acquire(mode, number points:n, [duration:d])");
+ /*  else if(!strcmp(cmd,"acquireon"))            strcpy(syntax,"acquireon([mode=overwrite/start/append], number points:n)");
+   else if(!strcmp(cmd,"acquireoff"))           strcpy(syntax,"acquireoff(mode=overwrite/pause/finish, number points:n)");
+   else if(!strcmp(cmd,"chirprf"))              strcpy(syntax,"chirprf(channel (1/2), atable:t, ftable:f, phase:p, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"cleardata"))            strcpy(syntax,"cleardata(number:n)");
+   else if(!strcmp(cmd,"decindex"))             strcpy(syntax,"decindex(table:t)");*/
+   else if(!strcmp(cmd,"delay"))                strcpy(syntax,"delay(duration:d/t)");
+   //else if(!strcmp(cmd,"diffgradenable"))       strcpy(syntax,"diffgradenable()");
+   //else if(!strcmp(cmd,"diffgraddisable"))      strcpy(syntax,"diffgraddisable()");
+   //else if(!strcmp(cmd,"diffgradon"))           strcpy(syntax,"diffgradon(level:n/t)");
+   //else if(!strcmp(cmd,"diffgradoff"))          strcpy(syntax,"diffgradoff()");
+   //else if(!strcmp(cmd,"diffgradramp"))         strcpy(syntax,"diffgradramp(start:n/t, end:n/t, steps:n, delay:d)");
+   //else if(!strcmp(cmd,"endloop"))              strcpy(syntax,"endloop(name)");
+   else if(!strcmp(cmd,"endpp"))                strcpy(syntax,"endpp()");
+ //  else if(!strcmp(cmd,"execwait"))          strcpy(syntax,"execwait(program,arguments)");
+ /*  else if(!strcmp(cmd,"gradon"))               strcpy(syntax,"gradon(level:n/t)");
+   else if(!strcmp(cmd,"gradoff"))              strcpy(syntax,"gradoff()");
+   else if(!strcmp(cmd,"gradramp"))             strcpy(syntax,"gradramp(start:n/t, end:n/t, steps:n, delay:d)");
+   else if(!strcmp(cmd,"incindex"))             strcpy(syntax,"incindex(table:t)");
+   else if(!strcmp(cmd,"incrxfreq"))            strcpy(syntax,"incrxfreq(increment:f)");
+   else if(!strcmp(cmd,"inctxfreq"))            strcpy(syntax,"inctxfreq(increment:f) OR inctxfreq(channel (1/2), increment:f) ");
+   else if(!strcmp(cmd,"inctxamp"))             strcpy(syntax,"inctxamp(amp:a, increment:a)");
+   else if(!strcmp(cmd,"initpp"))               strcpy(syntax,"initpp(filename)");
+   else if(!strcmp(cmd,"lockoff"))              strcpy(syntax,"lockoff()");
+   else if(!strcmp(cmd,"lockon"))               strcpy(syntax,"lockon()");
+   else if(!strcmp(cmd,"loop"))                 strcpy(syntax,"loop(name,n)");
+   else if(!strcmp(cmd,"memreset"))             strcpy(syntax,"memreset([address:n])");
+   else if(!strcmp(cmd,"nop"))                  strcpy(syntax,"nop()");     
+   else if(!strcmp(cmd,"ppversion"))            strcpy(syntax,"(INT v) = ppversion()");*/
+   else if(!strcmp(cmd,"pulse"))                strcpy(syntax,"pulse(channel (1/2), amp:a, phase:p, duration:d [,freq:f] OR pulse(1 ,a1, p1, f1, 2 ,a2, p2, f2, d])");
+ /*  else if(!strcmp(cmd,"rampedpulse"))          strcpy(syntax,"rampedpulse(channel (1/2), amp:a, phase:p, duration:d, [steps_exponent (1->8)");
+   else if(!strcmp(cmd,"selectrxamp"))          strcpy(syntax,"selectrxamp(number n)");
+   else if(!strcmp(cmd,"setindex"))             strcpy(syntax,"setindex(table:t,index:n)");
+   else if(!strcmp(cmd,"setrxfreq"))            strcpy(syntax,"setrxfreq(freq:f)");
+   else if(!strcmp(cmd,"settxfreq"))            strcpy(syntax,"settxfreq(freq:f) OR settxfreq(channel:1/2 freq:f) ");
+   else if(!strcmp(cmd,"settxfreqs"))           strcpy(syntax,"settxfreqs(freq1:f, freq2:f)");
+   else if(!strcmp(cmd,"setrxgain"))            strcpy(syntax,"setrxgain(channel:n, gain:g)");
+   else if(!strcmp(cmd,"shapedrf"))             strcpy(syntax,"shapedrf(channel (1/2), atable:t, stable:t, phase:p, table_size:n, table_step_duration:d) OR shapedrf(atable:t, stable:t, phase1:p, phase2:p, freq1:f, freq2:f, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"shim16"))               strcpy(syntax,"shim16(channel:n, amplitude:n)");
+   else if(!strcmp(cmd,"shimramp16"))           strcpy(syntax,"shimramp16([address:n], start:n/t, end:n/t, steps:n, delay:d)");
+   else if(!strcmp(cmd,"stoplockandsat"))       strcpy(syntax,"stoplockandsat()");
+   else if(!strcmp(cmd,"trigger"))              strcpy(syntax,"trigger()");
+   else if(!strcmp(cmd,"ttltranslate"))         strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
+   else if(!strcmp(cmd,"ttl"))                  strcpy(syntax,"ttl(byte:b)");
+   else if(!strcmp(cmd,"ttlon"))                strcpy(syntax,"ttlon(byte:b)");
+   else if(!strcmp(cmd,"ttloff"))               strcpy(syntax,"ttloff(byte:b)");
+   else if(!strcmp(cmd,"ttlpulse"))             strcpy(syntax,"ttlpulse(byte:b, duration:d)");
+   else if(!strcmp(cmd,"txoff"))                strcpy(syntax,"txoff(mode)");
+   else if(!strcmp(cmd,"txon"))                 strcpy(syntax,"txon(mode, amp:a, phase:p [,freq:f]) OR txon(ch1, a1, p1, f1, ch2, a2, p2, f2)");*/
+   else if(!strcmp(cmd,"wait"))                 strcpy(syntax,"wait(duration:w)");
+	//else if(!strcmp(cmd,"waltzstart"))           strcpy(syntax,"waltzstart(channel:n, duration270:d)");
+ //  else if(!strcmp(cmd,"waltzend"))             strcpy(syntax,"waltzend(channel:n)");
+ //  else if(!strcmp(cmd,"waltzdec"))             strcpy(syntax,"waltzdec(channel:n, amplitudeDec:a, duration90:d, duration180:d, duration270:d, duration360:d, phasePlus:p, phaseMinus:p)");
+ //  else if(!strcmp(cmd,"waltzdecpulse"))        strcpy(syntax,"waltzdecpulse(channel (1/2), dummy_amplitude: a, phase:p, duration:d");
+ //  else if(!strcmp(cmd,"waltzdecsetup"))        strcpy(syntax,"waltzdecsetup(channel (1/2), amp:a, [frequency:f]");
+ // //
+
+   if(syntax[0] == '\0')
+      return(false);
+   return(true);
+}
+
+short FX3Open(DLLParameters* par, char *args)
+{
+	if(USBDevice)
+	{
+		USBDevice->Close();
+		delete USBDevice;
+	}
+	USBDevice = new CCyUSBDevice(NULL, CYUSBDRV_GUID, true);
+	if(!USBDevice)
+	{
+		ErrorMessage("No connection to FX3");
+		return(ERR);
+	}
+   int deviceNr = SurveyExistingDevices();
+	if(deviceNr == -1)
+	{
+		ErrorMessage("Can't find connected FX3");
+		return(ERR);
+	}
+   EnumerateEndpointForTheSelectedDevice(USBDevice, deviceNr);
+	//TextMessage("Opening FX3\n");
+	return OK;
+}
+
+short FX3Close(DLLParameters* par, char *args)
+{
+	if(USBDevice)
+	{
+		USBDevice->Close();
+		delete USBDevice;
+	}
+	USBDevice = 0;
+//	TextMessage("Closing FX3\n");
+
+	return OK;
+}
+
+/****************************************************************************
+  Reoganise data returned from the FX3/TRex
+*****************************************************************************/
+
+short FX3Unpack(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   Variable dataVar;          
+	CText mode = "FIFO";
+	signed int rds,ids;
+
+   if ((nrArgs = ArgScan(par->itfc, args, 2, "mode, data", "ee", "tv", &mode, &dataVar)) < 0)
+      return(nrArgs);
+
+	mode.LowerCase();
+   if(mode == "fifo")
+	{
+		if(dataVar.GetType() == MATRIX2D && dataVar.GetDimY() == 1)
+		{
+			int nrWords = dataVar.GetDimX();
+			float **dataIn = (float**)dataVar.GetData();
+			complex **dataOut = MakeCMatrix2D(nrWords/3,1);
+			for(int i = 0; i < nrWords; i+=3)
+			{
+				unsigned int d1 = dataIn[0][i];
+				unsigned int d2 = dataIn[0][i+1];
+				unsigned int d3 = dataIn[0][i+2];
+				unsigned int rd = ((d1 & 0x00FFFF)<<8) + ((d2 & 0x00FF00)>>8);
+				unsigned int id = ((d2 & 0x0000FF)<<16) + (d3 & 0x00FFFF);
+				rds = (rd & 0x00800000) ? (rd | 0xFF000000) : rd;
+				ids = (id & 0x00800000) ? (id | 0xFF000000) : id;
+				dataOut[0][i/3].r = (float)rds;
+				dataOut[0][i/3].i = (float)ids;
+			}
+			par->retVar[1].AssignCMatrix2D(dataOut,nrWords/3,1);
+			par->nrRetVar = 1;
+		}
+		else
+		{
+			ErrorMessage("Invalid input data");
+			return(ERR);
+		}
+	}
+	else
+	{
+		ErrorMessage("Unknown unpack mode '%s'",mode);
+		return(ERR);
+	}
+
+	return(OK);
+}
+
+
+/****************************************************************************
+  Send a vector to the Cypress FX3 via USB
+*****************************************************************************/
+
+short FX3Write(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   Variable dataVar;          
+	long adrs = 0;
+	CText mode = "internal";
+	char dataLocation = 'I';
+
+   if ((nrArgs = ArgScan(par->itfc, args, 2, "mode, address, data", "eee", "tlv", &mode, &adrs, &dataVar)) < 0)
+      return(nrArgs);
+
+   if(mode == "i" || mode == "internal")
+		dataLocation = 'I';
+   else if(mode == "e" || mode == "external")
+		dataLocation = 'E';
+	else if(mode == "f" || mode == "flash")
+		dataLocation = 'F';
+	else
+	{
+		ErrorMessage("Invalid mode i/e/f");
+		return(ERR);
+	}
+
+	if(adrs < 0 || adrs >= 65536*2)
+	{
+		ErrorMessage("Invalid address (0-65536*2)");
+		return(ERR);
+	}
+
+   if(dataVar.GetType() == MATRIX2D && dataVar.GetDimY() == 1)
+   {
+		float *realData = dataVar.GetMatrix2D()[0];
+		long size = dataVar.GetDimX();
+
+		if(adrs + size*4 >= 65536*2)
+		{
+			ErrorMessage("Data out of FX3 memory range (max 64 kb)");
+			return(ERR);
+		}
+
+		BYTE *bData = new BYTE[size*4];
+		for(int i = 0, j = 0; i < size; i++)
+		{
+			int value = nint(realData[i]);
+			bData[j++] = (value & 0xFF000000) >> 24;
+			bData[j++] = (value & 0x00FF0000) >> 16;
+			bData[j++] = (value & 0x0000FF00) >> 8;
+			bData[j++] = (value & 0x000000FF);
+		}
+		if(!USBDevice)
+		{
+			ErrorMessage("No connection to FX3");
+         delete[] bData;
+			return(ERR);
+		}
+
+		if(!WriteToUSB(USBDevice, dataLocation, 'W', adrs, bData, size * 4))
+		{
+		   ErrorMessage("USB write error to FX3");
+         delete[] bData;
+			return(ERR);
+		}
+      delete[] bData;
+	}
+	else
+	{
+		ErrorMessage("Invalid argument - should be an integer vector");
+		return(ERR);
+	}
+
+   return(OK);
+}
+
+/****************************************************************************
+ 
+*****************************************************************************/
+
+const int HEADER_SIZE = 6;
+
+short FX3Read(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   long size;          
+	long adrs0 = 0;
+	CText mode = "internal";
+	char dataLocation = 'I';
+
+   if ((nrArgs = ArgScan(par->itfc, args, 3, "mode, adrs, data length (bytes)", "eee", "tll",&mode, &adrs0, &size)) < 0)
+      return(nrArgs);
+
+   if(mode == "i" || mode == "internal")
+		dataLocation = 'I';
+   else if(mode == "e" || mode == "external")
+		dataLocation = 'E';
+   else if(mode == "f" || mode == "flash")
+		dataLocation = 'F';
+	else if(mode == "d" || mode == "data")
+		dataLocation = 'D';
+	else
+	{
+		ErrorMessage("Invalid mode i/e/f/d");
+		return(ERR);
+	}
+
+	size *= 4; // Size in bytes
+
+	if(size <= 0)
+	{
+		ErrorMessage("Invalid data size");
+		return(ERR);
+	}
+
+	//if(adrs0 < 0 || adrs0 > 65536*2)
+	//{
+	//	ErrorMessage("Invalid address (0-65536*2)");
+	//	return(ERR);
+	//}
+
+	//if(adrs0 + size > 65536*2)
+	//{
+	//	ErrorMessage("Data out of FX3 memory range (max 64 kb)");
+	//	return(ERR);
+	//}
+
+	long adrsIn = adrs0;
+	long adrsOut = 0;
+
+	if(!USBDevice)
+	{
+		ErrorMessage("No connection to FX3");
+		return(ERR);
+	}
+
+	CCyUSBEndPoint *epBulkIn   = USBDevice->EndPointOf(0x81);
+	CCyUSBEndPoint *epBulkOut   = USBDevice->EndPointOf(0x01);
+
+	if(!epBulkIn)
+	{
+		ErrorMessage("No connection to FX3");
+		return(ERR);
+	}
+
+	float **dataOut = MakeMatrix2D(size/4,1);
+	long USB_BLOCK_SIZE = epBulkIn->MaxPktSize; 
+	BYTE *packetIn = new BYTE[USB_BLOCK_SIZE];
+
+	if(size <= USB_BLOCK_SIZE) // All data fits in one packet
+	{
+		BYTE packetOut[6];
+		packetOut[0] = dataLocation;
+		packetOut[1] = 'R';
+		packetOut[2]  = (size & 0xFF00) >> 8;
+		packetOut[3] = (size & 0x00FF);
+		packetOut[4]  = (adrsIn & 0xFF00) >> 8;
+		packetOut[5] = (adrsIn & 0x00FF);
+		if(!WriteToEndPoint(epBulkOut, packetOut, HEADER_SIZE))
+			return false;
+
+		if(!ReadFromEndPoint(epBulkIn, packetIn,size))
+			return(ERR);
+
+		for(int i = 0; i < size; i+=4)
+		{
+			int b0 = packetIn[i+0] << 24;
+			int b1 = packetIn[i+1] << 16;
+			int b2 = packetIn[i+2] << 8;
+			int b3 = packetIn[i+3];
+			dataOut[0][i/4] = b0 + b1 + b2 + b3;
+		}
+
+      par->retVar[1].AssignMatrix2D(dataOut,size/4,1);
+      par->nrRetVar = 1;  
+	}
+	else // Need multiple packets
+	{
+		long transfers = size/(USB_BLOCK_SIZE);
+		long remainer = size%(USB_BLOCK_SIZE);
+		long idx = 0;
+		for(int i = 0; i < transfers; i++)
+		{
+			BYTE packetOut[6];
+			packetOut[0] = dataLocation;
+			packetOut[1] = 'R';
+			packetOut[2] = (USB_BLOCK_SIZE & 0xFF00) >> 8;
+			packetOut[3] = (USB_BLOCK_SIZE & 0x00FF);
+			packetOut[4] = (adrsIn & 0xFF00) >> 8;
+			packetOut[5] = (adrsIn & 0x00FF);
+			if(!WriteToEndPoint(epBulkOut, packetOut, HEADER_SIZE))
+				return false;
+
+			if(!ReadFromEndPoint(epBulkIn, packetIn,USB_BLOCK_SIZE))
+				return false;
+
+			for(int i = 0; i < USB_BLOCK_SIZE; i+=4)
+			{
+				int b0 = packetIn[i+0] << 24;
+				int b1 = packetIn[i+1] << 16;
+				int b2 = packetIn[i+2] << 8;
+				int b3 = packetIn[i+3];
+				dataOut[0][(adrsOut + i)/4] = b0 + b1 + b2 + b3;
+			}
+
+			if(dataLocation != 'D')
+			{
+			   adrsIn += USB_BLOCK_SIZE/4;
+			   adrsOut += USB_BLOCK_SIZE;
+			}
+			else
+			{
+			   adrsOut += USB_BLOCK_SIZE;
+			}
+		}
+		if(remainer > 0)
+		{
+			BYTE packetOut[6];
+			packetOut[0] = dataLocation;
+			packetOut[1] = 'R';
+			packetOut[2] = (remainer & 0xFF00) >> 8;
+			packetOut[3] = (remainer & 0x00FF);
+			packetOut[4] = (adrsIn & 0xFF00) >> 8;
+			packetOut[5] = (adrsIn & 0x00FF);
+			if(!WriteToEndPoint(epBulkOut, packetOut, HEADER_SIZE))
+				return false;
+
+			if(!ReadFromEndPoint(epBulkIn, packetIn,remainer))
+				return false;
+
+			for(int i = 0; i < remainer; i+=4)
+			{
+				int b0 = packetIn[i+0] << 24;
+				int b1 = packetIn[i+1] << 16;
+				int b2 = packetIn[i+2] << 8;
+				int b3 = packetIn[i+3];
+				dataOut[0][(adrsOut + i)/4] = b0 + b1 + b2 + b3;
+			}
+
+		}
+
+      par->retVar[1].AssignMatrix2D(dataOut,size/4,1);
+      par->nrRetVar = 1; 
+	  // TextMessage("\nSum = %d\n",total);
+	}
+
+	delete [] packetIn;
+
+   return(OK);
+}
+
+
+short FX3Comm(DLLParameters* par, char* args)
+{
+   short nrArgs;
+   Variable dataVar;
+   long adrs = 0;
+   CText mode = "I";
+   CText option = "W";
+
+   if ((nrArgs = ArgScan(par->itfc, args, 3, "mode, option, address, data", "eeee", "ttlv", &mode, &option, &adrs, &dataVar)) < 0)
+      return(nrArgs);
+
+
+   if (adrs < 0 || adrs >= 65536 * 2)
+   {
+      ErrorMessage("Invalid address (0-65536*2)");
+      return(ERR);
+   }
+
+   if (dataVar.GetType() == MATRIX2D && dataVar.GetDimY() == 1)
+   {
+      float* realData = dataVar.GetMatrix2D()[0];
+      long size = dataVar.GetDimX();
+
+      if (adrs + size * 4 >= 65536 * 2)
+      {
+         ErrorMessage("Data out of FX3 memory range (max 64 kb)");
+         return(ERR);
+      }
+
+      BYTE* bData = new BYTE[size * 4];
+      for (int i = 0, j = 0; i < size; i++)
+      {
+         int value = nint(realData[i]);
+         bData[j++] = (value & 0xFF000000) >> 24;
+         bData[j++] = (value & 0x00FF0000) >> 16;
+         bData[j++] = (value & 0x0000FF00) >> 8;
+         bData[j++] = (value & 0x000000FF);
+      }
+      if (!USBDevice)
+      {
+         ErrorMessage("No connection to FX3");
+         delete[] bData;
+         return(ERR);
+      }
+
+      if (!WriteToUSB(USBDevice, mode.Str()[0], option.Str()[0], adrs, bData, size * 4))
+      {
+         ErrorMessage("USB write error to FX3");
+         delete[] bData;
+         return(ERR);
+      }
+      delete[] bData;
+   }
+   else
+   {
+      ErrorMessage("Invalid argument - should be an integer vector");
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+/****************************************************************************
+  Write the data to the FX-3 and wait for a reply which is the sum of the 
+  data sent (should be CRC).
+
+  Each packet is prefixed by a header which consists of a two character
+  command code and then the size of the data block excluding the header.
+*****************************************************************************/
+
+
+bool WriteToUSB(CCyUSBDevice *USBDevice, char mode, char option, long adrs, BYTE* data, long len)
+{
+	int total = 0;
+	long szRet = 4;
+	CCyUSBEndPoint *epBulkOut   = USBDevice->EndPointOf(0x01);
+	CCyUSBEndPoint *epBulkIn   = USBDevice->EndPointOf(0x81);
+
+	if(!epBulkOut || !epBulkIn)
+	{
+		ErrorMessage("No connection to FX3");
+		return(false);
+	}
+
+	long USB_BLOCK_SIZE = epBulkOut->MaxPktSize - HEADER_SIZE; // Needed for USB2 why?
+	//long USB_BLOCK_SIZE = epBulkOut->MaxPktSize; // Ok with USB3
+
+	BYTE *packet = new BYTE[USB_BLOCK_SIZE];
+	BYTE *packetIn = new BYTE[USB_BLOCK_SIZE];
+	packet[0] = mode;
+	packet[1] = option;
+
+
+	if(len+4 < USB_BLOCK_SIZE)
+	{
+		packet[2]  = (len & 0xFF00) >> 8;
+		packet[3] = (len & 0x00FF);
+		packet[4]  = (adrs & 0xFF00) >> 8;
+		packet[5] = (adrs & 0x00FF);
+		memcpy(packet+HEADER_SIZE,data,len);
+		if(!WriteToEndPoint(epBulkOut, packet, len+HEADER_SIZE))
+			return false;
+		if(!ReadFromEndPoint(epBulkIn, packetIn,szRet))
+			return false;
+		int num = (int)(packetIn[3] << 24) + (int)(packetIn[2] << 16) + (int)(packetIn[1] << 8) + (int)(packetIn[0]);
+	//	TextMessage("\nSum = %d\n",num);
+	}
+	else
+	{
+		int transfers = len/(USB_BLOCK_SIZE-HEADER_SIZE);
+		int remainer = len%(USB_BLOCK_SIZE-HEADER_SIZE);
+		int idx = 0;
+		for(int i = 0; i < transfers; i++)
+		{
+			idx = i*(USB_BLOCK_SIZE-HEADER_SIZE);
+			packet[2] = ((USB_BLOCK_SIZE-HEADER_SIZE) & 0xFF00) >> 8;
+			packet[3] = ((USB_BLOCK_SIZE-HEADER_SIZE) & 0x00FF);
+			packet[4]  = (adrs & 0xFF00) >> 8;
+			packet[5] = (adrs & 0x00FF);
+			memcpy(packet+HEADER_SIZE,data+idx,USB_BLOCK_SIZE-HEADER_SIZE);
+		   if(!WriteToEndPoint(epBulkOut, packet, USB_BLOCK_SIZE))
+				return false;
+			if(!ReadFromEndPoint(epBulkIn, packetIn,szRet))
+				return false;
+			int num = (int)(packetIn[3] << 24) + (int)(packetIn[2] << 16) + (int)(packetIn[1] << 8) + (int)(packetIn[0]);
+			total += num;
+			adrs += (USB_BLOCK_SIZE-HEADER_SIZE)/4;
+		}
+		if(remainer > 0)
+		{
+			idx = idx + USB_BLOCK_SIZE-HEADER_SIZE;
+			packet[2] = (remainer & 0xFF00) >> 8;
+			packet[3] = (remainer & 0x00FF);
+			packet[4]  = (adrs & 0xFF00) >> 8;
+			packet[5] = (adrs & 0x00FF);
+			memcpy(packet+HEADER_SIZE,data+idx,remainer);
+		   if(!WriteToEndPoint(epBulkOut, packet, remainer+HEADER_SIZE))
+				return false;
+			if(!ReadFromEndPoint(epBulkIn, packetIn, szRet))
+				return false;
+			int num = (int)(packetIn[3] << 24) + (int)(packetIn[2] << 16) + (int)(packetIn[1] << 8) + (int)(packetIn[0]);
+			total += num;
+		}
+	  // TextMessage("\nSum = %d\n",total);
+	}
+
+	delete [] packet;
+	delete [] packetIn;
+
+	return true;
+}
+
+/****************************************************************************
+ 
+*****************************************************************************/
+
+
+bool ReadFromEndPoint( CCyUSBEndPoint *endPoint, BYTE* data, long &len)
+{
+	 bool result = endPoint->XferData((PUCHAR)data, len); 
+	 return(result);
+} 
+
+/****************************************************************************
+ 
+*****************************************************************************/
+
+
+
+bool WriteToEndPoint( CCyUSBEndPoint *endPoint, BYTE* data, long len)
+{
+	 bool result = endPoint->XferData((PUCHAR)data, len); 
+	 return(result);
+}
+
+/****************************************************************************
+ 
+*****************************************************************************/
+
+
+int SurveyExistingDevices()
+{
+    CCyUSBDevice	*USBDevice;
+    USBDevice = new CCyUSBDevice(NULL, CYUSBDRV_GUID, true);
+    int nCboIndex = -1;
+    
+    if (USBDevice != NULL) 
+    {
+        int nInsertionCount = 0;
+        int nDeviceCount = USBDevice->DeviceCount();
+        for (int nCount = 0; nCount < nDeviceCount; nCount++ )
+        {
+            CText strDeviceData;
+            USBDevice->Open(nCount);
+            if(USBDevice->VendorID == 0x4B4 && USBDevice->ProductID == 0xF1)
+            {
+               USBDevice->Close();
+               return(nCount);
+            }
+            strDeviceData.Format("(0x%04X - 0x%04X) %s", USBDevice->VendorID, USBDevice->ProductID, USBDevice->FriendlyName);
+				printf("%s\n",strDeviceData.Str());
+
+            USBDevice->Close();
+        }
+        delete USBDevice;
+    }
+    else 
+		 return -1;
+
+    return -1;
+}
+
+/****************************************************************************
+ 
+*****************************************************************************/
+
+bool EnumerateEndpointForTheSelectedDevice(CCyUSBDevice	*USBDevice, int nDeviceIndex)
+{
+   // int nDeviceIndex = 2;
+
+    // There are devices connected in the system.       
+    USBDevice->Open(nDeviceIndex);
+    int interfaces = USBDevice->AltIntfcCount()+1;    
+
+    for (int nDeviceInterfaces = 0; nDeviceInterfaces < interfaces; nDeviceInterfaces++ )
+    {
+        USBDevice->SetAltIntfc(nDeviceInterfaces);
+        int eptCnt = USBDevice->EndPointCount();
+
+        // Fill the EndPointsBox
+        for (int endPoint = 1; endPoint < eptCnt; endPoint++)
+        {
+            CCyUSBEndPoint *ept = USBDevice->EndPoints[endPoint];
+
+            // INTR, BULK and ISO endpoints are supported.
+            if (ept->Attributes == 2)
+            {
+                CText strData, strTemp;
+                
+                strData = strData + ((ept->Attributes == 1) ? "ISOC " : ((ept->Attributes == 2) ? "BULK " : "INTR "));
+                strData = strData + (ept->bIn ? "IN, " : "OUT, ");
+                strTemp.Format("AltInt - %d and EpAddr - 0x%02X", nDeviceInterfaces, ept->Address);
+                strData = strData + strTemp;
+					 printf("%s\n",strData.Str());
+
+            }
+        }        
+    }
+
+
+    return true;
+
+}
+
+/*************************************************************************
+*       Return the value of the highres clock in milliseconds
+*************************************************************************/
+
+double GetMsTime()
+{
+	LARGE_INTEGER tick,freq;
+	QueryPerformanceCounter(&tick);
+	QueryPerformanceFrequency(&freq);
+	double time = 1000.0L*(double)tick.QuadPart/(double)freq.QuadPart;
+	return(time);
+}
+
+/*****************************************************************************************
+*                           Return the nearest integer to the float num                  *
+*****************************************************************************************/
+
+long nint(float num)
+{
+   if(num > 0)
+      return((long)(num+0.5));
+   else
+      return((long)(num-0.5));
+   
+}
+
+
+
+
+//struct
+//{
+//   _int64 eventTime;
+//	_int64 lastCommandEndTime;
+//	_int64 nextCommandTime;
+//	_int32 lineCnt;
+//	std::vector<_int32> ps; 
+//	bool inLoop;
+//	float pgo;
+//}
+//psInfo;
+
+/*******************************************************************************
+ Intialise the variables which will be accessed during the pulse program
+ build phase. This will normally be called from outside the pulse program file.
+*******************************************************************************/
+
+short InitialisePPVar(DLLParameters* par, char *args)
+{
+   CText dir;
+   short nrArgs;
+	float  pgo;
+	CText startCodeFile;
+	CText startCodeDir;
+
+   if((nrArgs = ArgScan(par->itfc,args,3,"pgo, startCodeFile, startCodeFolder","eee","ftt",&pgo,&startCodeFile, &startCodeDir)) < 0)
+      return(nrArgs);
+
+   psInfo.pgo = pgo;
+
+
+
+
+}
+
+/*******************************************************************************
+  This function will initialise the pulse program event table and other
+  relevant variables. SHould be the first command in the pulse program
+*******************************************************************************/
+
+short InitialisePP(DLLParameters* par, char *args)
+{
+   CText dir;
+   short nrArgs;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"working directory","e","t",&dir)) < 0)
+      return(nrArgs);
+
+   psInfo.eventTime = 0;
+	psInfo.lastCommandEndTime = 0;
+	psInfo.nextCommandTime = 0;
+//	psInfo.ps = 
+	psInfo.inLoop = false;
+
+
+   return(OK);
+}
+
+
+
+short EndPP(DLLParameters* par, char *args)
+{
+   char *text;
+   FILE *fp;
+   char varName[50];
+   long sz,len;
+   short nrArgs;
+   CText startFile = "startCode.asm";
+
+
+// Write the header file
+   fp = fopen("temp.asm","w");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n      nolist");
+   fprintf(fp,"\n      include  'ioequ.asm'");
+   fprintf(fp,"\n      include  'FPGA.asm'");
+   fprintf(fp,"\n      list");
+   fprintf(fp,"\n;***************************************************************************\n");
+
+   fprintf(fp,"\n                org     x:$0\n\n");
+   fprintf(fp,"\nPARAM_BASE      equ     *       ; Memory for pulse program parameters");
+   fprintf(fp,"\nRXG1            ds      1       ; 00 - Receiver gain block 1");
+   fprintf(fp,"\nRXG2            ds      1       ; 01 - Receiver gain block 2");
+   fprintf(fp,"\nDEC1            ds      1       ; 02 - Decimation for CIC1");
+   fprintf(fp,"\nDEC5            ds      1       ; 03 - Decimation for CIC5");
+   fprintf(fp,"\nDECFIR          ds      1       ; 04 - Decimation for FIR");
+   fprintf(fp,"\nATT1            ds      1       ; 05 - Attenuation for CIC1");
+   fprintf(fp,"\nDELAYFIR        ds      1       ; 06 - Delay for CIC5");
+   fprintf(fp,"\nATTFIR          ds      1       ; 07 - Attenuation for FIR");
+   fprintf(fp,"\nNtaps           ds      1       ; 08 - Taps for FIR");
+   fprintf(fp,"\nTXF10           ds      1       ; 09 - Tx Ch 1 frequency word 0");
+   fprintf(fp,"\nTXF11           ds      1       ; 10 - Tx Ch 1 frequency word 1");
+   fprintf(fp,"\nRXSETCHANNEL    ds      1       ; 11 - RxAmp set channel code");
+   fprintf(fp,"\nRXSETGAIN       ds      1       ; 12 - RxAmp set gain code");
+   fprintf(fp,"\nRXF00           ds      1       ; 13 - Rx Frequency word 0");
+   fprintf(fp,"\nRXF01           ds      1       ; 14 - Rx Frequency word 1");
+   fprintf(fp,"\nTXF20           ds      1       ; 15 - Tx Ch 2 frequency word 0");
+   fprintf(fp,"\nTXF21           ds      1       ; 16 - Tx Ch 2 frequency word 1");
+   fprintf(fp,"\nRXP0            ds      1       ; 17 - Rx Phase word 0");
+   fprintf(fp,"\nNRSCANS         ds      1       ; 18 - Number of scans to perform");
+   fprintf(fp,"\nEXPDELAY        ds      1       ; 19 - Delay between experiments");
+   fprintf(fp,"\nPGO             ds      1       ; 20 - Pulse gate overhead delay");
+   fprintf(fp,"\nGRADRESET       ds      1       ; 21 - 1 if gradients are to be reset");
+   fprintf(fp,"\nLFRXAMP         ds      1       ; 22 - 1 if low frequency Kea");
+   fprintf(fp,"\nSKIPPNTS        ds      1       ; 23 - Points to skip at start of acquisition");
+   fprintf(fp,"\nJITTER_CH1      ds      1       ; 24 - DDS channel 1 antiphase jitter parameter");
+   fprintf(fp,"\nJITTER_CH2      ds      1       ; 25 - DDS channel 2 antiphase jitter parameter");
+   fprintf(fp,"\nSoftVersion     ds      1       ; 26 - FPGA software version return");
+   fprintf(fp,"\nUseTrigger      ds      1       ; 27 - Use the trigger input (0/1)");
+   fprintf(fp,"\n\n; Pulse program info\n");
+
+// Loop over variable list extracting variable names
+   short c = 28;
+   for(short i = 0; i < szList; i++)
+   {
+      strncpy(varName,parList[i],50);
+      if(varName[0] == 'f')
+      {
+         fprintf(fp,"\nFX%s_0           ds      1       ; %hd - Frequency %s word 0",varName+1,c++,varName+1);
+         fprintf(fp,"\nFX%s_1           ds      1       ; %hd - Frequency %s word 1",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'a')
+      {
+         fprintf(fp,"\nTXA%s            ds      1       ; %hd - Tx amplitude %s word 0",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'g')
+      {
+         fprintf(fp,"\nGAIN%s_0         ds      1       ; %hd - Rx gain %s word 0",varName+1,c++,varName+1);
+         fprintf(fp,"\nGAIN%s_1         ds      1       ; %hd - Rx gain %s word 1",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'p')
+      {
+         fprintf(fp,"\nTXP%s            ds      1       ; %hd - Tx phase %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'd')
+      {
+         fprintf(fp,"\nDELAY%s          ds      1       ; %hd - Delay %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'w')
+      {
+         fprintf(fp,"\nWAIT%s_0         ds      1       ; %hd - Wait steps %s",varName+1,c++,varName+1);
+         fprintf(fp,"\nWAIT%s_1         ds      1       ; %hd - Wait unit1 %s", varName+1,c++,varName+1);
+         fprintf(fp,"\nWAIT%s_2         ds      1       ; %hd - Wait unit2 %s", varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'n')
+      {
+         fprintf(fp,"\nNR%s             ds      1       ; %hd - Number %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'b')
+      {
+         fprintf(fp,"\nTTL%s            ds      1       ; %hd - Byte %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 't')
+      {
+         fprintf(fp,"\nTABLE%s          ds      1       ; %hd - Table %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'm')
+      {
+         fprintf(fp,"\nMEM%s          ds      1       ; %hd - Memory address %s",varName+1,c++,varName+1);
+      }
+   }
+   fprintf(fp,"\n\n");
+   fclose(fp);
+
+// Readin start code
+   fp = fopen(startFile.Str(),"r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append a trigger string is desired
+   CText ctext = text;
+   delete [] text;
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(ctext.Str(),1,ctext.Size(),fp);
+   fclose(fp);
+
+// Readin middle code
+   fp = fopen("midCode.asm","r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open midCode file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open temporary file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(text,1,sz,fp);
+   fclose(fp);
+   delete [] text;
+
+// Readin end code
+   fp = fopen("endCode.asm","r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open endCode file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(text,1,sz,fp);
+   fclose(fp);
+   delete [] text;
+
+// Delete the temp file
+   remove("midCode.asm");
+
+// Copy the variable list to ansVar ************************
+   par->retVar[1].MakeAndSetList(parList,szList);
+   par->nrRetVar = 1;
+   FreeList(parList,szList+1); // 1 bigger because we started with 1 dummy entry
+   szList = 0;
+   parList = NULL;
+
+   return(OK);
+}
+
+
+short AcquireData(DLLParameters* par, char *args)
+{
+//   short nrArgs;
+//   CText nrPnts;
+//   CText duration;
+//   CText mode; 
+//   CText adrs; 
+//   long NrPnts;
+//   long Durations;
+//   long Adrs;
+//   FILE *fp;
+//
+//   if((nrArgs = ArgScan(par->itfc,args,2,"mode, nr points, [[duration], saveAdrs]","eeee","qqqq",&mode,&nrPnts,&duration,&adrs)) < 0)
+//      return(nrArgs);
+//
+//   if(!parList)
+//   {
+//      Error(par->itfc,"Pulse sequence not initialised");
+//      return(ERR);
+//   }
+//
+//// Add new variables to the list
+//   InsertUniqueStringIntoList(nrPnts.Str(),&parList,szList);
+//   if(nrArgs >= 3)
+//      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+//   if(nrArgs == 4)
+//      InsertUniqueStringIntoList(adrs.Str(),&parList,szList);
+//
+//// Open the output file
+//   fp = fopen("midCode.asm","a");
+//   if(!fp)
+//   {
+//      Error(par->itfc,"Can't open output file");
+//      return(ERR);
+//   }
+//
+//// Overwrite mode
+//   if(mode == "overwrite")
+//   {
+//      if(nrArgs == 2) // No delay
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire data (overwrite without delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//         if(nrArgs == 4)
+//             fprintf(fp,"\n        move    x:MEM%s,r5               ; Specify the save address",adrs.Str()+1);
+//         else
+//             fprintf(fp,"\n        move    #$%d,r5               ; Specify the save address", DSP_MEMORY_ADRS);
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1        ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n         move    a1,y:(r5)+              ; Save to memory");
+//         fprintf(fp,"\nLBL%ld    nop",label);
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         label += 1;
+//         fclose(fp);
+//      }
+//      else
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire data (overwrite with delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    x:DELAY%s,a1             ; Total acquisition time",duration.Str()+1);
+//         fprintf(fp,"\n        sub     #5,a"); // Tweak it
+//         fprintf(fp,"\n        move    a1,r3");
+//         fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+//         fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Set timer2");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//         if(nrArgs == 4)
+//             fprintf(fp,"\n        move    x:MEM%s,r5               ; Specify the save address",adrs.Str()+1);
+//         else
+//             fprintf(fp,"\n        move    #$%d,r5               ; Specify the save address", DSP_MEMORY_ADRS);
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1        ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n         move    a1,y:(r5)+              ; Save to memory");
+//         fprintf(fp,"\nLBL%ld    nop",label);
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for acqdelay to end");
+//         fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2");
+//
+//         label += 1;
+//
+//         fclose(fp);
+//      }
+//   }
+//   else if(mode == "append")
+//   {
+//      if(nrArgs == 2) // No delay
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (append without delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    y:DATA_ADRS,r5           ; Specify the data address");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//
+//         fprintf(fp,"\n        do      r7,LBL%ld               ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1       ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\nLBL%ld  nop",label);
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    r5,y:DATA_ADRS           ; Save data address");
+//
+//         fclose(fp);
+//
+//         label++;
+//      }
+//      else
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (append with delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    y:DATA_ADRS,r5           ; Specify the data address");
+//
+//         fprintf(fp,"\n        move    x:DELAY%s,a1             ; Total acquisition time",duration.Str()+1);
+//         fprintf(fp,"\n        sub     #5,a"); // Tweak it
+//         fprintf(fp,"\n        move    a1,r3");
+//         fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+//         fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Set timer2");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//
+//         fprintf(fp,"\n        do      r7,LBL%ld               ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1       ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\nLBL%ld  nop",label);
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    r5,y:DATA_ADRS           ; Save data address");
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for acqdelay to end");
+//         fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2");
+// 
+//
+//         fclose(fp);
+//
+//         label++;
+//
+//      }     
+//   }
+//
+//   else if(mode == "test")
+//   {
+//   if(nrArgs == 2) // No delay
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (append without delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    y:DATA_ADRS,r5           ; Specify the data address");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//
+//         fprintf(fp,"\n        do      r7,LBL%ld               ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1       ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+//
+//         fprintf(fp,"\n        move    r5,a1");
+//         fprintf(fp,"\n        move    #2,b1                     ; Abort code");
+//         fprintf(fp,"\n        cmp     #$10020,a");
+//         fprintf(fp,"\n        jlt     CONT");
+//         fprintf(fp,"\n        enddo");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\nCONT    nop");
+//
+//         fprintf(fp,"\nLBL%ld  nop",label);
+//
+//          fprintf(fp,"\n        jge    ABORT");
+// 
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    r5,y:DATA_ADRS           ; Save data address");
+//
+//         fclose(fp);
+//
+//         label++;
+//      }
+//   }
+//
+//   else if(mode == "sum")
+//   {
+//      if(nrArgs == 2) // No delay
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (summing without delay)");
+//
+//         fprintf(fp,"\n        clr     a                       ; Clear register a");
+//         fprintf(fp,"\n        clr     b                       ; Clear register b");
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         if(nrArgs == 4)
+//             fprintf(fp,"\n        move    x:MEM%s,r5               ; Load the number of samples into r7",adrs.Str()+1);
+//         else
+//             fprintf(fp,"\n        move    #$%d,r5              ; Load the number of samples into r7", DSP_MEMORY_ADRS);
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label+2);
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_TTL,a1             ; Load data from channel A");
+//
+//         fprintf(fp,"\n        lsl     #8,a");
+//         fprintf(fp,"\n        move    a1,y1");
+//         fprintf(fp,"\n        mpy     #$8000,y1,a");
+//
+//         fprintf(fp,"\nLBL%ld   move    y:(r5),b1               ; Get last value at this location",label);
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_TTL,a1             ; Load data from channel B");
+//
+//         fprintf(fp,"\n        lsl     #8,a");
+//         fprintf(fp,"\n        move    a1,y1");
+//         fprintf(fp,"\n        mpy     #$8000,y1,a");
+//
+//         fprintf(fp,"\nLBL%ld   move    y:(r5),b1               ; Get last value at this location",label+1);
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\nLBL%ld  nop",label+2);
+//         fclose(fp);
+//
+//         label += 3;
+//      }
+//      else
+//      {
+//         fprintf(fp,"\n\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (summing with delay)");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        clr     a                       ; Clear register a");
+//         fprintf(fp,"\n        clr     b                       ; Clear register b");
+//         fprintf(fp,"\n        move    x:DELAY%s,a1             ; Total acquisition time",duration.Str()+1);
+//         fprintf(fp,"\n        sub     #5,a"); // Tweak it
+//         fprintf(fp,"\n        move    a1,r3");
+//         fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+//         fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Set timer2");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         if(nrArgs == 4)
+//             fprintf(fp,"\n        move    x:MEM%s,r5               ; Specify the save address",adrs.Str()+1);
+//         else
+//             fprintf(fp,"\n        move    #$%d,r5               ; Specify the save address", DSP_MEMORY_ADRS);
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+// 
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*          ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1       ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1        ; Load data from channel A");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Save to memory");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Save to memory");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\nLBL%ld    nop",label);
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for acqdelay to end");
+//         fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2");
+//         fclose(fp);
+//
+//
+//         label++;
+//      }
+//   }
+//   else if(mode == "integrate")
+//   {
+//      if(nrArgs == 2) // No delay
+//      {
+//         fprintf(fp,"\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (integrating without delay)");
+//
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1        ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    r5,a1");
+//         fprintf(fp,"\n        sub     #2,a");
+//         fprintf(fp,"\n        move    a1,r5                    ; Restore r5");
+//
+//
+//         fprintf(fp,"\nLBL%ld  nop",label);
+//
+//         fprintf(fp,"\n        move    r5,a1");
+//         fprintf(fp,"\n        add     #2,a");
+//         fprintf(fp,"\n        move    a1,r5                    ; Increment r5 by 2");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fclose(fp);
+//
+//         label ++;
+//      }
+//      else
+//      {
+//         fprintf(fp,"\n;");
+//         fprintf(fp,"\n;***************************************************************************");
+//         fprintf(fp,"\n; Acquire (integrating with delay)");
+//
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+//         fprintf(fp,"\n        move    a1,x:FPGA_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+//         fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//         fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+//         fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        move    x:DELAY%s,a1           ; Total acquisition time",duration.Str()+1);
+//         fprintf(fp,"\n        sub     #5,a"); // Tweak it
+//         fprintf(fp,"\n        move    a1,r3");
+//         fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+//         fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Set timer2");
+//
+//         fprintf(fp,"\n        movep   #0,x:A_TLR1             ; Set up ADC timer");
+//         fprintf(fp,"\n        movep   #0,x:A_TCSR1            ; Disable timer");
+//         fprintf(fp,"\n        movep   #$361,x:A_TCSR1         ; Set up timer1 (T1) for input capture");
+//
+//         if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+// 
+//         fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR1,*         ; Wait for timer1 flag");
+//         fprintf(fp,"\n        movep   #$200361,x:A_TCSR1      ; Clear timer1 flag");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleA,a1       ; Load data from channel A");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    x:FPGA_SampleB,a1       ; Load data from channel B");
+//         fprintf(fp,"\n        nop");
+//         fprintf(fp,"\n        nop");
+//
+//         fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+//         fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+//         fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+//
+//         fprintf(fp,"\n        move    r5,a1");
+//         fprintf(fp,"\n        sub     #2,a");
+//         fprintf(fp,"\n        move    a1,r5                    ; Restore r5");
+//
+//
+//         fprintf(fp,"\nLBL%ld  nop",label);
+//
+//         fprintf(fp,"\n        move    r5,a1");
+//         fprintf(fp,"\n        add     #2,a");
+//         fprintf(fp,"\n        move    a1,r5                    ; Increment r5 by 2");
+//
+//         fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+//         fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Send to FPGA");
+//
+//         fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for acqdelay to end");
+//         fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2");
+//
+//         fclose(fp);
+//
+//         label++;
+//      }
+//   }
+//   else
+//   {
+//      fclose(fp);
+//      Error(par->itfc,"invalid acquire mode");
+//      return(ERR);
+//   }
+   return(OK);
+} 
+
+
+/**********************************************************************
+     Generate a short delay 
+
+     delay(duration)
+
+     duration can be a reference e.g. "d1" or d1 
+     or a constant in us e.g. 100
+     or a table entry
+     Delay range is 0.5 ... 327670 us
+
+**********************************************************************/
+
+short MakeADelay(DLLParameters* par, char *args)
+{
+   //short nrArgs;
+   //CText duration;
+   //float fDuration;
+   //long Duration;
+
+   //if((nrArgs = ArgScan(par->itfc,args,1,"duration name","e","q",&duration)) < 0)
+   //   return(nrArgs);
+
+   //if(!parList)
+   //{
+   //   Error(par->itfc,"Pulse sequence not initialised");
+   //   return(ERR);
+   //}
+
+   //if(duration[0] == 'd' || duration[0] == 't')
+   //   InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   //FILE *fp = fopen("midCode.asm","a");
+   //if(!fp)
+   //{
+   //   Error(par->itfc,"Can't open output file");
+   //   return(ERR);
+   //}
+
+
+   //fprintf(fp,"\n;");
+   //fprintf(fp,"\n;***************************************************************************");
+   //fprintf(fp,"\n; Delay");
+
+   //if(duration[0] == 'd')
+   //{
+   //   fprintf(fp,"\n        move    x:DELAY%s,a1",duration.Str()+1);
+   //   fprintf(fp,"\n        sub     #9,a"); // Tweak it
+   //   fprintf(fp,"\n        move    a1,r3");
+   //   fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+   //   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+   //   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+   //}
+   //else if(sscanf(duration.Str(),"%f",&fDuration) == 1)
+   //{
+   //   if(fDuration < 0.25 || fDuration > 327670)
+   //   {
+   //      Error(par->itfc,"invalid delay '%f' [0.25 -> 327670]",fDuration);
+   //      fclose(fp);
+   //      return(ERR);
+   //   }
+   //   Duration = (long)(fDuration * 50 - 1 + 0.5);
+   //   fprintf(fp,"\n        move    #%ld,a1",Duration);
+   //   fprintf(fp,"\n        sub     #9,a"); // Tweak it
+   //   fprintf(fp,"\n        move    a1,r3");
+   //   fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+   //   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+   //   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+   //}
+   //else if(duration[0] == 't')
+   //{
+   //   fprintf(fp,"\n        clr a");
+   //   fprintf(fp,"\n        clr b");
+   //   fprintf(fp,"\n        move    x:TABLE%s,a0",duration.Str()+1);
+   //   fprintf(fp,"\n        dec a"); // a0 points to table index
+   //   fprintf(fp,"\n        move    a0,r5"); // Read current table index
+   //   fprintf(fp,"\n        move    y:(r5),a0");
+
+   //   fprintf(fp,"\n        move    x:TABLE%s,b0",duration.Str()+1);
+
+   //   fprintf(fp,"\n        add     b,a");  // Add the index to table start to find current value
+   //   fprintf(fp,"\n        move    a0,r5"); // 
+   //   fprintf(fp,"\n        move    y:(r5),a1"); // Read the table value
+
+   //   fprintf(fp,"\n        sub     #19,a"); // Tweak it
+   //   fprintf(fp,"\n        move    a1,r3");
+   //   fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+   //   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+   //   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        nop");
+   //}
+   //else
+   //{
+   //   Error(par->itfc,"invalid delay or delay reference '%s'",duration.Str());
+   //   fclose(fp);
+   //   return(ERR);
+   //}
+
+   //fclose(fp);
+
+   return(OK);
+
+}  
+
+/**********************************************************************
+     Generate a long delay 
+
+     wait(duration)
+
+**********************************************************************/
+
+short MakeALongDelay(DLLParameters* par, char *args)
+{
+   //short nrArgs;
+   //CText wait;
+   //long nrSteps;
+   //long delay1,delay2;
+   //float fWait;
+
+   //if((nrArgs = ArgScan(par->itfc,args,1,"duration name","e","q",&wait)) < 0)
+   //   return(nrArgs);
+
+   //if(!parList)
+   //{
+   //   Error(par->itfc,"Pulse sequence not initialised");
+   //   return(ERR);
+   //}
+
+   //if(wait[0] == 'w')
+   //   InsertUniqueStringIntoList(wait.Str(),&parList,szList);
+
+   //FILE *fp = fopen("midCode.asm","a");
+   //if(!fp)
+   //{
+   //   Error(par->itfc,"Can't open output file");
+   //   return(ERR);
+   //};
+
+
+   //fprintf(fp,"\n\n;");
+   //fprintf(fp,"\n;***************************************************************************");
+   //fprintf(fp,"\n; General delay");
+
+   //if(wait[0] == 'w')
+   //{
+   //   fprintf(fp,"\n        clr     a");
+   //   fprintf(fp,"\n        move    x:WAIT%s_0,a1            ; Number of delay steps",wait.Str()+1); 
+   //   fprintf(fp,"\n        move    a1,r1");
+   //   fprintf(fp,"\n        move    x:WAIT%s_1,a1            ; Delay size 1",wait.Str()+1);
+
+   //   fprintf(fp,"\n        rep     a");
+   //   fprintf(fp,"\n        nop");
+
+   //   fprintf(fp,"\n        clr     a");
+   //   fprintf(fp,"\n        move    x:WAIT%s_2,a1            ; Delay size 2",wait.Str()+1);
+   //   fprintf(fp,"\n        do      r1,LBL%ld                 ; Repeat delay ",label);
+   //   fprintf(fp,"\n        rep     a");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\nLBL%ld    nop",label++);
+   //}
+   //else if(sscanf(wait.Str(),"%f",&fWait) == 1)
+   //{
+   //   if(fWait < 2 || fWait > 167e6)
+   //   {
+   //      Error(par->itfc,"invalid delay '%ld' [2 us...167 s]",wait);
+   //      fclose(fp);
+   //      return(ERR);
+   //   }
+
+   //   if(fWait/16777216 < 1) // Can be represented in < 2^24 1us steps?
+   //   {
+   //      float in = (long)fWait; // number of 1us steps
+   //      float fr = fWait - in; // remaining time
+   //      if(in > 1)
+   //      {
+   //         nrSteps = (long)fWait-1; // Number of steps
+   //         delay1 = 103 + (long)(fr*100+0.5) - 19; // Remaining time as 10 ns steps
+   //         delay2 = 95; // Fiddle factor
+   //      }
+   //      else if(fWait > 0.2)
+   //      {
+   //         nrSteps = 0;
+   //         delay1 = (long)(fWait*100+0.5) - 20;
+   //         delay2 = 0;
+   //      }
+   //   }
+   //   else if(fWait/16777216 < 10) // Can be represented in < 2^24 1us steps?
+   //   {
+   //      long in = (long)(fWait/10); // number of 10us steps
+   //      float fr = fWait - in*10; // remaining time
+   //      if(in > 10)
+   //      {
+   //         nrSteps = in-1; // Number of 10 us steps
+   //         delay1 = 1000 + (long)(fr*100+0.5) - 19; // Remaining time as 10 ns steps
+   //         delay2 = 995; // Fiddle factor
+   //      }
+   //      else if(fWait > 0.2)
+   //      {
+   //         nrSteps = 0;
+   //         delay1 = (long)(fWait*1000+0.5) - 19;
+   //         delay2 = 0;
+   //      }
+   //   }
+   //   else
+   //   {
+   //      Error(par->itfc,"invalid delay '%ld' [2 us...167 s]",wait);
+   //      fclose(fp);
+   //      return(ERR);
+   //   }
+
+   //   fprintf(fp,"\n        clr     a");
+   //   fprintf(fp,"\n        move    #%ld,a1            ; Number of delay steps",nrSteps); 
+   //   fprintf(fp,"\n        move    a1,r1");
+   //   fprintf(fp,"\n        move    #%ld,a1            ; Delay size 1",delay1);
+
+   //   fprintf(fp,"\n        rep     a");
+   //   fprintf(fp,"\n        nop");
+
+   //   fprintf(fp,"\n        clr     a");
+   //   fprintf(fp,"\n        move     #%ld,a1            ; Delay size 2",delay2);
+   //   fprintf(fp,"\n        do      r1,LBL%ld           ; Repeat delay ",label);
+   //   fprintf(fp,"\n        rep     a");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\nLBL%ld    nop",label++);
+   //}
+
+
+   //fclose(fp);
+
+   return(OK);
+
+}  
+
+
+/*********************************************************************************************************
+ Produce a single RF pulse on channel 1 or 2 of specified amplitude frequency, phase and duration 
+**********************************************************************************************************/
+
+short RFPulse(DLLParameters* par,char *args)
+{
+   //short nrArgs;
+   //CText channel,amp,freq,phase,duration;
+   //long Frequency;
+   //short ph;
+   //char ch;
+
+   //if((nrArgs = ArgScan(par->itfc,args,4,"channel,amp,phase,duration,[freq]","eeeee","qqqqq",&channel,&amp,&phase,&duration,&freq)) < 0)
+   //   return(nrArgs);
+
+   //if(!parList)
+   //{
+   //   Error(par->itfc,"Pulse sequence not initialised");
+   //   return(ERR);
+   //}
+   //if(amp[0] == 'a')
+   //   InsertUniqueStringIntoList(amp.Str(),&parList,szList);
+   //if(freq[0] == 'f')
+   //   InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+   //if(phase[0] == 'p' || phase[0] == 't')
+   //   InsertUniqueStringIntoList(phase.Str(),&parList,szList);
+   //if(duration[0] == 'd')
+   //   InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   //FILE *fp = fopen("midCode.asm","a");
+   //if(!fp)
+   //{
+   //   Error(par->itfc,"Can't open output file");
+   //   return(ERR);
+   //}
+
+   //if(channel == "1" || channel == "2" || channel == "1nb" || channel == "2nb")
+   //{
+   //   fprintf(fp,"\n\n;");
+   //   fprintf(fp,"\n;***************************************************************************");
+   //   fprintf(fp,"\n; Generate an RF pulse");
+   //   fprintf(fp,"\n;"); 
+
+   //// Get the user defined delay
+   //   fprintf(fp,"\n        clr    a");
+   //   if(SelectDuration(par->itfc ,fp, "a1", duration) == ERR) return(ERR);
+
+   //// Test for invalid delay (< 0.5 us)
+   //   fprintf(fp,"\n; Check for invalid pulse length");
+   //   fprintf(fp,"\n        move   #1,b1                     ; Abort code");
+   //   fprintf(fp,"\n        cmp    #49999,a                  ; Check long pulses >= 1 ms");
+   //   fprintf(fp,"\n        jgt    LBL%ld                     ; Ignore long pulses",label); //Long pulses are ok in Spinsolve",label);
+   //   fprintf(fp,"\n        move   #2,b1                     ; Abort code");
+   //   fprintf(fp,"\n        cmp    #24,a                     ; Pulse must be >= 500 ns");
+   //   fprintf(fp,"\n        jlt    ABORT                     "); //; Abort if not");                 
+
+   //// Update channel TTL gate
+   //   fprintf(fp,"\n; Unblank the RF amp");
+   //   fprintf(fp,"\nLBL%ld  move    y:TTL,a1                ; Load the current TTL level",label++);
+   //   if(channel == "1") // Internal channel 1 Kea pulse
+   //      fprintf(fp,"\n        or      #$004000,a              ; Internal HPA (Channel 1)");
+   //   else if(channel == "2") // Internal channel 2 Kea pulse
+   //      fprintf(fp,"\n        or      #$000100,a              ; Internal HPA (Channe1 2)");
+
+   //   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+   //   fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Update TTL RF remains the same");
+
+   //   fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+   //   fprintf(fp,"\n        move    x:PGO,a1");
+   //   fprintf(fp,"\n        add     #3,a");
+   //   fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");   
+   //   
+   //// Update channel amplitude
+   //   fprintf(fp,"\n; Set channel amplitude");
+   //   if(SelectAmplitude(par->itfc ,fp, amp, channel) == ERR) return(ERR);
+
+   //// Update channel phase (allow more general phase value?)
+   //   fprintf(fp,"\n; Set phase");
+   //   if(SelectPhase(par->itfc ,fp, phase,channel) == ERR) return(ERR);
+
+   //// Update channel frequency
+   //   if(nrArgs == 5)
+   //   {
+   //      fprintf(fp,"\n; Set channel frequency");
+   //      if(SelectFrequency(par->itfc ,fp, freq, channel) == ERR) return(ERR);
+   //   }
+
+   //// Wait for parameters to update (delay PGO)
+   //// fprintf(fp,"\n        nop"); 
+   //   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for parameters to update");
+
+   //// Start RF pulse
+   //   fprintf(fp,"\n; Start pulse");
+   //   if(SelectDuration(par->itfc ,fp, "r3", duration) == ERR) return(ERR);
+
+   //   fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+   //   if(channel == "1" || channel == "1nb")
+   //      fprintf(fp,"\n        or      #$000008,a              ; Channel 1 RF on");
+   //   else if(channel == "2" || channel == "2nb")
+   //      fprintf(fp,"\n        or      #$000002,a              ; Channel 2 RF on");
+   //    
+   //   fprintf(fp,"\n        move    a1,y:TTL                ; Load the current TTL word");
+   //   fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Update TTL & RF");
+
+   //   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Start timer"); 
+   //   fprintf(fp,"\n        nop");
+   //   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+
+   //// End RF pulse
+   //   fprintf(fp,"\n; End pulse");
+   //   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+ 
+   //   if(channel == "1")
+   //      fprintf(fp,"\n        and     #$FFBFF7,a              ; Switch off channel 1");
+   //   else if(channel == "2")
+   //      fprintf(fp,"\n        and     #$FFFEFD,a              ; Switch off channel 2");
+   //   else if(channel == "1nb")
+   //      fprintf(fp,"\n        and     #$FFFFF7,a              ; Switch off channel 1 (no blanking)");
+   //         else if(channel == "2nb")
+   //      fprintf(fp,"\n        and     #$FFFFFD,a              ; Switch off channel 2 (no blanking)");
+
+   //   fprintf(fp,"\n        move    a1,y:TTL                ; Update TTL word");
+   //   fprintf(fp,"\n        move    a1,x:FPGA_TTL           ; Update TTL & RF");
+
+   //   fprintf(fp,"\n        move    #$000000,a1"); 
+
+   //   if(channel == "2" || channel == "2nb")
+   //   {
+   //      fprintf(fp,"\n        move    a1,x:FPGA_DDS2_Pro0     ;Zero amplitude");
+   //   //   fprintf(fp,"\n        move    #$000000,a1"); 
+   //   // fprintf(fp,"\n        move    a1,x:FPGA_DDS2_Pro0     ;Zero Phase");
+   //     // fprintf(fp,"\n        move    x:TXF20,a1");
+   //      //fprintf(fp,"\n        move    a1,x:FPGA_DDS2_Pro0     ;Reset frequency");
+   //    //  fprintf(fp,"\n        move    x:TXF21,a1");
+   //      //fprintf(fp,"\n        move    a1,x:FPGA_DDS2_Pro0     ;Reset frequency");
+   //   }
+   //   else
+   //   {
+   //      fprintf(fp,"\n        move    a1,x:FPGA_DDS1_Pro0     ;Zero amplitude");
+   //   //   fprintf(fp,"\n        move    #$000000,a1"); 
+   //   //   fprintf(fp,"\n        move    a1,x:FPGA_DDS1_Pro0     ;Zero Phase");
+   //    //  fprintf(fp,"\n        move    x:TXF10,a1");
+   //      //fprintf(fp,"\n        move    a1,x:FPGA_DDS1_Pro0     ;Reset frequency");
+   //    //  fprintf(fp,"\n        move    x:TXF11,a1");
+   //      //fprintf(fp,"\n        move    a1,x:FPGA_DDS1_Pro0     ;Reset frequency");
+   //   }
+   //   fclose(fp);
+   //}
+   //else
+   //{
+   //   fclose(fp);
+   //   Error(par->itfc,"unknown RF pulse mode");
+   //   return(ERR);
+   //}
+
+   return(OK);
+}

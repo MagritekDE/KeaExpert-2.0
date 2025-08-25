@@ -1,0 +1,21 @@
+###############################################################
+# A message has been received by Expert to say that another
+# instance is running an arrayed process. Update the history list
+# and batch list to reflect the progress if not connected and
+# the same SPA number
+###############################################################
+
+procedure(arrayInfo, ID, protocol, pos)
+
+   if(gData->connected == 0 & ID == gData->specParameters->SystemID)
+      print("\n   Arrayed experiment $ID$ $protocol$ #$pos$ finished\n")
+      gView->loadHistoryList()
+      guiwinnr(gView->wn)
+      idx = 1
+      gView->history()->zindex(idx)
+      txt = gView->history()->text
+      exptName = gParam->convertHistoryToFileName(txt)
+      gExpt->loadExistingDataSet(exptName,gData->curHistoryPath,idx)
+   endif
+
+endproc()

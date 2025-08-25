@@ -1,0 +1,124 @@
+procedure(LoadPlotPreferences,dim)
+
+   curplot(dim)
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Load and apply plot preferences", -1, -1, 338, 70)
+
+      # Define all controls with basic parameters
+       button(1, 10, 10, 81, 51, "Load from\rdefault\rlocation",:loadFromDefaultLoc())
+       button(2, 100, 10, 81, 51, "Load from\rselected\rlocation",:loadFromSelectedLoc())
+       button(3, 190, 10, 60, 51, "Help")
+       button(4, 260, 10, 60, 51, "Close",closewindow(0))
+
+endproc(n)
+
+procedure(loadFromDefaultLoc)
+
+   dir = getcwd()
+   if(isdir("$prefdir$\\Core Macros"))
+      cd("$prefdir$\\Core Macros")
+      if(isfile("plotPreferences.mac"))
+         plotPreferences()
+      else
+         message("File not found","No plot preferences saved\rin default location.","info")
+         return 
+      endif
+      if(isfile("tracePreferences.mac"))
+         tracePreferences() 
+      endif
+      if(isfile("marginPreferences.mac"))
+         marginPreferences() 
+      endif
+   else
+      message("Folder not found","No plot preferences saved\rin default location.","info")
+      return 
+    endif
+   cd(dir)
+   :applyPref()
+
+endproc()
+
+procedure(loadFromSelectedLoc)
+
+   dir = getfolder(".","Load plot preferences")
+   if(dir != "cancel")
+      cd(dir)
+      plotPreferences() 
+      tracePreferences() 
+     :applyPref()
+   endif
+ 
+endproc()
+
+procedure(applyPref)
+
+   rg = curplot()
+
+   try
+      rg->antialiasing1d(plotpref("antialiasing1d"))
+   catch
+   endtry
+
+   rg->axes->axescolor(plotpref("axescolor"))
+   rg->axes->fontcolor(plotpref("axesfontcolor"))
+   rg->axes->fontsize(plotpref("axesfontsize"))
+   rg->axes->fontstyle(plotpref("axesfontstyle"))
+   rg->axes->fontname(plotpref("axesfontname"))
+
+   rg->xlabel->color(plotpref("labelcolor"))
+   rg->xlabel->size(plotpref("labelfontsize"))
+   rg->xlabel->style(plotpref("labelfontstyle"))
+   rg->xlabel->font(plotpref("labelfontname"))
+
+   rg->ylabel->color(plotpref("labelcolor"))
+   rg->ylabel->size(plotpref("labelfontsize"))
+   rg->ylabel->style(plotpref("labelfontstyle"))
+   rg->ylabel->font(plotpref("labelfontname"))
+
+   rg->title->color(plotpref("titlecolor"))
+   rg->title->size(plotpref("titlefontsize"))
+   rg->title->style(plotpref("titlefontstyle"))
+   rg->title->font(plotpref("titlefontname"))
+
+   rg->bordercolor(plotpref("bordercolor"))
+   rg->bkgcolor(plotpref("bkgcolor"))
+   rg->grid->color(plotpref("gridcolor"))
+   rg->grid->finecolor(plotpref("finegridcolor"))
+
+   rg->zoomrectmode(plotpref("zoomrectmode"))
+   rg->zoombkgcolor(plotpref("zoombkgcolor"))
+   rg->zoombordercolor(plotpref("zoombordercolor"))
+
+   tracepref("realcolor",plotpref("realcolor"))
+   tracepref("imagcolor",plotpref("imagcolor"))
+   tracepref("realstyle",plotpref("realstyle"))
+   tracepref("imagstyle",plotpref("imagstyle"))
+   tracepref("realsymbolcolor",plotpref("realsymbolcolor"))
+   tracepref("imagsymbolcolor",plotpref("imagsymbolcolor"))
+   tracepref("symbolshape",plotpref("symbolshape"))
+   tracepref("tracetype",plotpref("tracetype"))
+   tracepref("tracewidth",plotpref("tracewidth"))
+
+   try  
+      tc = curtrace()
+      tc->realcolor(tracepref("realcolor"))
+      tc->imagcolor(tracepref("imagcolor"))
+      tc->realstyle(tracepref("realstyle"))
+      tc->imagstyle(tracepref("imagstyle"))
+      tc->realsymbolcolor(tracepref("realsymbolcolor"))
+      tc->imagsymbolcolor(tracepref("imagsymbolcolor"))
+      tc->symbolshape(tracepref("symbolshape"))
+      tc->tracetype(tracepref("tracetype"))
+      tc->tracewidth(tracepref("tracewidth"))
+   catch
+   endtry
+
+endproc()

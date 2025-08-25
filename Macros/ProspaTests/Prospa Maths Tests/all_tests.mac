@@ -1,0 +1,69 @@
+####################################################
+# Runs all list based tests in the folders found
+# in the current directory
+####################################################
+
+
+procedure(All_Tests)
+
+   clear("cli")
+   time(0)
+   cd(getmacropath())
+
+   dir = getdirlist(".")
+
+#   for(d = 0 to size(dir)-1)
+#      cd(dir[d])
+      file = getfilelist(".")
+      for(f = 0 to size(file)-1)
+        ext = getext(file[f])
+        if(ext == "lst")
+           lst = load(file[f])
+           pr("\n\n*** $lst[0]$ ***\n\n")
+           if(lst[1] = "boolean test")
+             :equate_test(lst)
+           elseif(lst[1] == "format test")
+             :format_test(lst)
+           else
+             abort("unknown test: $lst[1]$")
+           endif
+           pr("\n*** $lst[0]$ completed ***\n\n")
+         endif
+      next(f)
+ #  next(d)
+    pr("\n*** All Tests completed. Time taken = $time()$s ***\n\n")
+endproc()
+
+########################################
+# Reads lines like a=b from a list
+# and checks them for validity
+########################################
+
+procedure(equate_test,lst)
+
+   for(k = 2 to size(lst)-1)
+      pr("   $lst[k]$\n")
+      if(eval(lst[k]) != 1)
+         abort("test failed")
+      endif
+   next(k)
+
+endproc
+
+########################################
+# Reads lines like a,b from a list
+# and tests that "$eval(a)$" = "b" 
+########################################
+
+procedure(format_test,lst)
+
+for k = 2 to size(lst)-2 step 2
+   expr = lst[k]
+   rst  = lst[k+1]
+   pr("   $expr$ = $rst$\n")
+   if("$eval(expr)$" != rst)
+      abort("error evaluating complex expression: $expr$")
+   endif   
+next k
+
+endproc

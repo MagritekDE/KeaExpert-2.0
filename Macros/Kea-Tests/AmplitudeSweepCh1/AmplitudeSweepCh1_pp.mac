@@ -1,0 +1,79 @@
+############################################################
+#
+# A pulse sequence for generating an amplitude response
+# of a filter/amplifier between the transceiver channel 1
+# output and transceiver input.
+#
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["cal",             "0dB amplitude (mV-peak)",   "tb", "float";
+               "ampSteps",        "Nr. of amplitude steps",    "tb", "integer";
+               "f1",              "RF frequency (MHz)",        "tb", "freq";
+               "txMaxdB",         "Max. RF amplitude (dB)",    "tb", "float";
+               "repTime",         "Repetition time (ms)",      "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nAmpSteps  = ampSteps",
+                    "nPnts      = nrPnts",
+                    "b1FreqCh1    = f1",
+                    "txMax      = ucsRun:convertTxGain(txMaxdB)",
+                    "tAmp       = linspace(0,txMax,ampSteps)",
+                    "totPnts    = nAmpSteps",
+                    "totTime    = acqTime"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+      delay(1000)                   # Wait for rxAmp relay to switch
+     # cleardata(nAmpSteps)
+      setindex(tAmp,0)
+      loop("l1",nAmpSteps)          # Measure at n2 amplitude steps
+         txon("1nb",tAmp,p1)        # Switch on Tx (no gating pulses)
+         delay(10)                  # Wait for receiver latency
+         acquire("integrate",nPnts) # Acquire n1 data points
+         txoff("1nb")               # Switch off tx
+         incindex(tAmp,1)           # Increment Tx amplitude
+         delay(10)                  # Wait for HPA to recover
+      endloop("l1")                 # Next measurement
+   lst = endpp(0)
+
+# Phase cycle list
+  phaseList  = [0,1,2,3;   # Pulse phase
+                0,1,2,3]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,null,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "freqCh1        = $frequencyCh1$"]
+
+endproc(par)

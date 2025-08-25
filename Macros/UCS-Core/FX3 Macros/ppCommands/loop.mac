@@ -1,0 +1,49 @@
+####################################################
+# Start a loop - should be matched with endloop
+#
+# loop(loopName, nrLoops)
+#
+#   loopName: short descriptive string naming loop
+#   nrLoops: the number of times the loop will 
+#            be executed - must be > 0
+#
+#   Duration is 1 us
+####################################################
+
+procedure(loop, loopName, nrLoops)
+
+   if(wvFX3Info->mode == "run")
+
+      nrLoops = round(nrLoops) 
+
+      if(nrLoops < 0)
+         throw("Invalid number of loops in loop command")
+      endif
+   
+      ps = [100d, 0x4000000, round(nrLoops)]   
+    #  wvFX3Info->nrLoops = nrLoops
+      wvFX3Info->loopNr[wvFX3Info->loopStackCnt] = wvFX3Info->lineCnt+1
+      wvFX3Info->loopStackCnt = wvFX3Info->loopStackCnt + 1
+      if(wvFX3Info->loopStackCnt >=  wvFX3Info->loopStackMax)
+          throw("Loop nesting depth > $wvFX3Info->loopStackMax-1$")
+      endif 
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      gSeq->psInfo->loopCnt = gSeq->psInfo->loopCnt + 1
+      cnt = gSeq->psInfo->loopCnt
+      if(cnt == gSeq->psInfo->stackSize)
+         abort("Too many loops - max $cnt$")
+      endif
+      gSeq->psInfo->loopNStk[cnt] = nrLoops
+      gSeq->psInfo->durationNStk[cnt] = 0
+      gSeq->psInfo->command = gSeq->psInfo->command + ["loop,$loopName$,$nrLoops$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(nrLoops)
+
+   endif
+
+endproc()

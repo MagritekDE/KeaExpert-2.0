@@ -1,0 +1,64 @@
+procedure(display_std)
+
+   n = window("Display", -1, -1, 600, 160)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 47, 14, "right", "TIME")
+   statictext(2, 95, 37, "right", "Show domain")
+   checkbox(3, 103, 38, "no,yes", "yes")
+   divider(4, 297, 10, 3, 142, "vertical")
+   statictext(5, 387, 14, "right", "FREQUENCY")
+   statictext(6, 393, 36, "right", "Show domain")
+   checkbox(7, 401, 37, "no,yes", "yes",
+        fn = findobj(0,"name","showFreqDomain");
+        ucsCtrl:enableControls(fn+1,fn+9,fn);)
+   statictext(8, 390, 67, "center", "Display scale and range")
+   radiobuttons(9, 328, 93, 30, "vertical", "no,yes", "no",
+        fnPPM = findobj(0,"name","usePPMScale");
+        ucsCtrl:enableNDisableControls(fnPPM+3,fnPPM+6,fnPPM+1,fnPPM+2,fnPPM,"yes");)
+   textbox(10, 349, 89, 59)
+   statictext(11, 416, 93, "left", "Hz")
+   textbox(12, 349, 119, 31)
+   statictext(13, 397, 123, "right", "to")
+   textbox(14, 408, 119, 31)
+   statictext(15, 465, 122, "right", "ppm")
+
+     # Set other control parameters
+   setpar(n,1,"fgcolor",[0,70,213])
+   setpar(n,3,"valueID","showTimeDomain")
+   setpar(n,4,"tag","disable")
+   setpar(n,5,"fgcolor",[0,70,213])
+   setpar(n,7,"valueID","showFreqDomain")
+   setpar(n,8,"fgcolor",[128,0,0])
+   setpar(n,9,"valueID","usePPMScale")
+   setpar(n,10,"valueID","dispRange",
+               "type","float")
+   setpar(n,12,"valueID","dispRangeMinPPM",
+               "type","float")
+   setpar(n,14,"valueID","dispRangeMaxPPM",
+               "type","float")
+
+     # Set other window parameters
+endproc(15,"Display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+      fnTim = findobj(0,"name","showTimeDomain");
+      fnFrq = findobj(0,"name","showFreqDomain");
+      fnFlt = findobj(0,"name","filter");
+      fnPPM = findobj(0,"name","usePPMScale");
+      ucsCtrl:enableControls(fnFrq+1,fnFrq+9,fnFrq);
+      if(getpar(0,fnFrq,"text") == "yes");
+         ucsCtrl:enableNDisableControls(fnPPM+3,fnPPM+6,fnPPM+1,fnPPM+2,fnPPM,"yes");
+      endif;
+   endif;
+
+endproc()

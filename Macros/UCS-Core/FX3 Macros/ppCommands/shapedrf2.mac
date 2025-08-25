@@ -1,0 +1,111 @@
+###################################################################################
+# Generate a dual channel shaped RF pulse
+#
+#    shapedrf2(aptable, phaseOffset1, phaseOffset2, tableSize, tableStep)
+#
+#    aptable      : reference to table of interleaved amplitudes and phases [adrs+1, 4*size]
+#    phaseOffset1 : ch1 phase cycling offset as a 16 bit number (representing 0->359.995 degrees)
+#    phaseOffset2 : ch2 phase cycling offset as a 16 bit number (representing 0->359.995 degrees)
+#    tableSize    : number of steps in shaped pulse (size)
+#    tableStep    : duration of each step >= 4 us
+#
+#    Duration =  pgo + tableStep*tableSize + 1us (pgo typically 5 us)
+#
+#    Note the aptable is interleaved as follows:
+#    amp1[0], ph1[0], amp2[0], ph2[0], amp1[1], ph1[1], amp2[1], ph2[1] ...
+#
+##################################################################################
+
+procedure(shapedrf2, aptable, phaseOffset1, phaseOffset2, tableSize, tableStep)
+
+
+   if(wvFX3Info->mode == "compile")
+      addPSParameters(aptable, phaseOffset1, phaseOffset2, tableSize, tableStep)
+
+   elseif(wvFX3Info->mode == "run")
+
+      gateTTL = 0x04100
+      gateAndRFTTL = 0x0410A
+      ddsAdrs1 = 0x118E
+      ddsAdrs2 = 0x128E
+    
+      loopNr = (wvFX3Info->lineCnt+21)*3 # Position number in ps just after loop start
+
+      pgo = wvFX3Info->pref->pgo*100
+
+      if(tableStep < 4)
+         throw("Table step duration must be >= 4 us")
+      endif
+
+      # Tweak the timing so we can control the delays
+      delay1 = 100d*(tableStep-4) + 25d
+      delay2 = 100d*(tableStep-4) + 20d
+      delay3 = 100d*(tableStep-4) + 355d - delay2
+
+           # Initialise table amplitude
+      ps = [15d,      0x00000000,   wvFX3Info->currentTTL | gateTTL, # Turn on RF gate signal
+            220d,     0x00006081,   0000000004,     # Make sure we are in table not FIFO mode
+            20d,      0x00006084,   aptable[0]-1,   # Set SRAM adrs to &table[0]
+            20d,      0x00006086,   aptable[0]+0,   # Set the table index to 0 
+           # Set the amplitude and phase
+            20d,      0x00006084,   aptable[0]-1,   # Set SRAM adrs to &table[0]        
+            20d,      0x01006086,   1,              # Dummy read of table index
+            20d,      0x01006086,   1,              # Read table index -> write temp
+            20d,      0x00006084,   0x01000000,     # Set SRAM adrs to &table[index]
+            20d,      0x01006085,   1,              # Dummy read of table amplitude
+            20d,      0x01006085,   1,              # Read amplitude from table and inc index
+            20d,      ddsAdrs1,     0x01000000,     # Write amplitude to DDS 1
+            20d,      0x01006085,   1,              # Read phase from table
+            20d,      ddsAdrs1,     0x02000000 + phaseOffset1,   # Write phase to DDS 1 with offset
+            40d,      0x01006085,   1,              # Read next amplitude from table
+            20d,      ddsAdrs2,     0x01000000,     # Write amplitude to DDS 2
+            20d,      0x01006085,   1,              # Read next phase from table
+            20d,      ddsAdrs2,     0x02000000 + phaseOffset2,   # Write phase to DDS 2 with offset
+           # Turn on the RF
+            15d,      0x00000000,   wvFX3Info->currentTTL | 0x04108, # Turn on RF ch1
+            15d,      0x00000000,   wvFX3Info->currentTTL | 0x0410A, # Turn on RF ch2 (can't quite this delay to be long enough should be 200 ns longer)
+            delay1,   0x09000000,   0,              # Wait to get internal step length correct
+           # Start of loop
+            15d,      0x04000000,   round(tableSize-1), # Repeat the following code tableSize times
+           # Increment table values
+            20d,      0x00006084,   aptable[0]-1,   # Set SRAM adrs to &table[0]
+            20d,      0x01006086,   1,              # Dummy read of table index
+            20d,      0x01006086,   1,              # Read table index
+            20d,      0x00006086,   0x02000000 + 4, # Increment index by 4
+           # Set amplitude & phase
+            20d,      0x00006084,   aptable[0]-1,   # Set SRAM adrs to &table[0] 
+            20d,      0x01006086,   1,              # Dummy read of table index
+            20d,      0x01006086,   1,              # Read table index
+            20d,      0x00006084,   0x01000000,     # Set SRAM adrs to &table[index] 
+            20d,      0x01006085,   1,              # Dummy read of table amplitude
+            20d,      0x01006085,   1,              # Read amplitude from table and inc index
+            20d,      ddsAdrs1,     0x01000000,     # Write amplitude to DDS 1
+            20d,      0x01006085,   1,              # Read phase from table
+            20d,      ddsAdrs1,     0x02000000 + phaseOffset1,   # Write phase to DDS 1 with offset
+            40d,      0x01006085,   1,              # Read next amplitude from table was 40d
+            20d,      ddsAdrs2,     0x01000000,     # Write amplitude to DDS 2
+            20d,      0x01006085,   1,              # Read next phase from table
+            20d,      ddsAdrs2,     0x02000000 + phaseOffset2,   # Write phase to DDS 2 with offset
+            delay2,   0x09000000,   0,              # Wait to get internal step length correct
+           # End loop
+            20d,      0x5000000,    loopNr,         # Branch back to line loopNr until finished
+            delay3,   0x09000000,   0,              # Wait to get last step correct
+            80d,      0x00000000,   wvFX3Info->currentTTL | 0x00102, # Switch off ch 1
+            15d,      0x00000000,   wvFX3Info->currentTTL, # Switch off ch 2
+            15d,      ddsAdrs1,     0,
+            55d,      0x09000000,   0,              # Wait until this has updated 
+            15d,      ddsAdrs2,     0,              # Zero the DDS 2 amplitude and phase
+            15d,      ddsAdrs2,     0,
+            55d,      0x09000000,   0]              # Wait until this has updated (total 2us at end)
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+   
+   elseif(wvFX3Info->mode == "time") # TODO
+
+
+   endif
+
+endproc()
+
+

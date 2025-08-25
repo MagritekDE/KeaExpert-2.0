@@ -1,0 +1,109 @@
+############################################################
+#
+# A pulse sequence suitable for performing a
+# pulse and collect experiment.
+#
+# pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y, vartype)
+  interface = ["b1FreqCh1",    "B1 Frequency (MHz)",      "tb", "freq";
+               "90Amplitude",  "Pulse amplitude (dB)",    "tb", "pulseamp";
+               "pulseLength",  "Pulse length (us)",       "tb", "pulselength";
+               "acqDelay",     "Pulse acqu. delay (us)",  "tb", "sdelay";
+               "repTime",      "Repetition time (ms)",    "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts = nrPnts",
+                    "a90Amp = 90Amplitude",
+                    "d90Dur = pulseLength",
+                    "dAcqDelay = acqDelay",
+                    "d3 = 100",
+                    "nLoops = 8",
+                    "nSteps = 8",
+                    "n3 = 3",
+                    "t1 = linspace(32000,0,nLoops)",
+                    "t2 = linspace(0,-32000,nLoops)",
+                    "dStep = 100",
+                    "ch = 0",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   pulse(mode, a90Amp, p1, d90Dur)
+
+   gradramp(n3,0,-30000,nSteps,dStep)
+   delay(20)
+   gradramp(n3,-30000,0,nSteps,dStep)
+   delay(20)
+   gradramp(n3,0,30000,nSteps,dStep)
+   delay(20)
+   gradramp(n3,30000,0,nSteps,dStep)
+
+   delay(500)
+
+   setindex(t1,0)
+   loop("l1",nLoops)
+      gradramp(n3,0, t1, nSteps, dStep)
+      delay(10)
+      gradramp(n3,t1, 0, nSteps, dStep)
+      delay(10)
+      incindex(t1)
+      delay(10)
+   endloop("l1")
+
+   setindex(t2,0)
+   loop("l2",nLoops)
+      gradramp(n3,0, t2, nSteps, dStep)
+      delay(10)
+      gradramp(n3,t2, 0, nSteps, dStep)
+      delay(10)
+      incindex(t2)
+      delay(10)
+   endloop("l2")
+
+   acquire("overwrite",nrPnts)
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0;0] 
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = KeaParameterUpdater:readSpecPar()
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain      = $rxOptGaindB$",
+          "pulseLength = $pulseLengthCh1$",
+          "90Amplitude = $pulseAmplitudeCh1$",
+          "b1FreqCh1   = $frequencyCh1$"]
+
+endproc(par)

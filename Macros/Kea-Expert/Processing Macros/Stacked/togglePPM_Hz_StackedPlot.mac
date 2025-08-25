@@ -1,0 +1,89 @@
+##############################################
+# Toggle the frequency axes of spectra 
+# between PPM and Hertz for a 1D stacked plot
+# spectrum
+##############################################
+
+procedure(togglePPM_Hz_StackedPlot, updateLabel)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   if(nrArgs == 0)
+      updateLabel = 0
+   endif
+
+   cp = curplot("1d")
+
+   obj = cp->parent
+
+   b1Freq = 0.0
+
+   try
+
+      assignlist(getctrlvalues(gView->wn))
+
+      if(isvar("nucleus"))
+         if(isvar("b1Freq$nucleus$"))
+            b1Freq = single(eval("b1Freq$nucleus$"))
+         elseif(isvar("b1FreqXN"))
+            b1Freq = single(b1FreqXN)
+         endif
+      else
+         message("Error","Nucleus not defined","error")
+         return
+      endif
+
+      cp->draw("false")
+
+       tcIds = cp->tracelist()
+       (xp,yp) = cp->trace(0)->getdata()
+       nrTc = size(tcIds)
+       ylab = cp->ylabel->text
+       tl = cp->title->text
+       (x1,x2,y1,y2) = cp->zoom()
+
+
+      for(k = 0 to nrTc-1)
+ 
+         tc = cp->trace(tcIds[k])
+         (x,y) = tc->getdata()
+
+         if(cp->axes->xppmscale== "true")
+            xt = b1Freq*x
+            tc->setdata(struct(xt,y))
+         else
+            xt = x/b1Freq
+            tc->setdata(struct(xt,y))
+         endif
+
+      next(k)
+
+      if(cp->axes->xppmscale== "true")
+         cp->zoom(x1*b1Freq,x2*b1Freq,y1,y2)
+         cp->axes->xppmscale("false")
+         cp->xlabel("Frequency (Hz)")
+         if(updateLabel)
+            parentCtrl->label("Hz")
+         endif
+      else
+         cp->zoom(x1/b1Freq,x2/b1Freq,y1,y2)
+         cp->axes->xppmscale("true")
+         cp->xlabel("Frequency (ppm)")
+         if(updateLabel)
+            parentCtrl->label("PPM")
+         endif
+      endif
+
+      cp->ylabel(ylab)
+      cp->title(tl)
+      cp->draw("true")
+      cp->hold("off")
+
+   catch
+      pr lasterror()
+   endtry
+
+endproc()

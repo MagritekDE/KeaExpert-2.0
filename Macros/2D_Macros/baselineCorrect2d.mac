@@ -1,0 +1,255 @@
+###################################################
+#            baselinecorrect2d.mac
+#
+# Select a region of noise in a 2D data set and use
+# the average value to apply a simple offset.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+procedure(baselineCorrect2d)
+
+   n = :windowdefinition()
+   windowvar(wv_mat)
+   :update()
+   :method_update()
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Baseline correction 2D", -1, -1, 367, 157)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mat)
+       button(1, 15, 124, 53, 25, "Correct",
+          :apply_correction();)
+       button(2, 287, 124, 53, 25, "Exit",
+          closewindow(0);)
+       groupbox(3, "Correction method", 5, 5, 127, 110)
+       radiobuttons(4, 21, 38, 20, "vertical", "row,col,region", "row",
+            :method_update();)
+       statictext(5, 104, 37, "right", "Row average")
+       statictext(6, 117, 57, "right", "Column average")
+       statictext(7, 116, 78, "right", "Region average")
+       button(8, 219, 124, 53, 25, "Help",
+          :show_help();)
+       button(9, 151, 124, 53, 25, "Undo",
+          :undo();)
+       textbox(10, 285, 39, 51)
+       statictext(11, 253, 43, "left", "width")
+       textbox(12, 285, 69, 51)
+       statictext(13, 249, 73, "left", "height")
+       textbox(14, 186, 69, 50)
+       statictext(15, 155, 73, "left", "base")
+       groupbox(16, "Region to average", 140, 5, 213, 110)
+       textbox(17, 186, 39, 50)
+       statictext(18, 164, 42, "left", "left")
+       button(19, 83, 124, 53, 25, "Update",
+          :update();)
+       getmessage(20,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,1,"mode","default")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","baselineCorrection.htm")
+endproc()
+
+####################################################
+# Update region
+####################################################
+
+procedure(update)
+
+# If a rectangle is visible choose region
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      method = "region"
+      setpar(0,4,"text","region")
+   else
+      method = getpar(0,4,"text")
+   endif
+
+   if(method == "region")
+
+      if(x1 != -1) # Use rectangle if defined
+         setpar(0,17,"text",x1)
+         setpar(0,14,"text",y1)
+         setpar(0,10,"text",x2-x1+1)
+         setpar(0,12,"text",y2-y1+1)
+      else # Otherwise use visible region
+         (x1,x2,y1,y2) = zoom2d("getargs")      
+         setpar(0,17,"text",x1)
+         setpar(0,14,"text",y1)
+         setpar(0,10,"text",x2-x1+1)
+         setpar(0,12,"text",y2-y1+1)
+      endif
+
+   endif
+
+endproc()
+
+####################################################
+# Enable/Disable controls based on method
+####################################################
+
+procedure(method_update)
+
+   method = getpar(0,4,"text")
+
+   if(method == "row")
+      setpar(0,17,"enable","false")
+      setpar(0,10,"enable","false")
+      setpar(0,14,"enable","false")
+      setpar(0,12,"enable","false")
+   elseif(method == "col")
+      setpar(0,17,"enable","false")
+      setpar(0,10,"enable","false")
+      setpar(0,14,"enable","false")
+      setpar(0,12,"enable","false")
+   else
+      setpar(0,17,"enable","true")
+      setpar(0,10,"enable","true")
+      setpar(0,14,"enable","true")
+      setpar(0,12,"enable","true")
+   endif
+
+endproc()
+
+####################################################
+# Apply the baseline correction
+####################################################
+
+procedure(apply_correction)
+
+# Extract the data from the plot
+   m = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+  (w,h) = size(m)
+
+# Save the matrix for undo operation
+   wv_mat = m
+
+# Determine correction method
+   mode = getpar(0,4,"text")
+
+# Record the current 2D plot state
+   (txt,lx,ly,nc,md,x1v,x2v,y1v,y2v) = 2dpar:get()
+
+# Correct rows ##########
+   if(mode == "row")
+
+      title("select left side of noise")
+      x1 = getxy("vert")
+      title("select right side of noise")
+      x2 = getxy("vert")
+      if(x1 > x2)
+         swapvar(x1,x2)
+      endif
+   
+      n = matrix(h)
+   
+      for(y = 0 to h-1)
+         v = m[~,y]
+         vs = submatrix(real(v),x1,x2-1,0,0)
+         av = sum(vs)/(x2-x1)
+         m[~,y] = v-av
+      next(y)
+
+      setpar(0,17,"text",x1)
+      setpar(0,10,"text",x2-x1+1)
+
+# Correct columns ###########
+   elseif (mode == "col")
+
+      title("select top side of noise")
+      y1 = getxy("horiz")
+      title("select bottom side of noise")
+      y2 = getxy("horiz")
+      if(y1 > y2)
+         swapvar(y1,y2)
+      endif
+ 
+      n = matrix(w)
+   
+      for(x = 0 to w-1)
+         v = m[x,~]
+         vs = submatrix(real(v),0,0,y1,y2-1)
+         av = sum(vs)/(y2-y1)
+         m[x,~] = v-av
+      next(x)
+
+      setpar(0,14,"text",y1)
+      setpar(0,12,"text",y2-y1+1)
+
+# Correct using region average
+   else
+
+      x1 = getpar(0,17,"value")
+      y1 = getpar(0,14,"value")
+      w = getpar(0,10,"value")
+      h = getpar(0,12,"value")
+      x2 = x1 + w - 1
+      y2 = y1 + h - 1
+
+      ms = submatrix(m,x1,x2,y1,y2)
+      (sw,sh) = size(ms)
+      m = m - sum(ms)/(sw*sh)
+
+   endif
+
+   draw2d("false")
+      image(m)
+      2dpar:set(txt,lx,ly,nc,md,x1v,x2v,y1v,y2v)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Restore the image visible before correction
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat)
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,20,"text")
+
+   if(src == "2D Plot")
+      :update()
+   endif
+
+endproc()

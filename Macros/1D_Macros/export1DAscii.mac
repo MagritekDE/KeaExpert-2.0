@@ -1,0 +1,35 @@
+# Exports 1D plot real or complex data to an ascii file
+
+procedure(export1DAscii)
+
+# Get the data from the plot
+  (x,y) = getplotdata("1d")
+
+   if(x == null)
+      message("Error","No plot data present","error")
+      return
+   endif
+
+# Get size of data set
+   nrPnts = size(x)
+
+# Pack data in a matrix
+   if(vartype(y) == "cmatrix1d")
+      m = matrix(3,nrPnts)
+      m[0,~] = x'
+      m[1,~] = real(y)'
+      m[2,~] = imag(y)'
+   else
+      m = matrix(2,nrPnts)
+      m[0,~] = x'
+      m[1,~] = y'
+   endif
+
+# Get export file name
+   name = getfilename("save", "Export a 1D plot file in ASCII format", "Text files", "txt")
+
+# Export the data
+   export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+   export2d(m,name)  # Save fid as a text file   
+
+endproc()

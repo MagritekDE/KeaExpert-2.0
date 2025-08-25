@@ -1,0 +1,157 @@
+#####################################################################
+# Export the expert shim and calibration to the standard software
+#####################################################################
+
+procedure(ExportExpertShim, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   elseif(iskeypressed("control"))
+      lst = gView->batch->list + "ExportExpertShim|"
+      gBatch->displayBatchList(lst)
+      gView->batch->index(size(lst))    
+   else
+      parameters = list(0)
+      gExpt->addExperiment(getmacropath(),"ExportExpertShim", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Add the ExportStandardShim command to the batch list
+###########################################################
+
+procedure(addCommand)
+   
+endproc("ExportExpertShim|")
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = list(0)
+   plotLayout = listto2d(["pt2"])
+
+endproc(ctrlLayout, plotLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt2","spectrum.pt1"]
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   InitScript(getmacropath(),getmacroname())
+
+   pr("\n----- Export Expert Shim ------\n")
+
+   experimentLabelCtrl->label("Export Expert Shim and Calibration")
+   try
+      bak = getcwd()
+      shimLst = setupUtilities:loadShims()
+      dspPar = gData->specParameters 
+      outStruct = struct()
+      outStruct->hardware = gData->specID
+      outStruct->hardwareCapabilities1 = round(dspPar->HardwareCap1)
+      outStruct->hardwareCapabilities2 = round(dspPar->HardwareCap2)
+      outStruct->hardwareCapabilities3 = 0
+      outStruct->hardwareCapabilities4 = 0
+      curTime = gettime("%02d%02d%02d")
+      (yy,mm,dd) = scanstr(getdate("yyyy-mm-dd"),"%1-%2-%3")
+      outStruct->datetime = "$yy$$mm$$dd$-$curTime$"
+      outStruct->protonFrequency = gData->commonPar->b1Freq1H
+      outStruct->lockFrequency = gData->commonPar->b1Freq19F
+      outStruct->width50 = 0.43
+      outStruct->width10 = 2.1
+      outStruct->width2 = 6.4
+      outStruct->width055 = 18.0
+      outStruct->shimSNR = 1800.0
+      outStruct->ppmOffset = 4.74
+      outStruct->b0Shim = 0
+      outStruct->referencePeakIndex = 16384
+      outStruct->referenceppm = 4.74
+      highShim = struct()
+      highShim->z4shim = 0
+      highShim->z3xshim = 0
+      highShim->z3yshim = 0
+      highShim->z2xyshim = 0
+      highShim->z2x2y2shim = 0
+      highShim->zx3shim = 0
+      highShim->zy3shim = 0
+      highShim->x4shim = 0
+      highShim->y4shim = 0
+
+      outList = list(outStruct) + shimLst + list(highShim)
+
+      dir = "$prefdir$\\SpinsolveParameters\\SetShimParameters"
+      if(isdir(dir))
+         cd(dir)
+         printtofile("setshimparameters.par")
+         for(k = 0 to size(outList)-1)
+            (name,value) = splitpar(outList[k])
+            if(name == "hardwareCapabilities1")
+               print("$name$ = $round(eval(value)),ld$\n")
+            elseif(name == "hardwareCapabilities2")
+               print("$name$ = $round(eval(value)),ld$\n")
+            else
+               if(value[-1] == "d")
+                  print("$name$ = $eval(value),.17g$\n")
+               else
+                  print("$name$ = $value$\n")
+               endif
+            endif
+         next(k)
+         closeprint()
+      else
+         pr("\n   Folder '$dir$' not found\n")
+         cd(bak)
+         return
+      endif
+
+      exeFile = "SetShimParameters.exe"
+      if(isfile(exeFile))
+         exec(exeFile)
+      else
+         message("Error","SetShimParameters executable not found","error")
+         cd(bak)
+         return
+      endif
+      cd(bak)
+
+      pr("\n----------------- Finished -----------------\n")
+      
+   catch
+      pr lasterror()
+      throw("abort")
+   endtry
+
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   duration = 18 # Empirically determined
+
+endproc(duration)
+

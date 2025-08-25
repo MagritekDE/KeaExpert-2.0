@@ -1,0 +1,194 @@
+##################################################
+# Display the recorded lock history
+##################################################
+
+procedure(DisplayMonitorHistory, parameters=null)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      if(parameters == null)
+         parameters = ["historyRange=\"All data\"","saveData=\"no\""]
+      endif
+      gExpt->addExperiment(getmacropath(),"DisplayMonitorHistory", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   range = ["All data","1 hour"]
+   ctrlLayout = ["historyRange","History to view","tm","string","$range$",
+                 "saveData","Save history data","cb","string","no,yes",
+                 "resetHistory","Reset history data","bt","string","resetHistory()"]
+
+   plotLayout = ["pt1","pt2","pt3";"pt4","pt5"]
+
+endproc(ctrlLayout, plotLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","magnetHistory.pt1","pt2","boxHistory.pt1",
+           "pt3","roomHistory.pt1","pt4","voltageHistory.pt1","pt5","lockHistory.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Reset the recorded histry
+#####################################################################
+
+procedure(resetHistory)
+
+   gData->history->magTemp = null
+   gData->history->boxTemp = null
+   gData->history->roomTemp = null
+   gData->history->lock = null
+   gData->history->magnetVolts = null
+   gData->history->peltierVolts = null
+   gData->history->lock = null
+   gData->history->timeAxis = null
+   print("\n   Lock and temperature history reset\n")
+
+endproc()
+
+#####################################################################
+# Monitor the lock from the batchlist of normal interface
+#####################################################################
+
+procedure(backdoor, ui)
+
+   assignstruct(ui)
+
+   (pt1,pt2,pt3,pt4,pt5) = InitPlot(["pt1","pt2","pt3";"pt4","pt5"])
+
+   if(size(gData->history->timeAxis) == 0)
+      message("Information","No history data to display.\rIs this option selected in preferences?","info")
+      return
+   endif
+
+   try
+      if(historyRange == "All data")
+         timeAxis = gData->history->timeAxis
+         magTemp  = gData->history->magTemp 
+         boxTemp  = gData->history->boxTemp  
+         roomTemp = gData->history->roomTemp   
+         lock     = gData->history->lock   
+         peltierVolts = gData->history->peltierVolts   
+         magnetVolts  = gData->history->magnetVolts 
+         sz = size(timeAxis)
+      else # Last hour
+         maxSz = size(gData->history->timeAxis)
+         timeStep = gData->history->timeAxis[1]-gData->history->timeAxis[0]
+         sz = 3600/timeStep
+         if(sz >= maxSz)
+            sz = maxSz
+         endif
+         timeAxis = gData->history->timeAxis[0:sz-1]
+         magTemp  = gData->history->magTemp[0:sz-1] 
+         boxTemp  = gData->history->boxTemp[0:sz-1]   
+         roomTemp = gData->history->roomTemp[0:sz-1]    
+         lock     = gData->history->lock[0:sz-1]  
+         peltierVolts = gData->history->peltierVolts[0:sz-1] 
+         magnetVolts  = gData->history->magnetVolts[0:sz-1] 
+      endif
+   catch
+      pr lasterror()
+      return
+   endtry  
+
+  # Set points
+   magnetSetTemp = gData->specParameters->SetPntTempMag
+   boxSetTemp    = gData->specParameters->SetPntTempBox
+
+  # Tolerances in Celsius
+   magnetTol      = 0.01
+   boxTol         = 0.1
+   roomUpperLimit = 25.5
+   roomLowerLimit = 19.5
+
+ # Plot magnet temperature (Red)
+   pt1->plot(timeAxis,magTemp,"realcolor",[255,0,0])
+   pt1->hold("on")
+   lim = matrix(sz)+magnetSetTemp+magnetTol
+   pt1->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   lim = matrix(sz)+magnetSetTemp-magnetTol
+   pt1->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   pt1->title("Magnet outer")
+   pt1->xlabel("Time (s)")
+   pt1->ylabel("T (C)")
+   pt1->hold("off")
+
+ # Plot box temperature (Green)
+   pt2->plot(timeAxis,boxTemp,"realcolor",[0,255,0])
+   pt2->hold("on")
+   lim = matrix(sz)+boxSetTemp+boxTol
+   pt2->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   lim = matrix(sz)+boxSetTemp-boxTol
+   pt2->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   pt2->title("Box")
+   pt2->xlabel("Time (s)")
+   pt2->ylabel("T (C)")
+   pt2->hold("off")
+
+ # Plot room temperature (Blue)
+   pt3->plot(timeAxis,roomTemp,"realcolor",[0,0,255])
+   pt3->hold("on")
+   lim = matrix(sz)+roomUpperLimit
+   pt3->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   lim = matrix(sz)+roomLowerLimit
+   pt3->plot(timeAxis,lim,"tracewidth",2,"realstyle",1)
+   pt3->title("Room")
+   pt3->xlabel("Time (s)")
+   pt3->ylabel("T (C)")
+   pt3->hold("off")
+   
+ # Plot peltier voltage (Blue) and magnet voltage (Red)
+   pt4->plot(timeAxis,peltierVolts,"realcolor",[0,0,255])
+   pt4->hold("on")
+   pt4->plot(timeAxis,magnetVolts,"realcolor",[255,0,0])  
+   pt4->title("Control voltages (magnet - red, peltier/box - blue)")
+   pt4->xlabel("Time (s)")
+   pt4->ylabel("Voltage (V)")
+   pt4->hold("off")
+
+ # Plot lock history
+   pt5->plot(timeAxis,lock,"tracecolor",[0,128,0])
+   pt5->title("Lock history")
+   pt5->xlabel("Time (s)")
+   pt5->ylabel("Lock frequency correction (Hz)")
+
+   gView->graphLabel->label("Lock and Temperature history")
+
+   if(saveData == "yes")
+      bak = getcwd()
+      curExpt = gData->curExpt
+      cd(curExpt->dataPath)
+      gView->g1->save("magnetHistory.pt1")
+      gView->g2->save("boxHistory.pt1")
+      gView->g3->save("roomHistory.pt1")
+      gView->g4->save("voltageHistory.pt1")
+      gView->g5->save("lockHistory.pt1")
+      cd(bak)
+   endif
+
+endproc()

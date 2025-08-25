@@ -1,0 +1,331 @@
+###################################################################################
+# Generate a single or dual RF pulse of fixed duration, amplitude, phase 
+# and frequency. The version called depends on the number of arguments passed.
+# 
+#    pulse(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+#
+#    singlepulse(channel=1, ampdB=-12, phaseValue=0, duration=5, frequency=0)
+#
+#    dualpulse(1, amp1, ph1, freq1, 2, amp2, ph2, freq2, duration)
+#
+###################################################################################
+
+procedure(pulse, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+
+   if(wvFX3Info->mode == "run")
+   
+      if(nrArgs == 4)
+         :singlePulse(arg1, arg2, arg3, arg4)
+      elseif(nrArgs == 5)
+         :singlePulse(arg1, arg2, arg3, arg4, arg5)
+      elseif(nrArgs == 9)
+         :dualPulse(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+      else
+         throw("Expecting 4, 5, or 9 arguments to pulse")
+      endif
+
+   elseif(wvFX3Info->mode == "time")
+
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + arg4 + pgo + 1
+        # gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+      elseif(nrArgs == 5) # Single pulse with frequency (ch, amp, phase, duration, freq)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + arg4 + pgo + 1
+        # gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$,$a2$,$a3$,$a4$,$a5$,$args[1]$,$args[2]$,$args[3]$,$args[4]$"]
+      elseif(nrArgs == 9) # Dual pulse  (ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + arg4 + pgo + 2
+        # gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$, $a2$,$a3$,$a4$,$a5$,$a6$,$a7$,$a8$,$a9$,$args[1]$,$args[2]$,$args[3]$,$args[5]$,$args[6]$,$args[7]$,$args[8]$"]
+      endif
+
+   elseif(wvFX3Info->mode == "compile")
+      if(nrArgs == 4)
+         addPSParameters(arg2, arg3, arg4)
+      elseif(nrArgs == 5)
+         addPSParameters(arg2, arg3, arg4, arg5)
+      else
+         addPSParameters(arg2, arg3, arg4, arg6, arg7, arg8, arg9)
+      endif
+
+   endif
+
+endproc()
+
+###################################################################################
+# Generate a single RF pulse on either channel 1 or 2
+# 
+#    singlepulse(channel=1, ampdB=-12, phaseValue=0, duration=5, [frequency=0])
+#  
+#    channel    : 1/2/"1nb"/"2nb" (nb = no RF blanking pulse) 
+#    amplitude  : amplitude in dB (0 = max, -85 = off)
+#    phaseValue : phase value as a 16 bit number (representing 0->359.995 degrees)
+#    duration   : pulse duration in us (max 20 s)
+#    frequency  : optional frequency in MHz
+#
+#    Duration =  pgo + pulseLength + 1us (pgo >= 1.5 us, typically 5 us)
+#
+###################################################################################
+
+procedure(singlePulse, channel=1, ampdB=-12, phaseValue=0, duration=5, frequency=0)
+
+   if(wvFX3Info->mode == "run")
+   
+      if(duration <= 0)
+         throw("Invalid pulse duration: $duration$")
+      endif
+ 
+     # Select the parameters according to the channel
+      if(channel == "1" | channel == 1)
+         gateTTL = 0x04000
+         gateAndRFTTL = 0x04008
+         ddsAdrs = 0x118E
+      elseif(channel == "1nb") # Channel 1 no RF blanking pulse (= gate pulse)
+         gateTTL = 0x00000
+         gateAndRFTTL = 0x00008
+         ddsAdrs = 0x118E
+      elseif (channel == "2" | channel == 2)
+         gateTTL = 0x00100
+         gateAndRFTTL = 0x00102
+         ddsAdrs = 0x128E
+      elseif (channel == "2nb") # Channel 2 no RF blanking pulse (= gate pulse)
+         gateTTL = 0x00000
+         gateAndRFTTL = 0x00002
+         ddsAdrs = 0x128E
+      else
+          throw("Invalid RF pulse channel $channel$ (should be one of: 1/2/nb1/nb2)")
+      endif
+   
+      # Get the pulse gate overhead duration (typically 5 us)  
+      pgo = wvFX3Info->pref->pgo*100
+
+      # Note the type of each of the passed variables
+      ampType       = vartype(ampdB)
+      phaseType     = vartype(phaseValue)
+      durationType  = vartype(duration)
+      frequencyType = vartype(frequency)
+      
+      # Generate the TRex code based on the passed data types
+
+      # All scalars   
+      if (ampType != "matrix1d" & phaseType != "matrix1d" & durationType != "matrix1d" & frequencyType != "matrix1d")
+      
+        # Convert the amplitude from dB to 14 bit number
+         amplitude = ucsRun:convertTxGain(ampdB)
+
+         if(frequency == 0) # Use default frequency
+   
+            ps = [15d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,
+                  15d,           ddsAdrs,     amplitude,
+                  pgo-30d,       ddsAdrs,     phaseValue,
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL,
+                  15d,           0x00000000,  wvFX3Info->currentTTL,
+                  15d,           ddsAdrs,     0,
+                  15d,           ddsAdrs,     0,
+                  100d - 45d,    0x09000000,  0]
+
+         else  # Frequency provided
+   
+            DDSFword = round((frequency * 2^32) / 1000.0)
+            txFreq1 = (DDSFword & 0xFFFF0000) / (2^16)  # AD9910 Tx frequency
+            txFreq2 = (DDSFword & 0x0000FFFF)
+    
+            ps = [15d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,
+                  15d,           ddsAdrs,     amplitude,
+                  15d,           ddsAdrs,     phaseValue,  
+                  15d,           ddsAdrs,     txFreq1,
+                  pgo-60d,       ddsAdrs,     txFreq2,
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL,
+                  15d,           0x00000000,  wvFX3Info->currentTTL,
+                  15d,           ddsAdrs,     0,
+                  15d,           ddsAdrs,     0,
+                  100d - 45d,    0x09000000,  0]
+
+         endif
+
+      # Table based amplitude but phase, duration and frequency are scalars
+      elseif (ampType == "matrix1d" & phaseType != "matrix1d" & durationType != "matrix1d" & frequencyType != "matrix1d")
+
+         if(frequency == 0) # Use default frequency
+   
+            ps = [20d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,      # Switch on RF amp gate
+                  20d,           0x00006084,  ampdB[0]-1,                           # Set SRAM address to &table[0]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read table index
+                  20d,           0x00006084,  0x01000000,                           # Set SRAM address to &table[index]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read amplitude value at table[index]
+                  20d,           ddsAdrs,     0x01000000,                           # Write amplitude to DDS
+                  pgo-160d,      ddsAdrs,     phaseValue,                           # Write phase to DDS and wait for DDS update
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL, # Turn on the pulse output for duration us
+                  15d,           0x00000000,  wvFX3Info->currentTTL,                # Switch off the pulse output
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output amplitude
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output phase
+                  100d - 45d,    0x09000000,  0]                                    # Wait for the DDS update to complete
+   
+         else  # Frequency provided
+   
+            DDSFword = round((frequency * 2^32) / 1000.0)
+            txFreq1 = (DDSFword & 0xFFFF0000) / (2^16)  # AD9910 Tx frequency
+            txFreq2 = (DDSFword & 0x0000FFFF)
+ 
+            ps = [20d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,      # Switch on RF amp gate
+                  20d,           0x00006084,  ampdB[0]-1,                           # Set SRAM address to &table[0]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read table index
+                  20d,           0x00006084,  0x01000000,                           # Set SRAM address to &table[index]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read amplitude value at table[index]
+                  20d,           ddsAdrs,     0x01000000,                           # Write amplitude to DDS
+                  pgo-160d,      ddsAdrs,     phaseValue,                           # Write phase to DDS and wait for DDS update
+                  20d,           ddsAdrs,     txFreq1,                              # Write freq word 1 to DDS
+                  pgo-200d,      ddsAdrs,     txFreq2,                              # Write freq word 2 to DDS and wait for DDS update
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL, # Turn on the pulse output for duration us
+                  15d,           0x00000000,  wvFX3Info->currentTTL,                # Switch off the pulse output
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output amplitude
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output phase
+                  100d - 45d,    0x09000000,  0]                                    # Wait for the DDS update to complete
+
+         endif
+
+      # Table based phase but amplitude, duration and frequency are scalars
+      elseif (ampType != "matrix1d" & phaseType == "matrix1d" & durationType != "matrix1d" & frequencyType != "matrix1d")
+
+         amplitude = ucsRun:convertTxGain(ampdB)
+
+         if(frequency == 0) # Use default frequency
+   
+            ps = [20d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,      # Switch on RF amp gate
+                  20d,           0x00006084,  phaseValue[0]-1,                      # Set SRAM address to &table[0]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read table index
+                  20d,           0x00006084,  0x01000000,                           # Set SRAM address to &table[index]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read phase value at table[index]
+                  20d,           ddsAdrs,     amplitude,                            # Write amplitude to DDS
+                  pgo-160d,      ddsAdrs,     0x01000000,                           # Write phase to DDS and wait for DDS update
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL, # Turn on the pulse output for duration us
+                  15d,           0x00000000,  wvFX3Info->currentTTL,                # Switch off the pulse output
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output amplitude
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output phase
+                  100d - 45d,    0x09000000,  0]                                    # Wait for the DDS update to complete
+   
+         else  # Frequency provided
+   
+            DDSFword = round((frequency * 2^32) / 1000.0)
+            txFreq1 = (DDSFword & 0xFFFF0000) / (2^16)  # AD9910 Tx frequency
+            txFreq2 = (DDSFword & 0x0000FFFF)
+ 
+            ps = [20d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,      # Switch on RF amp gate
+                  20d,           0x00006084,  phaseValue[0]-1,                      # Set SRAM address to &table[0]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read table index
+                  20d,           0x00006084,  0x01000000,                           # Set SRAM address to &table[index]
+                  20d,           0x01006086,  1,                                    # Dummy read
+                  20d,           0x01006086,  1,                                    # Read amplitude value at table[index]
+                  20d,           ddsAdrs,     amplitude,                            # Write amplitude to DDS
+                  pgo-160d,      ddsAdrs,     0x01000000,                           # Write phase to DDS and wait for DDS update
+                  20d,           ddsAdrs,     txFreq1,                              # Write freq word 1 to DDS
+                  pgo-200d,      ddsAdrs,     txFreq2,                              # Write freq word 2 to DDS and wait for DDS update
+                  duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL, # Turn on the pulse output for duration us
+                  15d,           0x00000000,  wvFX3Info->currentTTL,                # Switch off the pulse output
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output amplitude
+                  15d,           ddsAdrs,     0,                                    # Zero the DDS output phase
+                  100d - 45d,    0x09000000,  0]                                    # Wait for the DDS update to complete
+
+         endif
+
+      # Table based frequency but amplitude, phase and duration are scalars
+      elseif (ampType != "matrix1d" & phaseType != "matrix1d" & durationType != "matrix1d" & frequencyType == "matrix1d")
+
+         amplitude = ucsRun:convertTxGain(ampdB)
+
+         ps = [20d,           0x00000000,  wvFX3Info->currentTTL | gateTTL,      # Switch on RF amp gate
+               20d,           0x00006084,  frequency[0]-1,                       # Set SRAM address to &table[0]
+               20d,           0x01006086,  1,                                    # Dummy read
+               20d,           0x01006086,  1,                                    # Read table index
+               20d,           0x00006084,  0x01000000,                           # Set SRAM address to &table[index]
+               20d,           0x01006085,  1,                                    # Dummy read
+               20d,           0x01006085,  1,                                    # Read freq hiword value at table[index]
+               20d,           ddsAdrs,     amplitude,                            # Write amplitude to DDS
+               20d,           ddsAdrs,     round(phaseValue),                    # Write phase to DDS
+               20d,           ddsAdrs,     0x01000000,                           # Write freq word 1 to DDS
+               20d,           0x01006086,  1,                                    # Read freq loword value at table[index]
+               pgo-220d,      ddsAdrs,     0x01000000,                           # Write freq word 2 to DDS and wait for DDS update
+               duration*100d, 0x00000000,  wvFX3Info->currentTTL | gateAndRFTTL, # Turn on the pulse output for duration us
+               15d,           0x00000000,  wvFX3Info->currentTTL,                # Switch off the pulse output
+               15d,           ddsAdrs,     0,                                    # Zero the DDS output amplitude
+               15d,           ddsAdrs,     0,                                    # Zero the DDS output phase
+               100d - 45d,    0x09000000,  0]                                    # Wait for the DDS update to complete
+
+
+      else
+         throw("Only one parameter may be table-based in pulse command")
+      endif
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps)
+
+   endif
+
+
+endproc()
+
+
+###################################################################################
+# Generate a dual RF pulse of specified amplitudes (dB), phases (0-4)*16384,
+# and frequencies (MHz) with the same duration (us).
+# 
+#    dualPulse(1, amp1, ph1, freq1, 2, amp2, ph2, freq2, duration)
+#
+#    Duration =  pgo + pulseLength + 2us (pgo >= 5us)
+#
+###################################################################################
+
+procedure(dualPulse, ch1, amp1, ph1, freq1, ch2, amp2, ph2, freq2, duration)
+
+   if(wvFX3Info->mode == "run")
+   
+      if(duration <= 0)
+         throw("Invalid pulse duration: $duration$")
+      endif
+
+      # Get the pulse gate overhead duration (typically 5 us)  
+      pgo = wvFX3Info->pref->pgo*100
+  
+      # Convert the amplitudes from dB to 14 bit numbers
+      amplitude1 = ucsRun:convertTxGain(amp1)
+      amplitude2 = ucsRun:convertTxGain(amp2)
+    
+      # Calculate the frequencies as two 16 bit words for each channel
+      DDSFword = round((freq1 * 2^32) / 1000.0)
+      txFreq11 = (DDSFword & 0xFFFF0000) / (2^16)
+      txFreq12 = (DDSFword & 0x0000FFFF)
+      DDSFword = round((freq2 * 2^32) / 1000.0)
+      txFreq21 = (DDSFword & 0xFFFF0000) / (2^16)
+      txFreq22 = (DDSFword & 0x0000FFFF)
+
+      # Set the amplitude and phase and frequency for both channels
+      ps =   [15d,           0x00000000,  wvFX3Info->currentTTL | 0x4100, # Set RF gates to on
+              15d,           0x0000118E,  amplitude1, # Load ch1 parameters to DDS
+              15d,           0x0000118E,  ph1,
+              15d,           0x0000118E,  txFreq11,
+              200d-60d,      0x0000118E,  txFreq12,
+              15d,           0x0000128E,  amplitude2, # Wait 2us and load ch2 parameters to DDS
+              15d,           0x0000128E,  ph2,
+              15d,           0x0000128E,  txFreq21,
+              pgo-245d,      0x0000128E,  txFreq22,
+              duration*100d, 0x00000000,  wvFX3Info->currentTTL | 0x410A, # Switch on RF putput
+              15d,           0x00000000,  wvFX3Info->currentTTL, # Wait for pulse duration
+              15d,           0x0000118E,  0, # Turn off output
+              50d,           0x0000118E,  0,
+              15d,           0x0000128E,  0,
+              200d-95d,      0x0000128E,  0]
+
+     # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps)
+
+   endif
+
+
+endproc()

@@ -1,0 +1,107 @@
+#####################################################################
+# This example script waits for AD0 to be connected to ground and
+# then released and then starts Proton experiment. An LED connected
+# to AD1 is switched on while AD) is grounded.
+#####################################################################
+
+procedure(ttlControlTest, parameters=null) 
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift")) # Display this file
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else # Add the experiment with interface
+      if(parameters == null)
+         parameters = ["nrScans = 4","repTime = 5000"]
+      endif
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+########################################################
+# Specifies the user interface to display when
+#  item selected in history list. 
+########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["nrScans", "Number of scans",         "tb", "integer",  "",
+                 "repTime", "Repetition time (ms)",     "tb", "float",  ""]
+   plotLayout = ["pt1";"pt2"]
+   procLayout = list(0)
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list. 
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+###########################################################
+# Run the experiment
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   # Set up the plot for run mode
+   (pt1,pt2) = InitPlot(["pt1";"pt2"])
+
+   # Executable to run to control FTDI TTL controller
+   exe = "$appdir$\\Spinsolve special programs\\TTLController\\SpinsolveTTL.exe" 
+
+   print("\n   Press button to start experiment\n")  
+
+   # Turn on LED connected to output AD2
+   execandwait(exe,"FTDIMagritek001 output 0x04 0xFE")
+   # Wait for input AD0 to short to ground (button pressed)
+   execandwait(exe,"FTDIMagritek001 input 0x00 0xFE")
+   print("Switch closed\n")
+   # Turn on LED connected to output AD1
+   execandwait(exe,"FTDIMagritek001 output 0x06 0xFE")
+   # Wait for input AD0 to unshort (button release)
+   execandwait(exe,"FTDIMagritek001 input 0x01 0xFE")
+   print("Switch opened\n")
+   # Turn off LED connected to output AD1
+   execandwait(exe,"FTDIMagritek001 output 0x04 0xFE")
+   # Run the experiment
+   print("   Experiment started\n")  
+   RunExpt("Proton",["nrScans = $nrScans$","repTime = $repTime$","nrPnts = 16384"])
+   # Turn off LED connected to output AD2
+   execandwait(exe,"FTDIMagritek001 output 0x00 0xFE")
+
+   print("   Experiment Finished\n")  
+
+
+endproc()
+
+########################################################
+# Just cycle the progress bar since we don't know
+# when the experiment will start
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   d = -5
+
+endproc(d)

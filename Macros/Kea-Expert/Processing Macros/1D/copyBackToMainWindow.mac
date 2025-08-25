@@ -1,0 +1,52 @@
+###########################################################
+#            CopyBackToMainWindow.mac
+#
+# Copy the contents of the 1D plot viewer back to the
+# main window
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek June 2023
+###########################################################
+
+
+procedure(copyBack)
+
+   (w,h) = locPlot->size
+   n = curwin()
+
+   if(w == 1 & h == 1)
+
+      pltSrc1 = locPlot->subplot(1,1)
+      layout =  gPlot->curPlotLayout
+
+      pltDst1 = curplot("1d")
+      pltSrc1->filename(pltDst1->filename())
+      pltSrc1->filepath(pltDst1->filepath())
+      copyplot(pltSrc1)
+      pasteplot(pltDst1)
+
+   elseif(w == 1 & h == 2)
+
+      pltSrc1 = locPlot->subplot(1,1)
+      pltSrc2 = locPlot->subplot(1,2)
+      layout =  gPlot->curPlotLayout
+      (w,h) = size(layout)
+      if(h == 2)
+         pltDst1 = gPlot->getPlotObject(layout[0,0])
+         pltDst2 = gPlot->getPlotObject(layout[0,1])
+         pltSrc1->filename(pltDst1->filename())
+         pltSrc1->filepath(pltDst1->filepath())
+         pltSrc2->filename(pltDst2->filename())
+         pltSrc2->filepath(pltDst2->filepath())
+         copyplot(pltSrc1)
+         pasteplot(pltDst1)
+         copyplot(pltSrc2)
+         pasteplot(pltDst2)
+         curplot(pltSrc1)
+      endif
+
+   endif
+ 
+endproc()
+    

@@ -1,0 +1,53 @@
+########################################################################
+# Update all experiments in the current list to use the common
+# parameters
+########################################################################
+
+procedure(backdoor, guipar)
+
+   bak = getcwd()
+ 
+   curWin = guiwinnr()
+   guiwinnr(wvWinNr)
+   expLst = exptListCtrl->list
+   for(k = 0 to size(expLst)-1)
+
+      exptInfo = expert:getExptInfo(exptListCtrl,k)
+      cd(exptInfo->path)
+
+      if(exptListCtrl->zindex == k)
+         par = ucsFiles:loadCommonPar()
+         setctrlvalues(0,par)
+      else
+         par = expert:getExptParameters(exptInfo)
+         par = expert:mergeWithCommonPar(par)
+      endif
+      save("acqu.par",sortlist(par))
+
+   next(k)
+
+   cd(bak)
+   guiwinnr(curWin)
+
+endproc(0)
+
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo,plotRegion)
+
+   info = ["pt1","fid.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)

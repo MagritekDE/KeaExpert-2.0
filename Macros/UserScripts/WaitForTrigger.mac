@@ -1,0 +1,72 @@
+#####################################################################
+# This example script waits for pin 2 (AD0) on the TTL trigger box
+# to be connected to ground (pin 1) and then returns. 
+# It could be used to trigger a batch process.
+#####################################################################
+
+procedure(WaitForTrigger, parameters=null) 
+ 
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else # Add the experiment with interface
+      gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Allow the WaitForTrigger command to be added to
+# the batch list
+###########################################################
+
+procedure(addCommand)
+   
+endproc("WaitForTrigger|")
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = list(0)
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+
+###########################################################
+# Run the experiment
+###########################################################
+
+procedure(backdoor, parameters)
+
+# Initialise the FTDI (TTL) port for trigger
+   ftdiopen("FTDIMagritek001",0xFE) # Bit 0 is input others are output
+
+# Show we are waiting
+   ppStatus->color([255,0,255])
+
+# Wait for input on AD0
+   ftdiread(0x00)
+
+# Close the connection to the TTL controller
+   ftdiclose()
+
+# Show we are finished waiting
+   ppStatus->color([255,255,255,255]) 
+
+endproc()
+
+########################################################
+# Just cycle the progress bar once each 5 seconds
+# since we don't know when the trigger will come
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   d = -5
+
+endproc(d)

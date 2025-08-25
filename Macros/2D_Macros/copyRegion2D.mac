@@ -1,0 +1,95 @@
+####################################################
+# Save the zoom values for on region so it can be 
+# rezoomed later on to the same or a different data
+# set.
+####################################################
+
+procedure(copyRegion)
+
+   n = :windowdefinition()
+   showwindow(n)
+   xl = -1
+
+endproc()
+
+####################################################
+# Generate the window interface
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D copy/paste region", -1, -1, 193, 78)
+
+      # Define all controls with basic parameters
+       windowvar(yt,yb,xr,xl)
+       button(1, 11, 8, 95, 27, "Copy region",
+          :copy_region();)
+       button(2, 11, 43, 95, 27, "Paste region",
+          :paste_region();)
+       button(3, 120, 8, 54, 27, "Help",
+          :show_help();)
+       button(4, 120, 43, 54, 27, "Exit",
+          closewindow(0);)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","copyregion.htm")
+endproc()
+
+
+####################################################
+# Copy the current zoom region to window variables
+####################################################
+
+procedure(copy_region)
+
+# Make sure data is present in the intial region
+   m = getplotdata("2d")
+   if(m == null)
+      message("Error","No 2D data set","error")
+      return()
+   endif
+
+# Record the current displayed region rectangle 
+   (xl,xr,yb,yt) = zoom2d("getargs")
+
+endproc()
+
+####################################################
+# Paste the region stored in window variables
+####################################################
+
+procedure(paste_region)
+
+# Make sure a region has been copied
+   if(xl == -1)
+      message("Error","Region needs to be copied first")
+      return()
+   endif
+
+# Make sure data is present in the new region
+   m = getplotdata("2d")
+   if(m == null)
+      message("Error","No 2D data set","error")
+      return()
+   endif
+   (w,h) = size(m)
+
+# Make the region to be pasted is valid
+   if(xr >= w | yt >= h)
+      message("Error","Invalid paste region for this data set","error")
+      return()
+   endif
+
+# Redisplay the copied region
+   zoom2d(xl,xr,yb,yt)
+
+endproc()

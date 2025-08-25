@@ -1,0 +1,165 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>adderrorbars</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+h1
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman";}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB>
+
+<div class=Section1>
+
+<h1><span lang=EN-NZ>apodizeTime</span></h1>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>This macro applies an apodization function
+to time domain data.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The macro has several built-in filters. The
+macro equations are listed below:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>exponential&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp(-abs(x-p1)*p2)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>sinebell&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>cos(0.5*pi*(x-p1)/(N-p1))</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>sinebellsquared&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>cos(0.5*pi*(x-p1)/(N-p1))^2</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>gauss&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp(-(x-p1)^2*p2^2)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New"'>gaussdeconv&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-size:10.0pt;font-family:"Courier New";color:gray'>exp((x-p1)*p3-(x-p1)^2*p2^2)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:gray'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>In these equations p1 = 0, p2 is taken from
+the first slider (labelled Broadening) and p3 from the second slider (labelled
+Narrowing).</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ><img width=347 height=159
+src="apodizeTime_files/image001.jpg" border=0></span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The effect of applying this operation to a
+decay sinusoidal function can be seen by running the command:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>(x,y) = cosine(1024,1,300,10)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>plot(x,y)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>This generates a 1024 point, 300 Hz&nbsp;
+data set lasting 1 second. The exponential decay time is 10 seconds.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=319 valign=top style='width:239.25pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image002.gif" border=0></span></p>
+  </td>
+  <td width=319 valign=top style='width:239.3pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image003.gif" border=0>&nbsp;</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The Gaussian deconvolution command can be
+used to remove exponential broadening from peaks and replace it with the
+narrower Gaussian broadening:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>(x,y) = cosine(16384,5,300,0.2)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>plot(x,y)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Courier;
+color:black'>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=319 valign=top style='width:239.25pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image004.gif" border=0></span></p>
+  </td>
+  <td width=319 valign=top style='width:239.3pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image005.gif" border=0></span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=319 valign=top style='width:239.25pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image006.gif" border=0></span></p>
+  </td>
+  <td width=319 valign=top style='width:239.3pt;padding:0cm 5.4pt 0cm 5.4pt'>
+  <p class=MsoNormal><span lang=EN-NZ><img width=301 height=241
+  src="apodizeTime_files/image007.gif" border=0></span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+# Use this macro to toggle critical RCA code between the normal fixed frequency 2 MHz system and the variable frequency (Tomograph) system
+#
+# mode = VFM_to_FFM tomograph => 2 MHz
+# mode = FFM_to_VFM 2 MHz => tomograph
+
+procedure(toggleSpectrometer)
+
+
+  # mode = "VFM_to_FFM"
+   mode = "FFM_to_VFM"
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\DT2_HiRes","DT2_HiRes_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","DT2_HiRes.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\DT2","DT2_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","DT2.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\PGSE","PGSE_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","PGSE.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\PGSTE","PGSTE_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","PGSTE.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\Profile","Profile_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","Profile.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\ShimGrad","ShimGrad_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","ShimGrad.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\Shim","Shim_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","Shim.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\T2Profile","T2Profile_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","T2Profile.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\T2Profile_HiRes","T2Profile_HiRes_pp.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","T2Profile_HiRes.mac")
+
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\Other Macros","Findf0BD.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\Other Macros","ProfileBD.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA\\Other Macros","T2ProfileBD.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","Findf0.mac")
+   :updateMacro(mode,"$appdir$\\Macros\\RCA","RCA.pex")
+
+endproc()
+
+procedure(updateMacro,mode,path,file)
+
+   cd(path)
+   escapechar("false")
+   txt = load(file,"text")
+   cnt= 0
+
+   if(mode == "FFM_to_VFM")
+   
+      for(k = 1 to 100)
+         oldLine = :findLine(txt,"text","VFM $k$")
+         if(oldLine == null)
+            exitfor
+         endif
+         (oldCmd,comment,newCmd) = scanstr(oldLine,"%1#%2 -- VFM $k$:%3:")
+         newLine = newCmd+"#"+comment+" -- FFM $k$:"+oldCmd+":"  
+         txt = replacestr(txt,oldLine,newLine)
+         cnt = cnt + 1
+      next(k)
+
+      if(cnt > 0)
+         escapechar("true")
+         pr("$file$ Fixed freq => Variable freq\n")
+         escapechar("false")
+      endif 
+
+   elseif(mode == "VFM_to_FFM")
+
+      for(k = 1 to 100)
+         oldLine = :findLine(txt,"text","FFM $k$")
+         if(oldLine == null)
+            exitfor
+         endif
+         (oldCmd,comment,newCmd) = scanstr(oldLine,"%1#%2 -- FFM $k$:%3:")
+         newLine = newCmd+"#"+comment+" -- VFM $k$:"+oldCmd+":"  
+         txt = replacestr(txt,oldLine,newLine)
+         cnt = cnt + 1
+      next(k) 
+
+      if(cnt > 0)
+         escapechar("true")
+         pr("$file$ Variable freq => Fixed freq\n")
+         escapechar("false")
+      endif
+
+   endif
+
+   save(file,txt)
+   escapechar("false")
+
+endproc()
+
+
+procedure(findLine,text,mode,value)
+
+   for(k = 0 to 5000)
+      line = getline(text,k)
+      if(line == null)
+        return(null)
+      endif
+      if(issubstr(line,value))
+         return(line)
+      endif
+   next(k)
+   
+endproc(null)

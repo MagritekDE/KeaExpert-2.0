@@ -1,0 +1,30 @@
+####################################################
+#                  ift1d.mac
+#
+# Calculate the inverse FFT current 1D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(ift1d)
+
+  (f,A) = getplotdata("1d")
+   if(f != null)
+      if(maths:ispower2(size(f))) 
+         N = size(f)
+         df = f[1] - f[0]
+         t = ([0:1:N-1])/(N*df)
+         s = ift(A)
+         s[0] = s[0]*2 # Correction for time asymmetry
+         plot(t,s*(f[-1]-f[0]))
+      else
+         message("Can't complete operation","1D data set size is not a power of 2");
+      endif
+   else
+      message("Can't complete operation","No 1D data set plotted","error");
+   endif 
+
+endproc()

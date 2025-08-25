@@ -1,0 +1,1677 @@
+###########################################################
+# Experiment class for KeaExpert
+#
+# Includes procedures for adding an experiment from
+# the main menu to the parameter list and for running
+# that experiment. Experiments can also be loaded 
+# from the history list showing the parameters used
+# and displaying the collected data.
+#
+# V2.xx.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "=============================================" 
+  
+   self->addExperiment         = "seExpt:addExperiment"
+   self->addMissingPar         = "seExpt:addMissingPar"
+   self->addStandardParameters = "seExpt:addStandardParameters"
+   self->autoSetup             = "seExpt:autoSetup"
+   self->checkForDuplicates    = "seExpt:checkForDuplicates"
+   self->cleanupAfterExpt      = "seExpt:cleanupAfterExpt"
+   self->getExptDuration       = "seExpt:getExptDuration"
+   self->getPathInfo           = "seExpt:getPathInfo"
+   self->isConnected           = "seExpt:isConnected"
+   self->loadExistingDataSet   = "seExpt:loadExistingDataSet"
+   self->nullExptSelected      = "seExpt:nullExptSelected"
+   self->pauseMonitoring       = "seExpt:pauseMonitoring"
+   self->ppRunning             = "seExpt:ppRunning"
+   self->prepareToRunExpt      = "seExpt:prepareToRunExpt"
+   self->processExptDuration   = "seExpt:processExptDuration"
+   self->resumeMonitoring      = "seExpt:resumeMonitoring"
+   self->runExperiment         = "seExpt:runExperiment"
+   self->runExperimentCore     = "seExpt:runExperimentCore"
+   self->runStartCode          = "seExpt:runStartCode"
+   self->savePPCode            = "seExpt:savePPCode"
+   self->setCurrentExperiment  = "seExpt:setCurrentExperiment"
+   self->setDataInfo           = "seExpt:setDataInfo"
+   self->startExperiment       = "seExpt:startExperiment"
+   self->startPeriodicChecks   = "seExpt:startPeriodicChecks"
+   self->showExptProgress      = "seExpt:showExptProgress"
+   self->stopChecking          = "seExpt:stopChecking"
+   self->updateExptDuration    = "seExpt:updateExptDuration"
+   self->updateExtraPar        = "seExpt:updateExtraPar"
+
+   self->variableList = "============================================="
+
+# Experiment parameters
+   self->threadID              = null      # The thread ID for the currently running experiment
+   self->exptRunning           = 0         # A flag to show an experiment running
+   self->exptDuration          = 0         # Contains the experiment duration once started (s)
+   self->seqDuration           = 0         # Contains the duration of the sequence once started (s)
+   self->sysCheckingRunning    = 0         # Whether the system checking is running
+   self->progThreadID          = null      # Current progress thread (allows only one at a time)
+   self->monitorRunning        = 0         # The background monitor status - safe to run an experiment if 0
+   self->pauseMonitor          = 0         # Tell the background event to pause monitoring
+   self->triggerFTDI           = 0         # If 1 the TTL controller will be used
+   self->ttlOutput             = 0         # What output to send from the TTL controller
+   self->ttlOutputDuration     = 0         # How long the TTL output pulse should last
+   self->ttlInput              = 0         # What input bit to wait for
+   self->usbError              = 0         # If usb connection is lost in an experiment.
+   self->whichStartCode        = 0         # Which start code to use when running an experiment.
+   self->sysCheckThreadID      = null      # Thread ID for system checks
+   self->exptSource            = null      # Where the current experiment loaded came from (menu/history/batch)
+
+endproc()
+
+###########################################################
+# Add an experiment of type 'protocol' from
+# menu 'whichMenu'. This populates the
+# parameter menu and sets up the plot layout.
+###########################################################
+
+procedure(addExperiment, self, exptPath, protocol, newPar=null)
+
+# Check for modification
+  if(gView->exptModeCtrl->text == "batch" & gParam->parChangedFlag) 
+      if(query("Warning","A parameter has been modified in a batch experiment.\rDo you want to update the acqu.par file?") == "yes")
+         gBatch->updateProtocol()
+         return
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+# Find the pulse program folder for this protocol either using exptPath or from the registered list
+   if(issubstr(exptPath,"\\"))
+      gData->ppFolder = exptPath + "\\" + protocol
+   else
+      print("\n\nWarning: the experiment '$protocol$' need recompiling") 
+      print("\n         the parent directory is not passed to addExperiment.\n") 
+      gData->ppFolder = gData->findPP(protocol)  
+   endif
+
+# Work out the type of protocol: experiment, scriptWithGUI or script
+   bak = getcwd()
+   cd(exptPath)
+   if(isdir(gData->ppFolder))
+      cd(gData->ppFolder)
+
+      isPP = isfile("$protocol$_pp.mac")
+      isExpCtrl = isfile("$protocol$.mac")
+      isDefault = isfile("$protocol$Default.par")
+      isUI = isfile("$protocol$_interface.mac")
+      exptType = ""
+      if(isPP)
+         if(isExpCtrl  & isDefault & isUI)
+            exptType = "experiment"
+         endif
+      elseif(isExpCtrl)
+         if(isDefault & isUI)
+            exptType = "scriptWithUI"
+         endif
+      endif
+   elseif(isfile("$protocol$.mac"))
+      exptType = "script"
+   endif
+   cd(bak)
+
+   if(exptType == "")
+      print("\n   The protocol $protocol$ is missing essential files - check.\n") 
+      return
+   endif
+
+# Define the new current experiment structure
+   gData->curExpt = struct(protocol=protocol, suffix="", dateStamp="", timeStamp="",
+                           ppPath=gData->ppFolder, dataPath="", type="", source="",
+                           parameters=struct(), defaultPar= struct())
+
+# Cache the experiment
+   import("$protocol$.mac","$gData->ppFolder$","global") 
+
+# Is this a normal experiment or a simple script?
+   if(exptType == "experiment") 
+      try
+         import("$protocol$_interface.mac","$gData->ppFolder$","global")
+         import("$protocol$_pp.mac","$gData->ppFolder$","global") 
+      catch
+         print("\nExpecting pulse program and interface macros for experiment $protocol$\n")
+      endtry
+     (exptPar,defaults,calibrated) = gData->getExptParameters(protocol)
+      if(gData->productionMode == "false" & gData->connected)
+         if(calibrated == 0)
+            if(gData->useCommonPar == "no")
+               message("Warning","'Use common parameters' checkbox not set in preferences. You will need to enter your own common parameters.","warning")
+            else
+              # message("Warning","Calibration not performed. Using default parameters. These may be incorrect!\r\rPlease run a calibration script in Setup to correct calibration.","warning")
+            endif
+         endif
+      endif
+      defaultLayout = 0
+      if(newPar != null)
+         exptPar = struct(setlistvalues(list(exptPar),newPar))
+      endif
+      gData->curExpt->type = "experiment"
+
+   elseif(exptType == "scriptWithUI") 
+      try
+         import("$protocol$_interface.mac","$gData->ppFolder$","global")
+      catch
+         print("\nExpecting an interface macro for script $protocol$\n")
+      endtry
+
+     (exptPar,defaults,calibrated) = gData->getExptParameters(protocol)
+      defaultLayout = 0
+      if(newPar != null)
+         exptPar = struct(setlistvalues(list(exptPar),newPar))
+      endif
+      gData->curExpt->type = "script"
+
+    else # A single script macro
+      exptPar = struct()
+      defaultLayout = 1
+      defaults = struct()
+      if(newPar != null)
+         exptPar = struct(newPar)
+      endif
+      gData->ppFolder = exptPath 
+      gData->curExpt->ppPath = exptPath
+      gData->curExpt->type = "script"
+
+   endif
+
+# Save the experiment parameters and defaults
+   gData->curExpt->parameters = exptPar
+   gData->curExpt->defaultPar = defaults
+   gData->curExpt->source = ""
+
+# Make the parameter controls and populate them
+   if(exptType == "experiment" | exptType == "scriptWithUI")
+      gParam->createParameterCtrls()
+   else
+      layout = gParam->createScriptCtrls() 
+      gView->exptParameterLabel->label("'$protocol$' parameters")
+   endif
+
+# Set up the plots ready to run the experiments
+   if(defaultLayout == 1)
+      layout = ["pt1"]
+   else
+      layout = gPlot->loadPlotLayout("run",gData->curExpt)
+   endif
+   gPlot->layoutPlots(layout)
+   gPlot->showPlots(layout)
+   gProc->showProcessingControls()
+
+   gExpt->exptSource = "menu"
+
+   gView->graphLabel->label("Experiment '$protocol$' : no data")
+
+endproc()
+
+###########################################################
+# Check for missing parameters in the parameter list
+# from old data sets - and recreate these from other
+# parameters if possible. The parameters fixed are
+# centerFreqPPM, centerFreqXXPPM, 
+# bandwidthf1PPM, bandwidthXXPPM
+# where XX is the nucleus name (1H, 13C ...)
+###########################################################
+
+procedure(addMissingPar, self,  par)
+
+   assignlist(par)
+
+   if(not(isvar("nucleus")))
+      return(par)
+   endif
+
+# No need to do this with new data
+   if(isvar("softwareVersion"))
+      if(size(softwareVersion) == 6)
+         swv = eval(softwareVersion[0:3]+softwareVersion[5])
+      else
+         swv = eval(softwareVersion[0:3])
+      endif
+      if(swv >= 1.408)
+         return(par)   
+      endif
+   endif   
+
+# Is it a 1D or 2D data set
+   try
+      (n2,n1) = scanstr(nucleus,"%1-%2")
+   catch
+      n1 = nucleus
+      n2 = null
+   endtry
+
+   try
+   # 1D
+      if(n2 == null)
+         if(not(isvar("centerFreqPPM")))
+            if(isvar("b1Freq$n1$") & (isvar("offFreq$n1$") | isvar("offFreq")) & isvar("wvPPMOffset$n1$"))
+               b1Freq = eval("b1Freq$n1$")
+               if(isvar("offFreq$n1$"))
+                  totalOffset = eval("offFreq$n1$")
+               else
+                  totalOffset = eval("offFreq")
+               endif
+               ppmOffset = eval("wvPPMOffset$n1$")
+               centerFreqPPM = single(totalOffset/b1Freq + ppmOffset)
+               par = par + ["centerFreqPPM = $centerFreqPPM$"]
+            elseif(isvar("wvPPMOffset$n1$"))
+               ppmOffset = eval("wvPPMOffset$n1$")
+               centerFreqPPM = ppmOffset
+               par = par + ["centerFreqPPM = $centerFreqPPM$"]
+            endif
+         endif
+   
+   #2D
+      else 
+   
+         if(not(isvar("centerFreq$n1$PPM")) & not(isvar("centerFreqPPM")))
+            if(isvar("b1Freq$n1$") & (isvar("offFreq$n1$") | isvar("offFreq") | isvar("offFreqPPM")) & isvar("wvPPMOffset$n1$"))
+               b1Freq = eval("b1Freq$n1$")
+               ppmOffset = eval("wvPPMOffset$n1$")
+               if(isvar("offFreq$n1$"))
+                  totalOffset = eval("offFreq$n1$")
+               elseif(isvar("offFreqPPM"))
+                  totalOffset = (eval("offFreqPPM")-ppmOffset)*b1Freq
+               else
+                  totalOffset = eval("offFreq")
+               endif
+               if(n1 != n2)
+                  assign("centerFreq$n1$PPM",single(totalOffset/b1Freq + ppmOffset),"local")
+                  centerFreq = eval("centerFreq$n1$PPM")
+                  par = par + ["centerFreq$n1$PPM = $centerFreq$"]
+                  if(isvar("bandwidth2"))
+                     bandwidthf1PPM = single(bandwidth2*1000/b1Freq)
+                     par = par + ["bandwidthf1PPM = $bandwidth$"]
+                  endif
+               else
+                  assign("centerFreqPPM",single(totalOffset/b1Freq + ppmOffset),"local")
+                  centerFreq = centerFreqPPM
+                  par = par + ["centerFreqPPM = $centerFreqPPM$"]
+                  if(isvar("bandwidth2"))
+                     assign("bandwidthf1PPM",single(bandwidth2*1000/b1Freq),"local")
+                     par = par + ["bandwidthf1PPM = $bandwidthf1PPM$"]
+                  endif
+               endif
+   
+            elseif(isvar("wvPPMOffset$n1$"))
+               ppmOffset = eval("wvPPMOffset$n1$")
+               centerFreqPPM = ppmOffset
+               par = par + ["centerFreq$n1$PPM = $centerFreqPPM$"]
+            endif
+         endif
+   
+         if(not(isvar("centerFreq$n2$PPM")))
+            if(isvar("b1Freq$n2$") & (isvar("offFreq$n2$") | isvar("offFreq")) & isvar("wvPPMOffset$n2$"))
+               b1Freq = eval("b1Freq$n2$")
+               if(isvar("offFreq$n2$"))
+                  totalOffset = eval("offFreq$n2$")
+               else
+                  totalOffset = eval("offFreq")
+               endif
+               ppmOffset = eval("wvPPMOffset$n2$")
+               if(n1 != n2)
+                  assign("centerFreq$n2$PPM",single(totalOffset/b1Freq + ppmOffset),"local")
+                  centerFreq = eval("centerFreq$n2$PPM")
+                  par = par + ["centerFreq$n2$PPM = $centerFreq$"]
+               endif
+   
+            elseif(isvar("wvPPMOffset$n2$"))
+               ppmOffset = eval("wvPPMOffset$n2$")
+               centerFreqPPM = ppmOffset
+               par = par + ["centerFreq$n2$PPM = $centerFreqPPM$"]
+            endif
+         endif
+   
+      endif
+
+   catch
+   
+      pr lasterror()
+
+   endtry
+
+endproc(par)
+
+###########################################################
+# Used when importing standard software parameters. This
+# adds those parameters needed to call the transform and
+# plot macros in Prospa
+###########################################################
+
+procedure(addStandardParameters, self, par)
+
+      missingPar = struct(usePPMScale = "yes",
+                          wvUnits = "uV",
+                          wvApplyPreampFactor = "yes",
+                          wvAutoScale = "yes",
+                          acqTime = par->dwellTime*par->nrPnts/1000,
+                          wvPPMOffset1H = 4.74,
+                          wvPPMOffset13C = 110,
+                          wvPPMOffset19F = -71,
+                          wvPPMOffset31P = 89.3)
+ 
+      par = par+missingPar
+
+endproc(par)
+
+###########################################################
+# Find the lock
+# Load the last shims
+# Calibrate the system
+###########################################################
+
+procedure(autoSetup, self)
+
+ pr "Autosetup in progress\n"
+
+endproc()
+
+###########################################################
+# Check to see if there is more than one experiment with
+# the same name in the search path.
+###########################################################
+
+procedure(checkForDuplicates, self)
+
+# Load all possible protocols into expertExpts
+   expertExptsDir = gData->ppLocations
+   expertExpts = list(0)
+   expertFolders = list(0)
+   for(k = 0 to size(expertExptsDir)-1)
+      dir = expertExptsDir[k]
+      if(isdir(dir))
+         cd(dir)
+         lst = getdirlist(dir)
+         expertExpts = expertExpts + lst
+         for(m = 0 to size(lst)-1)
+            expertFolders = expertFolders + dir
+         next(m)
+         cd("..")
+      endif
+   next(k)
+
+   nrExpts = size(expertExpts)
+
+# Now cross compare these looking for duplicate protocol names
+   print("\n ---- Duplicate experiments ----\n\n")
+   duplicates = 0
+
+   for(n = 0 to nrExpts-1)
+
+      src = expertExpts[n]
+
+      for(m = n+1 to nrExpts-1)
+
+         dst = expertExpts[m]
+         if(src == dst)
+            duplicates = duplicates + 1
+            print("   Duplicate protocol found: '$src$'\n")
+            print("     Locations:\n")
+            print("        $expertFolders[n]$\n")
+            print("        $expertFolders[m]$\n")
+         endif
+
+      next(m)
+
+   next(n)
+
+# Report results
+   if(duplicates == 0)
+      print("   No duplicates found\n")
+   elseif(duplicates == 1)
+      print("\n   1 duplicate found\n")
+   else
+      print("\n   $duplicates$ duplicates found\n")
+   endif
+
+
+endproc()
+
+
+###########################################################
+# An experiment has finished so revert to the normal mode
+# Does the following:
+# Set a flag to show the experiment is no longer running
+# Enables the interface
+# Checks the lock and temperature status
+# Also fixes the historyLoading flag if a bad experiment
+# was selected preventing this from being reset.
+###########################################################
+
+procedure(cleanupAfterExpt, self)
+
+   self->exptRunning = 0
+   self->resumeMonitoring()
+   gView->enableControls()
+   gView->ppStatus->color([255,255,255,255])
+   gView->statusCtrl->text("")
+ #  CheckLockAndTemperature(0,0)
+   gParam->enableMode = "enable"
+   gView->historyLoading = 0
+   gBatch->batchLoading = 0
+   wvExpStatus = "idle"
+
+endproc()
+
+###########################################################
+# Display the expected duration for the current experiment
+###########################################################
+
+procedure(getExptDuration, self, display=0)
+
+   parameters = struct(getctrlvalues(0))
+   if(gView->exptModeCtrl->text == "history") # No delays in history mode
+      parameters->useStartDelay = 0
+      parameters->useEndDelay   = 0
+   else # In batch mode use delays
+      parameters->useStartDelay = 0 # Decide not to use this from V2.01.00
+      parameters->useEndDelay   = 1
+      if(iskeypressed("shift"))
+         gBatch->runExperiments(returnWithTime=1, useSelection=1)
+      else
+         gBatch->runExperiments(returnWithTime=1, useSelection=0)
+      endif
+      return
+   endif
+
+   protocol = gData->curExpt->protocol
+   if(isproc(gData->curExpt->ppPath,protocol,"expectedDuration"))
+      proc = "$protocol$:expectedDuration"
+      exptDuration = proc(parameters)
+
+      if(isvar("parameters->repTime"))
+         if(gData->curExpt->type == "experiment" & parameters->useEndDelay == 0)
+            psTime = GetPulseProgramDuration(protocol)
+            repTime = parameters->repTime
+            nrScans = parameters->nrScans
+            if(psTime >= repTime & nrScans > 1)
+               print("\n\n   Warning: Repetition time is less than pulse sequence time ($psTime$ ms)")
+            endif    
+            exptDuration = exptDuration - (repTime - psTime)/1000
+         endif
+      endif
+
+   else
+      print("\n\n   Experiment duration procedure for '$gData->curExpt->protocol$' is missing\n")
+      return
+   endif
+
+   if(exptDuration < 0)
+      print("\n\n   Repeats until stopped\n")
+   else
+      exptDuration = gData->convertSeconds(exptDuration)
+      print("\n\n   Expected experiment duration for '$gData->curExpt->protocol$' is $exptDuration$\n")
+   endif
+
+endproc()
+
+###########################################################
+# Determine the date and time for the experiment path name
+###########################################################
+
+procedure(getPathInfo, self)
+
+# Get the time and date stamp
+   curTm = gettime("%02d:%02d:%02d")
+   curDate = getdate("yy-mm-dd")
+   (hr,min,sec) = scanstr(curTm,"%1:%2:%3")
+   (yr,mth,day) = scanstr(curDate,"%1-%2-%3")
+
+# Update the current experiment structure
+   timeStamp = "$hr$$min$$sec$"
+   dateStamp = "$eval(yr),02d$$eval(mth),02d$$eval(day),02d$"
+   datePath = "20$eval(yr),02d$\\$eval(mth),02d$\\$eval(day),02d$"
+
+endproc(datePath, dateStamp, timeStamp)
+
+###########################################################
+# Are we connected to a spectrometer?
+###########################################################
+
+procedure(isConnected, self)
+
+   connected = 0
+   try
+      data = dspread("x",0,10)
+      connected = 1
+   catch     
+   endtry
+
+endproc(connected)
+
+
+###########################################################
+# Load and display data specified by 'exptName' stored in 
+# path 'exptPath'. If these are not given use the current
+# history list entry
+###########################################################
+
+procedure(loadExistingDataSet, self, exptName, exptPath, historyIndex)
+
+   if(nrArgs == 1)
+      exptName = gParam->convertHistoryToFileName(gView->history->text)
+      exptPath = gData->curHistoryPath
+      historyIndex = gView->history->zindex
+   elseif(nrArgs == 2)
+      exptPath = gData->curHistoryPath
+      historyIndex = gView->history->zindex
+   elseif(nrArgs == 3)
+      historyIndex = gView->history->zindex
+   endif
+
+# Check for batch boundaries
+   (dateStamp, timeStamp, protocol) = scanstr(exptName,"%1 %2 %3 *")
+   if(protocol == "Protocol" | protocol == "BatchStart" | protocol == "BatchEnd" | protocol == "BatchAborted" | protocol == "BatchExited")
+      self->nullExptSelected(exptName, exptPath, historyIndex)
+      return
+   endif
+
+# Fill the current experiment structure
+   if(self->setCurrentExperiment(exptName, exptPath, historyIndex) == 0)
+      return
+   endif
+
+# Cache the experiment and interface
+   import("$gData->curExpt->protocol$.mac",gData->curExpt->ppPath,"global")
+
+   if(gData->curExpt->type != "script")
+
+      bak = getcwd()
+      cd(gData->curExpt->ppPath)
+      file = "$gData->curExpt->protocol$_interface.mac"
+      if(isfile(file))
+         import(file,gData->curExpt->ppPath,"global")
+      endif
+      file = "$gData->curExpt->protocol$_pp.mac"
+      if(isfile(file))
+         import(file,gData->curExpt->ppPath,"global")
+      endif
+      cd(bak)
+
+   # Update the parameter list, the graphs and load and display the data
+      try
+         gData->curExpt->source = "history"
+
+         gParam->createParameterCtrls()
+         (defaultLayout, curLayout, userMode) = gPlot->loadSavedPlotLayout()
+         if(gData->curExpt->stdSWExpt) # Standard software data set
+            dir = gData->curExpt->ppPath
+            cd(dir)
+            mac = "$gData->curExpt->protocol$_importStdData.mac"
+            if(isfile(mac))
+               mac = "$mac$:loadProcessAndDisplayData"
+               gPlot->curDim = mac(defaultLayout) 
+               dateStamp = gData->curExpt->dateStamp
+               timeStamp = gData->curExpt->timeStamp
+               suffix = gData->curExpt->suffix
+               protocol = gData->curExpt->protocol
+               txt = "$protocol$ ($suffix$) ($gData->convertDate(dateStamp)$, $gData->convertTime(timeStamp)$)"
+               gView->graphLabel->label(txt) 
+            else
+               print("Import procedure not found\n")
+            endif          
+         else # Expert software data set
+            gPlot->curDim = gPlot->loadAndDisplayData(defaultLayout,0,curLayout)
+         endif
+         if(userMode) # Indicate to user that a sublayout has been selected by changing view icon
+            gPlot->setPlotView(gPlot->curDim,"single_plot_view")
+         else
+            gPlot->setPlotView(gPlot->curDim,"multi_plot_view")
+         endif
+         self->updateExtraPar(gData->curExpt->parameters)
+      catch
+         pr lasterror()
+      endtry
+      gProc->showProcessingControls(gPlot->curDim)
+
+   else # It's a script
+
+      gData->curExpt->source = "history"
+
+     # Create parameter controls and return layout from interface procedure
+      defaultLayout = gParam->createScriptCtrls()
+
+     # Check for user-defined layout saved in the experiment folder
+     # The default layout is the layout used when reloading the data the first time
+     # The user layout is a modification to this stored in the experiment folder
+      (notUsed, userLayout, userMode) = gPlot->loadSavedPlotLayout()
+      if(userLayout != null) # No user defined file
+         gPlot->layoutPlots(userLayout)
+      elseif(defaultLayout != null)
+         gPlot->layoutPlots(defaultLayout)
+      endif
+
+      if(defaultLayout != null)
+         gPlot->curPlotsViewed = defaultLayout
+         gPlot->curDim = gPlot->loadAndDisplayData(defaultLayout,0,userLayout)
+         gPlot->curPlotLayout = defaultLayout # This is the default layout
+         gPlot->setPlotView(gPlot->curDim,"multi_plot_view")
+         self->updateExtraPar(gData->curExpt->parameters)
+         gProc->showProcessingControls(gPlot->curDim)
+         if(userMode) # Indicate to user that a user layout has been selected by changing view icon
+            gPlot->setPlotView(gPlot->curDim,"single_plot_view")
+         else
+            gPlot->setPlotView(gPlot->curDim,"multi_plot_view")
+         endif
+      else
+         pr ("!!!Default layout is null seExpt:loadExistingDataSet!!!\n")
+      endif
+
+   endif
+
+# Remove any shared data
+   if(isvar("gShared"))
+      rmvar("gShared")
+   endif
+
+
+endproc()
+
+#procedure(importMacro, macro, directory, mode)
+#
+#   if(nrArgs == 1)
+#      directory = getcwd()
+#      mode = "global"
+#   elseif(nrArgs == 2)
+#      mode = "global"
+#   endif
+#   bak = getcwd()
+#   cd(directory,"false")
+#   rmcachedmacro(directory,macro,mode)
+#   cachemacro(macro,mode)
+#   cacheproc("true")
+#   cd(bak,"false")
+#pr "In import Macro\n"
+#
+#endproc()
+
+###########################################################
+# An experiment has been selected without acqu.par file
+# or data so update curExpt structure and blank out
+# parameter list and plot
+###########################################################
+
+procedure(nullExptSelected, self, exptName, exptPath, historyIndex)
+
+   (timeStamp, protocol, suffix) = scanstr(exptName,"%1 %2 (%3)")
+   exptDir = gView->dirList[historyIndex]
+   gData->curExpt = struct()
+   gData->curExpt->ppPath = null
+   gData->curExpt->protocol = protocol
+   gData->curExpt->suffix = suffix
+   gData->curExpt->defaultPar = null
+   gData->curExpt->parameters = null
+   gData->curExpt->dateStamp = gData->curHistoryDate
+   gData->curExpt->timeStamp = timeStamp
+   gData->curExpt->dataPath = exptDir
+   gData->curExpt->dataParentPath = exptPath
+   gData->curExpt->source = "history"
+   gData->curExpt->type = "batch boundary"
+   if(gParam->firstParameterCtrl != -1)
+     for(k = gParam->firstParameterCtrl to gParam->lastParameterCtrl)
+        rmobj(0,k)
+     next(k)
+     gParam->firstParameterCtrl = -1
+     gParam->lastParameterCtrl = -1
+   endif
+   gView->exptParameterLabel->label("$protocol$ (no parameters)")
+   gPlot->layoutPlots(["pt1"])
+   gView->graphLabel->label("No data collected")
+
+endproc()
+
+###########################################################
+# Stop monitoring the lock and temperatures 
+###########################################################
+
+procedure(pauseMonitoring, self)
+
+   if(self->pauseMonitor == 0)
+      self->pauseMonitor = 1
+      while(gExpt->monitorRunning == 1)
+         pause(0.001,"sleep")
+      endwhile
+     #pr "Monitoring paused\n"
+   endif
+	
+endproc()
+
+###########################################################
+# Check if a pulse program is running
+###########################################################
+
+procedure(ppRunning, self, silent)
+
+   if(self->exptRunning)
+      if(isvar("silent") == 0)
+         message("Error","A pulse program is running.\rPlease wait for it to finish before using this macro.","error")
+      endif
+      return(1)
+   endif
+
+endproc(0)
+
+###########################################################
+# An experiment is about to start. Do the following:
+# Check the lock and temperature status
+# Set a flag to say an experiment is running
+# Make sure periodic checking has stopped
+# Check for a Spectrometer connection
+# Disable the interface
+###########################################################
+
+procedure(prepareToRunExpt, self)
+ 
+   self->pauseMonitoring()
+   self->exptRunning = 1
+   if(gData->connected == 0)
+      abort("No connection to spectrometer")
+   endif
+   gParam->enableMode = "disable"
+   gView->disableControls()
+
+endproc()
+
+
+###########################################################
+# Show the progress automatically if expectedDuration 
+# procedure exists.
+###########################################################
+
+procedure(processExptDuration, self, exptMode, exptType)
+
+   if(isproc(gData->curExpt->ppPath,gData->curExpt->protocol,"expectedDuration"))
+
+      proc = "$gData->curExpt->protocol$:expectedDuration"
+      exptDuration = proc(gData->curExpt->parameters)
+
+      if(exptType != "script")
+
+         if(isvar("gData->curExpt->parameters->repTime"))
+   
+            if(gData->curExpt->parameters->useEndDelay == 0)
+               psTime = GetPulseProgramDuration(gData->curExpt->protocol)
+               repTime = gData->curExpt->parameters->repTime
+               nrScans = gData->curExpt->parameters->nrScans
+               if(psTime >= repTime & nrScans > 1)
+                  if(query("Warning","Repetition time is less than pulse sequence time ($psTime$ ms).\r\rContinue?") == "no")
+                     self->cleanupAfterExpt()
+                     assignlock("wvExpStatus","idle","window")
+                     throw("abort")
+                  endif
+               endif          
+               exptDuration = exptDuration - (repTime - psTime)/1000
+               self->exptDuration = exptDuration
+               self->seqDuration = 0 #psTime/1000
+            endif
+
+         endif
+
+      endif
+
+      if(exptMode == "history")
+         progressExptNameCtrl->text("Progress")
+         self->progThreadID = thread(":showExptProgress",self,exptDuration,1)
+      else
+         progressExptNameCtrl->text("$gData->curExpt->protocol$")
+         self->progThreadID = thread(":showExptProgress",self,exptDuration,3)
+      endif
+
+      return(1)
+
+   endif
+
+endproc(0)
+
+###########################################################
+# Resume monitoring of the lock and temperatures unless
+# an experiment is running or override is set
+###########################################################
+
+procedure(resumeMonitoring, self, override=0)
+
+   if(self->exptRunning == 0 | override == 1)
+      self->pauseMonitor = 0
+     #pr "Monitoring resumed\n"
+   endif
+
+endproc()
+
+###########################################################
+# Run button callback. Action depends on the
+# UI mode control setting: history or batch
+###########################################################
+
+procedure(runExperiment, self, saveExpt=0)
+
+   # Check for std software open
+   if(isappopen("SPINSOLVE"))
+      message("Error","The standard software is running - aborting","error")
+      return
+   else
+      gData->stdSWOpen = 0
+   endif
+
+   # Check for connection
+   if(gData->connected == 0)
+      message("Error","No connection to a Kea - aborting","error")
+      return
+   endif
+
+   assignlock("wvExpStatus","running","window")
+
+  # gExpt->stopChecking()
+   self->pauseMonitoring()
+
+   if(gView->exptModeCtrl->text == "history")
+      gView->history->selection([-1,-1])
+      gData->curExpt->source = "history" 
+      if(saveExpt)
+         comment = "Saved" 
+      else
+         comment = gView->sampleNameCtrl->text()
+      endif
+      completed = self->runExperimentCore(suffix=comment,s=null,savingExperiment=saveExpt)
+      if(completed >= 1)
+         self->savePPCode()
+      endif
+   else # Batch 
+      if(gParam->parChangedFlag) # Check for modification
+         if(query("Warning","A parameter has been modified in a batch experiment.\rDo you want to update the acqu.par file?") == "yes")
+            gBatch->updateProtocol()
+            return
+         else
+            gBatch->updateProtocol(update=0)
+         endif
+      endif
+      if(iskeypressed("shift"))
+         if(query("Warning","Do you really want to run the batch list selection?") == "yes")
+            gData->curExpt->source = "batch"  
+            gBatch->runExperiments(returnWithTime=0,useSelection=1)
+         endif
+      else
+         if(query("Warning","Do you really want to run the full batch list?") == "yes")
+            gData->curExpt->source = "batch"  
+            gBatch->runExperiments(returnWithTime=0,useSelection=0)
+         endif
+      endif
+   endif
+
+   self->resumeMonitoring()
+
+  # gExpt->startPeriodicChecks()
+
+# Return the data path in case this is called by an external program
+
+endproc(gData->curExpt->dataPath)
+
+###########################################################
+# Start the current experiment stored in gData->curExpt
+###########################################################
+
+procedure(runExperimentCore, self, suffix, s=null, savingExperiment=0)
+
+# In the event of an error make sure everything is reset
+   onerror("gExpt->cleanupAfterExpt()")
+
+# Make sure a experiment base path has been set
+   if(gView->projPathCtrl->text == "")
+      if(gView->tester == 0)
+         message("Error","Please select a base-path for all experiments e.g.\r'C:\Data\KeaExpert'","error")
+         gView->projPathCtrl->text("C:\Data\KeaExpert")
+      else
+         message("Error","Please select a base-path for all experiments e.g.\r'C:\Data\KeaTester'","error")
+         gView->projPathCtrl->text("C:\Data\KeaTester")
+      endif
+      return
+   endif
+
+# Get pulse sequence directory
+   try
+      psPath = gData->curExpt->ppPath
+      psName = gData->curExpt->protocol
+   catch
+      message("Error","Please select an experiment to run","error")
+      return
+   endtry
+
+# Update the current data experiment folder and file name info
+   self->setDataInfo(psName,suffix)
+   gData->dataInfoSet = 1
+   mkdir(gData->curExpt->dataParentPath)
+
+# Update the parameters in case the user has changed them in the U.I.
+   ctrlStart = gParam->firstParameterCtrl
+   ctrlEnd = gParam->lastParameterCtrl
+   if(checkcontrols(0) == "error")
+      return(0)
+   endif
+   parameters = getctrlvalues(0,"list","range",[ctrlStart,ctrlEnd])
+
+# Update the bandwidth and acquisition time in case
+# the dwelltime or nrPnts has been changed
+   gData->curExpt->parameters = struct(gParam->updateBWandAcq(parameters))
+
+# Note the location where data will be stored - needed by pulse program macros
+   gData->curExpt->parameters->dataDirectory = gData->curExpt->dataParentPath
+   gData->curExpt->parameters->expName = gData->curExpt->exptFolder
+
+# Add the spectrometer ID and type and program version
+   gData->curExpt->parameters->specID = gData->specID
+   gData->curExpt->parameters->specType = gData->specModel
+   gData->curExpt->parameters->softwareVersion = gView->versionNr
+
+# Assume the experiment will be completed
+   self->percentageCompleted = 100
+
+# Save the parameters to experiment folder (acqu.par)
+   mkdir(gData->curExpt->dataPath)
+   cd(gData->curExpt->dataPath)
+   save("acqu.par",list(gData->curExpt->parameters),"truedoubles")
+   gDebug->pr("Saved to acqu.par")
+
+# See if history is set to the wrong date and if it is then update
+   curLabel = gView->historyLabel->label
+   readableDate = gData->convertDate(gData->curHistoryDate,"readable")
+
+# Reload list with new entry
+   gView->loadHistoryList()
+
+# Select the new experiment
+   gView->history->index(1)
+
+   if(savingExperiment)
+      return(0)
+   endif
+
+# Prepare the UI if in history or batch mode
+   exptMode = gView->exptModeCtrl->text
+   if(exptMode == "history") 
+      gExpt->prepareToRunExpt()
+   endif
+
+# Control the timing i.e. how repTime will be applied
+   if(isproc(gData->curExpt->ppPath,gData->curExpt->protocol,"controlTiming"))
+      proc = "$gData->curExpt->protocol$:controlTiming"
+      proc() # User defined
+   else # Defaults
+      if(exptMode == "history") # No delays in history mode
+         gData->curExpt->parameters->useStartDelay = 0
+         gData->curExpt->parameters->useEndDelay = 0
+      else # In batch mode use delays
+         gData->curExpt->parameters->useStartDelay = 0 # Not doing this since V2.01.00
+         gData->curExpt->parameters->useEndDelay = 1
+      endif
+   endif
+
+# Flag to see if the progress bar thread has started
+   progThreadStarted = 0
+
+# Note the start time
+   self->startTime = time()
+
+# Cleanup the progress bar thread if needed
+   if(self->progThreadID != null)
+      threadcleanup(self->progThreadID)
+      self->progThreadID = null
+   endif
+
+   exptType = gData->curExpt->type
+
+# Is it a normal pulse program
+   if(exptType != "script") 
+
+   # Update the graph layout for run mode
+      layout = gPlot->loadPlotLayout("run",gData->curExpt)
+      gPlot->layoutPlots(layout)
+      gPlot->showPlots(layout)
+
+      assignlock("wvExpStatus","running","window")
+
+   # Show the progress automatically if expectedDuration procedure exists and no other is running
+      if(self->progThreadID == null)
+         progThreadStarted = self->processExptDuration(exptMode, exptType)
+      endif
+
+   # Run the experiment in a separate thread and wait for it to finish
+      gDebug->pr("Running the experiment in a new thread")
+      if(self->threadID != null)
+         threadcleanup(self->threadID)
+      endif
+
+      self->threadID = thread(":startExperiment", self)
+      threadwait(self->threadID)
+      gView->graphLabel->label("Experiment '$gData->curExpt->protocol$' completed")
+
+   # Make sure the progress thread finishes if we abort in a batch
+      if(gView->exptModeCtrl->text == "batch")
+         gBatch->handleBatchAbort(progThreadStarted)
+      endif
+
+# It must be a simple script - call the backdoor macro in a separate thread
+   else 
+
+      assignlock("wvExpStatus","running","window")
+
+   # Show the progress automatically if expectedDuration procedure exists and no other is running
+      if(self->progThreadID == null)
+         progThreadStarted = self->processExptDuration(exptMode, exptType)
+      endif
+
+   # Run the experiment in a separate thread and wait for it to finish
+      param = gData->curExpt->parameters
+      proc = "$gData->curExpt->protocol$:backdoor"
+      if(self->threadID != null)
+         threadcleanup(self->threadID)
+      endif
+      if(s != null)
+         self->threadID = thread(proc,param+s)
+      else
+         self->threadID = thread(proc,param)
+      endif
+      threadwait(self->threadID)
+      gView->graphLabel->label("Experiment '$gData->curExpt->protocol$' completed")
+
+   # Make sure the progress thread finishes if we abort in a batch
+      if(gView->exptModeCtrl->text == "batch")
+         gBatch->handleBatchAbort(progThreadStarted)
+      endif
+
+   endif
+
+ # Check to see if the experiment finished or was stopped early
+   if(wvExpStatus == "running")
+     exptCompleted = 1
+   elseif(wvExpStatus == "finish")
+     exptCompleted = 2
+   else
+     exptCompleted = 0
+   endif
+
+ # Go into appropriate idle mode to stop the process updates
+   if(gView->exptModeCtrl->text == "batch")
+      assignlock("wvExpStatus","batch_idle","window")
+   else
+      assignlock("wvExpStatus","idle","window")
+   endif
+
+ # Wait for the progress thread to finish
+   if(self->progThreadID != null & progThreadStarted)
+      threadwait(self->progThreadID)
+      self->progThreadID = null
+   endif
+
+ # Note the end time
+   self->endTime = time()
+
+ # Reload the saved data to update plot user variable
+   if(gView->exptModeCtrl->text == "history")
+      if(isvar("gData->curExpt->parameters->saveData") & exptCompleted > 0)
+         if(gData->curExpt->parameters->saveData == "true")
+            if(exptType == "script") 
+               layout = gParam->createScriptCtrls()
+            else
+               layout = gPlot->loadPlotLayout("load",gData->curExpt)
+            endif
+            if(layout != null)
+               gPlot->layoutPlots(layout)
+               gPlot->curPlotsViewed = layout
+               gPlot->curDim = gPlot->loadAndDisplayData(layout,inExperiment=1)
+               gProc->showProcessingControls(gPlot->curDim)
+            endif
+         endif
+      endif
+   endif
+
+ # Update the history list with the new data entry
+   gView->loadHistoryList()
+   gView->history->zindex(1)
+
+ # Cleanup UI if in history mode
+   if(gView->exptModeCtrl->text == "history")
+      self->cleanupAfterExpt()
+      assignlock("wvExpStatus","idle","window")
+   endif
+
+  # Make sure the progress control is at 100% if the experiment completed
+   if(exptCompleted == 1)
+      progressCtrl->value(gView->progressLength)
+   endif
+
+  # Update the experiment duration
+   self->updateExptDuration(gData->curExpt->dataPath, self->endTime-self->startTime)
+
+  # Disable lock and saturate or trigger mode
+   gFX3->lockAndSatMode = 0
+   gFX3->triggerMode = 0
+  # Make sure the sequence duration in case of USB error is zeroed
+  # This prevents long delays in DSP lock experiments which don't
+  # set this parameter
+   gExpt->seqDuration = 0
+
+  # Reset on-error call
+   onerror("")
+
+   pr "\n   '$psName$' duration = $self->endTime-self->startTime,1.2f$ s\n"
+
+endproc(exptCompleted)
+
+###########################################################
+# Just run the start-code to speed up normal experiment
+###########################################################
+
+procedure(runStartCode, self)
+
+   if(gData->procType == "FX3")
+      gFX3->runStartCode()
+   else
+      print("Run start code not supported by DSP - ignoring\n")
+   endif
+
+endproc()
+
+
+###########################################################
+# Save a copy of the pulse program in the data folder
+###########################################################
+
+procedure(savePPCode, self)
+
+   bak = getcwd()
+   srcDir = gData->curExpt->ppPath
+   protocol = gData->curExpt->protocol
+   cd(gData->curExpt->dataPath)
+   mkdir("ppCode")
+   dstDir = "$gData->curExpt->dataPath$\\ppCode" 
+   srcFile = "$srcDir$\\$protocol$.mac"
+   dstFile = "$dstDir$\\$protocol$.mac"
+   copyfile(srcFile,dstFile)
+   srcFile = "$srcDir$\\$protocol$_pp.mac"
+   dstFile = "$dstDir$\\$protocol$_pp.mac"
+   copyfile(srcFile,dstFile)
+   srcFile = "$srcDir$\\$protocol$_interface.mac"
+   dstFile = "$dstDir$\\$protocol$_interface.mac"
+   copyfile(srcFile,dstFile)
+   srcFile = "$srcDir$\\$protocol$Default.par"
+   dstFile = "$dstDir$\\$protocol$Default.par"
+   copyfile(srcFile,dstFile)
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Fill in the current experiment structure
+# gData->curExpt given an experimental data
+# set name (exptName) and path (exptPath)
+###########################################################
+
+procedure(setCurrentExperiment, self, exptName, exptPath, historyIndex)
+
+   if(nrArgs == 2)
+      exptPath = gData->curHistoryPath
+   endif
+
+# See if the data folder exists
+   exptDir = "$exptPath$\\$gData->curHistoryDate$-$exptName$"
+   badDir = 0
+   if(not(isdir(exptDir)))
+      try # Check for standard experiment
+         (dateStamp, timeStamp, protocol, suffix) = scanstr(exptName,"%1 %2 %3 (%4)")
+          exptDir = gView->dirList[historyIndex]
+         if(not(isdir(exptDir)))
+            badDir = 1
+         endif
+      catch 
+         exptDir = ""       
+         badDir = 1
+      endtry
+   endif
+
+   if(badDir)
+      message("Error","Can't find experiment folder at:\r'$exptDir$'","error")
+      return(0)
+   endif
+
+# Load acqu.par
+   bak = getcwd()
+   cd(exptDir)
+
+   if(isfile("acqu.par"))
+      par = load("acqu.par","truedoubles")
+      try
+         par = self->addMissingPar(par)
+         par = fixlist(par)
+      catch
+      endtry
+   else
+      cd(bak)
+      message("Error","Can't find acqu.par file in experiment folder:\r'$exptDir$'","error")
+      return(0)
+   endif     
+
+# Examine the experiment folder name
+   try
+      (dateStamp, timeStamp, protocol, suffix) = scanstr(exptName,"%1 %2 %3 (%4)")
+   catch
+      cd(bak)
+      message("Error","Invalid experiment folder name:\r'$exptName$'","error")
+      return(0)
+   endtry 
+
+# Check for standard software experiment result
+# and convert the protocol name if found
+   if(ispar(par,"Software"))
+      protocolNew = gData->convertProtocolName(protocol)
+      no = "no"   # These are std software parameter constants
+      yes = "yes" # we need then when we convert to a structure
+      if(protocolNew == null)
+         message("Error","Unsupported protocol '$protocol$'. Aborting load.","error")
+         return(0)
+      endif 
+      protocol = protocolNew
+   endif
+
+   oldExpt = gData->curExpt 
+
+   try 
+   
+   # Find the pulse program folder
+      ppFolder = gData->findPP(protocol) # Std expt?
+      if(ppFolder == null)
+         ppFolder = getmacropath(protocol) # Script?
+         if(ppFolder == null)   
+            message("Error","Unknown protocol:\r'$protocol$'","error")
+            cd(bak)
+            return(0)
+         endif
+         type = "script"
+      else
+         type = "experiment"
+      endif
+      gData->ppFolder = ppFolder
+   
+   # Get the defaults parameter list
+      defaults = gData->getDefaultParameters(protocol, ppFolder)
+
+   # Define the current experiment based on the selection
+      gData->curExpt = struct()
+      gData->curExpt->ppPath = "$ppFolder$"
+      gData->curExpt->protocol = protocol
+      gData->curExpt->suffix = suffix
+      gData->curExpt->defaultPar = defaults
+      if(size(defaults) > 0)
+         par = mergelists(par,list(defaults)) # Ensures any new parameters are given values
+      endif
+      gData->curExpt->parameters = struct(par)
+      gData->curExpt->dateStamp = dateStamp
+      gData->curExpt->timeStamp = timeStamp
+      gData->curExpt->dataPath = exptDir
+      gData->curExpt->dataParentPath = exptPath
+      gData->curExpt->type = type
+   # Check for standard software data set and add missing parameters
+      if(ispar(par,"Software")) 
+         gData->curExpt->stdSWExpt = 1
+         dir = gData->curExpt->ppPath
+         cd(dir)
+         mac = "$gData->curExpt->protocol$_importStdData.mac"
+         if(isfile(mac))
+            mac = "$mac$:addMissingParameters"
+            gData->curExpt->parameters = mac(gData->curExpt->parameters)
+            gData->curExpt->parameters = self->addStandardParameters(gData->curExpt->parameters)
+         endif
+      else
+         gData->curExpt->stdSWExpt = 0
+      endif
+
+   catch
+
+      gData->curExpt = oldExpt
+      pr lasterror()
+
+   endtry
+   cd(bak)
+
+endproc(1)
+
+###########################################################
+# Update the some of the data parameters for the 
+# current experiment 
+###########################################################
+
+procedure(setDataInfo, self, psName, suffix)
+
+# Get the data folder suffix from the UI if not supplied
+   if(nrArgs == 2)
+      suffix = gView->sampleNameCtrl->text()
+   endif
+
+# Get the time and date stamp
+   (datePath, dateStamp, timeStamp) = gExpt->getPathInfo()
+
+# Update the current experiment structure
+   gData->curExpt->timeStamp = timeStamp
+   gData->curExpt->dateStamp = dateStamp
+   gData->curExpt->suffix = suffix
+
+# Build and record the output folder filename and paths
+   exptFolder = "$dateStamp$-$timeStamp$ $psName$ ($suffix$)"
+   historyEntry = "$timeStamp$|$psName$|$suffix$"
+   gData->datePath = datePath
+   gData->curExpt->exptFolder = exptFolder 
+   if(gData->getFolderHierarchy() == "date")
+      gData->curExpt->dataParentPath = "$gView->projPathCtrl->text$\\$datePath$" 
+      gData->curExpt->dataPath = "$gView->projPathCtrl->text$\\$datePath$\\$exptFolder$" 
+   else # Flat
+      gData->curExpt->dataParentPath = "$gView->projPathCtrl->text$" 
+      gData->curExpt->dataPath = "$gView->projPathCtrl->text$\\$exptFolder$" 
+   endif
+   gData->curHistoryPath = gData->curExpt->dataParentPath 
+   gData->curHistoryDate = gData->curExpt->dateStamp
+
+endproc()
+
+###########################################################
+# Update the progress bars
+# mode:
+# 1 - history mode - current experiment total and remaining
+#                    time/progress displayed
+# 3 - batch mode - current experiment remaining time/progess
+# showMax:
+# 0 - show current progress
+# 1 - show maximum progress
+# timeStep:
+###########################################################
+
+procedure(setProgressUI, elapsedTime, timeStep, maxTime, showMax, mode, updateRate,foreverMode)
+
+   expTime = elapsedTime
+   prog = timeStep/maxTime
+   if(showMax)
+      remTime = 0
+      progressCtrl->value(gView->progressLength)
+   else
+      remTime = maxTime/updateRate-expTime
+      p = round(prog*gView->progressLength)
+      progressCtrl->value(p)
+   endif
+
+   if(foreverMode == 1) # Continuous experiments until abort/complete/wait
+      hrExpTime  = trunc(expTime/3600)
+      secRem     = expTime-hrExpTime*3600
+      minExpTime = trunc((secRem/60))
+      secExpTime = round((secRem/60-minExpTime)*60)
+      txt = expTimeCtrl->text
+      newTxt = "$hrExpTime,02d$:$minExpTime,02d$:$secExpTime,02d$"
+      if(txt != newTxt)
+         expTimeCtrl->text("$hrExpTime,02d$:$minExpTime,02d$:$secExpTime,02d$")
+      endif
+      txt = remTimeCtrl->text
+      newTxt = "00:00:00"
+      if(txt != newTxt)
+         remTimeCtrl->text("??:??:??") # Completion time is unknown in forever mode
+      endif
+   else # A fixed experiment time
+      hrExpTime  = trunc(expTime/3600)
+      secRm      = expTime-hrExpTime*3600
+      minExpTime = trunc((secRm/60))
+      secExpTime = round((secRm/60-minExpTime)*60)
+      hrRemTime  = trunc(remTime/3600)
+      secRm      = remTime-hrRemTime*3600
+      minRemTime = trunc((secRm/60))
+      secRemTime = round((secRm/60-minRemTime)*60)
+
+      if(mode == 1) # History mode - current experiment
+         if(hrRemTime > 0)
+            newTxt1 = "$hrExpTime,02d$:$minExpTime,02d$:$secExpTime,02d$"
+            newTxt2 = "$hrRemTime,02d$:$minRemTime,02d$:$secRemTime,02d$"
+         else
+            newTxt1 = "$minExpTime,02d$:$secExpTime,02d$"
+            newTxt2 = "$minRemTime,02d$:$secRemTime,02d$"
+         endif
+         txt = expTimeCtrl->text
+         if(txt != newTxt1)
+            expTimeCtrl->text(newTxt1)
+         endif
+         txt = remTimeCtrl->text
+         if(txt != newTxt2)
+            remTimeCtrl->text(newTxt2)
+         endif
+      elseif(mode == 3) # Batch mode - current experiment
+         newTxt = "$hrRemTime,02d$:$minRemTime,02d$:$secRemTime,02d$"
+         txt = expTimeCtrl->text
+         if(txt != newTxt)
+            expTimeCtrl->text(newTxt)
+         endif
+      endif
+   endif
+ 
+endproc()
+
+
+
+###########################################################
+# Show the experimental progress given a duration in seconds
+# Note that this is running in a separate thread
+# mode:
+# 1 - history mode
+# 3 - batch mode current experiment remaining time/progess
+#
+# A negative duration will cause the progress bar to 
+# repeat until the experiment is completed or aborted.
+###########################################################
+
+procedure(showExptProgress, self, duration, mode=1)
+
+   updateRate = 20 # Update rate 20 times/sec
+
+   assign("gPauseProgress",0,"global") # A global used by the FTDI trigger
+
+   if(duration == 0)
+      foreverMode = 0
+      loops = 1
+      duration = 1.0/updateRate
+   elseif(duration < 0)
+      duration = -duration   
+      loops = 1e7
+      foreverMode = 1
+   else
+      loops = 1
+      foreverMode = 0
+   endif
+   
+   tStart = time()
+
+   for(lc = 1 to loops) # Add loops if in 'forever mode'
+   
+      t0 = time()
+
+      for(k = 0 to duration*updateRate-1) # Update each 50 ms until completed
+    
+         :setProgressUI(time()-tStart,k,duration*updateRate-1,0,mode,updateRate,foreverMode)
+
+         if(gPauseProgress == 1) # This is set when the FTDI trigger is waiting
+            pauseStart = time()
+            while(gPauseProgress)
+               pause(0.005)
+            endwhile
+            tStart = tStart + time()-pauseStart
+            t0 = t0 + time()-pauseStart
+
+         else # Wait for 5 ms checking for the end of the experiment
+
+            while(((time()-t0) < (k/updateRate+0.1)))
+               assignlock("status",wvExpStatus,"local")
+               if(mode == 1 & status == "idle")
+                  return
+               elseif(mode == 3 & (status == "idle" | status == "batch_idle"))
+                  return
+               endif
+               pause(0.005)
+            endwhile
+
+         endif
+
+      next(k)
+
+   next(lc)
+  
+endproc()
+
+
+###########################################################
+# Start the experiment with the UI parameters
+# also merge these with the defaults to pick
+# up anything not in the displayed parameters
+# Note that this is running in a separate thread
+###########################################################
+
+procedure(startExperiment, self)
+
+# Merge the UI parameters with the defaults and common parameters
+   psName = gData->curExpt->protocol
+   uiPar = list(gData->curExpt->parameters)
+   uiPar = mergelists(uiPar,list(gData->curExpt->defaultPar))
+   (uiPar, calibrated) = gData->mergeWithCommonPar(uiPar)      
+
+# Run the experiment via its backdoor
+   gView->graphLabel->label("Experiment '$psName$' running ...")
+   psDir = gData->curExpt->ppPath
+   if(isdir(psDir))
+      cd(psDir)     
+      mac = "$psName$:backdoor"
+      gDebug->pr("Calling runExperiment in '$psName$'")
+      try
+         mac(uiPar)
+      catch
+         if(lasterror()->description != "abort")
+            pr lasterror()
+         endif
+      endtry
+   # Wait for the repetition time to complete
+      if(not(isvar("gData->curExpt->parameters->ieTime")))
+         ucsRun:checkTiming(uiPar,-1000,null)
+      endif
+   else
+      print("\nError: Pulse sequence $psName$ not found\n")
+      gView->graphLabel->label("Experiment '$psName$' not found")
+      return
+   endif
+
+   gDebug->pr("'$psName$' has returned")
+   gView->graphLabel->label("Experiment '$psName$' completed")
+
+   #pr "\nProtocol: $psName$ duration: $time()-gData->curExpt->startTime$\n"
+
+endproc()
+
+###########################################################
+# Set up a timer to perform checks on the spectrometer
+# such as lock, temperature and shimming.
+#
+# Note that this procedure is currently a bit unreliable
+# as it is too difficult to ensure that tasks in the
+# main thread won't try and access the DSP/FX3 or other
+# nonthread safe devices at the same time.
+###########################################################
+
+procedure(startPeriodicChecks, self)
+
+   if(self->sysCheckThreadID == null)
+      self->monitorRunning = 0
+      self->sysCheckingRunning = 1
+      self->sysCheckThreadID = thread("backgroundMonitor")
+   endif
+
+endproc()
+
+###########################################################
+# Stops the periodically checking
+###########################################################
+
+procedure(stopChecking, self)
+
+   if(self->sysCheckThreadID != null)
+      self->sysCheckingRunning = 0
+      pause(0.3)
+      while(threadrunning(self->sysCheckThreadID))
+         pause(0.1)
+      endwhile
+      threadcleanup(self->sysCheckThreadID)
+      self->sysCheckThreadID = null
+      self->monitorRunning = 0
+   endif
+
+endproc()
+
+
+###########################################################
+# Update the acqu.par file to include the experiment 
+# duration
+###########################################################
+
+procedure(updateExptDuration, self, dir, duration)
+
+   bak = getcwd()
+   if(isdir(dir))
+      cd(dir)
+      try # Try with scans
+         (nrScans, totScans) = scanstr(curScanCtrl->text,"%1/%2")
+          percentageCompleted = 100*eval(nrScans)/eval(totScans)
+      catch # Otherwise use progress bar
+          percentageCompleted = 100*progressCtrl->value/gView->progressLength
+      endtry
+      par = load("acqu.par","truedoubles")
+      par = par + ["duration = $duration$",
+                   "percentageCompleted = $percentageCompleted$"]
+      save("acqu.par",sortlist(par),"truedoubles")
+   endif
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Update the user interface with additional parameters
+# such as the experiment duration and nrScans
+###########################################################
+
+procedure(updateExtraPar, self, parameters)
+
+   assignstruct(parameters)
+
+# Indicate the experiment duration
+   if(isvar("duration"))
+      minutes = trunc(duration/60)
+      seconds = round(duration-trunc(duration/60)*60)
+      expTimeCtrl->text("$minutes,02.0f$:$seconds,02.0f$")
+   else
+      expTimeCtrl->text("00:00")
+   endif
+
+# Show how much of the experiment was finished in the progress bar
+   if(isvar("percentageCompleted"))
+      progressCtrl->value(percentageCompleted*gView->progressLength/100)
+      if(isvar("nrScans"))
+         scans = round(nrScans*percentageCompleted/100)
+         curScanCtrl->text("$scans$/$nrScans$")
+      endif
+   else
+      progressCtrl->value(0)
+      curScanCtrl->text("0")
+   endif
+
+# We don't record the remaining time
+   remTimeCtrl->text("00:00")
+
+endproc()
+      

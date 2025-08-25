@@ -1,0 +1,65 @@
+# Simulate the effect of a 0 degree pulse on a magnetization vector
+# The 3D plot window needs to be visible. Its also possible to save
+# this as an AVI movies although the quality is not great with the
+# default CODEX
+
+procedure(90Pulse)
+ 
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+
+# Uncomment for movie
+ #  movie("CVID","$desktop$\\90PulseD.avi",20)
+   
+   r1 = 20
+   r2 = 22   
+   m = 4
+   n = 8
+ 
+   for(a = 0 to 360 step 2) # The current magnetisation vector position
+ 
+      draw3d("false")
+      clear3d
+      
+   # Set up view
+      rotate3d(-20,0.3,0)
+      viewdistance(130)
+      shift3d(0,-10,0)
+ 
+   # Draw the B0 vector   
+      cylinder([0,0,0],[0,30,0],0.5,[0,0,1])
+      cone([0,30,0],[0,32,0],1,[0,0,1])
+      
+      for(b = 0 to a step 2) # Draw the previous positions
+ 
+         t = b/180*pi
+         y1 = r1*sin(t*n)*sin(t/m)
+         x1 = r1*cos(t*n)*sin(t/m)
+         z1 = r1*cos(t/m)
+         y2 = r2*sin(t*n)*sin(t/m)
+         x2 = r2*cos(t*n)*sin(t/m)
+         z2 = r2*cos(t/m)   
+         sphere([x2,z2,y2],.4,[1,0,0],20)
+ 
+      next(b)
+ 
+    # Draw the magnetisation vector
+      cylinder([0,0,0],[x1,z1,y1],0.5,[0,0.8,0])
+      cone([x1,z1,y1],[x2,z2,y2],1,[0,0.8,0])
+    #  cone([x1,z1,y1],[x2,z2,y2],1,[0,0.8,0])
+ 
+    # Add the frame
+      draw3d("true")
+
+# Uncomment for movie
+    #  addframe("3D")
+ 
+   next(t)
+   
+# Uncomment for movie
+  # endmovie()
+ 
+endproc()
+ 

@@ -1,0 +1,396 @@
+##################################################
+# Generate a 1D plot window
+#
+# 3 modes:
+#
+#  0 arguments - self contained window
+#  1 argument - full window but constrained
+#  2 arguments - plot object is part of another window
+#
+#  n is the window number
+#  m is the initial object number
+#
+###################################################
+
+procedure(plot1dwin,n,m)
+
+# Load the plot preferences
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      plotPreferences() 
+      tracePreferences() 
+   catch
+   endtry
+   cd(bak)
+
+   if(nrArgs == 0) # Stand alone window
+      (x,y,w,h) = :loadpar()
+      n = window("1D Plot", x,y,w,h,"resizable")
+      setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"title","1D Plot ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      m = 1
+      plot1d(m,0,0,"ww","wh")
+   elseif(nrArgs == 1) # Constrained window
+      mode = n
+      n = window("1D Plot", "0","0","ww","wh","resizable")
+      setwindowpar(n,"title","1D Plot ($n$)")
+      setwindowpar(n,"titleupdate","true")
+
+      if(mode == 1)
+         setwindowpar(n,"constrained","true")
+      elseif(mode == 2)
+         setwindowpar(n,"constrained","true")
+         setwindowpar(n,"permanent","true")
+      endif
+      m = 1
+     plot1d(m,5,5,"ww-10","wh-10")
+   else # Part of another window
+     plot1d(m,5,5,"rw-10","rh-10")
+     setwindowpar(n,"titleupdate","false")
+   endif
+
+   (n,q) = :windowdefinition(n,m)
+# Make dummy plot for drag and drop
+   plot1d(q+1,0,0,10,10)
+   setpar(n,q+1,"visible","false")
+   windowvar(wvHiddenWin)
+   wvHiddenWin = q+1
+   curplot(getobj(n,m)->subplot(1,1))
+
+# Set margins
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      marginPreferences()
+      (l,r,t,b) = marginspref(1) 
+      windowmargins(l,r,t,b)
+   catch
+   endtry
+   cd(bak)
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"toolbar",m+2)
+      setwindowpar(n,"statusbox",m+1)
+      showwindow(n,"recalc") 
+      setwindowpar(n,"keepInFront","true")
+      setwindowpar(n,"menubar",[m+11:m+16])
+      setwindowpar(n,"title","1D Plot ($n$)")
+   elseif(nrArgs == 1)
+      setwindowpar(n,"keepInFront","false")
+      setwindowpar(n,"toolbar",m+2)
+      setwindowpar(n,"statusbox",m+1)
+   endif
+
+   setwindowpar(n,"dragndropproc","plot1dWin:dragNDrop")
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+   
+endproc(n)
+
+####################################################
+# If a plot file is dropped onto the GUI then
+# display it. If the control key is help down
+# then overlay multiple files.
+# If a folder is dropped in the 1DPlot then make
+# this the current 1D plot folder.
+####################################################
+
+procedure(dragNDrop,path,file,ext)
+
+   if(file == "")
+      if(isdir(path))
+         pathnames("plot1d",path)
+      endif
+   else
+      bak = getcwd()
+      if(ext == "pt1")
+         cd(path)
+         if(iskeypressed("control"))
+            cp = curplot("1d")
+            hw = getobj(0,wvHiddenWin)
+            hw->load(file)
+            curplot(hw->subplot(1,1))
+            func1d("copy plot")
+            curplot(cp)
+            func1d("paste into plot")
+         else
+            load(file)
+         endif
+      elseif(ext == "1d")
+         cd(path)
+         try
+           (x,y) = load(file)
+         catch
+            y = load(file)
+            x = linspace(0,size(y)-1,size(y))
+         endtry
+         if(iskeypressed("control"))
+            hold("on")
+            plot(x,y)
+            hold("off")
+         else
+            plot(x,y)
+         endif
+      else
+         pr("\n   Invalid extension for 1D plot drag and drop\n")
+      endif
+      cd(bak)
+   endif
+ 
+endproc()
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("1d.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 1000
+      h = 800
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   save("1d.par",par)
+   cd(bak)
+   hidewindow(0)
+
+endproc()
+
+
+procedure(windowdefinition,n,m)
+
+   statusbox(m+1,"ww/3","ww*0.6667","ww-45","-1")
+
+   toolbark(m+2, "toolbar1D", "Open plot", "", func1d("load plot"),
+              "Save plot",  "", func1d("save plot"),
+              "Print plot", "",  func1d("print plot"),
+              "Separator", "", "",
+              "Zoom plot",  "", func1d("zoom region"),
+              "Last zoom",  "", func1d("last region"),
+              "Full region",  "", func1d("full region"),
+              "Separator",  "", "",
+              "Modify trace and symbols",  "", modifyTraceParameters(),
+              "Modify ticks and labels",  "", PlotParameters("Ticks"),
+              "Modify plot colours",  "", PlotParameters("Colors"),
+              "Separator",  "", "",
+              "Corner axes",  "corner_axes", func1d("corner axes"),
+              "Border axes",  "border_axes", func1d("border axes"),
+              "Crossed axes",  "crossed_axes", func1d("crossed axes"),
+              "Separator",  "", "",
+              "Linear x scale",  "linear_axis", func1d("linear x scale"),
+              "Logarithmic x scale",  "log_axis", func1d("log x scale"),
+              "Separator",  "", "",
+              "Overlapping plots", "hold",  func1d("overlapping plots"),
+              "Separator",  "", "",
+              "Data display",  "display_data", func1d("display data"),
+              "Region selection",  "select_region", func1d("select region"),
+              "Move plot",  "drag_plot", func1d("drag plot"),
+              "Separator",  "", "")
+
+    menu(m+3, "traceMenu", "Modify trace and symbols ...\tCtrl+T", modifyTraceParameters(),
+              "Copy trace data to vector ...\tShift+V", copy1DtoMatrix(),
+              "Copy trace data to new 1D window ...\tCtrl+N", copy1DtoNewWin("trace"),
+              "Separator", ,
+              "Remove data set", func1d("remove current data"))
+
+    menu(m+4, "bkgMenu", "Display vector ...", displayVectors(),
+              "Keep this region, remove others", func1d("remove other subplots"),
+              "Remove all data from region", func1d("remove all data"))
+
+    menu(m+5, "axesMenu", "Axes font", PlotParameters("Axes"),
+              "Axes range", PlotParameters("Range"),
+              "Tick and label spacing ...", PlotParameters("Ticks"),
+              "Log/lin mapping", PlotParameters("Mapping"),
+              "Grids", PlotParameters("Grid"))
+
+    menu(m+6, "titleMenu", "Modify title ...", PlotParameters("Title"))
+
+    menu(m+7, "labelMenu", "Modify labels ...", PlotParameters("Labels"))
+
+
+    menu(m+8, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+              "Reduce vertical\tShift+down", func1d("reduce vertical"),
+              "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+              "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+    menu(m+9, "Move", "Move up\tup", func1d("move down"),
+              "Move down\tdown", func1d("move up"),
+              "Move right\tright", func1d("move right"),
+              "Move left\tleft", func1d("move left"))
+    menu(m+10, "Multiplot", "1 plot\tCtrl+Shift+S", func1d("multiplot 1*1"),
+              "1 row by 2 columns\tCtrl+Shift+H", func1d("multiplot 1*2"),
+              "2 rows by 1 column\tCtrl+Shift+D", func1d("multiplot 2*1"),
+              "2 rows by 2 columns\tCtrl+Shift+G", func1d("multiplot 2*2"),
+              "m rows by n columns\tCtrl+Shift+M", func1d("multiplot m*n"))
+    menu(m+11, "&File", "&Open Plot ...\tCtrl+O", func1d("load plot"),
+              "&Save Plot ...\tCtrl+S", func1d("save plot"),
+              "Save as &Image ...\tCtrl+I", func1d("save as image"),
+              "&Print Plot ...\tCtrl+P", func1d("print plot"))
+    menu(m+12, "&Edit", "Copy all plots\tCtrl+Shift+C", func1d("copy all plots"),
+              "Delete all plots\tCtrl+D", func1d("delete all plots"),
+              "Separator", ,
+              "Copy current plot\tCtrl+C", func1d("copy plot"),
+              "Cut current plot\tCtrl+X", func1d("cut plot"),
+              "Paste to current plot\tCtrl+V", func1d("paste plot"),
+              "Paste into current plot\tCtrl+Shift+V", func1d("paste into plot"))
+
+    menuk(m+13, "&View", "Show &data under cursor\td", "display_data", func1d("display data"),
+              "&Select a rectangular region\ts","select_region", func1d("select region"),
+              "&Move plot\tm","drag_plot", func1d("drag plot"),
+              "Separator", , ,
+              "&Select region and zoom\tCtrl+Drag", "",nop,
+              "&Zoom a region\tz", "zoom_region",func1d("zoom region"),
+              "Show &last region\tl", "show_last", func1d("last region"),
+              "Display &all data\ta", "display_all", func1d("full region"),
+              "Separator", , ,
+              "Display &real part\tr", "show_real", func1d("toggle real"),
+              "Display &imaginary part\ti", "show_imaginary", func1d("toggle imaginary"),
+              "Display &magnitude\tn", "show_magnitude", func1d("toggle magnitude"),
+              "Separator", , ,
+              "Display &border\tb","show_border", func1d("toggle border"),
+              "Separator", , ,
+              "Display fi&xed range\tx","fixed_range", func1d("toggle fixed range"),
+              "Separator", , ,
+              "Antialiasin&g\tg","antialiasing", func1d("toggle antialiasing"),
+              "Show legend\te", "show_legend", :toggleLegend(),
+              "Sync axes", "sync_axes",:toggleAxesSync(),
+              "Lock grid", "lock_grid", :toggleGridLock(),
+              "Separator", , ,
+              "Pull_right", "", m+10,
+              "&View one plot\tv", "", func1d("view one plot"),
+              "&Full view\tf", "", func1d("show all plots"),
+              "Overlapping plots\to", "hold" ,func1d("overlapping plots"),
+              "Separator", , ,
+              "Pull_right", "", m+9,
+              "Pull_right", "", m+8,
+              "Separator", , ,
+              "Show next window\tCtrl+Tab", "",  shownextwindow(0),
+              "Show last window\tCtrl+Shift+Tab", "", showlastwindow(0),
+              "Hide window\tCtrl+W", "",  hidewindow(0);)
+    menu(m+14, "&Pref", "Tick &spacing ...\tShift+S", PlotParameters("Ticks"),
+              "&Mapping ...\tShift+M", PlotParameters("Mapping"),
+              "&Grid ...\tShift+G", PlotParameters("Grid"),
+              "Axes &range ...\tShift+R", PlotParameters("Range"),
+              "Plot margi&ns ...\tShift+N", PlotParameters("Margins"),
+              "Separator", ,
+              "&Title text and font ...\tShift+T", PlotParameters("Title"),
+              "X and Y &labels and font ...\tShift+L", PlotParameters("Labels"),
+              "&Axes font ...\tShift+A", PlotParameters("Axes"),
+              "Separator", ,
+              "Plot &colours ...\tShift+C",PlotParameters("Colors"),
+              "&Trace settings ...\tCtrl+T", modifyTraceParameters(),
+              "Make plot &black and white\tShift+B", makePlotBlackAndWhite("1d"),
+              "Separator", ,
+              "Load plot preferences ...\tCtrl+Shift+L", loadPlotPreferences("1d"),
+              "Save plot preferences ...\tCtrl+Shift+S", savePlotPreferences("1d"))
+
+    menu(m+15, "&Macros", "Macro Help", help("Macros\\1D","addErrorBars.htm"),
+              "Separator", ,
+              "Manual Phase ...\tCtrl+Shift+P",manualPhase1d(),
+              "1D Stats ...\tCtrl+Shift+1",stats1d(),
+              "Separator", ,
+              "user menu", "$appdir$\\Macros\\1D_Macros")
+
+
+    menu(m+16, "&Help", "Window &help", help("User Interface\1D Plot","Introduction.htm"))
+
+
+# Set toolbar, statusbox and menu box  1D plot
+   setpar(n,m+13,"checkitem",0)
+   setpar(n,m+13,"checkitem",8)
+   setpar(n,m+13,"checkitem",9)
+   setpar(n,m+13,"checkitem",11) 
+   setpar(n,m+13,"name","plot_view_menu")          
+   setpar(n,m+2,"name","plot_toolbar") 
+   setpar(n,m+2,"checkitem",13) 
+   setpar(n,m+2,"checkitem",16) 
+   setpar(n,m+2,"checkitem",21) 
+         
+   setpar(n,m,"toolbar",m+2)
+   setpar(n,m,"statusbox",m+1)
+   setpar(n,m,"menubar",[m+11:m+16])
+   setpar(n,m,"traceMenu",m+3)
+   setpar(n,m,"bkgMenu",m+4)
+   setpar(n,m,"axesMenu",m+5)
+   setpar(n,m,"titleMenu",m+6)
+   setpar(n,m,"labelMenu",m+7)
+
+
+endproc(n, m+16)
+
+procedure(func,n)
+
+   t = [0:0.001:1]
+   x = -sin(20*pi*t).*t/10
+   y = cos(20*pi*t).*t/10
+   plot(x,y)
+
+endproc()
+
+procedure(toggleLegend)
+
+   plt = :makeLocalPlotCurrent()
+   if(plt->showlegend() == "true")
+      plt->showlegend("false")
+   else
+      plt->showlegend("true")
+   endif
+
+endproc()
+
+procedure(toggleAxesSync)
+
+   plt = :makeLocalPlotCurrent()
+
+   if(plt->syncaxes() == "true")
+      plt->syncaxes("false")
+   else
+      plt->syncaxes("true")
+   endif
+
+endproc()
+
+procedure(toggleGridLock)
+
+   plt = :makeLocalPlotCurrent()
+   if(plt->lockgrid() == "true")
+      plt->lockgrid("false")
+   else
+      plt->lockgrid("true")
+   endif
+ 
+
+endproc()
+
+procedure(makeLocalPlotCurrent)
+
+   win = curwin()
+   n = win->nr
+   if(curplot()->parent->parent == win)
+      plt = curplot()
+   else
+      m = findobj(n,"type","1D plot window")
+      plt = getobj(n,m)->subplot(1,1)
+      curplot(plt)
+   endif
+
+endproc(plt)
+

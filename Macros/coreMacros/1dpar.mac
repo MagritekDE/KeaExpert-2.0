@@ -1,0 +1,33 @@
+#############################################
+# Get current 1D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(get)
+
+   curplot("1d")
+   txt = title("getargs")
+   lx = xlabel("getargs")
+   ly = ylabel("getargs")
+   (x1,x2,y1,y2) = zoom1d("getargs")
+
+endproc(txt,lx,ly,x1,x2,y1,y2)
+
+#############################################
+# Set 1D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(set,txt,lx,ly,x1,x2,y1,y2)
+
+   curplot("1d")
+   title(txt)
+   xlabel(lx)
+   ylabel(ly)
+   if(nrArgs == 5)
+      zoom1d(x1,x2)
+   elseif(nrArgs == 7)
+      zoom1d(x1,x2,y1,y2)
+   endif
+
+endproc()

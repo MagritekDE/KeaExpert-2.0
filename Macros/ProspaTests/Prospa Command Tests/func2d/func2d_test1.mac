@@ -1,0 +1,16 @@
+procedure(func2d_test1,verbose,delay)
+
+# Just runs all the non-interactive "plot2d" commands in a random order.
+
+func2d_commands = ["border axes","copy all plots","copy plot","corner axes","cut plot","delete all plots","display data","drag plot","enlarge horizontal","enlarge vertical","hide borders","move up","move down","move left","move right","multiplot 1*1","multiplot 1*2","multiplot 2*1","multiplot 2*2","paste plot","reduce horizontal","reduce vertical","remove current data","remove other subplots","select column", "select row", "select region","show all plots","show borders","toggle border","toggle colorbar","view one plot"]
+for (m = 1 to 20)
+  shuffled = shuffle(func2d_commands)
+  for (n = 0 to size(shuffled) - 1)
+    curplot()->title(shuffled[n])
+    func2d(shuffled[n])
+    image(noise(100,100))
+    curplot()->title(shuffled[n])
+  next n
+next m
+ 
+endproc(1,"")

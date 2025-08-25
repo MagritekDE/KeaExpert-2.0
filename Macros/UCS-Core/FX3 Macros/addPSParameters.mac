@@ -1,0 +1,23 @@
+###################################################################################
+# As the pulse program is 'compiled' add to the list of parameter names
+# Only strings should be added to the list.
+###################################################################################
+
+procedure(addPSParameters, varArgs)
+
+   for(k = 0 to nrArgs-1)
+
+      arg = getargument(k)
+      if(vartype(arg) == "string")
+         if(arg != "")
+            idx = getlistindex(wvFX3Info->parameters, arg)
+            if(idx == -1)
+               wvFX3Info->parameters = wvFX3Info->parameters + arg
+            endif
+         endif
+      endif
+
+   next(k)
+ 
+endproc()
+

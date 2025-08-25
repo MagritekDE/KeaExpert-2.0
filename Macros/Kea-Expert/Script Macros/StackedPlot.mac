@@ -1,0 +1,92 @@
+##################################################
+# Make a stacked plot of matrix mat in plot plt.
+#
+# plt ....... the destination plot (pt1 .. pt6)
+# mat ....... 2D matrix holding the stacked plot data
+#             1 spectrum per row. (size w,h)
+# num ....... the current spectrum to plot (0 ... h-1)
+# xRange .... the x-axis zoom range
+# xAxis ..... the full axis
+# usePPM .... whether to display xAxis in ppm or not
+# yRange .... the min and max values for the vertical axis
+# yMapping .. whether to use a log or linear vertical axis
+# spXLabel .. the x label for the stacked plot
+# spYLabel .. the y label for the stacked plot
+# spTitle ... the title for the stacked plot
+# yValue .... the current value for the trace
+#
+##################################################
+
+
+procedure(StackedPlot, plt,      mat,      num,
+                       xRange,   xAxis,    usePPM,
+                       yRange,   yMapping,
+                       spXlabel, spYlabel, spTitle,
+                       yValue = null)
+
+   (w,h) = size(mat)
+
+   if(vartype(plt) == "object")
+      plt = plt->subplot(1,1)
+   endif
+
+   plt->draw("false")
+   mx = abs(max(real(mat)))
+   mn = abs(min(real(mat)))
+
+   if(mn > mx)
+     mx = mn
+   endif
+   mx = mx*10
+
+# These are the min and max y positions for a box_y_independent
+#  plot as a fraction of the screen height
+   minOff = 0.05
+   maxOff = 0.95
+ 
+   if(num == 1)
+      plt->hold("on")
+      plt->autorange("false")
+   endif
+   n = plt->plot(xAxis,mat[~,num])
+   tc = plt->trace(n)
+   if(yValue != null)
+      tc->name("$yValue$")
+   else
+      tc->name("$num/(h-1)*(yRange[-1]-yRange[0])+yRange[0]$")
+   endif
+   tc->yoffset((maxOff-minOff)*num/(h-1)+minOff)
+
+   r = num*255/(h-1)
+   b = 255-r
+   tc->color([r,0,b])
+   if(num == h-1)
+      plt->hold("off")
+   endif
+
+   plt->title(spTitle)
+   plt->xlabel(spXlabel)
+   plt->ylabel(spYlabel)
+   plt->showimag("false")
+   if(num == 0)
+      if(xRange[0] != xRange[-1])
+         plt->zoom(xRange[0],xRange[-1],0,mx*1.1)
+      else
+         plt->zoom(xAxis[0],xAxis[-1],0,mx*1.1)
+      endif 
+   endif
+   plt->axes->type("box_y_independent")
+   plt->axes->ymapping(yMapping)
+   plt->axes->minaxisvalue(yRange[0])
+   plt->axes->maxaxisvalue(yRange[-1])
+   if(usePPM == "yes")
+      plt->axes->xppmscale("true")
+      plt->axes->xdirection("reversed")
+   else
+      plt->axes->xppmscale("false")
+      plt->axes->xdirection("forward")
+   endif
+   plt->draw("true")
+
+
+endproc()

@@ -1,0 +1,636 @@
+###########################################################################################
+# This macro takes the UI parameters and uses them to update the default event-table based
+# on the information in the fixed parameters table and the fixed parameters list.
+# It also updates the start code part of the event-table using the UI parameters.
+#
+# In this example guipar are for a Carbon experiment and loaded from a file in the 
+# same directory as this macro. Also this folder should include the parameters for
+# this experiment.
+#
+# This macro can be run stand-alone or as part of SpinsolveExpert in the later case
+# it should come before the generatePulseProgram procedure call in seFX3:intAndExecPP
+###########################################################################################
+
+procedure(loadAndInitPP, guipar)
+
+   bak = getcwd()
+
+   if(nrArgs == 0)
+      guipar = load("guipar.par")
+   else
+      try
+        # dir = gData->curExpt->ppPath
+         dir = wvFX3Info->dir
+         cd(dir)
+         mkdir("FX3")
+         cd("FX3")
+      catch
+      endtry
+   endif
+
+   assignlist(guipar)
+
+# Load the event table
+   try
+      txt = load("EventTable.txt")
+      eventTab = :convertTable(txt, 3)
+   catch
+      pr lasterror()
+      pr getcwd()
+      return
+     # abort("Can't load event table")
+   endtry
+
+# Load the parameter list and extract the experiment parameter
+   fixedPar = load("FixedParameters.txt","list")
+  # exptPar = mkparlist(fixedPar)
+
+# Load the fixed update table
+   txt = load("FixedUpdateTable.txt")
+   fixedTab = :convertTable(txt, 4)
+
+# Loop over the fixed table zeroing certain data values
+   (w,h) = size(fixedTab)
+   for(k = 0 to h-1)
+      entry = fixedTab[~,k]
+      adrs = entry[2] # 16 bit word address
+      evtAdrs = single(trunc((adrs+1e-6)/2)) # 32 bit address in the event table
+      col = evtAdrs%3 #single(trunc((adrs/6+1e-6-trunc(adrs/6+1e-6))*3+1e-6)) # The column in the event table for this entry 
+      if(abs(col) < 1e-3) # Is this the duration field
+         if((eventTab[evtAdrs+1] & 0xFF000000) != 0x0D000000) # If not a shim ramp then zero the duration
+            eventTab[evtAdrs] = 0
+         endif
+      elseif(abs(col-2) < 1e-3) # If this the data field 
+         if((eventTab[evtAdrs-1] & 0xFF000000) != 0x0A000000) # If this a data field then just zero bottom 16 bits
+            eventTab[evtAdrs] = eventTab[evtAdrs] & 0xFFFF0000 # But ignore skiponzero commands since we need the branch address
+         endif
+      else # This is the command field so zero all but the command
+         if((eventTab[evtAdrs] & 0xFF000000) != 0x0D000000) # If not a shim ramp then zero the duration
+            eventTab[evtAdrs] = eventTab[evtAdrs] & 0xFF000000
+         else
+            eventTab[evtAdrs] = eventTab[evtAdrs] & 0xFFFF0000
+         endif
+      endif
+   next(k)
+
+# Update the startcode parameters
+  eventTab = :updateStartCode(guipar, eventTab)
+
+# Get the acqusition time
+  expectedAcqTime = round(:getAcqTime(guipar)*100d)
+
+# Loop over the fixed table updating the event table with new values
+   (w,h) = size(fixedTab)
+   for(k = 0 to h-1)
+      entry    = fixedTab[~,k]
+      special  = entry[0]
+      rawParNr = entry[1]
+      adrs     = entry[2]
+      evtAdrs  = trunc(single(adrs)/2)
+      parNr    = single(rawParNr & 0xFFF)
+      isHi     = ((rawParNr & 0x1000) > 0)
+      flags    = rawParNr & 0xFFFE000
+      if(parNr < size(fixedPar))
+         parName  = fixedPar[parNr]
+      else
+         parName = ""
+      endif
+      curVal   = eventTab[evtAdrs]
+      curValHi = (curVal & 0xFFFF0000)
+      curValLo = (curVal & 0x0000FFFF)
+
+     # Check for special parameter (acquisition duration)
+      if(special == 1)
+         if(isHi)
+            eventTab[evtAdrs] = curValLo + (expectedAcqTime & 0xFFFF0000)
+         else
+            eventTab[evtAdrs] = curValHi + (expectedAcqTime & 0x0000FFFF)
+         endif
+
+     # Update amplitudes
+      elseif(parName[0] == "a")
+         value = eval(parName)
+         value = :convertAmplitude(value)
+
+         if(flags == 2^16) # Ramped pulse amplitudes going up
+            value = value*4d
+            for(k = 0 to 15)
+               eventTab[evtAdrs + k*6] = round(value*k/16d)
+            next(k)
+         elseif(flags == 2^17) # Ramped pulse amplitudes constant
+            value = value*4d
+            for(k = 0 to 4)
+               eventTab[evtAdrs + k*6] = round(value)
+            next(k)
+         elseif(flags == 2^18)  # Ramped pulse amplitudes going down
+            value = value*4d
+            for(k = 0 to 15)
+               eventTab[evtAdrs + k*6] = round(value*(15-k)/16d)
+            next(k)
+         else # A normal amplitude variable
+            eventTab[evtAdrs] = value
+         endif
+
+     # Update byte values
+      elseif(parName[0] == "b")
+         value = eval(parName)
+         value = round(value*256)
+         eventTab[evtAdrs] = value
+
+     # Update delays and durations
+      elseif(parName[0] == "d")
+         value = eval(parName)
+      # Check for special parameter (shaped pulse durations)
+         if(special >= 2)
+            # shapedrf2
+            if(special == 2)
+               value = round((value-2)*100+40)
+            elseif(special == 3)
+               value = round((value-2)*100+50)
+            elseif(special == 4)
+               value = round((value-2)*100+270 - round((value-2)*100+50))
+            # dualshapedrf2
+            elseif(special == 5)
+               value = round((value-4)*100+60)
+            elseif(special == 6)
+               value = round((value-4)*100+140)
+            elseif(special == 7)
+               value = round((value-4)*100+360 - round((value-4)*100+140))
+            endif
+
+            if(isHi)
+               eventTab[evtAdrs] = curValLo + (value & 0xFFFF0000)
+            else
+               eventTab[evtAdrs] = curValHi + (value & 0x0000FFFF)
+            endif
+
+         else
+   
+            if(flags == 0x10000) # Acquire command with duration parameter
+               value = round(round(value*100)-expectedAcqTime-120)
+               if(isHi)
+                  eventTab[evtAdrs] = curValLo + (value & 0xFFFF0000)
+               else
+                  eventTab[evtAdrs] = curValHi + (value & 0x0000FFFF)
+               endif
+            elseif(flags == 0x8000) # Ramped pulse total duration
+               value = round(((value-2)+2*0.128*16)*100)
+               if(isHi)
+                  eventTab[evtAdrs] = curValLo + (0xFFFF0000 & value)
+               else
+                  eventTab[evtAdrs] = curValHi + (0x0000FFFF & value)
+               endif
+            elseif(flags == 0x2000) # Ramped pulse central duration hi word
+               value = value-2
+               value = round(((value/0.02d) & 0xFF00)/256d)
+               eventTab[evtAdrs] = curValHi +  (0x0000FFFF & value)
+   
+            elseif(flags == 0x4000) # Ramped pulse central duration lo word
+               value = value-2
+               value = round(((value/0.02d) & 0x00FF)*256d) + 5
+               eventTab[evtAdrs] = curValHi +  (0x0000FFFF & value)
+   
+            elseif(flags == 0) # A normal duration or delay
+               value = round(value*100)
+               if(isHi)
+                  eventTab[evtAdrs] = curValLo + (0xFFFF0000 & value)
+               else
+                  eventTab[evtAdrs] = curValHi + (0x0000FFFF & value)
+               endif
+            endif
+
+         endif
+
+     # Update frequencies
+      elseif(parName[0] == "f")
+         value = eval(parName)
+         (hiWord,loWord) = :convertFrequency(value)
+         if(isHi)
+            eventTab[evtAdrs] = (0x0000FFFF & hiWord) 
+         else
+            eventTab[evtAdrs] = (0x0000FFFF & loWord)
+         endif
+
+     # Update numbers
+      elseif(parName[0] == "n")
+
+         if(special == 2) # shapedrf/rampedrfpulse loop counters
+            value = eval(parName)-1
+            eventTab[evtAdrs] = curVal + (0x0000FFFF & value)
+         elseif(special == 3) # skiponzero branch
+            value = eval(parName)
+            if(value == 0)
+               eventTab[evtAdrs] = curVal | 0x00008000
+            else
+               eventTab[evtAdrs] = curVal & 0x00000FFF
+            endif
+
+         elseif(special == 4) # Number of steps in a ramped shim pulse
+            value = eval(parName)
+            if(isHi)
+               eventTab[evtAdrs] = (curVal & 0xFF00FFFF) | (0x00FF&value)*2^16 
+            endif
+         elseif(special == 5) # Number of steps in a ramped shim pulse
+            value = eval(parName)
+            if(isHi)
+               eventTab[evtAdrs] = (curVal & 0xFFCFFFFF) | (0x0030&value)*2^16
+            endif
+         elseif(special == 6) # Shift parameter in acquire("integrateandscale")
+            value = eval(parName)
+            eventTab[evtAdrs] = (0x0000FF00 & value*2^8) + 1
+
+         else # Normal number
+            value = eval(parName)
+            if(isHi)
+               eventTab[evtAdrs] = curValLo + (0xFFFF0000 & value)
+            else
+               eventTab[evtAdrs] = curValHi + (0x0000FFFF & value)
+            endif
+         endif
+
+     # Update long delays
+      elseif(parName[0] == "w")
+         value = eval(parName)
+         if(value > 42e6)
+            nrLoops = trunc(value/42.0e6d)
+	       remainder = (value - nrLoops*42.0e6d)
+		  digDelay1 = round(42e6d * 100d)
+		  digDelay2 = remainder*100d - 10d - 10d * nrLoops
+         else
+            nrLoops = 1
+            digDelay1 = 10
+            digDelay2 = round(value * 100d - 30d)
+         endif
+
+         if(flags == 0x10000) # nrLoops
+
+            eventTab[evtAdrs] = curValHi + (0x0000FFFF & nrLoops)
+
+         elseif(flags == 0x20000) # digDelay1
+            if(isHi)
+               eventTab[evtAdrs] = curValLo + (digDelay1 & 0xFFFF0000)
+            else
+               eventTab[evtAdrs] = curValHi + (digDelay1 & 0x0000FFFF)
+            endif
+
+         elseif(flags == 0x40000) # digDelay2
+            if(isHi)
+               eventTab[evtAdrs] = curValLo + (digDelay2 & 0xFFFF0000)
+            else
+               eventTab[evtAdrs] = curValHi + (digDelay2 & 0x0000FFFF)
+            endif
+         endif
+
+      # Update shaped pulse table addresses
+      elseif(parName[0] == "t")
+         if(special == 2) # Table address - 1
+            value = eval(parName)
+            eventTab[evtAdrs] = curValLo + (0x0000FFFF & (value[0]-1))
+         elseif(special == 3) # Table address
+            value = eval(parName)
+            eventTab[evtAdrs] = curValHi + (0x0000FFFF & value[0])
+         endif
+      
+      else
+         print("Unknown parName $s$\n",parName)
+      endif
+
+    #  pr "$fixedPar[parNr]$ $adrs/6,g$ $isHi,g$ $curVal,g$ $flags,g$\n"
+   next(k)
+
+      
+# Save the resultant event-table to a file for comparison with the  
+# version generated without update tables using the pulse program and the DLL.
+   printtofile("stdEventTable.txt")
+   (w,h)= size(eventTab)
+   #print("\n - Event table -\n")
+   #print("\n   Parameter, Line,  Value\n\n")
+   for(y = 0 to w-3 step 3)
+      row = eventTab[y:y+2]
+      print("$y/3,7d$:    $round(row[0]),10d$     $hex(row[1],32)$     $hex(row[2],32)$\n")
+   next(y)
+   closeprint()
+
+endproc(eventTab)
+
+########################################################################
+# Convert the table from text to array form
+# The format depends on whether this is the event table or update table
+########################################################################
+
+procedure(convertTable, tabIn, nrCol)
+
+   ascii = strtoascii(tabIn)
+   lineCnt = sum(ascii==10)
+   if(ascii[-1] != 10) # Just in case there is no line feed at end
+     lineCnt = lineCnt + 1
+   endif
+   if(nrCol == 3) # Event table
+      c = 0
+      ps = dmatrix(lineCnt*3)
+      for(ln = 0 to lineCnt-1)
+         line = getline(tabIn, ln)
+         values = parse(line," ")
+         ps[c] = eval(values[1])
+         ps[c+1] = eval("0x$values[2]$")
+         ps[c+2] = eval("0x$values[3]$")
+         c = c + 3 
+      next(ln)
+   else # Update table
+      ps = dmatrix(4,lineCnt)
+      for(ln = 0 to lineCnt-1)
+         line = getline(tabIn, ln)
+         values = parse(line," ")
+         ps[0,ln] = eval(values[0]+"d")
+         ps[1,ln] = eval(values[1]+"d")
+         ps[2,ln] = eval(values[2]+"d")
+         ps[3,ln] = eval(values[3]+"d")
+      next(ln)
+   endif
+
+endproc(ps)
+
+########################################################################
+# Update the parameters in the startcode part of the event-table.
+########################################################################
+
+procedure(updateStartCode, guipar, eventTab)
+
+   assignlist(guipar)
+
+# Get the receiver phase
+   rxPhase = (rxPhase%360/360*2^16) & 0xFFFF 
+
+# Wobble mode is off
+   w1 = 0x00 
+   w2 = 0x40
+
+# Get the jitter parameters
+   if(isvar("gData->specParameters"))
+      jitter1 = gData->specParameters->Jitter_1H
+      jitter2 = gData->specParameters->Jitter_X
+   else
+      jitter1 = 60
+      jitter2 = 60
+   endif
+
+# Get the frequency codes
+   if(not(isvar("freqCh1")))
+      freqCh1 = b1Freq1H
+      freqCh2 = b1Freq1H
+      freqRx = b1Freq1H
+   endif
+
+   freqScaleFactor = 10
+   DDSFwordTxCh1   = round((freqCh1 * 2^32d)/1000d) 
+   DDSFwordTxCh2   = round((freqCh2 * 2^32d)/1000d) 
+   DRPFwordRx      = round((freqRx * 2^32d)/1000d) * double(freqScaleFactor) 
+ 
+   rxFreq1  = single((DRPFwordRx & 0xFFFF0000) / (2 ^ 16) ) # FPGA Rx frequency
+   rxFreq2  = single((DRPFwordRx & 0x0000FFFF))
+   txFreq11 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+   txFreq12 = single((DDSFwordTxCh1 & 0x0000FFFF))
+   txFreq21 = single((DDSFwordTxCh2 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 2
+   txFreq22 = single((DDSFwordTxCh2 & 0x0000FFFF))
+   
+# Get the channel parameters
+   if(rxChannel == "1H" | rxChannel == "19F")
+      ampSelect = "26"  # Proton/Fluorine
+      rxChannelCode = 0x02  # Proton/Fluorine
+   elseif(rxChannel == "Lock")
+      ampSelect = "04"  # Lock
+      rxChannelCode = 0x02  # Lock
+   else
+      ampSelect = "15"  # X channel
+      rxChannelCode = 0x00  # X channel
+   endif
+
+# Convert the receiver gain to device units
+   rxGainStr = :convertRxGainHF(rxGain)
+   rxGain1 = eval("0x0$rxGainStr[0]$")
+   rxGain2 = eval("0x0$rxGainStr[1]$")
+
+# Determine the CIC decimation and scaling
+   if(flatFilter == "yes")
+      N = 4
+      M = 2
+      cicDecimation = 50 * dwellTime
+      cicScaling = :calcCICScaling(N, M, cicDecimation)
+      dataScaling = :calcDataScaling(N, M, cicDecimation)*1.50628
+   else
+      N = 4
+      M = 2
+      cicDecimation = 100 * dwellTime
+      cicScaling = :calcCICScaling(N, M, cicDecimation) + 4
+      dataScaling = :calcDataScaling(N, M, cicDecimation)
+   endif 
+
+# The parameters to modify (for reference)
+   startCodePar = ["TRUNCDEC1","DEC1","JITTER1","JITTER2",
+                   "RXPHASE","TXFREQ11","TXFREQ12","TXFREQ21","TXFREQ22",
+                   "RXFREQ1","RXFREQ2","RXCHANNEL",
+                   "RXGAIN1","RXGAIN2",
+                   "WOBBLE1","WOBBLE2"]
+
+# Their string values
+   parValues = ["$cicScaling,08X$","$cicDecimation,08X$","$jitter1,08X$","$jitter2,08X$",
+                "$rxPhase,08X$","$txFreq11,08X$","$txFreq12,08X$","$txFreq21,08X$","$txFreq22,08X$",
+                "$rxFreq1,08X$","$rxFreq2,08X$","$0x03,06X$$rxChannelCode,02X$",
+                "$eval(\"0x\"+ampSelect[0]),06X$$rxGain1,02X$","$eval(\"0x\"+ampSelect[1]),06X$$rxGain2,02X$",
+                w1,w2]
+
+# Parameter location in parameter list and line number in event table
+   if(flatFilter == "yes") # CIC + FIR
+
+      startCodePar =   [11,       0; 
+                        12,       1;  
+                        13,       2;   
+                         4,      13;   
+                         1,      18;   
+                         0,      19;   
+                         2,      86;   
+                         3,      88;   
+                         5,      92;   
+                         6,      93;   
+                         7,      96;   
+                         8,      97;   
+                         9,      98;   
+                        10,      99]   
+
+   else # CIC only filter
+
+      startCodePar =   [11,       0; 
+                        12,       1;  
+                        13,       2;   
+                         4,      13;   
+                         1,      18;   
+                         0,      19;   
+                         2,      57;   
+                         3,      59;   
+                         5,      63;   
+                         6,      64;   
+                         7,      67;   
+                         8,      68;   
+                         9,      69;   
+                        10,      70] 
+
+   endif
+
+# Update these values in the event-table
+   (w,h)= size(startCodePar)
+   for(k = 0 to h-1)
+      parNr = startCodePar[0,k]
+      lineNr = startCodePar[1,k]
+      value = eval("0x"+parValues[parNr])
+      eventTab[lineNr*3+2] = value
+   next(k)
+
+endproc(eventTab)
+
+
+####################################################
+# Calculate the CIC scaling power (2^(-scaling))
+# use in the TRex DDC
+####################################################
+
+procedure(calcCICScaling, N, M, Dec)
+
+   Bmax = ceil(N * log2(Dec * M) + 16)
+   scaling = Bmax - 36
+   if(scaling < 0)
+       scaling = 0
+   endif
+
+endproc(scaling)
+
+####################################################
+# Work out the residual scaling need for the 
+# collected data to compensate for the rounded DDC
+# scaling exponent.
+####################################################
+
+procedure(calcDataScaling, N, M, Dec)
+
+  Bmax = N * log2(Dec * M) + 16
+  scaling = 2^(ceil(Bmax)-Bmax)
+
+endproc(scaling)
+
+
+##############################################################
+# Convert a frequency scalar or array from MHz to DDS format
+##############################################################
+
+procedure(convertAmplitude, txGain)
+
+   if(vartype(txGain) == "float")
+      txGain = 2^14*10^(txGain/20)-1
+      if(txGain < 0)
+        txGain = 0
+      endif
+      if(txGain >= 2^14)
+        txGain = 2^14-1
+      endif
+   else
+      txGain = 2^14*10^(txGain/20)-1
+   endif
+
+endproc(round(txGain))
+
+
+##############################################################
+# Convert a frequency scalar or array from MHz to DDS format
+##############################################################
+
+procedure(convertFrequency, freq)
+
+   if(vartype(freq) == "float" | vartype(freq) == "double")
+      DDSFword = round((freq * 2^32d )/1000d) 
+      hiWord   = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+      loWord   = single(DDSFword & 0x0000FFFF) 
+      return(hiWord, loWord)
+   else
+      sz = size(freq)
+      out = matrix(sz*2)
+      for(k = 0 to sz-1)
+         DDSFword = round((freq[k] * 2^32d )/1000d) 
+         hiWord   = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+         loWord   = single(DDSFword & 0x0000FFFF) 
+         out[k*2]   = hiWord
+         out[k*2+1] = loWord
+      next(k)
+      return(out)
+   endif
+
+endproc()
+
+
+####################################################
+# Convert receiver gain from dB to hex index
+# The first nibble is the gain of the input rx amp
+# the second nibble is the gain of the second rx amp
+# Gains from 40 dB have the best noise figure since
+# the first amp has maximum gain then.
+# This version works with the high frequency Kea.
+#
+# Input: rxGain .... gain in dB
+# Output: rxGain ... gain as a number suitable for
+#                    receiver amplifier gain block.
+####################################################
+
+procedure(convertRxGainHF, rxGain)
+
+   rxGain = gSeq->convertRxGain(rxGain)
+
+endproc(rxGain)
+
+###################################################################
+#
+# Calculate the total acquisition time
+#
+# This depends on a variety of parameters but most importantly
+# on the dwell time and the number of points ignored at the 
+# start of the acquisition period. However there is also a delay
+# at the end of the acqusition period during which time data
+# is returned to the DSP. This varies depending on whether the
+# flat (FIR) filter is being used or not.
+#
+###################################################################
+ 
+procedure(getAcqTime,guipar)
+
+   assignlist(guipar)
+
+   DW = dwellTime
+   ignorePnts = 6
+   MaxSpeed = 65
+   nrTaps = 20
+   if(flatFilter == "yes")
+      CIC_Scale = 3
+   else
+      CIC_Scale = 11
+   endif
+
+   FIRScale = 2
+
+   if(2*nrPnts > nrTaps+1)
+      FIRStartDelay = 21*MaxSpeed
+   else
+      FIRStartDelay = 2*nrPnts*MaxSpeed
+   endif
+
+   CICDelay = 10*(CIC_Scale + 71 + (3*MaxSpeed))/1000
+   FIRDelay = 10*(50 + FIRScale + FIRStartDelay)/1000
+
+# Make allowances for CIC shift register delays
+   #scaleDwellTime = [0.5,1,2,5,10,20,50,100,200,500,1000,2000]
+  # scaleDelay = [0.11,0.15,0.19,0.27,0.31,0.35,0.39,0.43,0.47,0.51,0.55,0.59] + 0.14
+  # indx = findindex(scaleDwellTime,DW)
+   CICScaleDelay = 1 #scaleDelay[indx] Simplification to match fx3PP DLL number
+   if(flatFilter == "yes")
+      acqTm = trunc((nrPnts + ignorePnts) * DW + CICDelay + FIRDelay + 0.5)
+   else
+      acqTm = trunc((nrPnts + ignorePnts) * DW + CICDelay + CICScaleDelay + 0.5)
+   endif
+
+endproc(acqTm+1) 

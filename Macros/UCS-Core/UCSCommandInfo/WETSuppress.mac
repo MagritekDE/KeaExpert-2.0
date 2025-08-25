@@ -1,0 +1,24 @@
+#########################################################
+# Measures the duration of the WETSuppression 
+# sequence block.
+#########################################################
+
+procedure(WETSuppress, tAmp1,tAmp2,tAmp3,tAmp4,phase1,phase2,nTabSz,dStep, 
+                       nxSpoil1,nySpoil1,nzSpoil1,nxSpoil2,nySpoil2,nzSpoil2,nxSpoil3,nySpoil3,nzSpoil3,nxSpoil4,nySpoil4,nzSpoil4,
+                       xShim, nyShim, nzShim, nzSlice, dSpoil, dRecov,
+                       tRFAmp, phase3, nRFAmp, dRFAmp)
+
+   args = getargnames()
+   cnt = gSeq->psInfo->loopCnt
+   pgo = gSeq->psInfo->preferences->pgo
+
+   duration =  (nTabSz*dStep*2+pgo)*4 + @ # Shaped RFs
+              (dSpoil+dRecov+2.5*6)*4 +  @ # Spoilers
+               200*4*4 + @ #ramps
+               7200 +  @ # delays
+               nRFAmp*dRFAmp + pgo # Shaped RF
+
+   gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+   gSeq->psInfo->command = gSeq->psInfo->command + ["WETSuppress,$duration$"]
+
+endproc()

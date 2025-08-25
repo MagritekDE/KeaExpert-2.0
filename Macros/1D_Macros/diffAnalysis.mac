@@ -1,0 +1,375 @@
+####################################################
+# Analyse PGSE data displayed in the current 1D plot
+#
+# V1.1 C Eccles, December 2013
+#
+# History
+# 1. Made the interface scrollable and increased 
+#    maximum number of points to 200
+#
+####################################################
+
+
+procedure(DiffusionAnalysis)
+
+   :update(0)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Diffusion analysis", -1,-1, 262, 330, "resizable")
+
+      # Define all controls with basic parameters
+       windowvar(absc,amp)
+ 
+       groupbox(1, "", 171, 7, 67, 175)
+       button(2, 180, 101, 48, 28, "Help",
+          :show_help();)
+       button(3, 180, 61, 48, 28, "Update",
+          :update(1);)
+       button(4, 180, 141, 48, 28, "Exit",
+          closewindow(0);)
+       groupbox(5, "Type of experiment", 3, 7, 163, 90)
+       statictext(6, 42, 27, "left", "Simple fit")
+       groupbox(8, "Fixed parameters", 3, 102, 163, 80)
+       statictext(10, 85, 151, "right", "Large delta (s)")
+       textbox(11, 94, 148, 52)
+       statictext(12, 42, 75, "left", "Variable small delta")
+       statictext(13, 42, 59, "left", "Variable large delta")
+       textbox(14, 94, 122, 52)
+       statictext(15, 87, 126, "right", "Small delta (s)")
+       statictext(16, 42, 43, "left", "Variable gradient")
+       radiobuttons(17, 20, 27, 16, "vertical", "q2,grad,ldel,sdel", "q2",
+            :exp_type_selection();)
+       button(20, 180, 21, 48, 28, "Calc.",
+          :calculate();)
+       panel(21,5,190,245,"wh-195")
+
+     # Set other control parameters
+       setpar(n,11,"name","ldel")
+       setpar(n,14,"name","sdel")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+
+   help("Macros\\1D","diffAnalysis.htm")
+
+endproc()
+
+####################################################
+# Update the U.I. and do the fit
+# If close == 1 then delete the old window
+# after making a new one (update has been pressed)
+####################################################
+
+procedure(update,close)
+
+# Get the old window parameters
+   oldWin = guiwinnr("getargs")
+   if(close)
+      oldx = getwindowpar(oldWin,"x")
+      oldy = getwindowpar(oldWin,"y")
+      oldh = getwindowpar(oldWin,"height")
+   endif
+
+# Make a new window
+   n = :windowdefinition()
+
+# Load the Diffusion data
+
+   plt = curplot("1d")
+   trcLst = plt->tracelist
+   if(size(trcLst) == 2)
+      plt->rmtrace(1)
+   endif
+
+  (x,y) = plt->getdata()
+   num = size(x)
+   if(num > 200)
+      message("Error","more than 200 data points - can't analyse","error")
+      closewindow(n)
+      return
+   endif
+
+# Copy 1D plot data to window variables
+   absc = x
+   amp  = y
+   E = y
+
+   y = 0
+   x = 5
+ 
+# Make all the controls
+   type = getpar(0,17,"text")
+   if(type == "grad")
+      abscLabel = "Gradient"
+   elseif (type == "ldel")
+      abscLabel = "Delta"
+   elseif (type == "sdel")
+      abscLabel = "delta"
+   elseif (type == "q2")
+      abscLabel = "Abscissa"
+   endif
+   brown = [128,0,0]
+   statictext(500, x+20, y+12, "centre", "N")       
+   statictext(501, x+68, y+12, "centre", abscLabel)       
+   statictext(502, x+122, y+12, "centre", "Amplitude")       
+   statictext(503, x+175, y+12, "centre", "Display")    
+   setpar(0,500,"color",brown)
+   setpar(0,501,"color",brown)
+   setpar(0,502,"color",brown)
+   setpar(0,503,"color",brown)  
+
+# And underline   
+   divider(504, x+12, y+25, 185, 3, "horizontal")
+   setpar(n,504,"enable","false")
+
+# Add the dislay check boxes         
+   cn = 22
+   for(cnt = cn to num+cn-1)
+       if(E[cnt-cn] > 0)
+          checkbox(cnt, x+170, y+42+17*(cnt-cn), "no,yes", "yes",
+         (tau1,E1) = :getdata(absc,amp);
+         :plot(tau1,E1);)
+       else
+          checkbox(cnt, x+168, y+42+17*(cnt-cn), "no,yes", "no")
+          setpar(0,cnt,"enable","false")
+       endif
+   next(cnt) 
+  
+# Add the number, gradient parameter and amplitude labels         
+   c = 0
+   ctrNr = 510
+   for(cnt = num+cn to 2*num+cn-1)
+      s = "$c+1,0.0f$"
+      statictext(ctrNr, x+20, y+42+17*(c), "centre",s )
+      s = "$absc[c],3.3f$"
+      statictext(ctrNr+1, x+68, y+42+17*(c), "centre",s )
+      s = "$E[c],3.3f$"
+      statictext(ctrNr+2, x+122, y+42+17*(c), "centre",s )
+      c = c + 1
+      ctrNr = ctrNr + 3
+   next(cnt)
+   
+# Panelize
+   for(k = 22 to ctrNr)
+      try
+         setpar(0,k,"panelparent",21)
+      catch; endtry
+   next(k)
+   setpar(0,21,"panelupdate","")   
+
+# Limit window resizing
+   h = y+42+17*(c)
+   setwindowpar(n,"sizelimits",[270,270,330,h+220])
+
+# Update controls based on selected experiment type 
+   :exp_type_selection()
+
+# Move new window to same location as old one
+   if(close)
+      setwindowpar(n,"x",oldx)
+      setwindowpar(n,"y",oldy)
+      setwindowpar(n,"height",oldh)
+   endif
+
+# Show the new window
+   showwindow(n)
+
+# Delete the old window
+   if(close)
+      closewindow(oldWin)
+   endif
+
+# Make sure new window has the focus
+  setwindowpar(n,"focus",1)
+
+endproc()
+
+
+################################################################
+# Extract the selected data in x and y based on the control 
+# window entries
+################################################################
+
+procedure(getdata,x,y)
+
+   num = size(x)
+
+# Count the number of selected entries
+   n = 0
+   cnt = 22
+   for(c = 0 to num-1)
+       s = getpar(0,c+cnt,"value")
+       if(s = 1)
+         n = n + 1
+       endif
+   next(c)
+
+# Make up arrays from the selected entries
+   xs = matrix(n)
+   ys = matrix(n)
+
+    n = 0
+    for(c = 0 to num-1)
+       s = getpar(0,c+cnt,"value")
+       if(s = 1)
+         xs[n] = x[c]
+         ys[n] = y[c]
+         n = n + 1
+       endif
+   next(c)
+
+endproc(xs,ys)
+
+procedure(calculate)
+
+  (x,y) = :getdata(absc,amp)
+  :plot(x,y)
+
+endproc()
+
+##############################################
+# Display the selected data points and fitted
+# curve
+##############################################
+
+procedure(plot,x,E)
+
+# Get the size of the data set
+   num = size(x)
+   if(num <= 1)
+     return()
+   endif
+
+# Get colors
+   if(isfile("$appdir$\\Macros\\UCS-Core\\ucsFiles.mac"))
+      par = ucsFiles:loadPref()
+   elseif(isfile("$appdir$\\Macros\\Kea-Core\\keaFiles.mac"))
+      par = keaFiles:loadPref()
+   elseif(isfile("$appdir$\\Macros\\TN-Core\\tnFiles.mac"))
+      par = tnFiles:loadPref()
+   endif
+
+   assignlist(par)
+
+   gamma = 2.675222e+08
+
+   type = getpar(0,17,"text")
+
+   if(type == "grad")
+      sdel = getpar(0,14,"value")
+      ldel = getpar(0,11,"value")
+      abscissa = gamma^2*x^2*sdel^2*(ldel-sdel/3)
+   elseif (type == "ldel")
+      grad = getpar(0,14,"value")
+      sdel = getpar(0,11,"value")
+      x = x*1e-3 # Assume data in ms
+      abscissa = gamma^2*grad^2*sdel^2*(x-sdel/3)
+   elseif (type == "sdel")
+      grad = getpar(0,14,"value")
+      ldel = getpar(0,11,"value")
+      x = x*1e-3 # Assume data in ms
+      abscissa = gamma^2*grad^2*x^2.*(ldel-x/3)
+   elseif (type == "q2")
+      abscissa = x*1e9
+   endif
+
+  # Linearize data
+   linE = loge(E/E[0])
+
+  # Perform linear fit
+  (slope,intercept,slopeErr,intErr) = linfit:fit(abscissa ,linE)
+
+  # Slope is diffusion coefficient
+   difCoef = slope
+   difCoefErr = slopeErr
+
+  # Generate best fit data for comparison
+   fit = exp(slope*abscissa + intercept)
+
+  # Display raw data and best fit comparison
+   drawplot("false")
+      plot(abscissa*1e-9 ,E/E[0])
+      title("Diffusion Analysis")
+      trace("tracetype","none",
+            "symbolshape",dataSymbolShape,
+            "symbolsize",3,
+            "symbolcolor",dataSymbolColor)
+
+      hold("on")
+      plot(abscissa*1e-9 ,fit)
+      trace("tracetype","lines",
+            "symbolcolor",fitColor,
+		"symbolshape","none")
+      axes("ymapping","log")
+      errStr = errorstr(-difCoef,difCoefErr,1)
+      title("text","Diffusion coefficient = $errStr$ m^(2) s^(-1)",
+            "size",11)
+      ylabel("text","Attenuation (E/E_(0))","size",11)
+      xlabel("text","\G(g)^(2)G^(2)\G(d)^(2)(\G(D)-\G(d)/3) (10^(9) sm^(-2))","size",11)
+      hold("off")
+   drawplot("true")
+
+endproc()
+
+
+##########################################################
+# Select type of experiment (modified stext labels)
+##########################################################
+
+procedure(exp_type_selection)
+
+   type = getpar(0,17,"text")
+
+   if(type == "grad")
+      setpar(0,15,"enable","true")
+      setpar(0,10,"enable","true")
+      setpar(0,14,"enable","true")
+      setpar(0,11,"enable","true")
+      setpar(0,15,"text","Small delta (s)")
+      setpar(0,10,"text","Large delta (s)")
+      setpar(0,14,"name","sdel")
+      setpar(0,11,"name","ldel")
+      setpar(0,501,"text","G (T/m)")
+   elseif (type == "ldel")
+      setpar(0,15,"enable","true")
+      setpar(0,10,"enable","true")
+      setpar(0,14,"enable","true")
+      setpar(0,11,"enable","true")
+      setpar(0,15,"text","Gradient (T/m)")
+      setpar(0,10,"text","Small delta (s)")
+      setpar(0,14,"name","grad")
+      setpar(0,11,"name","sdel")
+      setpar(0,501,"text","Delta (ms)")
+   elseif (type == "sdel")
+      setpar(0,15,"enable","true")
+      setpar(0,10,"enable","true")
+      setpar(0,14,"enable","true")
+      setpar(0,11,"enable","true")
+      setpar(0,15,"text","Gradient (T/m)")
+      setpar(0,10,"text","Large delta (s)")
+      setpar(0,14,"name","grad")
+      setpar(0,11,"name","ldel")
+      setpar(0,501,"text","delta (ms)")
+   elseif (type == "q2")
+      setpar(0,15,"text","")
+      setpar(0,10,"text","")
+      setpar(0,15,"enable","false")
+      setpar(0,10,"enable","false")
+      setpar(0,14,"enable","false")
+      setpar(0,11,"enable","false")
+      setpar(0,501,"text","Abscissa")
+   endif
+
+endproc()
+
+

@@ -1,0 +1,30 @@
+procedure(scanstr_test1,verbose,delay)
+
+   cd(getmacropath())
+   txt = load("test.txt")
+
+
+   if(eval(scanstr(txt,"*TD=%1\r")) != 64)
+      return(0, "Invalid result for: scanstr_test1 #1")
+   endif 
+
+   if(eval(scanstr(txt,"*BYTORDA=%1\r")) != 0)
+      return(0, "Invalid result for: scanstr_test1 #2")
+   endif 
+
+   (a,b) = scanstr(txt,"*FS=*(%1..%2)\r")
+   if(eval(a) != 0 | eval(b) != 7)
+      return(0, "Invalid result for: scanstr_test1 #3")
+   endif 
+
+   a = scanstr(txt,"*$$FS=*\r\n%1 \r\n")
+
+   a = scanstr(txt,"*$$FS=*\r\n%1 \r\n")
+
+   a = replacestr(a," ",",")
+
+   if(eval("[$a$]") != [1:8])
+      return(0, "Invalid result for: scanstr_test1 #4")
+   endif 
+
+endproc(1,"")

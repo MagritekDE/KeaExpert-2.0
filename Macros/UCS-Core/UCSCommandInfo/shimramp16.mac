@@ -1,0 +1,16 @@
+###################################################################################
+#######################################################
+
+procedure(shimramp16, channel, start, end, steps, stepTime)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + stepTime*steps
+      gSeq->psInfo->command = gSeq->psInfo->command + ["shimramp16,$channel$,$start$,$end$,$steps$,$stepTime$,$args[0]$,$args[1]$,$args[2]$,$args[3]$,$args[4]$"]
+
+   endif
+
+endproc()
+

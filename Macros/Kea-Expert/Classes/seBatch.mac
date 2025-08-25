@@ -1,0 +1,2619 @@
+###########################################################
+# The batch class for SpinsolveExpert
+#
+# V2.xx.xx
+###########################################################
+
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+
+   self->addBatchNameToHistory    = "seBatch:addBatchNameToHistory"
+   self->addArrayLoop             = "seBatch:addArrayLoop"
+   self->addSimpleLoop            = "seBatch:addSimpleLoop"
+   self->addProtocol              = "seBatch:addProtocol"
+   self->addScriptToBatch         = "seBatch:addScriptToBatch"
+   self->batchCallback            = "seBatch:batchCallback"
+   self->batchMenuCallback        = "seBatch:batchMenuCallback"
+   self->clearBatchList           = "seBatch:clearBatchList"
+   self->cmdChangesOwnComment     = "seBatch:cmdChangesOwnComment"
+   self->copyProtocol             = "seBatch:copyProtocol"
+   self->displayParameterList     = "seBatch:displayParameterList"
+   self->displayBatchList         = "seBatch:displayBatchList"
+   self->getExperimentDuration    = "seBatch:getExperimentDuration"
+   self->getNextBatchNumber       = "seBatch:getNextBatchNumber"
+   self->getBatchDurations        = "seBatch:getBatchDurations"
+   self->handleBatchAbort         = "seBatch:handleBatchAbort"
+   self->isBatchCommand           = "seBatch:isBatchCommand"
+   self->isArray                  = "seBatch:isArray"
+   self->isUniqueEntry            = "seBatch:isUniqueEntry"
+   self->loadAndRunExperiment     = "seBatch:loadAndRunExperiment"
+   self->loadLastList             = "seBatch:loadLastList"
+   self->loadBatchList            = "seBatch:loadBatchList"
+   self->makeNewScript            = "seBatch:makeNewScript"
+   self->moveProtocolDown         = "seBatch:moveProtocolDown"
+   self->moveProtocolUp           = "seBatch:moveProtocolUp"
+   self->newBatchList             = "seBatch:newBatchList"
+   self->parseBatchEntry          = "seBatch:parseBatchEntry"
+   self->runExperiments           = "seBatch:runExperiments"
+   self->renameBatchList          = "seBatch:renameBatchList"
+   self->renameLoopCommand        = "seBatch:renameLoopCommand"
+   self->renameSingleProtocol     = "seBatch:renameSingleProtocol"
+   self->renameProtocol           = "seBatch:renameProtocol"
+   self->renameProtocolFolder     = "seBatch:renameProtocolFolder"
+   self->removeProtocol           = "seBatch:removeProtocol"
+   self->removeProtocolFolder     = "seBatch:removeProtocolFolder"
+   self->removeIndents            = "seBatch:removeIndents"
+   self->saveCurrentList          = "seBatch:saveCurrentList"
+   self->saveCurrentParameters    = "seBatch:saveCurrentParameters"
+   self->saveBatchList            = "seBatch:saveBatchList"
+   self->selectCurrentBatchEntry  = "seBatch:selectCurrentBatchEntry"
+   self->sendBatchMessage         = "seBatch:sendBatchMessage"
+   self->updateModifiedStatus     = "seBatch:updateModifiedStatus"
+   self->updateProtocol           = "seBatch:updateProtocol"
+   self->viewBatchFolder          = "seBatch:viewBatchFolder"
+
+   self->variableList = "============================================="
+
+   self->batchLoading           = 0                          # A flag to prevent selecting the batch entries too fast
+   self->batchListModified      = 0                          # Has the batch list been modified
+   self->currentBatchExpt       = ""                         # The currently selected entry in the batch list
+   self->batchDuration          = null                       # Array of batch progress bar positions
+   self->lastBatchExptIdx       = -1                         # The batch list index of the last selected item
+   self->currentBatchExptIdx    = -1                         # The batch list index of the currently selected item
+   self->remoteBatchRunning     = 0                          # In view mode if a batch is running on active interface
+   self->remoteBatchIndex       = 0                          # In view mode if a batch is running this is the current index
+
+   self->stdBatchLocation       = "$prefdir$\\SpinsolveParameters\\Batch"               # The default batch storage location
+   self->batchFolder            = "$prefdir$\\SpinsolveParameters\\Batch\\untitled"     # Where the current batch list information is stored
+
+endproc()
+
+###########################################################
+# Add a special entry in the history list to indicate 
+# that we are executng a batch list
+###########################################################
+
+procedure(addBatchNameToHistory, self, status)
+
+# Get the time and date stamp
+   (datePath, dateStamp, timeStamp) = gExpt->getPathInfo()
+
+# Update the current experiment structure
+   gData->curExpt->timeStamp = timeStamp
+   gData->curExpt->dateStamp = dateStamp
+   gData->curExpt->suffix = status
+
+# Build, record and the output filename and path
+   batchName = getbasedir(self->batchFolder)
+   exptFolder = "$dateStamp$-$timeStamp$ $status$ ($batchName$)"
+   historyEntry = "$timeStamp$|$status$|$batchName$"
+   gData->datePath = datePath
+   if(gData->getFolderHierarchy() == "date")
+      gData->curExpt->dataParentPath = "$gView->projPathCtrl->text$\\$datePath$" 
+      gData->curExpt->dataPath = "$gView->projPathCtrl->text$\\$datePath$\\$exptFolder$" 
+   else
+      gData->curExpt->dataParentPath = "$gView->projPathCtrl->text$" 
+      gData->curExpt->dataPath = "$gView->projPathCtrl->text$\\$exptFolder$" 
+   endif
+   bak = getcwd()
+   mkdir(gData->curExpt->dataPath)
+   gView->loadHistoryList()
+   try
+      gView->history->index(1)
+   catch
+   endtry
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Add a loop command to the batch list (simple format)
+# If update==1 then update and display the list otherwise
+# just return the new list entry.
+###########################################################
+
+procedure(addSimpleLoop, self, update=1)
+
+   lst = gView->batch->list
+   lst = self->removeIndents(lst)
+  # Find largest loop counter
+   sz = size(lst)
+   maxCnt = 0
+   for(k = 0 to sz-1)
+      entry = lst[k]
+      (name,comment) = self->parseBatchEntry(entry)
+      if(name == "Loop")
+         loopName = scanstr(comment,"%1, lc*")
+         cnt = eval(loopName)
+         if(cnt > maxCnt)
+            maxCnt = cnt
+         endif
+      endif
+   next(k)
+
+   cnt = maxCnt+1
+   entry = "Loop|$cnt$, lc$cnt$, n=1","Endloop|$cnt$"
+
+   if(update == 0)
+      return(entry)
+   endif
+
+  # Make the new one 1 larger 
+   lst = lst + ["Loop|$cnt$, lc$cnt$, n=1","Endloop|$cnt$"]  
+   self->displayBatchList(lst)
+   self->updateModifiedStatus(1)
+   self->updateModifiedStatus(1)
+   gView->batchLabel->label
+
+endproc()
+
+###########################################################
+# Add loop commands to the batch list (array format)
+###########################################################
+
+procedure(addArrayLoop, self)
+
+   lst = gView->batch->list
+   lst = self->removeIndents(lst)
+  # Find largest loop counter
+   sz = size(lst)
+   maxCnt = 0
+   for(k = 0 to sz-1)
+      entry = lst[k]
+      (name,comment) = self->parseBatchEntry(entry)
+      if(name == "Loop")         
+         loopName = scanstr(comment,"%1, lc*")
+         cnt = eval(loopName)
+         if(cnt > maxCnt)
+            maxCnt = cnt
+         endif
+      endif
+   next(k)
+
+  # Make the new one 1 larger 
+   cnt = maxCnt+1
+   lst = lst + ["Loop|$cnt$, lc$cnt$=[1]","Endloop|$cnt$"]  
+   self->displayBatchList(lst)
+   self->updateModifiedStatus(1)
+ #  self->updateModifiedStatus(1)
+   self->saveCurrentList()
+
+   gView->batchLabel->label
+
+endproc()
+
+###########################################################
+# Add a protocol to the batch list with a comment
+###########################################################
+
+procedure(addProtocol, self)
+
+# Remove any multiple selections
+   gView->batch->selection([-1,-1])
+
+# Check for modification and update if needed
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+# Get the protocol from the current experiment data
+   curExpt = gData->curExpt
+   protocol = curExpt->protocol
+   comment = gView->sampleNameCtrl->text
+   entry = "$protocol$|$comment$"
+
+# Make sure all parameters are ok
+   if(checkcontrols(0) == "error")
+      return
+   endif
+
+# Find the next batch experiment number
+   nextNr = self->getNextBatchNumber()
+
+# If batch entries already exist get the list
+   entries = gView->batch->list
+   if(entries != null) 
+      entries = self->removeIndents(entries)
+   endif
+
+# Make the new entry
+   if(gData->findPP(protocol) != null) # A normal experiment - comment should be unique
+
+      newComment = gView->sampleNameCtrl->text
+      entry = "$protocol$|$newComment$|$nextNr$" 
+
+   else # A script - comment can be the same (check for user defined proc as well)
+
+      scriptPath = getmacropath(protocol)
+      if(isproc(scriptPath,protocol,"addCommand"))
+         bak = getcwd()
+         cd(scriptPath)
+         proc = "$protocol$:addCommand"
+         entry = proc()
+         entry = entry + "|$nextNr$"
+         cd(bak)
+      else # Otherwise ask for the comment
+#         commentList =  gView->sampleNameCtrl->menu()
+#         newComment = gettext("Choose a comment for '$protocol$'",comment,20,commentList)
+#         if(newComment == "cancel")
+#            return
+#         endif
+         newComment = gView->sampleNameCtrl->text
+         entry = "$protocol$|$newComment$|$nextNr$"           
+      endif
+
+   endif
+
+  # Add the protocol and comment to the batch list
+   if(entries == null)
+      entries = ["Protocol/Command|Comment/Parameter",entry]
+   else
+      entries = entries + entry
+   endif
+
+  # Display the updated batch list and set the current entry
+   self->displayBatchList(entries)
+   newIdx = size(entries)-1
+   gView->batch->zindex(newIdx)
+   self->currentBatchExpt = entry
+   self->lastBatchExptIdx = self->currentBatchExptIdx
+   self->currentBatchExptIdx = newIdx
+  # Update the acqu.par file 
+   self->saveCurrentParameters()
+  # Save the batch list to batchList.mac
+   self->saveCurrentList()
+
+  # Note that the file has been modified
+   cd(self->batchFolder)
+   batchInfo = struct()
+   batchInfo->status = "modified"
+   save("batchStatus.par",list(batchInfo))
+
+endproc()
+
+###########################################################
+# Add a script entry to the batch list
+###########################################################
+
+procedure(addScriptToBatch, self, entry)
+
+   if(gView->batch->list == null)
+      lst = [entry]
+   else
+      lst = gView->batch->list + entry  
+   endif
+   gBatch->displayBatchList(lst)
+   gView->batch->zindex(size(lst)-1) 
+
+endproc()
+
+###########################################################
+# Batch list callback
+###########################################################
+
+procedure(batchCallback, self)
+
+   if(self->batchLoading == 0)
+      evt = parentCtrl->event
+      self->batchLoading = 1
+      if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow")
+         if(gView->batch->text != null & not(iskeypressed("shift")))
+            self->lastBatchExptIdx = self->currentBatchExptIdx
+            self->currentBatchExptIdx = gView->batch->zindex
+            self->currentBatchExpt = trimstr(gView->batch->text)
+            self->displayParameterList()
+         endif
+      elseif(evt == "enter_pressed")
+         if(parentCtrl->text != null)
+            gView->openPPEditor()
+         endif
+#      elseif(evt == "double_click_down")
+#         self->renameProtocol()  
+      endif
+      self->batchLoading = 0
+   endif
+
+endproc()
+
+###########################################################
+# Come here if a menu option is selected in the batch list
+###########################################################
+
+procedure(batchMenuCallback, self, operation)
+
+   if(operation == "add simple loop")
+      self->selectCurrentBatchEntry()
+      self->addSimpleLoop()
+   elseif(operation == "add array loop")
+      self->selectCurrentBatchEntry()
+      self->addArrayLoop()
+   elseif(operation == "edit comment")
+      self->renameProtocol()
+   endif
+   self->saveCurrentList()
+
+endproc()
+
+###########################################################
+# Clear the batch list
+###########################################################
+
+procedure(clearBatchList, self)
+
+   if(query("Warning","This will delete all entries in this batch folder\rand move them to the trash. Continue?") == "yes")
+      batchList = ["Protocol/Command|Comment/Parameter"]
+      gView->batch->list(batchList)
+      gView->batch->color([0,0,128,0])
+      cd("$self->batchFolder$\\..")
+      rmfolder(self->batchFolder)
+      mkdir(self->batchFolder)
+   endif
+
+endproc()
+
+###########################################################
+# Copy the selected protocol and add to the end of the 
+# batch list. The new entry will have a hidden prefix
+# number which is used to make the entry unique this will
+# be visible in the save folder name.
+###########################################################
+
+procedure(copyProtocol, self)
+
+   gView->batch->draw("false")
+   gView->exptPanel->visible("false")
+
+# Check for modification to parameter list and save if necessary
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file before copying?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+# See if this is a single selection
+   selection = gView->batch->selection
+   if(selection[0] == -1)
+      temp = gView->batch->zindex()
+      selection[0] = temp
+      selection[1] = temp
+   endif
+   
+# Fix multiple selection reversal (bottom to top)
+   if(selection[0] > selection[1])
+      temp = selection[0]
+      selection[0] = selection[1]
+      selection[1] = temp
+   endif
+
+# Get the list entries and next batch number
+   entries = gView->batch->list
+   startSel = size(entries)
+
+# Find the next prefix number of the batch files
+   exptNr = self->getNextBatchNumber()
+
+# Loop over the selected entries copying each one
+   for(idx = selection[0] to selection[1])
+
+      entry = trimstr(entries[idx])
+      (protocol,comment) = self->parseBatchEntry(entry)
+
+   # Is this a special command?
+      if(protocol == "Loop" | protocol == "Endloop")
+   
+         newEntry = self->addSimpleLoop(update=0)
+         entries = entries + newEntry
+  
+#    # or ones which need special comments?
+#      elseif(protocol == "WaitTime" | protocol == "StartAtTime")
+#
+#         newEntry = "$protocol$|$comment$|0" 
+#         entries = entries + newEntry
+
+    # Otherwise it is an experiment or script protocol
+      else 
+       
+        # Just copy the existing comment
+         newComment = comment #gView->sampleNameCtrl->text
+         newEntry = "$protocol$|$newComment$|$exptNr$" 
+         entries = entries + newEntry
+
+        # Select the original protocol
+         gView->batch->zindex(idx)
+        # Display the parameters 
+         self->displayParameterList()
+        # Save them with the new experiment number 
+         self->saveCurrentParameters(protocol,newComment,exptNr)
+         exptNr = exptNr + 1
+
+      endif
+
+   next(idx)
+
+  # Remove multiple selection
+   gView->batch->selection([-1,-1])
+  # Update the batch list with the new entry list
+   self->displayBatchList(entries)
+  # Make the start of copied block of entries
+  # the new current entry
+   gView->batch->zindex(startSel)
+  # Update the parameter list with this entry
+   self->displayParameterList()
+  # Select the current entry text
+   self->currentBatchExpt = gView->batch->text
+  # Update the previous selection
+   self->lastBatchExptIdx = self->currentBatchExptIdx
+   self->currentBatchExptIdx = startSel
+  # Save the new batch list to batchList.mac
+   self->saveCurrentList()
+
+ # Redraw the batch and parameter panel
+   gView->batch->draw("true")
+   gView->exptPanel->visible("true")
+
+endproc()
+
+###########################################################
+# Get the expected experiment duration for the batch list
+# experiment at location 'lineNr' with parameters 'par'
+###########################################################
+
+procedure(getExperimentDuration, self, lineNr, par)
+
+   exptTm = 0
+   bak = getcwd()
+
+# Make loop variables etc accessible
+   assignlist(par)
+
+# Get the list of experiments
+   lst = gView->batch->list
+   if(lst == null)
+      return
+   endif
+
+# Get the details for the entry on 'lineNr'
+   lst = self->removeIndents(lst)
+   entry = lst[lineNr]
+   (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+
+# Find the corresponding protocol or macro location
+   ppPath = gData->findPP(protocol)
+   if(ppPath == null)
+      ppPath = findmacro(protocol)
+   endif
+
+# See if this protocol has an expectedDuration procedure
+   if(isproc(ppPath,protocol,"expectedDuration"))
+      proc = "$protocol$:expectedDuration"
+      acqParDir = "$self->batchFolder$\\$exptNr$ $protocol$ ($comment$)"
+      cd(acqParDir)
+      if(isfile("acqu.par")) # Use the acqu.par file as parameters
+         par = load("acqu.par")
+         if(par != null)
+            par = struct(par)
+            par->useStartDelay = 0 # Not doing this since version 2.01.00
+            par->useEndDelay = 1
+         else
+            par = struct()
+            par->useStartDelay = 0 
+            par->useEndDelay = 1
+         endif
+         exptTm = proc(par) # Get the expected duration
+         if(exptTm < 0)
+            exptTm = 0
+         endif
+         if(par->useEndDelay == 0) # Recalculate from sequence if end delay not used
+            psTime = GetPulseProgramDuration(protocol)
+            repTime = par->repTime
+            if(psTime >= repTime)
+                print("\n   Warning - repetition time for '$protocol$' is less than pulse sequence time ($psTime$ ms)")
+            endif               
+            exptTm = exptTm - (repTime - psTime)/1000
+         endif
+      endif
+   else
+      print("\n   Warning - no procedure 'expectedDuration' found\n")
+      print("   for protocol '$protocol$' so timing will be inaccurate.\n")
+   endif
+   cd(bak)
+
+endproc(exptTm+0.5)
+
+
+###########################################################
+# Search the batch list to find the largest folder number
+# (if they exist - legacy batches didn't have them)
+# Then return the next higher integer or 1 if none found
+###########################################################
+
+procedure(getNextBatchNumber, self)
+
+   bak = getcwd()
+   cd(self->batchFolder)
+   lst = getdirlist(".")
+   maxNr = 0
+   for(k = 0 to size(lst)-1)
+      name = lst[k]
+      try
+         (nr, protocol, comment) = scanstr(name,"%1 %2 (%3)")
+      catch
+          pr "Found old batch file exception ($self->batchFolder$)\n"
+         (protocol, comment) = scanstr(name,"%1 (%2)")
+         nr = "0"
+      endtry
+      nr = eval(nr)
+      if(nr > maxNr)
+         maxNr = nr
+      endif
+   next(k)
+   cd(bak)
+
+endproc(maxNr+1)
+
+###########################################################
+# Display the batch list coloring and indenting as required
+# based on the syntax
+###########################################################
+
+procedure(displayBatchList, self, lst)
+
+   try
+      sz = size(lst)
+      if(sz == 0)
+         gView->batch->list(list(0))
+         return
+      endif
+      indent = ""
+      lst = self->removeIndents(lst)    
+      lst2 = lst  
+      for(k = 0 to sz-1)
+         entry = lst[k]
+         (name,comment,nr) = self->parseBatchEntry(entry)
+         if(name == "Loop")
+            newentry = "$indent$$name$|$comment$"
+            indent = indent + "  "
+         elseif(name == "Endloop")
+            if(size(indent) > 2)
+               indent = indent[0:-3]
+            else
+               indent = ""
+            endif
+            newentry = "$indent$$name$|$comment$"
+         else
+            newentry = "$indent$$name$|$comment$|$nr$"
+         endif
+         lst[k] = newentry 
+      next(k)
+      gView->batch->draw("false")
+      gView->batch->list(lst)
+      gView->batch->color([0,0,128,0])
+      for(k = 1 to sz-1)
+         entry = lst2[k]
+         (name,comment) = self->parseBatchEntry(entry)
+         if(name == "Loop")
+            gView->batch->color([k,255,0,0])
+         elseif(name == "Endloop")
+            gView->batch->color([k,255,0,0])
+         else
+            if(gData->findPP(name) != null)
+               gView->batch->color([k,0,0,200])
+            else
+               gView->batch->color([k,150,0,128])
+            endif
+         endif
+      next(k)
+      gView->batch->draw("true")
+      dummy = null # Fixes fall-through bug
+
+   catch
+      pr lasterror()
+   endtry
+
+endproc()
+
+###########################################################
+# Display the parameter list for the selected batch 
+# experiment in the parameter panel for editing or reviewing
+###########################################################
+
+procedure(displayParameterList, self, s=null)
+
+# Check for modification
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file?") == "yes")
+         gBatch->updateProtocol(update=1,idx=self->lastBatchExptIdx)
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+# Add some additional parameters if passed as an argument
+   if(s != null)
+      assignstruct(s)
+   endif
+
+# Check there is a current batch selection to display
+   entry = gView->batch->text
+   if(entry == null)
+      return
+   endif
+   entry = trimstr(entry,"front")
+
+# Get the protocol name, comment and experiment number
+   (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+
+# Ignore title
+   if(protocol == "Protocol/Command")
+      return
+   endif
+
+# Ignore loop and time commands which don't use acqu.par files
+# In this case just clear the parameter panel.
+   if(self->isBatchCommand(protocol))
+      if(gParam->firstParameterCtrl != -1)
+        for(k = gParam->firstParameterCtrl to gParam->lastParameterCtrl)
+           rmobj(0,k)
+        next(k)
+        gParam->firstParameterCtrl = -1
+        gParam->lastParameterCtrl = -1
+      endif
+      gView->exptParameterLabel->label("$protocol$ (no parameters)")
+    # TODO - is this necessary as may get in the way of realtime editing of the batch list
+      gPlot->layoutPlots(["pt1"])
+      gView->graphLabel->label("No data collected")
+      return
+   endif
+
+   bak = getcwd()
+
+# The current batch entry becomes the new current experiment
+   gData->curExpt = struct()
+   gData->curExpt->protocol = protocol
+   gData->curExpt->suffix = comment
+
+# Find the protocol pulse program folder and extract the defaults file
+   ppFolder = gData->findPP(protocol)
+   if(ppFolder != null) 
+      gData->curExpt->ppPath = "$ppFolder$" 
+   # Get the default parameters for this protocol
+     if(isdir(ppFolder)) # See if its a normal pp.
+        cd(ppFolder)
+        defaultsFile = "$protocol$Default.par"
+        if(isfile(defaultsFile))
+           gData->curExpt->defaultPar = struct(load(defaultsFile))
+        endif
+      endif
+      gData->curExpt->type = "experiment"
+   else # Is it a script - no defaults in this case
+      gData->curExpt->ppPath = getmacropath(protocol)
+      if(gData->curExpt->ppPath == null)   
+         message("Error","Unknown protocol:\r'$protocol$'","error")
+         cd(bak)
+         return(0)
+      endif
+      gData->curExpt->type = "script"
+      gData->curExpt->defaultPar = null
+   endif
+
+# Get location of the batch 'acqu.par' file 
+   gData->curExpt->dataParentPath = self->batchFolder
+   gData->curExpt->dataPath = "$self->batchFolder$\\$exptNr$ $protocol$ ($comment$)"
+
+# Read the acqu.par file and save in gData->curExpt->parameters
+   cd(gData->curExpt->dataPath)
+   if(isfile("acqu.par"))
+      par = load("acqu.par")
+     # par = eval(par) # Allows variables or expression in batch parameter list
+      gData->curExpt->parameters = struct(par)
+   else
+      message("Error","Can't find batch acqu.par file for '$protocol$'.","error")
+      cd(bak)
+      return(0)
+   endif
+
+# Initialise time and date stamp as these are not determined yet
+   gData->curExpt->dateStamp = ""
+   gData->curExpt->timeStamp = ""
+
+# This is loaded from the batch list
+   gData->curExpt->source = "batch"
+
+# Cache the experiment and interface
+# TODO should this be in window or global cache?
+   import("$gData->curExpt->protocol$.mac",gData->curExpt->ppPath,"global")  #Was window
+# Display the parameters in the UI and load the plots for run mode
+   if(gData->curExpt->type != "script")  # A normal experiment or protocol
+      import("$gData->curExpt->protocol$_interface.mac",gData->curExpt->ppPath,"global") #Was window
+      try
+         gParam->createParameterCtrls()
+        # TODO - is this necessary as may get in the way of realtime editing of the batch list
+         layout = gPlot->loadPlotLayout("load",gData->curExpt)
+         gPlot->layoutPlots(layout)
+         gPlot->showPlots(layout)
+         gView->graphLabel->label("Experiment '$protocol$': no data collected")
+      catch
+         pr lasterror()
+      endtry
+   else # It must be a simple script
+      layout = gParam->createScriptCtrls()
+      if(layout != null)
+        # TODO - is this necessary as may get in the way of realtime editing of the batch list
+         gPlot->layoutPlots(layout)
+         gPlot->showPlots(layout)
+         gView->graphLabel->label("Script '$protocol$': no data collected")
+      endif
+   endif
+   gExpt->exptSource = "batch"
+
+   cd(bak)
+
+endproc()
+
+###########################################################
+# If an abort or complete occurs while running a batch
+# process then wait for the progress thread to finish
+# tidy up the experiment status flags and then if 
+# needed throw an exception
+###########################################################
+
+procedure(handleBatchAbort, self, progThreadStarted)
+
+   if(wvExpStatus == "stop")
+      assignlock("wvExpStatus","idle","window")
+   elseif(wvExpStatus2 == "batchEnd" | wvExpStatus2 == "batchContinue")
+      assignlock("wvExpStatus","batch_idle","window")
+   endif
+  # Wait for the progress thread to finish
+   if(gExpt->progThreadID != null & progThreadStarted)
+      threadwait(gExpt->progThreadID)
+      gExpt->progThreadID = null
+   endif
+  # Exit from here is we are aborting from a batch
+   if(wvExpStatus == "idle")
+      throw("abort")
+   elseif(wvExpStatus2 = "batchEnd")
+      assignlock("wvExpStatus","idle","window")
+      assignlock("wvExpStatus2","batchContinue","window")
+      throw("complete")
+   endif 
+
+endproc()
+
+###########################################################
+# Check if the batch entry is list only 
+# (i.e. no acqu.par file)
+###########################################################
+
+procedure(isBatchCommand, self, cmd, mode="noacq")
+
+   if(mode == "noacq")
+      lst = ["Loop","Endloop"] #,"StartAtTime","WaitTime"]
+   endif
+
+   if(getlistindex(lst, cmd) >= 0)
+      return(1)
+   endif
+
+endproc(0)
+
+###########################################################
+# Check to see if entry is unique in lst by counting the 
+# number of instances of entry in the list.
+# TODO - no longer used - delete?
+###########################################################
+
+procedure(isUniqueEntry, self, lst, entry)
+
+   if(lst == null)
+      return(1)
+   endif
+
+   sz = size(lst)
+   if(sz == 0)
+      return(1)
+   endif
+   cnt = 0
+   for(k = 0 to sz-1)
+      if(lst[k] == entry)
+         cnt = cnt + 1
+      endif
+   next(k)
+
+   if(cnt == 0)
+      return(1)
+   endif
+
+endproc(0)
+
+
+###########################################################
+# Select line 'n' in the batch list then load and run it. 
+# Protocols also get optional parameters 's' (such as loop
+# variables). This is called for each experiment in turn
+# from the runBatch macro which is generated automatically
+# in self->runExperiments.
+###########################################################
+
+procedure(loadAndRunExperiment, self, n, s)
+
+   assignstruct(s)
+   gView->batch->zindex(n)
+# Display the parameter list for this experiment in the parameter panel
+   self->displayParameterList(s)
+
+# Extract the protocol and comment name for this experiment 
+   entry = trimstr(gView->batch->text)
+   (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+
+# See if this is a standard experiment or protocol
+   if(gData->findPP(protocol) != null)
+
+      gExpt->source = "batch"
+      value = comment
+      try # Try evaluating the comment (this allows sample array names)
+         if(comment != "")
+            value = eval(comment)
+         endif
+      catch
+      endtry
+    # Run the experiment
+      gExpt->runExperimentCore(value)
+    # Save the code
+      gExpt->savePPCode()
+
+   else # Protocol with or without an acqu.par file
+
+      if(self->isBatchCommand(protocol)) # Batch only command (no acqu.par)
+         gBatch->abort = 0
+         th = thread("$protocol$:backdoor",s)
+         threadwait(th)
+         if(gBatch->abort)
+            throw("abort")
+         endif
+      else # An experiment with an acqu.par
+         gExpt->source = "batch"
+         value = comment
+         try # Try evaluating the comment (this allows sample array names)
+            if(comment != "")
+               value = eval(comment)
+            endif
+         catch
+         endtry
+       # Run the experiment
+         gExpt->runExperimentCore(value,s)
+      endif
+
+   endif
+
+# Update the batch progress control when finished (note this is
+# not controlled during the experiment but jumps at the end
+# of the experiment TODO - can this be fixed?
+   batchProgressCtrl->value(self->batchProgress[self->batchStep])
+
+# Move onto the next batch experiment
+   self->batchStep = self->batchStep + 1
+
+endproc(protocol)
+
+###########################################################
+# Load contents of the batchList.mac file into the batch
+# list.
+# This procedure also modifies the batch list to include 
+# a number prefix in case it is in the old format which 
+# didn't include experiment numbers which allow for
+# unique entries
+###########################################################
+
+procedure(loadLastList, self)
+
+   dir = self->batchFolder
+   oldVersion = 0
+   maxNr = 0
+   
+   if(isdir(dir))
+      cd(dir)
+      name = "batchList.mac"
+      if(isfile(name))
+        # Load the batch list
+         replacesubexp("false")
+         batchList = name()
+         replacesubexp("true")
+        # Determine is this is an old version or not
+         for(k = 0 to size(batchList)-1)
+            entry = batchList[k]
+            par = parse(entry,"|")
+            if(size(par) == 3) # Partially new
+               nr = eval(par[2])
+               if(nr > maxNr); maxNr = nr; endif;
+            endif
+            if(size(par) == 2)
+               if(par[0] != "Loop" & par[0] != "Endloop")
+                  oldVersion = 1
+               endif
+            endif
+         next(k)
+        # If its an old version then update with expt number
+         exptNr = maxNr+1
+         if(oldVersion)
+            for(k = 0 to size(batchList)-1)
+               entry = batchList[k]
+               par = parse(entry,"|")
+               if(size(par) == 2)
+                  if(par[0] != "Loop" & par[0] != "Endloop")
+                     oldVersion = 1
+                     batchList[k] = "$par[0]$|$par[1]$|$exptNr$"
+                     oldName = "$par[0]$ ($par[1]$)"
+                     newName = "$exptNr$ $par[0]$ ($par[1]$)"
+                     movefile(oldName,newName)
+                     exptNr = exptNr + 1
+                  endif
+               endif
+            next(k)
+         endif
+       
+        # Add the title and display in the batch list
+         batchList = ["Protocol/Command|Comment/Parameter"] + batchList
+         replacesubexp("true")
+         self->displayBatchList(batchList)
+         if(dir == self->stdBatchLocation) # TODO we need to force the user to make a batch folder
+            gView->batchLabel->label("Standard batch list")
+         else
+            folder = getbasedir(dir)
+            gView->batchLabel->label("Batch list for '$folder$'")
+         endif
+      else # This is a new list
+         batchList = ["Protocol/Command|Comment/Parameter"]
+         self->displayBatchList(batchList)
+         folder = getbasedir(dir)
+         gView->batchLabel->label("Batch list for '$folder$'")
+      endif
+   endif
+
+  # Update the changes to the batchList.mac file if it was in the old format
+   if(oldVersion)
+      self->saveCurrentList()
+   endif
+     
+endproc()
+
+###########################################################
+# A simple user interface to allow loading a batch list
+###########################################################
+
+procedure(loadBatchList, self)
+
+# Save existing list if modified
+   if(self->batchListModified)
+      if(query("Warning", "The batch list has been modified, do you wish to save it?") == "yes")
+         self->saveCurrentList()
+      endif
+     self->updateModifiedStatus(0)
+   endif
+
+   n = window("Load Batch List", -1, -1, 400, 220, "resizable")
+
+      # Define all controls with basic parameters
+      batchFolders = listbox(1, 20, 30, "ww-101", "wh-50",
+                       evt = batchFolders->event;
+                       if(evt == "enter_pressed");
+                           closedialog();
+                       endif;
+                       if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow");
+                         name = batchFolders->text;
+                         if(not(isvalidfilename(name)));
+                             message("Error","Please choose a valid folder name.","error");
+                             return;
+                         endif;
+                         gBatch->batchFolder = "$gBatch->stdBatchLocation$\\$name$";
+                         gBatch->loadLastList();
+                       endif;)
+
+      statictext(4, "ww*0.5-50", 13, "center", "Existing batch folders")
+      setpar(n,4,"color",[128,0,0])
+
+      button(5, "ww-63", "wh-53", 52, 32, "Close",
+         closedialog();)
+      setpar(n,5,"mode","default")
+
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"sizelimits",[400,1000,220,1000])
+
+   dir = self->stdBatchLocation
+   folders = getdirlist(dir)
+   batchFolders->list(folders)
+   showdialog(n)
+
+
+endproc()
+
+###########################################################
+# Load the script template into an editor
+# TODO - what is this doing in the batch class. We need
+# a script class.
+###########################################################
+
+procedure(makeNewScript, self)
+
+   bak = getcwd()
+   n = editorWin()
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Script Macros\\Templates")
+   edit("simpleScript.mac")
+   edWin = getobj(n,1)
+   edWin->fileName("untitled")
+   edWin->pathName(desktop)
+   setwindowpar(n,"title","Editor ($n$) untitled")
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Move a protocol down in the list
+###########################################################
+
+procedure(moveProtocolDown, self)
+
+# Restrict moving protocols down if one is running
+   if(self->remoteBatchRunning)
+      curSel = gView->batch->selection
+      curExpt =  self->remoteBatchIndex
+      if(curSel[0] <= curExpt)
+         print("Can't move experiments above a running experiment\n")
+         return
+      endif
+   endif
+
+# Remove any multiple selections
+   gView->batch->selection([-1,-1])
+
+# Move the selected line down in the list
+   ctrl = gView->batch
+   lst = self->removeIndents(ctrl->list)
+   indx = ctrl->zindex
+   sz = size(lst)
+   if(indx < sz-1)
+      tmp = lst[indx+1]
+      lst[indx+1] = lst[indx] 
+      lst[indx] = tmp
+      self->displayBatchList(lst)
+      ctrl->zindex(indx+1)    
+      drawwin(0) # Force a redraw (TODO can this be done with just the batch list)
+   endif 
+  # Update the batchList.mac file
+   self->saveCurrentList()
+
+  # Note that the file has been modified
+   cd(self->batchFolder)
+   batchInfo = struct()
+   batchInfo->status = "modified"
+   save("batchStatus.par",list(batchInfo))
+
+endproc()
+
+###########################################################
+# Move a protocol up in the list
+###########################################################
+
+procedure(moveProtocolUp, self)
+
+# Restrict moving protocols up if one is running
+   if(self->remoteBatchRunning)
+      curSel = gView->batch->selection
+      curExpt =  self->remoteBatchIndex
+      if(curSel[0] <= curExpt+1)
+         print("Can't move experiments above a running experiment\n")
+         return
+      endif
+   endif
+
+# Remove any multiple selections
+   gView->batch->selection([-1,-1])
+
+   ctrl = gView->batch
+   lst = self->removeIndents(ctrl->list)
+   top = ctrl->topzindex
+   indx = ctrl->zindex
+   if(indx >= 2)
+      tmp = lst[indx-1]
+      lst[indx-1] = lst[indx] 
+      lst[indx] = tmp
+      self->displayBatchList(lst)
+      ctrl->zindex(indx-1)  
+      if(indx-1 >= top) 
+         ctrl->topzindex(top)
+      else
+         ctrl->topzindex(indx-1)
+      endif
+      drawwin(0)  # Force a redraw (TODO can this be done with just the batch list)
+   endif
+  # Update the batchList.mac file
+   self->saveCurrentList()
+
+  # Note that the file has been modified
+   cd(self->batchFolder)
+   batchInfo = struct()
+   batchInfo->status = "modified"
+   save("batchStatus.par",list(batchInfo))
+
+endproc()
+
+###########################################################
+# A simple user interface to create a new batch list
+###########################################################
+
+procedure(newBatchList, self)
+
+# Save existing list if modified
+   if(self->batchListModified)
+      if(query("Warning", "The batch list has been modified, do you wish to save it?") == "yes")
+         self->saveCurrentList()
+      endif
+     self->updateModifiedStatus(0)
+   endif
+
+   n = window("Create New Batch Folder", -1, -1, 400, 220, "resizable")
+
+      # Define all controls with basic parameters
+      batchFolders = listbox(1, 20, 80, "ww-101", "wh-96",
+                       evt = batchFolders->event;
+                       if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow");
+                         name = batchFolders->text;
+                         if(not(isvalidfilename(name)));
+                             message("Error","Please choose a valid folder name.","error");
+                             return;
+                         endif;
+                         gBatch->batchFolder = "$gBatch->stdBatchLocation$\\$name$";
+                         gBatch->loadLastList();
+                         batchName->text(batchFolders->text);
+                       endif;)
+
+      batchName = textbox(2, 110, 20, "ww-121")
+
+                           
+      statictext(3, 101, 23, "right", "Batch folder name:")
+      statictext(4, "ww/2-50", 62, "center", "Existing batch folders")
+      setpar(n,4,"color",[128,0,0])
+
+      button(5, "ww-63", "wh-95", 52, 32, "Create",
+             cd(gBatch->stdBatchLocation);
+             name = batchName->text;
+             if(not(isvalidfilename(name)));
+                 message("Error","Please choose a valid folder name.","error");
+                 return;
+             endif;
+             mkdir(batchName->text);
+             cd(batchName->text);
+             dir = getcwd();
+             folders = getdirlist(dir);
+             files = getfilelist(dir);
+             if(size(folders) == 0 & size(files) == 0);
+                gBatch->batchFolder = dir;
+                batchList = ["Protocol/Command|Comment/Parameter"];
+                gView->batch->list(batchList);
+                gView->batch->color([0,0,128,0]);
+                gView->batchLabel->label("Batch list for '$name$'");
+                folders = getdirlist(gBatch->stdBatchLocation);
+                 batchFolders->list(sortlist(folders));
+             else;
+                message("Error","This folder already has something in it - please choose an empty one.","error");
+             endif;)
+      button(6, "ww-63", "wh-53", 52, 32, "Close",
+         closedialog();)
+
+   setpar(n,5,"mode","default")
+
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"sizelimits",[400,1000,220,1000])
+
+   dir = self->stdBatchLocation
+   folders = getdirlist(dir)
+   batchFolders->list(sortlist(folders))
+   showdialog(n)
+
+endproc()
+
+###########################################################
+# Convert the contents of the batch entry into a 
+# protocol name, comment and experiment number
+###########################################################
+
+procedure(parseBatchEntry, self, entry)
+
+   parameters = parse(entry,"|")
+   if(size(parameters) == 1)
+      protocol = parameters[0]
+      comment  = ""
+      exptNr   = "0"   
+   elseif(size(parameters) == 2)
+      protocol = parameters[0]
+      comment  = parameters[1]
+      exptNr   = "0"
+   elseif(size(parameters) == 3)
+      protocol = parameters[0]
+      comment  = parameters[1]
+      exptNr   = parameters[2]
+   endif
+
+endproc(protocol, "$comment$", eval(exptNr))
+
+
+###########################################################
+# See if a command changes its own comment 
+###########################################################
+
+procedure(cmdChangesOwnComment, self, protocol)
+
+   scriptPath = getmacropath(protocol)
+   if(scriptPath != null)
+      r = isproc(scriptPath,protocol,"parameterChanged") # User defined
+   else
+      r = 0
+   endif
+
+endproc(r)
+
+###########################################################
+# Rename the comments in the selected protocol.
+# This changes the list contents and the folder
+# comment (if a normal experiment)
+# Note that multiple selections will only change
+# normal commands not Loops, WaitTime or StartAtTime. These
+# must be done individually
+###########################################################
+
+procedure(renameProtocol, self, passedComment=null)
+
+# Check for modification
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file before changing the name?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+# Make sure we have a selection
+   if(gView->batch->text == null)
+      message("Error","Please select a batch entry","error")
+      return
+   endif
+
+# Get the batch list
+   entries = self->removeIndents(gView->batch->list)
+
+# Get the current selection
+   curIdx = gView->batch->zindex
+
+# See if this is a single or multiple selection
+   selection = gView->batch->selection
+   if(selection[0] == selection[1]) # Single selection
+      selection[0] = gView->batch->zindex
+      selection[1] = gView->batch->zindex
+      entry = entries[gView->batch->zindex]
+      (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+      prompt = "Choose a new comment for '$protocol$'"
+   else  # Multiple selection
+      prompt = "Choose a new comment for selected protocols"
+      protocol = ""
+      comment = gView->sampleNameCtrl->text
+   endif
+
+# Get the new (valid) comment for normal experiments
+# Some experiments define their own comment give a warning
+# in this case
+   if(passedComment == null)
+      if(selection[0] == selection[1]) # Single selection
+         if(self->cmdChangesOwnComment(protocol))
+            message("Error","Can't change the comment for this protocol.\rPlease change the parameter value instead.","error")
+            return
+         else
+            newComment = comment
+         endif
+      else
+         newComment = gView->sampleNameCtrl
+      endif
+
+    # Allow the user to select the user name for the protocol (except Loop and Endloop which are special)
+      if(protocol != "Loop" & protocol != "Endloop")
+
+         commentList = gView->sampleNameCtrl->menu()
+   
+         while(1)
+            newComment = gettext(prompt,newComment,20,commentList)
+            if(newComment == "cancel")
+               gView->batch->selection([-1,-1])
+               return
+            endif
+            if(isvalidfilename(newComment))
+               exitwhile
+            else
+               message("Error","The comment cannot include these characters: \/:*?\"<>|()","error") 
+            endif
+         endwhile
+         dummy = 1
+
+      endif
+  # A comment has been passed to the procedure to use that
+   else
+      newComment = passedComment
+   endif
+
+# Check for selection reversal (bottom to top)
+   if(selection[0] > selection[1])
+      temp = selection[0]
+      selection[0] = selection[1]
+      selection[1] = temp
+      reverse = 1
+   else
+      reverse = 0
+   endif
+
+# Rename all selected batch entries
+   for(idx = selection[0] to selection[1])
+
+      entry = entries[idx]
+
+      (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+
+     # Special case for loop commands
+      if(protocol == "Loop" | protocol == "Endloop")
+         newComment = self->renameLoopCommand(protocol,comment)
+         if(newComment == "cancel")
+            gView->batch->selection([-1,-1])
+            return
+         endif
+         newEntry = "$protocol$|$newComment$"
+     # All other experiments 
+      else # Don't change the comment on some protocol unless explicitly passed
+         if(self->cmdChangesOwnComment(protocol) & passedComment == null)
+            message("Error","Can't change the comment for '$protocol$'.\rPlease change the parameter value instead.","error")
+            newEntry = "$protocol$|$comment$|$exptNr$" 
+         else
+            scriptPath = getmacropath(protocol)
+           # Does it have a script defined comment
+            if(isproc(scriptPath,protocol,"renameCommand"))
+               proc = "$protocol$:renameCommand"
+               bak = getcwd()
+               cd(scriptPath)
+               newEntry = proc("$protocol$|$comment$")
+               if(newEntry == null)
+                  gView->batch->selection([-1,-1])
+                  return
+               endif
+               newEntry = newEntry + "|$exptNr$" 
+               cd(bak)
+          # Otherwise just use the new comment   
+            else 
+               newEntry = "$protocol$|$newComment$|$exptNr$" 
+            endif
+          # Update the acqu.par folder name
+            if(exptNr != 0)
+               oldName = "$exptNr$ $protocol$ ($comment$)"
+               newName = "$exptNr$ $protocol$ ($newComment$)"
+            else
+               oldName = "$protocol$ ($comment$)"
+               newName = "$protocol$ ($newComment$)"
+            endif
+            self->renameProtocolFolder(oldName, newName)
+         endif
+
+      endif
+
+    # Update the list entry with the new name
+      entries[idx] = newEntry
+
+   next(idx)
+
+# Redisplay the batch list 
+   self->displayBatchList(entries)
+# Save the current list to batchList.mac
+   self->saveCurrentList()
+
+# Reselect the original selection
+   if(reverse)
+      gView->batch->zindex(selection[1])
+   else
+      gView->batch->zindex(selection[0])
+   endif
+
+# Update the comment in the parameter list groupbox label
+   label = gView->exptParameterLabel->label() 
+   try # TODO fails for some protocols?
+   (protocol, comment, rest) = scanstr(label,"%1 (%2) %3")  
+   gView->exptParameterLabel->label("$protocol$ ($newComment$) $rest$")
+   catch
+   endtry
+
+# Remove the multi-select view
+   gView->batch->selection([-1,-1])
+ 
+endproc()
+
+###########################################################
+# Rename a specific batch list entry and update the 
+# experiment folder name
+###########################################################
+
+procedure(renameSingleProtocol, self, protocol, oldComment, exptNr, newComment)
+
+   oldEntry = "$protocol$|$oldComment$|$exptNr$"
+   newEntry = "$protocol$|$newComment$|$exptNr$"
+
+   lst = gView->batch->list
+   for(k = 0 to size(lst)-1)
+      entry = trimstr(lst[k])
+      if(entry == oldEntry)
+         lst[k] = newEntry
+         exitfor
+      endif
+   next(k)
+
+# Redisplay the batch list 
+   self->displayBatchList(lst)
+# Change the folder name
+   oldName = "$exptNr$ $protocol$ ($oldComment$)"
+   newName = "$exptNr$ $protocol$ ($newComment$)"
+
+   self->renameProtocolFolder(oldName, newName)
+# Save the current list to batchList.mac
+   self->saveCurrentList()
+ 
+endproc()
+
+
+###########################################################
+# Rename special batch commands Loop and Endloop
+###########################################################
+
+procedure(renameLoopCommand, self, protocol, comment)
+
+   if(protocol == "Loop")
+      try
+         (loopName, loopNumber) = scanstr(comment,"%1, lc*, n=%2")
+         while(1)
+            loopNumber = gettext("Enter integer value of 'n' for loop number $loopName$",loopNumber,20)
+            if(loopNumber == "cancel")
+               return("cancel")
+            endif
+            if(isinteger(loopNumber))
+               n = eval(loopNumber)
+               if(n > 0)
+                  newComment = "$loopName$, lc$loopName$, n=$loopNumber$"
+                  exitwhile
+               endif
+            endif
+         endwhile
+         dummy = null # Fixes fall-through bug
+      catch
+         (loopName, loopArray) = scanstr(comment,"%1, lc*=%2")
+         while(1)
+            loopArray = gettext("Enter array of sample numbers $loopName$",loopArray,30)
+            if(loopArray == "cancel")
+               return("cancel")
+            endif       
+            if(self->isArray(loopArray))  
+               newComment = "$loopName$, lc$loopName$=$loopArray$"
+               exitwhile
+            endif
+         endwhile
+         dummy = null # Fixes fall-through bug
+      endtry
+
+   elseif(protocol == "Endloop")
+      return(comment)
+   endif
+
+endproc(newComment)
+
+
+###########################################################
+# Check if 'input' string contains a valid array
+###########################################################
+
+procedure(isArray, self, input)
+
+   try
+      n = eval(input)
+      if(vartype(n) == "matrix1d") 
+         return(1)
+      endif
+      return(0)
+   catch
+      return(0)
+   endtry
+
+endproc()
+
+ 
+###########################################################
+# Rename a protocol folder
+###########################################################
+
+procedure(renameProtocolFolder, self, oldName, newName)
+
+   bak = getcwd()
+   if(self->batchFolder == "")
+      self->batchFolder = "$prefdir$\\SpinsolveParameters\\Batch"
+   endif
+   dir = self->batchFolder
+   if(isdir(dir))
+      cd(dir)
+      if(isdir(oldName))
+         movefile(oldName,newName)
+      endif
+   endif
+   cd(bak)
+  
+endproc()
+
+###########################################################
+# Remove any spaces (indents) from the front of the batch
+# list box entries (or any other list)
+###########################################################
+
+procedure(removeIndents, self, lst)
+
+   sz = size(lst)  
+   for(k = 0 to sz-1)
+      lst[k] = trimstr(lst[k],"front")
+   next(k)
+
+endproc(lst)
+      
+###########################################################
+# Remove a protocol or command from the batch list. Special
+# cases for Loop and Endloop commands
+###########################################################
+
+procedure(removeProtocol, self)
+
+# Restrict moving protocols down if one is running
+   if(self->remoteBatchRunning)
+      curSel = gView->batch->selection
+      curExpt =  self->remoteBatchIndex
+      if(curSel[0] <= curExpt+1)
+         print("Can't remove experiments which have been or are running\n")
+         return
+      endif
+   endif
+
+# Check for modification and reset color of tick
+   gBatch->updateProtocol(update=0)
+
+# Ignore if index is zero
+   if(gView->batch->zindex == 0)
+      return
+   endif
+
+# Remove any indents
+   entries = self->removeIndents(gView->batch->list)
+
+# See if we have a selection
+   selection = gView->batch->selection
+   if(selection[0] < 0)
+      selection[0] = gView->batch->zindex
+      selection[1] = gView->batch->zindex
+   endif
+
+# Check for selection reversal (bottom to top)
+   if(selection[0] > selection[1])
+      temp = selection[0]
+      selection[0] = selection[1]
+      selection[1] = temp
+      reverse = 1
+   else
+      reverse = 0
+   endif
+
+# Remove the selected entries
+   result = list(0)
+   for(idx = 0 to size(entries)-1)
+      if(idx >= selection[0] & idx <= selection[1])
+         entry = entries[idx]
+         par = parse(entry,"|")
+         if(size(par) == 3)
+            folder = "$par[2]$ $par[0]$ ($par[1]$)"
+            self->removeProtocolFolder(folder, prompt=0)
+         endif
+      else
+         result = result + entries[idx]
+      endif
+   next(idx)
+
+# Index to use after deletion
+   idx = selection[0] - 1  
+
+# Remove the multi-select view
+   gView->batch->selection([-1,-1])
+ 
+# Display the modified list  
+   self->displayBatchList(result)
+   if(size(result) > 0)
+      if(idx > 0 & idx < size(result))
+        gView->batch->zindex(idx)
+      else
+        gView->batch->zindex(0)
+      endif
+   endif
+
+# Save the changes
+   self->saveCurrentList()
+
+  # Note that the file has been modified
+   cd(self->batchFolder)
+   batchInfo = struct()
+   batchInfo->status = "modified"
+   save("batchStatus.par",list(batchInfo))
+
+endproc()
+
+###########################################################
+# Remove a protocol folder
+###########################################################
+
+procedure(removeProtocolFolder, self, name, prompt=1)
+
+   bak = getcwd()
+   if(self->batchFolder == "")
+      self->batchFolder = "$prefdir$\\SpinsolveParameters\\Batch"
+   endif
+   dir = self->batchFolder
+   if(isdir(dir))
+      cd(dir)
+      if(isdir(name))
+         if(prompt)
+            if(query("Warning","This will remove batch folder '$name$' from the directory\r\r$dir$\r\rNo data will be deleted. Continue?") == "no")
+               return(0)
+            endif
+         endif
+         rmfolder(name)
+      endif
+   endif
+   cd(bak)
+
+endproc(1)
+
+###########################################################
+# Run the experiments in the batch list
+# storing the results in the current data
+# folder and displaying them in the history
+# list
+###########################################################
+
+procedure(runExperiments, self, returnWithTime=0, useSelection=0)
+
+   bak = getcwd()
+
+# If the batch has been modified then reload
+   cd(self->batchFolder)
+   if(isfile("batchStatus.par"))
+      batchInfo = struct(load("batchStatus.par"))
+      if(batchInfo->status == "modified")
+         srcLst = ["Protocol/Command|Comment/Parameter"] + batchList()
+         gBatch->displayBatchList(srcLst)
+      else
+         srcLst = gView->batch->list
+      endif
+   else
+      batchInfo = struct()
+      srcLst = gView->batch->list
+   endif
+
+# Ignore if only title
+   if(size(srcLst) == 1)
+      message("Error","No batch experiments defined!","error")
+      return
+   endif
+
+# Update the batchInfo status file
+   batchInfo->status = "running"
+   save("batchStatus.par",list(batchInfo))
+
+# Simplify the list by removing any indents
+   srcLst = self->removeIndents(srcLst)
+
+# Choose to run all or selected entries
+   if(useSelection)
+      selection = gView->batch->selection
+      srcLst = srcLst[selection[0]:selection[1]]
+      offset = selection[0]
+   else # All entries
+     gView->batch->selection([-1,-1])
+     srcLst = srcLst[1:-1]
+     offset = 1
+   endif
+
+# Produce a vector, batchProgress, with the duration of each experiment
+   self->batchDurations = self->getBatchDurations(srcLst, offset)
+   cumulativeSum = cumsum(self->batchDurations)
+   self->batchProgress = round(cumulativeSum/sum(self->batchDurations) * gView->progressLength)
+   self->batchStep = 0
+   batchProgressCtrl->value(0)
+   totExptTime = cumulativeSum[-1]
+
+# See if we just want to the expected time
+   if(returnWithTime)
+      cd(bak)
+      print("\n\n  Estimated duration for batch '$getbasedir(self->batchFolder)$' is $gData->convertSeconds(totExptTime)$\n")
+      return()
+   endif
+
+## Update the finish time
+   startTime = gettime()
+   startTimeSeconds = time()
+   endTime = gData->addTimes(startTime,totExptTime)
+   remTimeCtrl->text(endTime)
+
+   pr("\n\n ------- Batch process started at $startTime$ -----\n\n")
+   pr "   Expected batch duration = $gData->convertSeconds(totExptTime)$\n\n"
+
+# Keep track of the current position in the batch list
+   queuePos = 0
+
+# Keep track of loop indicies and number of steps
+   sDepth = 10
+   loopValue = matrix(sDepth)
+   batchVar = struct()
+   batchVar->samples = [""] + gData->sampleNames 
+   loopRange = list(sDepth)
+   loopVariable = list(sDepth)
+   loopVariable[0:-1] = ""
+   loopSteps = matrix(sDepth)
+   loopBranch = matrix(sDepth)
+
+# Make sure we have set up the UI for running experiments
+   gExpt->prepareToRunExpt()
+
+# Add an entry in the history list to show this is a batch
+   self->addBatchNameToHistory("BatchStart")
+
+   shiftSamples = [""] + gData->sampleNames 
+
+
+   print("\n --- Starting Batch ----\n\n")
+   self->sendBatchMessage("Starting", offset)
+
+   while(1)
+
+     # If the batch has been modified then reload
+      cd(self->batchFolder)
+      if(isfile("batchStatus.par"))
+         batchInfo = struct(load("batchStatus.par"))
+         if(batchInfo->status == "modified")
+            srcLst = ["Protocol/Command|Comment/Parameter"] + batchList()
+            gBatch->displayBatchList(srcLst)
+            batchInfo->status = "running"
+            # Recalculate the durations and update progress
+            srcLst = srcLst[1:-1]
+            self->batchDurations = self->getBatchDurations(srcLst, offset)
+            cumulativeSum = cumsum(self->batchDurations)
+            self->batchProgress = round(cumulativeSum/sum(self->batchDurations) * gView->progressLength)
+            batchProgressCtrl->value(self->batchProgress[self->batchStep])
+            totExptTime = cumulativeSum[-1]
+           # Update the finish time
+            endTime = gData->addTimes(startTime,totExptTime)
+            remTimeCtrl->text(endTime)
+            save("batchStatus.par",list(batchInfo))
+         endif
+      endif
+
+     # See if we have completed the batch
+      if(queuePos == size(srcLst))
+         exitwhile()
+      endif
+
+     # Get the next experiment or command
+      str = srcLst[queuePos]
+      (name,args,nr) = self->parseBatchEntry(str)
+
+      if(name == "Loop")
+         try
+            (loopNr, var, nrSteps) = scanstr(args,"%1, %2, n=%3")
+            nrSteps = eval(nrSteps)
+            rangeStr = "0"
+            range = null
+         catch
+            (loopNr, var, rangeStr) = scanstr(args,"%1,%2=%3")
+            range = eval(rangeStr)
+            nrSteps = size(range)
+         endtry
+         loopNr = eval(loopNr)
+         if(loopNr >= sDepth)
+            abort("Too many nested loops - max $sDepth$\n")
+         endif
+         queuePos = queuePos + 1
+         loopSteps[loopNr] = nrSteps
+         loopRange[loopNr] = rangeStr
+         loopBranch[loopNr] = queuePos
+         loopVariable[loopNr] = var
+         if(range == null)
+            loopValue[loopNr] = 1
+         else
+            loopValue[loopNr] = range[0]
+         endif
+         assign("batchVar->$var$",loopValue[loopNr],"local")
+      elseif(name == "Endloop")
+         loopNr = eval(args)
+         loopSteps[loopNr] = loopSteps[loopNr] - 1
+         if(range == null) # Stepped
+            loopValue[loopNr] = loopValue[loopNr] + 1
+            value = loopValue[loopNr]
+         else # Range
+            range = eval(loopRange[loopNr])
+            sz = size(range)
+            idx = size(range)-loopSteps[loopNr]
+            if(idx >= 0 & idx < sz)
+               value = range[idx]
+            endif
+         endif
+
+         if(loopSteps[loopNr] <= 0)
+            queuePos = queuePos + 1
+         else
+            assign("batchVar->$loopVariable[loopNr]$",value,"local")
+            queuePos = loopBranch[loopNr]
+         endif
+      else
+        # Run the experiment, batchVar includes the sample names and the loop counters
+         self->sendBatchMessage("", queuePos+offset)
+         protocol = self->loadAndRunExperiment(queuePos+offset, batchVar)
+         self->sendBatchMessage(protocol, queuePos+offset)
+         queuePos = queuePos + 1
+      endif
+ 
+   endwhile()
+
+   self->sendBatchMessage("Finished", 0)
+
+# Add an entry in the history list to show the batch has ended
+   self->addBatchNameToHistory("BatchEnd")
+
+# Update the batchInfo status
+   cd(self->batchFolder)
+   batchInfo = struct()
+   batchInfo->status = "idle"
+   save("batchStatus.par",list(batchInfo))
+
+   self->currentBatchExpt = trimstr(gView->batch->text)
+   gExpt->cleanupAfterExpt()
+   assignlock("wvExpStatus","idle","window")
+
+   print("\n   Batch Finished - time taken $gData->convertSeconds(single(time()-startTimeSeconds))$\n")
+
+endproc()
+
+################################################################
+# Send a message to other Expert instances to update history
+################################################################
+
+procedure(sendBatchMessage, self, protocol, queuePos)
+
+   w = findprospawin()
+   ids = list(0)
+   ID = gData->specParameters->SystemID
+   for(k = 0 to size(w)-1)
+      runremote("batchInfo(\"$ID$\",\"$protocol$\",$queuePos$)",w[k])
+   next(k)
+
+endproc()
+
+################################################################
+# Given a batch list return the duration of each experiment
+################################################################
+
+procedure(getBatchDurations, self, batchList, offset)
+
+# Keep track of loop indicies and number of steps
+   sDepth = 10
+   loopValue = matrix(sDepth)
+   loopVariable = list(sDepth)
+   loopSteps = matrix(sDepth)
+   loopBranch = matrix(sDepth)
+   sz = size(batchList)
+   durations = [0]
+   queuePos = 0
+   exptCnt = 0
+
+# Loop over the 
+   while(1)
+
+     # See if we have completed the batch
+      if(queuePos == sz)
+         exitwhile()
+      endif
+
+      str = batchList[queuePos]
+      (name,args,nr) = self->parseBatchEntry(str)
+      if(name == "Loop")
+         try
+            (loopNr, var, nrSteps) = scanstr(args,"%1, %2, n=%3")
+            nrSteps = eval(nrSteps)
+         catch
+            (loopNr, var, range) = scanstr(args,"%1,%2=%3")
+            range = eval(range)
+            nrSteps = size(range)
+         endtry
+         loopNr = eval(loopNr)
+         queuePos = queuePos + 1
+         loopSteps[loopNr] = nrSteps
+         loopVariable[loopNr] = var
+         loopBranch[loopNr] = queuePos
+
+      elseif(name == "Endloop")
+         loopNr = eval(args)
+         loopSteps[loopNr] = loopSteps[loopNr] - 1
+         loopValue[loopNr] = loopValue[loopNr] + 1
+         if(loopSteps[loopNr] <= 0)
+            queuePos = queuePos + 1
+         else
+            queuePos = loopBranch[loopNr]
+         endif
+
+      else
+         duration = self->getExperimentDuration(queuePos+offset,list(0))
+         durations = join(durations,[duration])
+         queuePos = queuePos + 1
+      endif
+
+   endwhile()
+  
+endproc(durations[1:-1])
+
+#
+#
+## Generate the batch macro with code included to do determine the duration
+#   printtofile("runBatch.mac")
+#   pr("procedure(batchControl, par)\n\n")
+#   indent = "   "
+#
+#   pr("$indent$assignstruct(par)\n")
+#   pr("$indent$rmvar(\"par\",\"parentCtrl\",\"nrArgs\")\n")
+#   for(k = 0 to size(lst)-1)
+#
+#      entry = lst[k]
+#
+#      (name,comment,exptNr) = self->parseBatchEntry(entry)
+#
+#      if(name == "Loop")
+#         try
+#            (loopName,nrLoops) = scanstr(comment,"%1, lc*, n=%2")
+#            pr("$indent$for(lc$loopName$ = 1 to $nrLoops$)\n")
+#            indent = indent + "   "
+#            pr("$indent$donothing(\"\\n   Loop $loopName$ step $$lc$loopName$$$\\n\")\n")
+#         catch
+#            (loopName,loopArray) = scanstr(comment,"%1, lc*=%2")
+#            pr("$indent$loopArray$loopName$ = $loopArray$\n")
+#            pr("$indent$for(idx$loopName$ = 0 to size(loopArray$loopName$)-1)\n")
+#            indent = indent + "   "
+#            pr("$indent$lc$loopName$ = loopArray$loopName$[idx$loopName$]\n")
+#            pr("$indent$donothing(\"\\n   Loop $loopName$ lc$loopName$ = $$lc$loopName$$$\\n\")\n")
+#       #     pr("pr(local)\n")
+#
+#         endtry
+#
+#      elseif(name == "Endloop")
+#         if(size(indent) > 3)
+#            indent = indent[0:-4]
+#         endif
+#         pr("$indent$next(lc$loopName$)\n")
+#      else
+#         pr("$indent$gBatch->getExperimentDuration($k+offset$,struct(\"local\"))\n")
+#      endif
+#
+#   #pr("pr(wvExpStatus)\n")
+#
+#   next(k)
+#
+#   pr("\nendproc()\n")
+#   closeprint()
+#
+## Work out the expected total time to run each of the experiments. At the 
+## end of the macro batchDuration will have the duration of each experiment
+## in the order they will be run
+#   self->batchDuration = null
+#   try
+#      runBatch(0)
+#   catch
+#      pr lasterror()
+#      cd(bak)
+#      return
+#   endtry
+#
+## Scale the result by the total time to get cumulative fractions
+#   cumulativeSum = cumsum(self->batchDuration)
+#   self->batchProgress = round(cumulativeSum/sum(self->batchDuration) * gView->progressLength)
+#   self->batchStep = 0
+#
+## Set the finish time
+#   totExptTime = cumulativeSum[-1]
+#
+## See if we just want to the expected time
+#   if(returnWithTime)
+#      cd(bak)
+#      print("\n\n  Estimated duration for batch '$getbasedir(self->batchFolder)$' is $gData->convertSeconds(totExptTime)$\n")
+#      return()
+#   endif
+#
+## Update the finish time
+#   endTime = gData->addTimes(gettime(),totExptTime)
+#   remTimeCtrl->text(endTime)
+#
+#
+## Reset the batch progress bar
+#   batchProgressCtrl->value(0) 
+#
+## Modify runBatch to actually run the experiments
+#   escapechar("false")
+#   txt = load("runBatch.mac","text")
+#   txt = replacestr(txt,"getExperimentDuration","loadAndRunExperiment")
+#   txt = replacestr(txt,"donothing","pr")
+#   save("runBatch.mac",txt)
+#   escapechar("true")
+#
+## Run the batch checking for abort and loop position errors.
+#   gExpt->prepareToRunExpt()
+#   try
+#      self->addBatchNameToHistory("BatchStart")
+#      pause(1) # Ensures time is different
+#      pr("\n\n ------- Batch process started at $gettime()$ -----\n\n")
+#      pr "   Expected batch duration = $gData->convertSeconds(totExptTime)$\n\n"
+#      startTime = time()
+#      shiftSamples = [""] + gData->sampleNames 
+#      s = struct(samples=shiftSamples)
+#      runBatch(s)
+#      timeTaken = gData->addTimes("00:00:00",time()-startTime)
+#      remTimeCtrl->text(timeTaken)
+#      pr("\n\n ------ Batch process finished at $gettime()$ -----\n\n")
+#      pause(0.5)
+#      pr "   Total batch duration = $timeTaken$\n\n"
+#      self->addBatchNameToHistory("BatchEnd")
+#   catch
+#      err = lasterror()
+#      if(err->type == "Throw" & err->description == "abort")
+#         self->addBatchNameToHistory("BatchAborted")
+#         print("\n ------ Batch process aborted -----\n")
+#      elseif(err->type == "Throw" & err->description == "complete")
+#         self->addBatchNameToHistory("BatchExited")
+#         print("\n ------ Batch process exited early -----\n")
+#      else
+#         pr err
+#      endif
+#   endtry
+#   self->currentBatchExpt = trimstr(gView->batch->text)
+#   gExpt->cleanupAfterExpt()
+#   assignlock("wvExpStatus","idle","window")
+#
+#   cd(bak)
+#
+#endproc(totExptTime)
+
+
+#procedure(runExperiments, self, returnWithTime=0, useSelection=0)
+#
+#   bak = getcwd()
+#
+## Get the list of experiments
+#   lst = gView->batch->list
+#
+## Ignore if only title
+#   if(size(lst) == 1)
+#      message("Error","No batch experiments defined!","error")
+#      return
+#   endif
+#
+#   lst = self->removeIndents(lst)
+#
+## Allow to just run the selected entries
+#   if(useSelection)
+#      selection = gView->batch->selection
+#      lst = lst[selection[0]:selection[1]]
+#      offset = selection[0]
+#   else
+#      gView->batch->selection([-1,-1])
+#      lst = lst[1:-1]
+#      offset = 1
+#   endif
+#
+## Generate the batch macro with code included to do determine the duration
+#   printtofile("runBatch.mac")
+#   pr("procedure(batchControl, par)\n\n")
+#   indent = "   "
+#
+#   pr("$indent$assignstruct(par)\n")
+#   pr("$indent$rmvar(\"par\",\"parentCtrl\",\"nrArgs\")\n")
+#   for(k = 0 to size(lst)-1)
+#
+#      entry = lst[k]
+#
+#      (name,comment,exptNr) = self->parseBatchEntry(entry)
+#
+#      if(name == "Loop")
+#         try
+#            (loopName,nrLoops) = scanstr(comment,"%1, lc*, n=%2")
+#            pr("$indent$for(lc$loopName$ = 1 to $nrLoops$)\n")
+#            indent = indent + "   "
+#            pr("$indent$donothing(\"\\n   Loop $loopName$ step $$lc$loopName$$$\\n\")\n")
+#         catch
+#            (loopName,loopArray) = scanstr(comment,"%1, lc*=%2")
+#            pr("$indent$loopArray$loopName$ = $loopArray$\n")
+#            pr("$indent$for(idx$loopName$ = 0 to size(loopArray$loopName$)-1)\n")
+#            indent = indent + "   "
+#            pr("$indent$lc$loopName$ = loopArray$loopName$[idx$loopName$]\n")
+#            pr("$indent$donothing(\"\\n   Loop $loopName$ lc$loopName$ = $$lc$loopName$$$\\n\")\n")
+#       #     pr("pr(local)\n")
+#
+#         endtry
+#
+#      elseif(name == "Endloop")
+#         if(size(indent) > 3)
+#            indent = indent[0:-4]
+#         endif
+#         pr("$indent$next(lc$loopName$)\n")
+#      else
+#         pr("$indent$gBatch->getExperimentDuration($k+offset$,struct(\"local\"))\n")
+#      endif
+#
+#   #pr("pr(wvExpStatus)\n")
+#
+#   next(k)
+#
+#   pr("\nendproc()\n")
+#   closeprint()
+#
+## Work out the expected total time to run each of the experiments. At the 
+## end of the macro batchDuration will have the duration of each experiment
+## in the order they will be run
+#   self->batchDuration = null
+#   try
+#      runBatch(0)
+#   catch
+#      pr lasterror()
+#      cd(bak)
+#      return
+#   endtry
+#
+## Scale the result by the total time to get cumulative fractions
+#   cumulativeSum = cumsum(self->batchDuration)
+#   self->batchProgress = round(cumulativeSum/sum(self->batchDuration) * gView->progressLength)
+#   self->batchStep = 0
+#
+## Set the finish time
+#   totExptTime = cumulativeSum[-1]
+#
+## See if we just want to the expected time
+#   if(returnWithTime)
+#      cd(bak)
+#      print("\n\n  Estimated duration for batch '$getbasedir(self->batchFolder)$' is $gData->convertSeconds(totExptTime)$\n")
+#      return()
+#   endif
+#
+## Update the finish time
+#   endTime = gData->addTimes(gettime(),totExptTime)
+#   remTimeCtrl->text(endTime)
+#
+#
+## Reset the batch progress bar
+#   batchProgressCtrl->value(0) 
+#
+## Modify runBatch to actually run the experiments
+#   escapechar("false")
+#   txt = load("runBatch.mac","text")
+#   txt = replacestr(txt,"getExperimentDuration","loadAndRunExperiment")
+#   txt = replacestr(txt,"donothing","pr")
+#   save("runBatch.mac",txt)
+#   escapechar("true")
+#
+## Run the batch checking for abort and loop position errors.
+#   gExpt->prepareToRunExpt()
+#   try
+#      self->addBatchNameToHistory("BatchStart")
+#      pause(1) # Ensures time is different
+#      pr("\n\n ------- Batch process started at $gettime()$ -----\n\n")
+#      pr "   Expected batch duration = $gData->convertSeconds(totExptTime)$\n\n"
+#      startTime = time()
+#      shiftSamples = [""] + gData->sampleNames 
+#      s = struct(samples=shiftSamples)
+#      runBatch(s)
+#      timeTaken = gData->addTimes("00:00:00",time()-startTime)
+#      remTimeCtrl->text(timeTaken)
+#      pr("\n\n ------ Batch process finished at $gettime()$ -----\n\n")
+#      pause(0.5)
+#      pr "   Total batch duration = $timeTaken$\n\n"
+#      self->addBatchNameToHistory("BatchEnd")
+#   catch
+#      err = lasterror()
+#      if(err->type == "Throw" & err->description == "abort")
+#         self->addBatchNameToHistory("BatchAborted")
+#         print("\n ------ Batch process aborted -----\n")
+#      elseif(err->type == "Throw" & err->description == "complete")
+#         self->addBatchNameToHistory("BatchExited")
+#         print("\n ------ Batch process exited early -----\n")
+#      else
+#         pr err
+#      endif
+#   endtry
+#   self->currentBatchExpt = trimstr(gView->batch->text)
+#   gExpt->cleanupAfterExpt()
+#   assignlock("wvExpStatus","idle","window")
+#
+#   cd(bak)
+#
+#endproc(totExptTime)
+
+###########################################################
+# Save the batch list (save command)
+###########################################################
+
+procedure(saveCurrentList, self)
+
+   dir = self->batchFolder
+   mkdir(dir)
+   cd(dir)
+
+   entries = self->removeIndents(gView->batch->list())
+   sz = size(entries) 
+
+   printtofile("batchList.mac")
+   pr("procedure(batchList)\n")
+
+   if(sz >= 3)
+      pr ("\n   batchList = [\"$entries[1]$\",\n")
+      for(k = 2 to sz-2)
+         pr("               \"$entries[k]$\",\n")  
+      next(k)
+      pr("               \"$entries[-1]$\"]\n")  
+   elseif(sz == 2)
+      pr("\n   batchList = [\"$entries[1]$\"]\n")  
+   else
+      pr("\n   batchList = null\n")    
+   endif  
+
+   pr("\nendproc(batchList)\n")
+   closeprint()
+   self->updateModifiedStatus(0)
+
+endproc()
+
+###########################################################
+# Save the parameter list of the current batch experiment
+# (self->currentBatchExpt) to the current acqu.par file
+###########################################################
+
+procedure(saveCurrentParameters, self, protocol=null, comment=null, exptNr=null)
+
+# Get the name from the current batch list entry
+   if(protocol == null)
+      if(gView->batch->text == null)
+         return(0)
+      endif
+      if(self->currentBatchExpt == "") # First time selection
+         entry = trimstr(gView->batch->text)
+         (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+         if(self->isBatchCommand(protocol))
+            return(0)
+         endif
+         self->currentBatchExpt = entry
+      else
+         entry = trimstr(self->currentBatchExpt)
+        (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+      endif
+   endif
+
+# Do nothing for some commands
+   if(self->isBatchCommand(protocol))
+      return(0)
+   endif
+
+# Check to see if current experiment matches current batch file
+   if(gData->curExpt->protocol != protocol)
+      message("Error","Can't update batch experiment '$protocol$' with '$gData->curExpt->protocol$' parameters","error")
+      return(0)
+   endif
+
+# Determine the batch folder name and move into it
+   if(exptNr == 0)
+      folderName = "$protocol$ ($comment$)"
+   else
+      folderName = "$exptNr$ $protocol$ ($comment$)"
+   endif
+   if(self->batchFolder == "")
+      self->batchFolder = "$prefdir$\\SpinsolveParameters\\Batch"
+   endif
+   bak = getcwd()
+   dir = self->batchFolder
+   mkdir(dir)
+   cd(dir)
+   mkdir(folderName)
+   cd(folderName)
+
+# Update the acqu.par file for this batch experiment
+# TODO this will save a variable in the parameter field
+# with its actual value or treat it like a string - how to fix? 
+   ctrlStart = gParam->firstParameterCtrl
+   ctrlEnd = gParam->lastParameterCtrl
+   parameters = getctrlvalues(0,"list","range",[ctrlStart,ctrlEnd])
+
+   save("acqu.par",sortlist(parameters),"truedoubles")
+   gDebug->pr("Saved acqu.par to batch folder")             
+   cd(bak)
+
+# Update the current batch experiment with the current selection
+# as long as it is not a batch command (Loop, Endloop etc)
+   entry = trimstr(gView->batch->text)
+   (protocol,comment,exptNr) = self->parseBatchEntry(entry)
+   if(self->isBatchCommand(protocol))
+      return(0)
+   endif
+   self->currentBatchExpt = entry
+
+endproc(1)
+
+###########################################################
+# Save the batch list and all files
+###########################################################
+
+procedure(saveBatchList, self)
+
+# Save existing list if modified
+   if(self->batchListModified)
+      if(query("Warning", "The batch list has been modified, do you wish to save it?") == "yes")
+         self->saveCurrentList()
+      endif
+     self->updateModifiedStatus(0)
+   endif
+
+   n = window("Save Current Batch To New Folder", -1, -1, 400, 220, "resizable")
+
+      # Define all controls with basic parameters
+      batchFolders = listbox(1, 20, 80, "ww-100", "wh-96",
+                             evt = batchFolders->event;
+                             if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow");
+                                batchName->text(batchFolders->text);
+                             endif;)
+      batchName = textbox(2, 125, 20, "ww-135")
+    
+      statictext(3, 120, 23, "right", "New batch folder name:")
+      statictext(4, "ww/2-50", 62, "center", "Existing batch folders")
+      setpar(n,4,"color",[128,0,0])
+
+      button(5, "ww-63", "wh-95", 52, 32, "Save",
+             cd(gBatch->stdBatchLocation);
+             newDir = "$gBatch->stdBatchLocation$\\$batchName->text$";
+             oldDir = gBatch->batchFolder;
+             if(not(isvalidfilename(batchName->text)));
+                 message("Error","Please choose a valid folder name.","error");
+                 return;
+             endif;
+             mkdir(batchName->text);
+             cd(batchName->text);
+             cd(newDir);
+             oldLst = getdirlist(oldDir);
+             newLst = getdirlist(newDir);
+             newFiles = getfilelist(newDir);
+             if(size(newLst) == 0 & size(newFiles) == 0);
+                for(k = 0 to size(oldLst)-1);
+                   folder = oldLst[k];
+                   mkdir(folder);
+                   src = "$oldDir$\\$folder$\\acqu.par";
+                   dst = "$newDir$\\$folder$\\acqu.par";
+                   copyfile(src,dst);
+                next(k);
+                gBatch->batchFolder = newDir;
+                gBatch->saveCurrentList();
+                gView->batchLabel->label("Batch list for '$getbasedir(newDir)$'");
+                closedialog();
+             else;
+                message("Error","This folder already has something in it - please choose an empty one.","error");
+             endif;)                      
+      button(6, "ww-63", "wh-53", 52, 32, "Close",
+         closedialog();)
+
+   setpar(n,5,"mode","default")
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"sizelimits",[400,1000,220,1000])
+
+   dir = self->stdBatchLocation
+   folders = getdirlist(dir)
+   batchFolders->list(sortlist(folders))
+   showdialog(n)
+
+endproc()
+
+###########################################################
+# Rename a batch list 
+###########################################################
+
+procedure(renameBatchList, self)
+
+# Save existing list if modified
+   if(self->batchListModified)
+      if(query("Warning", "The batch list has been modified, do you wish to save it?") == "yes")
+         self->saveCurrentList()
+      endif
+     self->updateModifiedStatus(0)
+   endif
+
+   n = window("Rename a Batch Folder", -1, -1, 400, 220, "resizable")
+
+      # Define all controls with basic parameters
+      batchFolders = listbox(1, 20, 80, "ww-100", "wh-96",
+                             evt = batchFolders->event;
+                             if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow");
+                                batchName->text(batchFolders->text);
+                             endif;)
+      batchName = textbox(2, 125, 20, "ww-135")
+    
+      statictext(3, 120, 23, "right", "New batch folder name:")
+      statictext(4, "ww/2-50", 62, "center", "Batch folder to be renamed")
+      setpar(n,4,"color",[128,0,0])
+
+      button(5, "ww-63", "wh-95", 52, 32, "Rename",
+             cd(gBatch->stdBatchLocation);
+             newDir = "$gBatch->stdBatchLocation$\\$batchName->text$";
+             oldDir = "$gBatch->stdBatchLocation$\\$batchFolders->text$";
+             if(not(isvalidfilename(batchName->text)));
+                 message("Error","Please choose a valid folder name.","error");
+                 return;
+             endif;
+             if(not(isdir(newDir)));
+                movefile(oldDir,newDir);
+                folders = getdirlist(gBatch->stdBatchLocation);
+                batchFolders->list(sortlist(folders));
+                if(oldDir == gBatch->batchFolder);
+                   gBatch->batchFolder = newDir;
+                   gView->batchLabel->label("Batch list for '$getbasedir(newDir)$'");
+                endif;
+             else;
+                message("Error","This folder already exists - please choose a new name.","error");
+             endif;)                      
+      button(6, "ww-63", "wh-53", 52, 32, "Close",
+         closedialog();)
+
+   setpar(n,5,"mode","default")
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"sizelimits",[400,1000,220,1000])
+
+   dir = self->stdBatchLocation
+   folders = getdirlist(dir)
+   batchFolders->list(sortlist(folders))
+   idx = getlistindex(folders,getbasedir(gBatch->batchFolder))
+   batchFolders->zindex(idx)
+   showdialog(n)
+
+endproc()
+
+
+###########################################################
+# If multiple lines are selected in the batch list
+# then remove them and select the curret line
+###########################################################
+
+procedure(selectCurrentBatchEntry, self)
+
+# Remove multiple selection in batch list
+   selection = gView->batch->selection
+   if(selection[0] != -1)
+      idx = selection[0]
+      gView->batch->selection([-1,-1])
+      gView->batch->zindex(idx)
+   endif
+
+endproc()
+
+###########################################################
+# Change the modified status of the batch label (a '*')
+###########################################################
+
+procedure(updateModifiedStatus, self, status)
+
+   self->batchListModified = status
+   label = gView->batchLabel->label
+   if(status == 1)
+      if(label[-1] != "*")
+         gView->batchLabel->label(gView->batchLabel->label + "*")
+      endif
+   else
+      if(label[-1] == "*")
+         gView->batchLabel->label(label[0:-2])
+     endif
+   endif
+
+endproc()
+
+###########################################################
+# Update the parameters for the protocol. If update = 0
+# then just remove the tick red color if update = 1 then
+# also update the comment and  save the parameters (acqu.par)
+# Index indicates which batch list entry to save. If null
+# then save the current entry otherwise use the supplied
+# list index.
+###########################################################
+
+procedure(updateProtocol, self, update=1, idx=null)
+
+   if(gView->batch->text == null)
+      message("Information","Please select a batch experiment to update","info")
+      return
+   endif
+
+# TODO how to add a variable name to a parameter in acqu.par?
+# This just sets lc1 to 1 - how can we get the correct value?
+ #  assign("lc1",1,"global")
+
+# Make sure all parameters are ok
+# TODO this may need modifying to allow for variables
+# in a parameter field
+   if(checkcontrols(0) == "error")
+      return
+   endif
+
+# Remove the change flag and restore the update icon color
+   gParam->parChangedFlag = 0
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\BitMaps")
+   gView->upDateParametersButton->icon("check.png")
+   cd(bak)
+
+# We just wanted to reset the icon color
+   if(update == 0)
+      return
+   endif
+
+# Check if the comment will change if the content changes
+   if(idx == null)
+     (protocol,comment,exptNr) = self->parseBatchEntry(gView->batch->text)
+   else
+      lst = gView->batch->list
+     (protocol,comment,exptNr) = self->parseBatchEntry(lst[idx])
+   endif
+
+# Check if special procedure in place to handle changing parameters
+   scriptPath = getmacropath(protocol)
+   if(isproc(scriptPath,protocol,"parameterChanged")) # User defined
+      proc = "$protocol$:parameterChanged"
+      bak = getcwd()
+      cd(scriptPath)
+      proc(protocol,comment,exptNr)
+      cd(bak)
+      gView->batch->zindex(self->currentBatchExptIdx)
+      return
+   endif()
+
+# Update the relevant parameters 
+   self->saveCurrentParameters(protocol,comment,exptNr)
+   gView->batch->zindex(self->currentBatchExptIdx)
+   setfocus(0,gView->batch->ctrlnr)
+
+endproc()
+
+###########################################################
+# Show the contents of the current batch folder
+###########################################################
+
+procedure(viewBatchFolder, self)
+
+   if(self->batchFolder != "")
+      if(isdir(self->batchFolder))
+         exec("explorer",self->batchFolder)
+      else
+         message("Error","The following batch folder was not found:\r\r'$self->batchFolder$'")
+      endif
+   else
+      message("Error","No current batch folder defined")
+   endif
+
+endproc()
+
+   

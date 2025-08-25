@@ -1,0 +1,210 @@
+###########################################################
+# Import class for SpinsolveExpert
+#
+# V2.xx.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+
+   self->getDataType            = "seImport:getDataType"
+   self->importOldData          = "seImport:importOldData"
+   self->importOldDataCore      = "seImport:importOldDataCore"
+   self->importNewData          = "seImport:importNewData"
+   self->importMultipleFolders  = "seImport:importMultipleFolders"
+
+endproc()
+
+###########################################################
+# Work out what type of data is stored in srcDir based
+# on its name
+###########################################################
+
+procedure(getDataType, self, srcDir)
+
+# Decide what version of data is in folder srcDir
+   dataType = "unknown"
+   dateStamp = null
+   timeStamp = null
+   protocol = ""
+   suffix = ""
+
+   baseDir = getbasedir(srcDir)
+
+   if(dataType == "unknown")
+      try
+         (dateStamp, timeStamp, protocol, suffix) = scanstr(baseDir,"%1-%2 %3 (%4)")
+         dataType = "new"
+      catch
+      endtry
+   endif
+
+   if(dataType == "unknown")
+      try
+         (dateStamp, timeStamp, protocol) = scanstr(baseDir,"%1-%2 %3 ()")
+         dataType = "new"
+      catch
+      endtry
+   endif
+
+   if(dataType == "unknown")
+      try
+         (protocol, suffix) = scanstr(baseDir,"%1 (%2)")
+         dataType = "old"
+      catch
+      endtry
+   endif
+
+   if(dataType == "unknown")
+      try
+         cd(srcDir)
+         if(isfile("acqu.par"))
+            dataType = "old"
+         endif
+         cd("..")
+         protocol = baseDir
+      catch
+      endtry
+   endif
+
+endproc(dataType, dateStamp, timeStamp, protocol, suffix)
+
+
+##############################################################################
+# Copy multiple folders in srcDir to the current date heirarchy
+##############################################################################
+
+procedure(importMultipleFolders, self, srcDir)
+
+   folders = getdirlist(srcDir)
+   lastFolder = null
+   cd(srcDir)
+
+   for(k = 0 to size(folders)-1)
+
+      dir = "$srcDir$\\$folders[k]$"
+      cd(dir)
+  
+      (dataType, dateStamp, timeStamp, protocol, suffix) = gImport->getDataType(dir)
+
+      if(dataType == "new")
+         lastFolder = self->importNewData(dir, dateStamp, timeStamp, protocol, suffix)
+      else
+         lastFolder = self->importOldData(dir, protocol, suffix)
+      endif
+
+      cd("..")
+
+   next(k)
+
+endproc(lastFolder)
+
+##############################################################################
+# Copy selected new data folders into date heirarchy
+# Currently only 2 level are subfolders are copied
+##############################################################################
+
+procedure(importNewData, self, srcDir, dateStamp, timeStamp, protocol, suffix)
+
+# Work out source and destination directories
+   cd("$srcDir$\\..")
+   dateFolders = "20$dateStamp[0:1]$\\$dateStamp[2:3]$\\$dateStamp[4:5]$"
+   exptFolder = "$dateStamp$-$timeStamp$ $protocol$ ($suffix$)"
+   dstDir = "$gView->projPathCtrl->text$\\$dateFolders$\\$exptFolder$"
+
+# Check for overwrite
+   if(isdir(dstDir))
+      if(query("Warning!","The following imported data directory already exists:\r\r'$dstDir$'\r\rDo you want to overwrite it?") == "no")
+         return(null)
+      endif
+   endif
+
+# Copy the contents of this folder
+   gData->copyFolder(srcDir,dstDir)
+
+   folders = getdirlist(srcDir)
+
+# Copy any subfolders (2 levels only)
+   for(k = 0 to size(folders)-1)
+      gData->copyFolder("$srcDir$\\$folders[k]$","$dstDir$\\$folders[k]$")
+      folders2 = getdirlist("$srcDir$\\$folders[k]$")
+      for(q = 0 to size(folders2)-1)
+         gData->copyFolder("$srcDir$\\$folders[k]$\\$folders2[q]$","$dstDir$\\$folders[k]$\\$folders2[q]$")
+      next(q)
+   next(k)
+
+# Report
+   pr("\n   Data has been imported from:\n\n     '$srcDir$'\n\n   To:\n\n     '$dstDir$'\n")
+
+endproc(dstDir)
+
+
+###########################################################
+# Import old expert data (without date and time stamp) 
+# into the current heirarchy (flat or date based)
+###########################################################
+
+procedure(importOldData, self, srcDir, protocol, suffix)
+
+# First look into the selected folder to see if it contains data or subexperiments
+# lastDir will be null if acqu.par not found
+   lastDir = null
+   cd(srcDir)
+
+   folders = getdirlist(".")
+
+   subExptFound = 0
+   for(k = 0 to size(folders)-1)
+      if(isinteger(folders[k]))
+         lastDir = self->importOldDataCore("$srcDir$\\$folders[k]$",protocol,suffix)
+         subExptFound = 1   
+      endif
+   next(k)
+
+   if(subExptFound == 0)
+       lastDir = self->importOldDataCore(srcDir,protocol,suffix)
+   endif    
+
+endproc(lastDir)
+
+###########################################################
+# Import data without date and time stamp into the current
+# heirarchy - core code
+###########################################################
+
+procedure(importOldDataCore, self, srcDir, protocol, suffix)
+
+   bak = getcwd()
+   cd(srcDir)
+   dstDir = null
+   if(isfile("acqu.par"))
+      dateNTime = fileinfo("acqu.par","dateandtime","modified")
+      (yr,mth,day,hr,min,sec) = scanstr(dateNTime,"%1-%2-%3-%4-%5-%6")
+      timeStamp = "$eval(hr),02d$$eval(min),02d$$eval(sec),02d$"
+      dateStamp = "$eval(yr[2:3]),02d$$eval(mth),02d$$eval(day),02d$"
+      exptFolder = "$dateStamp$-$timeStamp$ $protocol$ ($suffix$)"
+      dstDir = "$gView->projPathCtrl->text$\\$yr$\\$eval(mth),02d$\\$eval(day),02d$\\$exptFolder$"
+
+      if(isdir(dstDir))
+         if(query("Warning!","The following imported data directory already exists:\r\r'$dstDir$'\r\rDo you want to overwrite it?") == "no")
+            return
+         endif
+      endif
+     # Copy the contents of this folder
+      gData->copyFolder(srcDir,dstDir)
+      folders = getdirlist(".")
+     # Copy any subfolders (1 level only)
+      for(k = 0 to size(folders)-1)
+         gData->copyFolder("$srcDir$\\$folders[k]$","$dstDir$\\$folders[k]$")
+      next(k)
+         
+      pr("\n   Data has been imported from:\n\n     '$srcDir$'\n\n   To:\n\n     '$dstDir$'\n")
+   endif
+   cd(bak)
+
+endproc(dstDir)

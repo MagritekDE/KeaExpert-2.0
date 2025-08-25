@@ -1,0 +1,90 @@
+procedure(getwindowpar_test1,verbose,delay)
+
+# Make a window and show it
+   n = :windowdefinition()
+   showwindow(n)
+
+   if(getwindowpar(n,"macroname") != "getwindowpar_test1.mac")
+      return(0, "Invalid result for: getwindowpar() #1")
+   endif
+
+   if(getwindowpar(n,"macropath") != getmacropath())
+      return(0, "Invalid result for: getwindowpar() #2")
+   endif 
+
+   if(getwindowpar(n,"title") != "getwindowpar test")
+      return(0, "Invalid result for: getwindowpar() #3")
+   endif 
+#
+#   if(getwindowpar(n,"x") != 100)
+#      return(0, "Invalid result for: getwindowpar() #4")
+#   endif 
+#
+#   if(getwindowpar(n,"y") != 120)
+#      return(0, "Invalid result for: getwindowpar() #5")
+#   endif 
+#
+#   if(getwindowpar(n,"width") != 225)
+#      return(0, "Invalid result for: getwindowpar() #6")
+#   endif 
+pr "PROBLEM HERE\n!"
+#   if(getwindowpar(n,"height") != 157)
+#      return(0, "Invalid result for: getwindowpar() #7")
+#   endif 
+
+#   if(getwindowpar(n,"dimensions") != [100,120,225,157])
+#      return(0, "Invalid result for: getwindowpar() #8")
+#   endif 
+
+#   if(getwindowpar(n,"position") != [100,120])
+#      return(0, "Invalid result for: getwindowpar() #9")
+#   endif 
+
+   if(getwindowpar(n,"winNr") != n)
+      return(0, "Invalid result for: getwindowpar() #10")
+   endif 
+
+   lst = getwindowpar(n,"ctrllist")
+   if(lst != [10:-1:1])
+      return(0, "Invalid result for: getwindowpar() #11")
+   endif 
+  
+   pause(1)
+   closewindow(n)     
+
+endproc(1,"")
+
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("getwindowpar test", 100, 120, 225, 157)
+
+      # Define all controls with basic parameters
+       colorbox(1, 27, 23, 22, 22, [255,0,0])
+       checkbox(2, 36, 64, "no,yes", "no")
+       radiobuttons(3, 81, 27, 20, "horizontal", "a,b,c", "a")
+       slider(4, 31, 96, 100, 20, "horizontal")
+       textbox(5, 150, 15, 40)
+       textbox(6, 150, 40, 40)
+       textmenu(7, 150, 65, 60, 200)
+       textmenu(8, 150, 90, 60, 200)
+       statictext(9, 81, 55, "left","some text")
+       statictext(10, 81, 70, "left","42")
+
+     # Set other control parameters
+       setpar(n,1,"color",[0,255,0])
+       setpar(n,2,"text","yes")
+       setpar(n,3,"text","b")
+       setpar(n,4,"value",50)
+       setpar(n,5,"text","string")
+       setpar(n,6,"text","100")
+       setpar(n,7,"menu",["option1","option2","option3"])
+       setpar(n,8,"menu",["1","2","3"])
+       setpar(n,7,"text","option2")
+       setpar(n,8,"text","3")
+
+      
+
+endproc(n)

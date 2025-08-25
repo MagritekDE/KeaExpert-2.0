@@ -1,0 +1,50 @@
+####################################################
+# Display a dialog into which the window title
+# of the currently edited GUI (editWin) can be
+# entered.
+####################################################
+
+procedure(setGuiTitle,editWin)
+
+   n = :windowdefinition()
+   windowvar(winNr)
+   winNr = editWin;
+   txt = getwindowpar(editWin,"title")
+   setpar(n,2,"text",txt)
+   setpar(n,4,"text",getwindowpar(winNr,"resizable"))
+   setwindowpar(n,"title","Window $winNr$ parameters ")
+   setwindowpar(n,"focus",1)
+   showdialog(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Set window parameters", -1, -1, 239, 120)
+       setwindowpar(n,"type","dialog")
+       groupbox(1,"",6,0,222,75)
+      # Define all controls with basic parameters
+       textbox(2, 41, 16, 161)
+       statictext(3, 15, 20, "left", "Title")
+       checkbox(4,70,50,"false,true","false")
+       statictext(5, 15, 49, "left", "Resizable")
+       button(6, 45, 85, 48, 25, "Apply",:apply();)
+       button(7, 138, 85, 48, 25, "Cancel",
+              closedialog();
+              seteditwin(winNr);)
+
+       setpar(n,6,"mode","default")
+
+endproc(n)
+
+procedure(apply)
+
+    txt = getpar(0,2,"text")+"*"
+    setwindowpar(winNr,"title",txt)
+    setwindowpar(winNr,"resizable",getpar(0,4,"text"))
+    closedialog()
+    seteditwin(winNr)
+   
+endproc()

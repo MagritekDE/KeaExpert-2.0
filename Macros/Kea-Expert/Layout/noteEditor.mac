@@ -1,0 +1,95 @@
+##################################################
+# Generate an editor window for taking notes
+#
+#
+###################################################
+
+procedure(noteWin)
+
+   (x,y,w,h) = :loadpar()
+   n = window("Experiment note editor", 100,100,400,600,"resizable")
+   setwindowpar(n,"dimensions",[x,y,w,h])
+   setwindowpar(n,"title","Note Editor")
+   setwindowpar(n,"titleupdate","true")
+   m = 1
+   editor(m,5,5,"ww-10","wh-10")
+   
+      
+   menu(m+1,"File",
+                "Save note\tCtrl+S",noteEditor:saveText(),
+                "Exit\tCtrl+Q", :exitproc(); closewindow(0))
+
+   menu(m+2,"Edit","Undo\tCtrl+Z",funcedit("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcedit("cut"),
+                "Copy\tCtrl+C",funcedit("copy"),
+                "Paste\tCtrl+V",funcedit("paste"))
+   setpar(n,m,"menubar",[m+1:m+2])
+
+# Stand alone window
+   setwindowpar(n,"menubar",[m+1:m+2])
+   showwindow(n,"recalc")
+   setwindowpar(n,"keepinfront","true")
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+endproc(n)
+
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   try
+      pos = load("noteEditor.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 400
+      h = 400
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   save("noteEditor.par",par)
+   cd(bak)
+   :saveText()
+  # r = getobj(0)->saveEditSessions("")
+
+endproc()
+
+# Save text
+procedure(saveText, n=0)
+
+   #funcedit("save macro")
+   if(n == 0)
+      obj = cureditor()
+      n = obj->winNr()
+   endif    
+
+   t = getwindowpar(n,"title")
+
+   if(t[-1] == "*")
+      bak = getcwd()
+      path = getobj(n,1)->pathname()
+      file = getobj(n,1)->filename()
+      txt = getobj(n,1)->text()
+      cd(path)
+      save(file,txt)
+      cd(bak)
+      getobj(n,1)->modified("false")
+      setwindowpar(n,"title",t[0:-2])
+   endif
+
+endproc()

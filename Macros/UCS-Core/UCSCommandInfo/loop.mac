@@ -1,0 +1,21 @@
+###################################################################################
+# 
+###################################################################################
+
+procedure(loop, loopName, nrLoops)
+
+   if(gSeq->psInfo->skipCmds == 0)
+   
+      gSeq->psInfo->loopCnt = gSeq->psInfo->loopCnt + 1
+      cnt = gSeq->psInfo->loopCnt
+      if(cnt == gSeq->psInfo->stackSize)
+         abort("Too many loops - max $cnt$")
+      endif
+      gSeq->psInfo->loopNStk[cnt] = nrLoops
+      gSeq->psInfo->durationNStk[cnt] = 0
+      gSeq->psInfo->command = gSeq->psInfo->command + ["loop,$loopName$,$nrLoops$"]
+
+   endif
+
+endproc()
+

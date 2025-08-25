@@ -1,0 +1,31 @@
+procedure(saveData)
+
+# Save the results
+   cd(prefdir)
+   mkdir("SpinsolveData")
+   cd("SpinsolveData")
+   mkdir("Setup")
+   cd("Setup")
+
+   layout = ["pt1","pt2",";","pt3","pt4","pt5"]
+
+   sz = size(layout)
+
+  # Save the plot data
+   for(k = 0 to sz-1)
+
+      name = layout[k]
+      if(name != ";")
+pr "pltCtrl$name[2]$"
+          ctrlNr = findobj(0,"objID","pltCtrl$name[2]$")
+pr ctrlNr
+         if(name[0:1] == "pt")
+            getobj(0,ctrlNr)->save("$name$.pt1")
+         elseif(name[0:1] == "im")
+            getobj(0,ctrlNr)->save("$name$.pt2")
+         endif
+      endif
+
+   next(k)
+
+endproc()

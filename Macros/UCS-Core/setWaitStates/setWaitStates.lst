@@ -1,0 +1,75 @@
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   18-07-02  17:51:16  setWaitStates.asm  Page 1
+
+
+
+1      
+2                          ;***************************************************************************
+692                        ;***************************************************************************
+693    
+694    
+695    
+696                        ; **************************************************************************
+697                        ;
+698       P:002000                   org     p:$002000                         ; start
+699    
+700       P:002000 605E00            move              r0,x:(r6)+              ; Save registers
+701       P:002001 615E00            move              r1,x:(r6)+
+702       P:002002 625E00            move              r2,x:(r6)+
+703       P:002003 635E00            move              r3,x:(r6)+
+704       P:002004 645E00            move              r4,x:(r6)+
+705       P:002005 655E00            move              r5,x:(r6)+
+706       P:002006 675E00            move              r7,x:(r6)+
+707       P:002007 445E00            move              x0,x:(r6)+
+708       P:002008 455E00            move              x1,x:(r6)+
+709       P:002009 465E00            move              y0,x:(r6)+
+710       P:00200A 475E00            move              y1,x:(r6)+
+711       P:00200B 515E00            move              b0,x:(r6)+
+712       P:00200C 555E00            move              b1,x:(r6)+
+713       P:00200D 535E00            move              b2,x:(r6)+
+714    
+715       P:00200E 08F4BB            movep             #$0FEFE1,x:A_BCR        ; Set up wait states, 7 for AA3
+                   0FEFE1
+716    
+717       P:002010 370200            move              #2,r7                   ; Wait 2us
+718       P:002011 0D1080            bsr     wait
+                   000011
+719    
+720       P:002013 53FE00            move              x:-(r6),b2              ; Restore registers
+721       P:002014 55FE00            move              x:-(r6),b1
+722       P:002015 51FE00            move              x:-(r6),b0
+723       P:002016 47FE00            move              x:-(r6),y1
+724       P:002017 46FE00            move              x:-(r6),y0
+725       P:002018 45FE00            move              x:-(r6),x1
+726       P:002019 44FE00            move              x:-(r6),x0
+727       P:00201A 67FE00            move              x:-(r6),r7
+728       P:00201B 65FE00            move              x:-(r6),r5
+729       P:00201C 64FE00            move              x:-(r6),r4
+730       P:00201D 63FE00            move              x:-(r6),r3
+731       P:00201E 62FE00            move              x:-(r6),r2
+732       P:00201F 61FE00            move              x:-(r6),r1
+733       P:002020 60FE00            move              x:-(r6),r0
+734       P:002021 00000C            rts
+735    
+736    
+737    
+738                        ;
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   18-07-02  17:51:16  setWaitStates.asm  Page 2
+
+
+
+739                        ;*************************************************************
+740                        ;        Wait n x 1us routine (100MHz clock)
+741                        ;        On entry, r7 contains "n"
+742                        ;
+743       P:002022 065AA0  wait      rep     #90
+744       P:002023 000000            nop
+745       P:002024 205700            move              (r7)-
+746       P:002025 22EF00            move              r7,b
+747       P:002026 20000B            tst     b
+748       P:002027 0527DB            bne     wait
+749       P:002028 00000C            rts
+
+0    Errors
+0    Warnings
+
+

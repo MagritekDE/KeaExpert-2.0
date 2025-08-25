@@ -1,0 +1,170 @@
+procedure(export2DtoJCamp, fileName="nmr_fid.dx", plt=null, type="FID")
+
+   if(type != "FID")
+      message("Warning","Export of Spectra to JCAMP not supported","warning")
+      return
+   endif
+
+   if(plt == null)
+      return
+   endif
+
+   bak = getcwd()
+
+   cd(gData->curExpt->dataPath)
+
+# Get the experiment parameters
+   par = load("acqu.par")
+   assignlist(par)
+
+   protocol = gData->curExpt->protocol
+   SPA = gData->specID 
+   NucleusFrequencyF1 = b1Freq2
+   NucleusFrequencyF2 = b1Freq
+   SW1 = bandwidth2*1000/b1Freq2
+   SW2 = bandwidth*1000/b1Freq
+
+   ReferenceFrequencyF1 = b1FreqCh2 - (lowestFrequency2+bandwidth2*500)/1e6d
+   ReferenceFrequencyF2 = b1Freq - (lowestFrequency+bandwidth*500)/1e6d
+   (nuc1,nuc2) = scanstr(nucleus,"%1-%2")
+   observeNucleus = rxChannel
+   
+# Get real and imaginary data - reverse sign on latter to account for Spinsolve reversal
+   (m,t2AxisLim,t1AxisLim) = plt->getdata()
+   (nrPntsT2,nrPntsT1) = size(m)
+   rM = real(m)
+   iM = -imag(m) 
+
+# Find maximum and minimum values
+   maxReal = max(rM)
+   minReal = min(rM)
+   maxImag = max(iM)
+   minImag = min(iM)
+
+# Get the axes
+   t2Axis = linspace(t2AxisLim[0],t2AxisLim[-1],nrPntsT2)
+   t1Axis = linspace(t1AxisLim[0],t1AxisLim[-1],nrPntsT1)
+
+# Get the axes limits
+   firstTimeT1 = t1Axis[0]
+   lastTimeT1  = t1Axis[-1]
+
+   firstTimeT2 = t2Axis[0]
+   lastTimeT2  = t2Axis[-1]
+
+# Save the data
+   printtofile(fileName)
+
+   print("##TITLE=$protocol$\n")
+   print("##JCAMP-DX=                   6.00 $$$$ Magritek Spinsolve: $SPA$ Expert: V$gView->versionNr$\n")
+   print("##DATA TYPE=                  nD NMR FID\n")
+   print("##DATA CLASS=                 NTUPLES\n")
+   print("##NUM DIM=                    2\n")
+   print("##ORIGIN=                     $SPA$ at Magritek\n")
+   print("##OWNER=                      Copyright (C) 2024 by Magritek\n")
+   print("##LONGDATE=                   $getdate(\"yyyy/mm/dd\")$ $gettime(\"%2d:%2d:%2d:%3d\")$\n")
+   print("##.OBSERVE FREQUENCY=         $b1Freq,2.13f$\n")
+   print("##.OBSERVE NUCLEUS=           ^$observeNucleus$\n")
+   print("##.ACQUISITION MODE=          SIMULTANEOUS\n")
+   print("##SPECTROMETER/DATA SYSTEM=   Magritek Spinsolve\n")
+   print("##SAMPLE DESCRIPTION=         solvent=None\n")
+   print("##.NUCLEUS=                   $nuc2$,$nuc1$\n")
+   print("##.ACQUISITIONSCHEME=         NOT PHASE SENSITIVE\n")
+   print("##NTUPLES=                    NMR NDNMRFID\n")
+
+   print("\n$$$$ Bruker specific parameters\n")
+   print("$$$$ --------------------------\n")
+   print("##$$TD=      $nrPntsT2$\n")
+   print("##$$TDeff=   $nrPntsT2$\n")
+   print("##$$SW=      $SW2,1.6f$\n")
+   print("##$$SFO1=    $ReferenceFrequencyF2,2.13f$\n")
+   print("##$$BF1=     $NucleusFrequencyF2,2.13f$\n")
+   print("##$$SI=      $nrPntsT2$\n")
+   print("##$$SF=      $ReferenceFrequencyF2,2.13f$\n")
+   print("##$$BC_mod=  0\n")
+   print("##$$LB=      0\n")
+   print("##$$REVERSE= no\n")
+
+   print("\n$$$$ Bruker specific parameters for F1\n")
+   print("$$$$ --------------------------\n")
+   print("##$$TD=      $nrPntsT1$\n")
+   print("##$$TDeff=   $nrPntsT1$\n")
+   print("##$$SW=      $SW1,1.6f$\n")
+   print("##$$SFO1=    $ReferenceFrequencyF1,2.13f$\n")
+   print("##$$BF1=     <NucleusFrequenc2>\n")
+   print("##$$SI=      $nrPntsT1$\n")
+   print("##$$SF=      $ReferenceFrequencyF1,2.13f$\n")
+   print("##$$LB=      0\n")
+   print("##$$REVERSE= no\n")
+
+   print("\n$$$$ End of Bruker specific parameters\n")
+   print("$$$$ ---------------------------------\n\n")
+
+   print("##VAR_NAME=          TIME1,             TIME2,            FID/REAL,            FID/IMAG\n")
+   print("##SYMBOL=               T1,                T2,                   R,                   I\n")
+   print("##.NUCLEUS=      $nuc2,9s$,         $nuc1,9s$                                          \n")
+   print("##VAR_TYPE=    INDEPENDENT,       INDEPENDENT,           DEPENDENT,           DEPENDENT\n")
+   print("##VAR_FORM=           AFFN,              AFFN,                AFFN,                AFFN\n")
+   print("##VAR_DIM=  $nrPntsT1,14d$,    $nrPntsT2,14d$,      $nrPntsT2,14d$,      $nrPntsT2,14d$\n")
+   print("##UNITS=           SECONDS,           SECONDS,     ARBITRARY UNITS,     ARBITRARY UNITS\n")     
+   print("##FIRST= $firstTimeT1,17g$, $firstTimeT2,17g$,                    ,                    \n")
+   print("##LAST=   $lastTimeT1,16g$,  $lastTimeT2,16g$,                    ,                    \n")
+   print("##MIN=   $firstTimeT1,17g$, $firstTimeT2,17g$,       $minReal,13g$,       $minImag,13g$\n")
+   print("##MAX=    $lastTimeT1,16g$,  $lastTimeT2,16g$,       $maxReal,13g$,       $maxImag,13g$\n")
+   print("##FACTOR=                1,                 1,                   1,                   1\n\n")
+
+
+# Loop over data
+   for(y = 0 to nrPntsT1-1) # Loop over rows
+
+      row = m[~,y]
+      rowR = real(row)
+      rowI = -imag(row) # - fpr 
+
+      t1 = t1Axis[y]
+      N = trunc(nrPntsT2/6)*6
+
+      print("\n##PAGE=T1=$t1$\n")
+      print("##FIRST=     $t1Axis[0]$,          0,         $rowR[0]$,           $rowI[0]$\n")
+      print("##DATA TABLE=(T2++(R..R)), PROFILE   $$$$ Real data points\n")
+
+      for(k = 0 to N-6 step 6)
+         print("$t2Axis[k],3.6f$ $rowR[k],+12.6f$  $rowR[k+1],+12.6f$  $rowR[k+2],+12.6f$  $rowR[k+3],+12.6f$  $rowR[k+4],+12.6f$  $rowR[k+5],+12.6f$\n")
+      next(k)
+      print("$t2Axis[k],3.6f$ ")
+      for(k = N to nrPntsT2-1)
+         print("$rowR[k],+12.6f$  ")
+      next(k)
+      print("\n")
+
+
+      print("\n##PAGE=T1=$t1$\n")
+      print("##FIRST=     $t1Axis[0]$,          0,         $rowR[0]$,           $rowI[0]$\n")
+      print("##DATA TABLE=(T2++(I..I)), PROFILE   $$$$ Imaginary data points\n")
+
+
+      for(k = 0 to N-6 step 6)
+         print("$t2Axis[k],3.6f$ $rowI[k],+12.6f$  $rowI[k+1],+12.6f$  $rowI[k+2],+12.6f$  $rowI[k+3],+12.6f$  $rowI[k+4],+12.6f$  $rowI[k+5],+12.6f$\n")
+      next(k)
+      print("$t2Axis[k],3.6f$ ")
+      for(k = N to nrPntsT2-1)
+         print("$rowI[k],+12.6f$  ")
+      next(k)
+      print("\n")
+
+   next(y)
+
+   print("##END NTUPLES=NDNMRFID\n")
+   print("##END=\n")
+
+   closeprint()
+
+# Display folder
+   if(isdir(getcwd()))
+     exec("explorer",getcwd())
+   endif
+
+   cd(bak)
+
+endproc()
+

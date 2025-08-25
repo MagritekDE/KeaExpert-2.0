@@ -1,0 +1,124 @@
+##########################################################
+# Generates a fit to the raw T2 data as collected by
+# the RCA. An inversion must have been performed and the
+# data calibrated with a reference sample.
+#
+# Enter a linear binning parameter to improve the SNR.
+# (e.g. 1 is no binning 32 is averaging 32 points)
+#
+# Author C Eccles Magritek
+##########################################################
+
+procedure(GenerateT2Fit)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Generate T2 fit data", -1, -1, 280, 100)
+
+      # Define all controls with basic parameters
+      textbox(1, 90, 30, 40)
+      statictext(2, 80, 27, 38, 27, "right", "Bin size (points)")
+      button(3, 198, 19, 60, 26, "Generate",:generateFit())
+      button(4, 198, 58, 60, 26, "Close",closewindow(0))
+
+      setpar(n,1,"valueID","bin","text","32")
+
+endproc(n)
+
+procedure(generateFit)
+
+   assignlist(getctrlvalues(0))
+
+   folder = getfolder(getcwd(),"Select T2CPMG folder")
+   if(folder == "cancel")
+      return
+   endif
+   cd(folder) 
+
+   if(not(isdir("Spectra")))
+      message("Error","The data set 'data.csv' cannot be found","error")
+      return
+   endif
+   import1dpar("ab", "ascii",  "xyrc", "xcomplex",
+           "delimiter", "comma")
+   (tAxis,cpmgData) = import1d("data.csv")
+   cpmgData = real(cpmgData)
+
+# Load extra results parameters
+   if(not(isfile("extraResults.par")))
+      message("Error","A porosity has not been calculated","error")
+      return
+   endif
+   assignlist(load("extraResults.par"))
+
+# Read in CPMG data (x axis in 
+  # plot(tAxis,cpmgData)
+   szData =  size(cpmgData)
+
+   if(not(isdir("Spectra")))
+      message("Error","A T2 spectrum must be generated first","error")
+      return
+   endif
+
+   cd("Spectra")
+
+# Load fit parameters
+   if(not(isfile("fitpars.lst")))
+      message("Error","A T2 inversion has not been calculated","error")
+      return
+   endif
+   assignlist(load("fitpars.lst"))
+
+# Read in T2 spectrum (x axis in milliseconds)
+   import1dpar("ab", "ascii",  "xyrc", "xydata",
+           "delimiter", "comma")
+   (t2Axis,t2Amplitude) = import1d("spectrum.csv")   
+   cd("..")
+
+   szSpec = size(t2Axis)
+
+   szOut = round(szData/bin)
+   
+# Bin the raw data
+   tOut = matrix(szOut)
+   dOut = matrix(szOut)
+   szTOut = size(tOut)
+   for(k = 0 to szTOut-1)
+      tOut[k] = avg(tAxis[k*bin:(k+1)*bin-1])
+      dOut[k] = avg(cpmgData[k*bin:(k+1)*bin-1])
+   next(k)
+
+# Plot it
+   draw1d("false")
+   plot(tOut,dOut,"symbolcolor",[255,0,0],"symbolshape","circle")
+  
+# Generate the fitted data 
+   s = matrix(szTOut)
+   for(k = 0 to szSpec-1)
+      s = s + t2Amplitude[k]*exp(-tOut/t2Axis[k])
+   next(k)
+
+# Scale and plot
+   s = s/nmrPorosity*E0
+   hold("on")
+   plot(tOut,s,"color",[0,128,0])
+   hold("off")
+   title("Binned data and fit")
+   xlabel("Time (ms)")
+   ylabel("Amplitude")
+   draw1d("true")
+
+   export2dpar("ab", "ascii",  "xyrc", "real",
+           "delimiter", "comma")
+   fitData = join(tOut,dOut,"horiz")
+   fitData = trans(join(fitData,s,"horiz"))
+   export2d(fitData,"fittedData.csv")
+
+endproc()

@@ -1,0 +1,21 @@
+###################################################################################
+# 
+###################################################################################
+
+procedure(settxfreq, arg1, arg2)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 0.5
+      if(nrArgs == 1)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["settxfreq,$arg1$,$args[0]$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["settxfreq,$arg1$,$arg2$,$args[0]$,$args[1]$"]
+      endif
+
+   endif
+
+endproc()
+

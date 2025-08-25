@@ -1,0 +1,139 @@
+####################################################
+#                         copydata.mac
+#
+# Copy the current 1D data and then paste it in the
+# a different region preserving the plot labels
+# and zoom extent.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek February 2007
+#
+#####################################################
+
+procedure(copyData)
+
+   n = :windowdefinition()
+   showwindow(n)
+   xl = -1
+
+endproc()
+
+####################################################
+# Generate the window interface
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("1D copy/paste data", -1, -1, 344, 93)
+
+      # Define all controls with basic parameters
+       windowvar(x2,x1,x,y,txt,lx,ly,yt,yb,xr,xl)
+       button(1, 20, 17, 75, 37, "Copy all data",
+          :copy_data();)
+       button(2, 186, 17, 75, 37, "Paste data",
+          :paste_data();)
+       button(3, 284, 7, 44, 24, "Help",
+          :show_help();)
+       button(4, 284, 39, 44, 24, "Close",
+          closewindow(0);)
+       button(5, 103, 17, 75, 37, "Copy data in region",
+          :copy_region_data();)
+       statusbox(6)
+       groupbox(7, "", 6, 1, 268, 63)
+
+       setwindowpar(n,"statusbox",6)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\1D","copydata.htm")
+endproc()
+
+
+####################################################
+# Copy the current data to window variables
+####################################################
+
+procedure(copy_data)
+
+# Get the data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+      message("Error","No 1D data set","error")
+      return()
+   endif
+
+# Get the labels and zoom region
+   (txt,lx,ly,xl,xr,yb,yt) = 1dpar:get()
+   x1 = 0
+   x2 = size(x)-1
+
+# Update status box
+   setpar(0,6,"text","Data copied")
+
+endproc()
+
+
+####################################################
+# Copy the current zoom region or rectangle
+# to window variables
+####################################################
+
+procedure(copy_region_data)
+
+# Get all the data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+      message("Error","No 1D data set","error")
+      return()
+   endif
+
+# Get the labels and zoom region
+   (txt,lx,ly,xl,xr,yb,yt) = 1dpar:get()
+
+# Get rectange
+   (x1,y1,x2,y2) = getrect()
+
+# Get zoom region if rectangle not defined
+   if(x1 == -1)
+      (x1,x2) = zoom1d("getargs")
+   endif
+
+# Convert region to data indices
+   (x1,x2) = findindex(x,x1,x2)
+
+# Update status box
+   setpar(0,6,"text","Region data copied")
+
+endproc()
+
+
+####################################################
+# Paste the data stored in window variables
+####################################################
+
+procedure(paste_data)
+
+# Make sure a region has been copied
+   if(xl == -1)
+      message("Error","Data needs to be copied first")
+      return()
+   endif
+
+# Display the new data
+   if(x1 < x2)
+      plot(submatrix(x,x1,x2),submatrix(y,x1,x2))
+   else
+      plot(submatrix(x,x2,x1),submatrix(y,x2,x1))
+   endif
+   1dpar:set(txt,lx,ly)
+   
+
+endproc()

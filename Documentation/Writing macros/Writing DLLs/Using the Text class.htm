@@ -1,0 +1,213 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>¬ Manipulating other data type | Using the Text class ®</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:21.0cm 842.0pt;
+	margin:72.0pt 89.85pt 72.0pt 89.85pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>Using the Text Class</span></b></p>
+
+<p class=MsoNormal><b><span lang=EN-NZ>&nbsp;</span></b></p>
+
+<p class=MsoNormal><span lang=EN-AU>In conventional C the only way to generate
+a string is via the standard char string data type. Because this is an array
+without internal bounds checking it is susceptible to abuse if you are not very
+careful. In some cases it may be impossible to predict the size of the string
+before it is used – as in the ArgScan case shown below:</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>float</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+StringProblems(<span style='color:blue'>char</span> *arguments)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>char</span> str[10];</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Extract arguments</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs = ArgScan(arguments,1,&quot;a long
+string&quot;,&quot;e&quot;,&quot;s&quot;,str)) &lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs); </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+....</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>If the argument has more than 9 characters
+Prospa will crash! A more reliable alternative to allocating large character
+strings is to use the CText class:</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>float</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+CTextSolution(<span style='color:blue'>char</span> *arguments)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>CText</span> txt;</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Extract arguments</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs = ArgScan(arguments,1,&quot;a long
+string&quot;,&quot;e&quot;,&quot;t&quot;,&amp;txt)) &lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs); </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+....</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>In this case sufficient memory is allocated
+within the CText object to hold the passed string regardless of it length or
+any embedded expressions. Note that you must pass the address of txt to the
+ArgScan function. – this is the only potential trap.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>Once you have your string stored in the
+CText object you will need to manipulate it. A number of build in functions are
+provided and these are listed below.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+size or length of string .... long s = txt.<b>Size</b>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+amount of memory allocated .. long a = txt.<b>GetAllocated</b>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Reallocate
+memory for a string .....&nbsp; txt.<b>Reallocate</b>(long size)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Append
+a character to end of txt ... &nbsp;txt.<b>Append</b>(char c)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+character at position p .....&nbsp; char c = txt<b>[</b>p<b>]</b></span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+the start of a string .......&nbsp; CText s = txt.<b>Start</b>(long
+last_character_position)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+the end of a string .........&nbsp; CText e = txt.<b>End</b>(long
+first_character_position)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Return
+the middle of a string ......&nbsp; CText m = txt.<b>Middle</b>(long
+first_character, long last_character)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Concatenate
+two strings ............ &nbsp;CText c = txt.<b>Concat</b>(char* string) or c =
+txt + string</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Assign
+a C-string to a Ctext obj ... &nbsp;CText a = txt.<b>Assign</b>(char* string)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Search
+for a character .............&nbsp; long position =&nbsp; txt.<b>Search</b>(char
+c)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Reverse
+search for a character .....&nbsp; long position = txt.<b>ReverseSearch</b>(char
+c)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Convert
+to lower case .............. &nbsp;txt.<b>LowerCase</b>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Convert
+to upper case ..............&nbsp; txt.<b>UpperCase</b>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Capitalise
+first character .........&nbsp; txt.</span><b><span style='font-size:10.0pt;
+font-family:"Courier New"'>UpperCaseForFirst</span></b><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Remove
+quotes ......................&nbsp; txt.<b>RemoveQuotes</b>()</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Write
+formatted C string to txt ....&nbsp; <b>Format</b>(char *format ... )</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>Compare
+CText strings ..............&nbsp; a <b>==</b> “some text”&nbsp; or a <b>!=</b>
+“some text”</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>Some example code using these functions is
+shown below</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

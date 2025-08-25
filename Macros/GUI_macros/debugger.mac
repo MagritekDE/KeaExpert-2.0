@@ -1,0 +1,166 @@
+procedure(Debugger)
+
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Debugger", -1,-1, 800, 600, "resizable")
+
+       setwindowpar(n,"constrained","false")
+       windowvar(win)
+       win = getobj(n)
+       editor(1, 5, 100, "ww-20", "wh-110")
+       cli(2, 10, 50, "ww-20", "wh-60")
+
+       menu(4, "File", "Open macro ...", funcEdit("open macro"),
+                "Save macro",funcEdit("save macro"),
+                "Save macro as ...",funcEdit("save macro as"),
+                "Close debugger",closewindow(0))
+
+       menu(5, "Edit", "Find down", funcEdit("find down"),
+                 "Find up", funcEdit("find up"),
+                 "Separator", ,
+                 "Clear CLI", clear("cli"))
+       menu(6, "View", "Go to line number ...", funcEdit("go to line"),
+                 "Separator", ,
+                 "Go to procedure\tCtrl+Double-click", funcEdit("go to procedure"),
+                 "Go back", funcEdit("go back"),
+                 "Go forward", funcEdit("go forward"),
+                 "Separator", ,
+                 "Show full filename", funcEdit("toggle full path"),
+                 "Show fault line", funcEdit("show fault"),
+                 "Separator", ,
+                 "Command help", funcEdit("command help"))
+       menu(7, "Procedures", "procedure menu", "procedures")
+       menu(26, "Help", "Debug help",help("Macros\\Core","debugger.htm"))
+       button(8, 8, 14, 70, 33, "Start debugging",
+          :running("true");
+          funcEdit("debug file");)
+       button(9, 87, 54, 70, 33, "Step into",
+          txt = objVar->text;
+          debug("variables",txt);
+          debug("stepinto","true");)
+       statusbox(10,"ww-50","-1")
+       button(11, 87, 14, 70, 33, "Step over",
+          txt = objVar->text;
+          debug("variables",txt);
+          debug("stepover","true");)
+       button(12, 166, 54, 70, 33, "Run to break",
+          txt = objVar->text;
+          debug("variables",txt);
+          debug("runto","true");)
+       button(13, 8, 54, 70, 33, "Stop debugging",
+          txt = objVar->text;
+          debug("variables",txt);
+          debug("off","true");
+          :running("false");)
+       divider(14, "ww*0.5", 0, 3, "wh", "vertical")
+       button(16, 166, 14, 70, 33, "Step out",
+          txt = objVar->text;
+          debug("variables",txt);
+          debug("stepout","true");)
+       statictext(17,50,10,"right","Variables:")
+
+       textbox(25, 55, 5, "rw-60")
+       statictext(27,315,18,"right","Running")
+       colorbox(28,320,15,20,20,[0,0,128])
+       statictext(29,315,43,"right","Stopped")
+       colorbox(30,320,40,20,20,[0,0,128])
+       statictext(31,315,68,"right","Waiting")
+       colorbox(32,320,65,20,20,[0,0,128])
+       
+       getmessage(-2,:process_message();)
+
+     # Set other control parameters
+       setpar(n,1,"active","true",
+                 "debug","true")
+       setpar(n,2,"active","true",
+                  "debug","true")
+       setpar(n,8,"active","true")
+       setpar(n,9,"active","true")
+       setpar(n,11,"active","true")
+       setpar(n,12,"active","true")
+       setpar(n,13,"active","true")
+       setpar(n,14,"active","true")
+       setpar(n,16,"active","true")
+       setpar(n,25,"ctrlID","objVar","active","true","debug","true")
+
+      setpar(n,1,"region",[-1,14,-3,-4])
+      setpar(n,2,"region",[14,-2,-3,-4])
+      setpar(n,17,"region",[14,-2,-3,-4])
+      setpar(n,25,"region",[14,-2,-3,-4])
+
+      setpar(n,28,"ctrlID","runCB")
+      setpar(n,30,"ctrlID","stopCB")
+      setpar(n,32,"ctrlID","idleCB")
+
+
+      setpar(n,1,"menubar",[4,5,6,7,26])
+      setwindowpar(n,"menubar",[4,5,6,7,26])
+      setwindowpar(n,"show_menu","false")
+      :running("false")
+
+      showwindow(n,"recalc")
+      setwindowpar(n,"debug","true")
+      setwindowpar(n,"focus",1)
+
+
+     objVar->text("local")
+
+endproc(n)
+
+procedure(running, mode)
+
+   n = win->winnr
+
+   if(mode == "none")
+      setpar(n,8,"enable","false")
+      setpar(n,9,"enable","false")
+      setpar(n,11,"enable","false")
+      setpar(n,12,"enable","false")
+      setpar(n,13,"enable","false")
+      setpar(n,16,"enable","false")
+   elseif(mode == "false")
+      setpar(n,8,"enable","true")
+      setpar(n,9,"enable","false")
+      setpar(n,11,"enable","false")
+      setpar(n,12,"enable","false")
+      setpar(n,13,"enable","false")
+      setpar(n,16,"enable","false")
+   else
+      setpar(n,8,"enable","false")
+      setpar(n,9,"enable","true")
+      setpar(n,11,"enable","true")
+      setpar(n,12,"enable","true")
+      setpar(n,13,"enable","true")
+      setpar(n,16,"enable","true")
+   endif()
+
+
+endproc()
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,-2,"text")
+
+   if(src == "debug")
+      if(cmd == "breakpoint")
+         runCB->color([0,0,128])
+         stopCB->color([255,0,0])
+         idleCB->color([0,0,128])
+      elseif(cmd == "running")
+         runCB->color([0,255,0])
+         stopCB->color([0,0,128])
+         idleCB->color([0,0,128])   
+      elseif(cmd == "waiting")
+         runCB->color([0,0,128])
+         stopCB->color([0,0,128])
+         idleCB->color([255,255,0])      
+      elseif(cmd == "stopped")
+         runCB->color([0,0,128])
+         stopCB->color([0,0,128])
+         idleCB->color([0,0,128])
+          :running("false")
+      endif
+   endif
+
+endproc()

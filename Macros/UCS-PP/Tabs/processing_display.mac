@@ -1,0 +1,51 @@
+procedure(processing)
+
+   n = window("Processing", -1, -1, 490, 146)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+      # Define all controls with basic parameters
+       statictext(1, 170, 21, "right", "Filter time domain")
+       checkbox(2, 178, 22, "no,yes", "no",
+         fn = findobj(0,"name","filter");
+         ucsCtrl:enableControls(fn+1,fn+3,fn);)
+       statictext(3, 52, 52, "right", "Filter")
+       textmenu(4, 59, 48, 108, 200)
+       button(5, 176, 48, 22, 22, "...",
+          filters();)
+       statictext(6, 170, 84, "right", "Time domain magnitude")
+       checkbox(7, 178, 85, "no,yes", "no")
+       statictext(8, 441, 19, "right", "Show frequency domain data")
+       checkbox(9, 449, 20, "no,yes", "no",
+         fn = findobj(0,"name","showFreqDomain");
+         ucsCtrl:enableControls(fn+1,fn+4,fn);)
+       statictext(10, 441, 49, "right", "Frequency domain magnitude")
+       checkbox(11, 449, 50, "no,yes", "no")
+       statictext(12, 391, 82, "right", "Display range (kHz)")
+       textbox(13, 401, 79, 61)
+
+     # Set other control parameters
+       setpar(n,2,"name","filter")
+       setpar(n,4,"name","filterType")
+       setpar(n,7,"name","timeMag")
+       setpar(n,9,"name","showFreqDomain")
+       setpar(n,11,"name","freqMag")
+       setpar(n,13,"name","dispRange",
+                   "type","float")
+
+endproc(13,"processing+display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","filter");
+   ucsCtrl:enableControls(fn+1,fn+3,fn);
+   fn = findobj(0,"name","showFreqDomain");
+   ucsCtrl:enableControls(fn+1,fn+4,fn);
+
+endproc()

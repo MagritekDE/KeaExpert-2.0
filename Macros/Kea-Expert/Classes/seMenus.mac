@@ -1,0 +1,480 @@
+
+##############################################
+# The user menu class for SpinsolveExpert
+#
+# V2.xx.xx
+##############################################
+
+##############################################
+# Initialiser for the class
+##############################################
+
+procedure(init, self)
+
+   self->addEntry           = "seMenus:addEntry"
+   self->configureUserMenus = "seMenus:configureUserMenus"
+   self->copyItem           = "seMenus:copyItem"
+   self->dragNDropMenu      = "seMenus:dragNDropMenu"
+   self->editEntry          = "seMenus:editEntry"
+   self->loadDefaults       = "seMenus:loadDefaults"
+   self->lbStdCallback      = "seMenus:lbStdCallback"
+   self->lbCallback         = "seMenus:lbCallback"
+   self->moveItemDown       = "seMenus:moveItemDown"
+   self->moveItemUp         = "seMenus:moveItemUp"
+   self->removeEntry        = "seMenus:removeEntry"
+   self->showHelp           = "seMenus:showHelp"
+   self->windowdefinition   = "seMenus:windowdefinition"
+   self->updateIcons        = "seMenus:updateIcons"
+   self->updateMenu         = "seMenus:updateMenu"
+   self->updateSearchPaths  = "seMenus:updateSearchPaths"
+
+   self->hiddenPaths = null
+   self->wn = -1 # The window number
+
+endproc()
+
+##############################################
+# Print some data
+##############################################
+
+procedure(configureUserMenus, self)
+
+   self->wn = self->windowdefinition()
+   self->updateIcons()
+   self->loadDefaults()
+   setwindowpar(self->wn,"sizelimits",[680,1000,300,500])
+   setwindowpar(self->wn,"dragndropproc","gMenus->dragNDropMenu")
+
+   showdialog(self->wn)
+
+endproc()
+
+procedure(windowdefinition, self)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Update experiment menus", -1, -1, 680, 300, "resizable")
+      setwindowpar(n,"type","dialog")
+      # Define all controls with basic parameters
+      lbStd = listbox(1, 10, 30, 125, "wh-80",gMenus->lbStdCallback)
+      lb = listbox(2, 178, 30, "ww-228", "wh-80",gMenus->lbCallback)
+      button(3, 178, "wh-41", 62, 26, "Add",
+         gMenus->addEntry();)
+      button(4, 248, "wh-41", 62, 26, "Remove",
+         gMenus->removeEntry();)
+      button(5, 318, "wh-41", 62, 26, "Edit",
+         gMenus->editEntry();)
+      button(6, "ww-252", "wh-41", 62, 26, "Help",
+         gMenus->showHelp();)
+      button(7, "ww-182", "wh-41", 62, 26, "Save",
+         gMenus->updateMenu();)
+      button(8, "ww-112", "wh-41", 62, 26, "Close",
+         closedialog();)
+    #  statictext(9, 180, 12, "left", "Menu Folder Location")
+   #   statictext(10, "ww/2+70", 12, "left", "Menu Name")
+      button(11, "ww-40", "wh/2-41", 26, 26, "",
+         gMenus->moveItemUp())
+      button(12, "ww-40", "wh/2-5", 26, 26, "",
+         gMenus->moveItemDown())
+      button(13, "140", "wh/2-22", 26, 26, "",
+         gMenus->copyItem())
+    #  statictext(14, 70, 12, "center", "Default Pulse Programs")
+
+
+endproc(n)
+
+
+procedure(updateIcons, self)
+
+   bak = getcwd()
+
+   setpar(0,1,"nrColumns",1,"colwidth",[1.0])
+   setpar(0,2,"nrColumns",2,"colwidth",[0.5,0.5])
+
+  # setpar(0,9,"color",[0,128,0])
+ #  setpar(0,10,"color",[0,128,0])
+  # setpar(0,14,"color",[0,128,0])
+
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+   setpar(0,11,"icon","uparrow.png","tooltip","Move the selected entry up the list.")
+   setpar(0,12,"icon","downarrow.png","tooltip","Move the selected entry down the list.")
+   setpar(0,13,"icon","rightarrow.png","tooltip","Copy the selected item to the menu list.")
+   setpar(0,4,"icon","cross.png","tooltip","Remove selected entry from the menu.")
+   setpar(0,3,"icon","add.png","tooltip","Add a user-defined pulse-program folder.")
+   setpar(0,5,"icon","rename.png","tooltip","Rename the selected menu.")
+   setpar(0,7,"tooltip","Update the menu and save to file.")
+   setpar(0,8,"tooltip","Close this dialog.")
+   setpar(0,6,"tooltip","Display help for this dialog.")
+
+   cd(bak)
+
+endproc()
+
+procedure(showHelp, self)
+
+pr "\nHelp coming soon!\n
+
+endproc()
+
+procedure(dragNDropMenu, self, path, file, ext)
+
+   self->addEntry(path)
+
+endproc()
+
+
+procedure(lbCallback, self)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      self->editEntry()
+   endif()
+
+endproc()
+
+procedure(lbStdCallback, self)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      self->copyItem()
+   endif()
+
+endproc()
+
+procedure(loadDefaults, self)
+
+# Load all possible default menus
+   if(gView->tester)
+      ppLocations = ["Default Pulse Programs"] 
+   else
+       ppLocations = ["Default Pulse Programs",
+                      "$appdir$\\Macros\\Kea-NMR",
+                      "$appdir$\\Macros\\Kea-MRI"]
+
+   endif
+
+   
+   for(k = 1 to size(ppLocations)-1)
+      ppLocations[k] = getbasedir(ppLocations[k])
+   next(k)
+
+   lbStd->list(ppLocations)
+   lbStd->color([0,0,128,0])
+
+# Load existing pp menus
+   escapechar("false")
+   bak = getcwd()
+   cd(prefdir)
+   updated = 0
+   if(isdir("KeaParameters"))
+      cd("KeaParameters")
+      if(isfile("pulseProgramMenus.mac"))
+         try
+            ppMenus = ["Experiment Folder Location|Menu Name"]
+            ppMenus = ppMenus + pulseProgramMenus()           
+            lb->list(ppMenus)  
+            lb->color([0,0,128,0])
+            updated = 1
+         catch
+            pr lasterror()
+         endtry
+      endif
+   endif
+   if(updated == 0)
+      ppMenus = ["Experiment Folder Location|Menu Name"]
+      lb->list(ppMenus)  
+      lb->color([0,0,128,0])
+   endif
+   cd(bak)
+   escapechar("true")
+
+endproc()
+
+procedure(addEntry, self, dir)
+
+   if(nrArgs == 1)
+      dir = getfolder(".","Select a folder containing user-defined pulse programs")
+      if(dir == "cancel")
+         return
+      endif
+   endif
+   name = getbasedir(dir)
+   item = "$dir$|$name$"
+   entries = lb->list()
+   if(entries == null) 
+      entries = ["$item$"]
+   else
+      entries = entries + item
+   endif
+
+   lb->list(entries)
+   lb->color([0,0,128,0])
+
+endproc()
+
+procedure(removeEntry, self)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      idx = lb->zindex()
+      entries = rmfromlist(entries,idx)
+      lb->list(entries)
+      lb->color([0,0,128,0])
+      if(idx != 1)
+         idx = idx - 1
+      endif
+      if(size(entries) > 1)
+         lb->zindex(idx)
+      endif
+   # Remove this entry from the macro search path
+      (name,comment) = scanstr(entry,"%1|%2")
+      if(getlistindex(macrosearchpath,name) != -1)
+         newSearchPath = rmfromlist(macrosearchpath,name)
+         varstatus("macrosearchpath","visible","readwrite","permanent")
+         assign("macrosearchpath",newSearchPath,"global")
+         varstatus("macrosearchpath","visible","readonly","permanent")
+      endif
+   else
+      message("Information","Please select the row to be removed.","info")
+   endif
+
+endproc()
+
+procedure(editEntry, self)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      idx = lb->zindex()
+      (path,name) = scanstr(entry,"%1|%2")
+      name = gettext("Choose new name for menu",name,20)
+      if(name != "cancel")
+         entry = "$path$|$name$"
+         entries[idx] = entry
+         lb->list(entries)
+         lb->color([0,0,128,0])
+      endif
+   else
+      message("Information","Please select the row to be edited.","info")
+   endif
+
+
+endproc()
+
+procedure(moveItemUp, self)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      top = lb->topzindex
+      indx = lb->zindex
+      if(indx >= 2)
+         tmp = entries[indx-1]
+         entries[indx-1] = entries[indx] 
+         entries[indx] = tmp
+         lb->list(entries)
+         lb->color([0,0,128,0])
+         lb->zindex(indx-1)  
+         if(indx-1 >= top) 
+            lb->topzindex(top)
+         else
+            lb->topzindex(indx-1)
+         endif
+         drawwin(0) 
+      endif
+   else
+      message("Information","Please select the row to be moved.","info")
+   endif
+
+endproc()
+
+procedure(moveItemDown, self)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      indx = lb->zindex
+      sz = size(entries)
+      if(indx < sz-1)
+         tmp = entries[indx+1]
+         entries[indx+1] = entries[indx] 
+         entries[indx] = tmp
+         lb->list(entries)
+         lb->color([0,0,128,0])
+         lb->zindex(indx+1)    
+         drawwin(0)
+      endif 
+   else
+      message("Information","Please select the row to be moved.","info")
+   endif
+
+endproc()
+
+procedure(copyItem, self)
+
+   if(lbStd->zindex == 0)
+      return   
+   endif
+   item = lbStd->text
+   if(item != null)
+      entries = lb->list()
+      newPP = "<standard_experiments>\\$item$"
+      for(k = 0 to size(entries)-1)
+         try
+            (folder, name) = scanstr(entries[k],"%1|%2")
+            if(folder == newPP)
+               return
+            endif
+         catch
+         endtry
+      next(k)
+      if(entries == null) 
+         entries = ["$newPP$|$item$"]
+      else
+         entries = entries + "$newPP$|$item$"
+      endif
+      lb->list(entries)
+      lb->color([0,0,128,0])
+   else
+      message("Information","Please select the pulse program to be added.","info")
+   endif
+
+endproc()
+
+###############################################################################
+# Define the search path for Prospa
+###############################################################################
+
+procedure(updateSearchPaths, self, menus, hidden)
+
+   searchpath = ["$$appdir$$\Macros\*"] + menus + hidden
+
+   varstatus("macrosearchpath","visible","readwrite","permanent")
+   assign("macrosearchpath",searchpath,"global")
+   varstatus("macrosearchpath","hidden","readonly","permanent")
+ 
+endproc()
+
+procedure(updateMenu, self)
+
+   gView->mainWin->draw("false")
+
+   try
+   # Remove any existing pulse program menus
+      if(gView->userMenusRange[1] > 0)
+         for(k = gView->userMenusRange[0] to gView->userMenusRange[1])
+            rmobj(gView->wn,k)
+         next(k)
+         gView->userMenusRange[1] = -1
+      endif
+   
+      cnt = gView->userMenusRange[0]
+   
+   # Define the new menus
+      entries = lb->list()
+      sz = size(entries)   
+      paths = list(0)
+      if(sz > 1)
+         seteditwin(gView->wn,"fast")
+         for(k = 1 to sz-1)
+            (location, menuName) = scanstr(entries[k],"%1|%2")
+            baseDir = getbasedir(location)
+            if(issubstr(location,"<standard_experiments>"))
+               location = "$appdir$\\Macros\\$baseDir$"
+            else
+               gData->addToPPSearchPath(location)
+               paths = paths + location
+            endif
+            menu(cnt, menuName, "user folder menu", "") # Need to use following command as this only works with global variables like $appdir$
+            setpar(gView->wn,cnt,"procedure",location)           
+            cnt = cnt + 1
+         next(k)
+         cnt = cnt - 1
+         seteditwin(-gView->wn,"fast")
+         gView->userMenusRange[1] = cnt
+      endif
+
+   # Update search path list
+     self->updateSearchPaths(paths, self->hiddenPaths)
+
+   # Add these menus to the different control lists
+      m = gView->exptMenu
+      if(sz > 0)
+         gView->exptMenu = [gView->userMenusRange[0]:gView->userMenusRange[1]]
+         gView->exptMenu = join(gView->exptMenu,m[-7:-1])
+      else
+         gView->exptMenu = m[-7:-1]
+      endif
+   
+      gView->cliMenu = join(gView->cliCoreMenu, gView->exptMenu)
+      gView->graphMenu = join(gView->graphCoreMenu, gView->exptMenu)
+      gView->imageMenu = join(gView->imageCoreMenu, gView->exptMenu)      
+      gView->textEditMenu = join(gView->textEditCoreMenu, gView->exptMenu)
+
+   # Update the menubars for the controls
+      for(k = 1 to 6)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->graphMenu)
+      next(k)
+      for(k = 7 to 10)  
+         obj = eval("gView->g$k$") 
+         obj->menubar(gView->imageMenu)
+      next(k)
+      gView->cli->menubar(gView->cliMenu)
+
+   # Update the textbox and textmenu menus
+      n = gView->mainWin->winNr
+      ctrls = getobj(n)->ctrllist
+      for(k = 0 to size(ctrls)-1)
+         type = getobj(n,ctrls[k])->ctrltype
+         if(type == "text menu" | type == "text box")
+            setpar(n,ctrls[k],"menubar",gView->textEditMenu)
+         endif
+      next(k)
+   
+   # Update the main menubar
+      setwindowpar(gView->wn,"menubar",gView->graphMenu)
+    
+   # Save the new menu list
+      cd(prefdir)
+      mkdir("KeaParameters")
+      cd("KeaParameters")
+      printtofile("pulseProgramMenus.mac")
+      pr("procedure(pulseProgramMenus)\n")
+   
+      if(sz >= 3)
+         pr ("\n   menuList = [\"$entries[1]$\",\n")
+         for(k = 2 to sz-2)
+            pr("               \"$entries[k]$\",\n")  
+         next(k)
+         pr("               \"$entries[-1]$\"]\n")  
+      elseif(sz == 2)
+         pr("\n   menuList = [\"$entries[1]$\"]\n")  
+      else
+         pr("\n   menuList = null\n")    
+      endif  
+   
+      pr("\nendproc(menuList)\n")
+      closeprint()
+
+   catch
+
+      pr lasterror()
+
+   endtry
+
+   gView->mainWin->draw("true")
+  
+
+
+endproc()
+

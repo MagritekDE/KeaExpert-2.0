@@ -1,0 +1,32 @@
+procedure(isosurf_test1,verbose,delay)
+
+   clear3d()
+
+  n = 20
+   m = matrix(n,n,n)
+   
+   for(z = 0 to n-1)
+      for(y = 0 to n-1)
+        for(x = 0 to n-1)
+           r = sqrt((x-n/2)^2+(y-n/2)^2+(z-n/2)^2)
+           m[x,y,z] = 1/(r+0.01)
+        next(x)
+      next(y)
+   next(z)
+
+   isosurf(m,0.15,[1,.5,0],
+           [-n/2,n/2,-n/2,n/2,-n/2,n/2])
+
+   viewdistance(50)
+
+   for(t = 0 to 360 step 0.3)
+      rotate3d(t/4,t,0)
+   next(t)
+
+
+
+
+endproc(1,"")
+
+
+

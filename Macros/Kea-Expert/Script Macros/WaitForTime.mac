@@ -1,0 +1,16 @@
+###############################################
+# Wait duration seconds unless the experiment
+# has been aborted or completed
+###############################################
+
+procedure(WaitForTime, duration)
+
+   t = time()
+   while(time()-t < duration)
+      if(wvExpStatus != "running")
+         return(1)
+      endif
+      pause(0.005)
+   endwhile
+
+endproc(0)

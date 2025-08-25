@@ -1,0 +1,466 @@
+#################################################
+# Generate an interface to set the Spinsolve
+# capabilities number. Based on the radiobutton
+# settings a binary number is generated and 
+# returned to the calling program
+#################################################
+
+procedure(HardwareCapabilites1, valueStr1, valueStr2, channelNames)
+
+   n = :windowdefinition()
+   setwindowpar(n,"type","dialog")
+   windowvar(wvCtrlStart,wvCtrlEnd,wvParList,wvLastNucleusIndex)
+   wvParList = :getParList()
+   nrNuclei = 12 # adjust when adding new nuclei
+   wvLastNucleusIndex = (nrNuclei-1)*3 + 15
+   :generateControls(n, valueStr1,valueStr2,channelNames)
+   setwindowpar(n,"sizelimits",[365,365,400,650])
+   :updateBinCode(0)
+   (result1,result2,channels) = showdialog(n)
+
+endproc(result1,result2,channels)
+
+######################################################
+# Make the basic window elements
+######################################################
+
+procedure(windowdefinition)
+
+   n = window("Hardware capabilites", -1, -1, 365, 400, "resizable")
+
+       panel(1,10,10,"ww-20","wh-80")
+       button(2,"ww/3-30","wh-30",60,24,"OK",
+              if(:checkValues());
+                 return;
+              endif;
+              (result1,result2) = :readBits();
+              xChannels = :getXChannels();
+              closedialog(result1,result2,xChannels))
+       button(3,"ww*0.66-30","wh-30",60,24,"Cancel",
+              closedialog(-1,-1,null))
+       statictext(4,80,"wh-59","right","Binary codes 1:")
+       binCodeCtrl1 = textbox(5,85,"wh-62",80)
+       statictext(6,180,"wh-59","right","2:")
+       binCodeCtrl2 = textbox(7,185,"wh-62",80)
+       setpar(n,5,"readonly","true")
+       setpar(n,7,"readonly","true")
+
+endproc(n)
+
+######################################################
+# The parameters in the order they are stored
+######################################################
+
+procedure(getParList)
+
+   parList = ["linewidth",               #0
+              "lockBits",                #1
+              "wobblePower",             #2
+              "duplexerType",            #3
+              "hpaType",                 #4
+              "hpFilter1H",              #5
+              "lockPower",               #6
+              "preampType",              #7
+              "tempSensor",              #8
+              "peltierControl",          #9
+              "lockUseDSP",              #10
+              "useDSPforX",              #11
+              "is13C",                   #12
+              "is31P",                   #13
+              "hasDecouplefilters",      #14
+              "hasLinearlock",           #15
+              "hasGradientController",   #16
+              "is60",                    #17
+              "protonDecoupleParameters",#18
+              "isUltra",                 #19
+              "is80",                    #20
+              "isLockFree",              #21
+	        "is29Si",                  #22
+              "is23Na",                  #23
+              "is11B",                   #24
+              "is7Li",                   #25
+              "is15N",                   #26
+              "usesLockShims",           #27
+              "is129Xe",                 #28
+              "multiXChannelCompatible", #29
+              "is90",                    #30
+              "is2H",                    #31
+              "lockSatPulse",            #0/2
+              "enhancedFluorine",        #1/2
+              "wetSequence",             #2/2
+	        "is33S",                   #3/2
+              "is119Sn",                 #4/2
+              "enhancedTritium",         #5/2
+              "useCorrO3",               #6/2
+              "is27Al",                  #7/2
+              "dualTemp",                #8/2
+              "useMSP430",               #9/2
+              "lockSatPulsev2",          #10/2   
+              "is14N",                   #11/2
+              "rxAmpv2",                 #12/2
+              "multiMagSetPnts",         #13/3
+              "probeMotorControl"]       #14/3
+ 
+
+endproc(parList)
+
+######################################################
+# Make the controls based on the ctrls list
+# (reordered for convenience)
+######################################################
+
+procedure(generateControls, n, valueStr1, valueStr2, channelNames)
+
+# The options to generate fields are:
+#               label                     false option         true option         default       name                      color     channel     bit
+    ctrls = ["Use X channel DSP data",     "false",             "true",              "1",      "useDSPforX",               "red",    "false";    #11
+             "Is an Aluminium system",     "false",             "true",              "0",      "is27Al",                   "red",    "true";     #7/2
+             "Is a Boron system",          "false",             "true",              "0",      "is11B",                    "red",    "true";     #24
+             "Is a Carbon system",         "false",             "true",              "0",      "is13C",                    "red",    "true";     #12
+             "Is a Deuterium system",      "false",             "true",              "0",      "is2H",                     "red",    "true";     #31
+             "Is a Lithium system",        "false",             "true",              "0",      "is7Li",                    "red",    "true";     #25
+             "Is a Nitrogen 14 system",    "false",             "true",              "0",      "is14N",                    "red",    "true";     #11/2
+             "Is a Nitrogen 15 system",    "false",             "true",              "0",      "is15N",                    "red",    "true";     #26
+             "Is a Phosphorus system",     "false",             "true",              "0",      "is31P",                    "red",    "true";     #13
+             "Is a Silicon system",        "false",             "true",              "0",      "is29Si",                   "red",    "true";     #22
+             "Is a Sodium system",         "false",             "true",              "0",      "is23Na",                   "red",    "true";     #23
+             "Is a Sulphur system",        "false",             "true",              "0",      "is33S",                    "red",    "true";     #3/2
+             "Is a Tin system",            "false",             "true",              "0",      "is119Sn",                  "red",    "true";     #4/2
+             "Is a Xenon system",          "false",             "true",              "0",      "is129Xe",                  "red",    "true";     #28
+             "Has 1H decouple parameters", "false",             "true",              "0",      "protonDecoupleParameters", "red",    "false";    #18
+             "Has decouple RF filters",    "false",             "true",              "0",      "hasDecouplefilters",       "red",    "false";    #14
+             "Is a 60 MHz system",         "false",             "true",              "0",      "is60",                     "green",  "false";    #17
+             "Is an 80 MHz system",        "false",             "true",              "0",      "is80",                     "green",  "false";    #20
+             "Is an 90 MHz system",        "false",             "true",              "0",      "is90",                     "green",  "false";    #30
+             "Has gradient controller",    "false",             "true",              "0",      "hasGradientController",    "green",  "false";    #16
+             "Is an Ultra system",         "false",             "true",              "0",      "isUltra",                  "green",  "false";    #19
+             "Uses Lock Shim Offsets",     "false",             "true",              "0",      "usesLockShims",            "green",   "false";   #27
+             "Multi X-channel compatible", "false",             "true",              "0",      "multiXChannelCompatible",  "green",   "false";   #29
+             "Use Lock DSP data",          "false",             "true",              "1",      "lockUseDSP",               "green",   "false";   #10
+             "High magnet quality",        "Linewidth 2/60 Hz", "Linewidth 1/40 Hz", "1",      "linewidth",                "grey",   "false";    #0
+             "16 bit lock control",        "14 bit",            "16 bit",            "1",      "lockBits",                 "grey",   "false";    #1
+             "0dB Wobble power",           "-30 dB",            "0 dB",              "1",      "wobblePower",              "grey",   "false";    #2
+             "UCS duplexers",              "Kea",               "UCS",               "1",      "duplexerType",             "grey",   "false";    #3
+             "UCS RF amplifiers",          "Kea",               "UCS",               "1",      "hpaType",                  "grey",   "false";    #4
+             "Low power lock",             "High power",        "Low power",         "1",      "lockPower",                "grey",   "false";    #6
+             "Production preamps",         "Beta 2",            "Production",        "1",      "preampType",               "grey",   "false";    #7
+             "Room temperature sensor",    "Inside magnet",     "Room",              "1",      "tempSensor",               "grey",   "false";    #8
+             "Prop. Peltier control",      "on/off",            "Proportional",      "1",      "peltierControl",           "grey",   "false";    #9
+             "Has linear Tx lock",         "false",             "true",              "1",      "hasLinearlock",            "grey",   "false";    #15
+             "Is lock free",               "false",             "true",              "0",      "isLockFree",               "grey",   "false";    #21      
+             "High pass filter on 1H",     "false",             "true",              "1",      "hpFilter1H",               "grey",   "false";    #5
+             "Lock saturation pulse",      "false",             "true",              "0",      "lockSatPulse",             "green",  "false";    #0/2
+             "Enhanced Fluorine",          "false",             "true",              "0",      "enhancedFluorine",         "green",  "false";    #1/2
+             "Enhanced Tritium",           "false",             "true",              "0",      "enhancedTritium",          "green",  "false";    #5/2
+             "WET sequence",               "false",             "true",              "0",      "wetSequence",              "green",  "false";    #2/2
+             "Use O3 correction",          "false",             "true",              "0",      "useCorrO3",                "green",  "false";    #6/2
+             "Dual temperature",           "false",             "true",              "0",      "dualTemp",                 "green",  "false";    #8/2
+             "Use MSP430",                 "false",             "true",              "1",      "useMSP430",                "green",  "false";    #9/2
+             "Lock saturation pulse v2",   "false",             "true",              "0",      "lockSatPulsev2",           "green",  "false";    #10/2
+             "Receiver Amp v2",            "false",             "true",              "0",      "rxAmpv2",                  "green",  "false";    #12/2
+             "Multiple magnet set-points", "false",             "true",              "0",      "multiMagSetPnts",          "green",  "false";    #13/2
+             "Probe motor control",        "false",             "true",              "0",      "probeMotorControl",        "green",  "false"]    #14/2
+
+
+# Get the number of controls
+    (nrItems,nrCtrls) = size(ctrls)
+  
+# Initialise control position  
+    x = 150
+    y = 10
+    q = 9
+  
+# Convert the value string into a number         
+    if(valueStr1 != "")
+       value1 = eval(valueStr1+"d") # Make sure value is a double
+    else
+       value1 = -1
+    endif
+
+# Convert the value string 2 into a number         
+    if(valueStr2 != "")
+       value2 = eval(valueStr2+"d") # Make sure value is a double
+    else
+       value2 = -1
+    endif
+
+# Add X channel numbers
+   statictext(q,x+77,y,"center","X-Channel")
+   setpar(n,q,"panelparent",1)
+   setpar(n,q,"color",[128,0,0])
+   y = y + 20
+   q = q + 1
+   statictext(q,x+38,y,"left","1    2    3    4    5    6    7")
+   setpar(n,q,"panelparent",1)
+   q = q + 1
+   wvCtrlStart = 12
+
+# 11 is the number of controls in the second group - change as required
+   nrCtrls1 = nrCtrls-11 
+   nrCtrls2 = 11
+ 
+   (y,q) = :addControls(n,value1,value2,x,y,q,ctrls,0,nrCtrls1-1,channelNames)
+   divider(q,5,y,265,3,"horiz")
+   setpar(n,q,"panelparent",1)
+   y = y + 12
+   q = q + 3
+   :addControls(n,value1,value2,x,y,q,ctrls,nrCtrls1,nrCtrls2-1,channelNames)
+
+    setpar(n,1,"panelupdate","")
+
+endproc()
+
+
+procedure(addControls, n, value1, value2, x, y, q, ctrls, start, end, channelNames)
+
+# Loop over each line in the control list
+    for(k = start to start+end)
+
+     # Extract the control labels and options
+       label   = ctrls[0,k]
+       options = "$ctrls[1,k]$,$ctrls[2,k]$"
+       choice  = ctrls[3,k]
+       name    = ctrls[4,k]
+       color   = ctrls[5,k]
+       channel = ctrls[6,k]
+
+     # Find the bit position
+       m0 = getlistindex(wvParList,name)
+       m = m0 % 32
+       mask = 2d^m
+
+     # Select the hardware capability flag
+      if(m0 >= 32)
+         value = value2
+      else
+         value = value1
+      endif
+
+     # Extract the current state of the radiobutton   
+       if(value == -1) # Use defaults
+          if(ctrls[3,k] == "1")
+             choice = ctrls[2,k]
+          else
+             choice = ctrls[1,k]
+          endif
+       else # Extract bit from 'value'
+          if((value & mask) > 0)
+              choice = ctrls[2,k]
+          else
+             choice = ctrls[1,k]
+          endif
+       endif
+
+     # Make and place the label       
+       statictext(q,x,y,"right",label)
+       setpar(n,q,"panelparent",1)
+       if(color == "grey")
+          setpar(n,q,"color",[128,128,128])
+       elseif(color == "green")
+          setpar(n,q,"color",[0,128,0])
+       elseif(color == "red")
+          setpar(n,q,"color",[128,0,0])
+       else
+          setpar(n,q,"color",[0,0,0])
+       endif
+
+     # Make and place the checkbox       
+       checkbox(q+1, x+10, y,"$ctrls[1,k]$,$ctrls[2,k]$",choice,:updateBinCode(1))
+       setpar(n,q+1,"panelparent",1)
+       setpar(n,q+1,"name",name)
+
+     # If the control has a channel associated with it add radio button
+       if(channel == "true")
+          found = 0 
+          for(k = 1 to size(channelNames)-1)
+             if(name == "is$channelNames[k]$")
+                radiobuttons(q+2, x+35, y, 18, "horizontal", "1,2,3,4,5,6,7", "$k$")
+                found = 1
+                exitfor
+             endif
+          next(k)
+          if(found == 0)
+             radiobuttons(q+2, x+35, y, 18, "horizontal", "1,2,3,4,5,6,7", "1")
+          endif
+          setpar(n,q+2,"panelparent",1,"enable",choice)
+          setpar(n,q+2,"name",name[2:]+"Channel") 
+       endif
+
+       wvCtrlEnd = q+2
+       q = q + 3  
+
+     # Update next control number and position
+       y = y + 24
+     
+    next(k)
+         
+
+endproc(y,q)
+
+######################################################
+# Read the current bits from each radiobutton and
+# creates 2 numbers one for the first 32 bits and
+# one for the second
+######################################################
+
+procedure(readBits)
+
+   result = 0d # Double precision
+   for(k = wvCtrlStart to wvCtrlEnd step 3)
+      if(isobj(0,k))
+         name = getpar(0,k,"name")
+         m = getlistindex(wvParList,name)
+         v = getpar(0,k,"value")
+         result = result + (2d^m)*v
+      endif
+   next(k)
+
+   code1 = result & 0xFFFFFFFF
+   code2 = (result & 0xFFFF00000000)/2^32
+
+endproc(code1,code2)
+
+######################################################
+# For each selected X nucleus return the channel
+######################################################
+
+procedure(getXChannels)
+
+   channels = list(0)
+   for(k = 15 to wvLastNucleusIndex step 3) # Loop over nuclei
+      if(isobj(0,k))
+         name = getpar(0,k,"name")
+         v = getpar(0,k,"text")
+         if(v == "true") # Add name of nucleus if selected
+            ch = getpar(0,k+1,"text")
+            name = name[2:]
+            channels = channels + "channel$ch$Name = \"$name$\""
+         endif
+      endif
+   next(k)
+
+endproc(channels)
+  
+###################################################### 
+# Update the hardware capabilites number based on selection
+# and enable nuclei controls based on which is selected
+######################################################
+   
+procedure(updateBinCode, mode)
+
+   (code1,code2) = :readBits()
+
+   binCodeCtrl1->text("$code1,.17g$")
+   binCodeCtrl2->text("$code2,.17g$")
+
+   if(mode == 1)
+      nr = parentCtrl->ctrlnr()
+      if(nr >= 15 & nr <= wvLastNucleusIndex) # Loop over nuclei
+         if(getpar(0,nr,"value"))
+            setpar(0,nr+1,"enable","true")
+         else
+            setpar(0,nr+1,"enable","false")
+            setpar(0,nr+1,"text","1")
+         endif
+      endif
+   endif
+
+endproc()
+
+###################################################### 
+# Check selected options for invalid responses
+######################################################
+
+procedure(checkValues)
+
+   lst = getctrlvalues(0)
+
+   assignlist(lst)
+   nrSpec = (is60 == "true") + (is80 == "true") + (is90 == "true")
+   if(nrSpec > 1)
+      message("Error","Please select a single frequency option (60, 80 or 90)","error")
+      return(1)
+   endif
+   channels = ["2H","7Li","11B","13C","14N","15N","23Na","27Al","29Si","31P","33S","119Sn","129Xe"]
+   nrChannels = size(channels)
+   nrChannel1 = 0
+   nrChannel2 = 0
+   nrChannel3 = 0
+   nrChannel4 = 0
+   nrChannel5 = 0
+   nrChannel6 = 0
+   nrChannel7 = 0
+   for(k = 0 to nrChannels-1)
+      isChecked = (eval("is$channels[k]$") == "true")
+      isCh1 = (eval("$channels[k]$Channel") == 1)
+      isCh2 = (eval("$channels[k]$Channel") == 2)
+      isCh3 = (eval("$channels[k]$Channel") == 3)
+      isCh4 = (eval("$channels[k]$Channel") == 4)
+      isCh5 = (eval("$channels[k]$Channel") == 5)
+      isCh6 = (eval("$channels[k]$Channel") == 6)
+      isCh7 = (eval("$channels[k]$Channel") == 7)
+      nrChannel1 = nrChannel1 + (isChecked & isCh1)
+      nrChannel2 = nrChannel2 + (isChecked & isCh2)
+      nrChannel3 = nrChannel3 + (isChecked & isCh3)
+      nrChannel4 = nrChannel4 + (isChecked & isCh4)
+      nrChannel5 = nrChannel5 + (isChecked & isCh5)
+      nrChannel6 = nrChannel6 + (isChecked & isCh6)
+      nrChannel7 = nrChannel7 + (isChecked & isCh7)
+   next(k)
+   
+   nrChannels = nrChannel1 + nrChannel2 + nrChannel3 + nrChannel4 + nrChannel5 + nrChannel6 + nrChannel7
+
+   if(nrChannels > 1 & dualTemp == "true")
+     message("Error","Dual Temperature option only works with a proton or single channel system","error")
+     return(1)
+   endif
+
+   if(enhancedFluorine == "true" & dualTemp == "true")
+     message("Error","Can't have both enhanced-19F and dualTemp checked together.","error")
+     return(1)
+   endif
+
+   if(enhancedTritium == "true" & dualTemp == "true")
+     message("Error","Can't have both enhanced-3H and dualTemp checked together.","error")
+     return(1)
+   endif
+
+   if(nrChannels > 7)
+     message("Error","More than 7 X nuclei selected!","error")
+     return(1)
+   endif
+
+   if(nrChannels > 1 & multiXChannelCompatible != "true")
+     message("Error","MultiX-channel option needs to be selected if more than 1 X channel selected!","error")
+     return(1)
+   endif
+
+#   if(nrChannels > 0 & (enhancedFluorine=="true"))
+#      message("Error","Can't select X channels with Enhanced Fluorine option!","error")
+#      return(1)
+#   endif
+  
+   for(k = 1 to 7)
+      if(eval("nrChannel$k$") > 1)
+        message("Error","More than one X nucleus on channel $k$","error")
+        return(1)
+      endif
+   next(k)
+
+   if((nrChannels) >= 1 & useDSPforX == "false")
+     message("Error","X nuclei selected but 'Use Lock DSP data' not selected","error")
+     return(1)
+   endif
+
+   if(enhancedFluorine == "true" & enhancedTritium == "true")
+     message("Error","Can't have both enhanced-19F and enhanced-3H checked together.","error")
+     return(1)
+   endif
+
+   if(lockSatPulse == "true" & lockSatPulsev2 == "true")
+     message("Error","Can't have both Lock saturation pulse and Lock saturation pulse.v2 checked together.","error")
+     return(1)
+   endif
+
+
+endproc(0)

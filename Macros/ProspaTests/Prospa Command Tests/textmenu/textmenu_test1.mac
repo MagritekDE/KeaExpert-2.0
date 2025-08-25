@@ -1,0 +1,32 @@
+procedure(textmenu_test1,verbose,delay)
+
+
+   n = window("textmenu test",100,100,150,100)
+       textmenu(1,20,20,80,100);
+       setpar(n,1,"menu",["option 1","option 2","option 3","option 4"])
+       setpar(n,1,"text","option 2") # Specify displayed value
+       setpar(n,1,"index",2)  # Same as above but uses index in list
+   showwindow(n)
+
+
+   for(k = 1 to 4)
+      setpar(n,1,"index",k)
+      if(getpar(n,1,"text") != "option $k$")
+         return(0, "Invalid result for: textmenu_test1 #1")
+      endif
+      pause(delay) 
+   next(k)
+
+   for(k = 0 to 100)
+      setpar(n,1,"text","n = $k$")
+      if(getpar(n,1,"text") != "n = $k$")
+         return(0, "Invalid result for: textmenu_test1 #2")
+      endif 
+      pause(delay/5)
+   next(k)
+
+   pause(delay)
+
+   closewindow(n)
+
+endproc(1,"")

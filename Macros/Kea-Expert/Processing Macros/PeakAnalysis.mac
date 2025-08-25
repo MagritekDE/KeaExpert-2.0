@@ -1,0 +1,1052 @@
+################################################
+# Allow manual and automatic peak picking
+# and integration. Currently the automatic mode
+# only works on individual peak not multiplets
+################################################
+
+procedure(PeakAnalysis, inPlt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Don't duplicate this window
+   n = findwin("title","Peak analysis")
+   if(n != -1)
+      hidewindow(n)
+      showwindow(n)
+      return
+   endif
+
+# Get the plot object with spectrum
+   if(nrArgs == 0)
+      plt = curplot("1d")
+   else
+      plt = gPlot->getPlotObject(inPlt)
+   endif
+
+   parentWin = plt->parent->parent->nr
+
+# Define the window
+   n = :windowdefinition()
+   windowvar(wvParWin,wvPlt,wvPL,wvChanged,wvIntCalFactor)
+   wvPlt = plt
+   wvIntCalFactor = 1
+   wvPL = null
+   wvChanged = 0
+   wvParWin = parentWin
+
+# Load formating and current peak list
+   :loadPar()
+   :loadList()
+
+# Show the window
+   setwindowpar(n,"exit_procedure",":exitProc()")
+   showwindow(n)
+
+endproc()
+
+
+################################################
+# Define the window
+################################################
+ 
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Peak analysis", -1, -1, 460, 300)
+
+      # Define all controls with basic parameters
+      windowvar(wvPlt,wvPL,wvChanged,,wvNewRefInt,wvOldRefInt,lineThicknessCtrl,integralColorCtrl,intFontSizeCtrl,intFontColorCtrl,intFontStyleCtrl,intFontNameCtrl,refIntegralCtrl,peakFontSizeCtrl,peakFontColorCtrl,peakFontStyleCtrl,peakFontNameCtrl,prominenceCtrl,noiseFactorCtrl,showThresholdCtrl,wvParWin,wvIntCalFactor)
+      tab(1, 10, 14, 341, 277)
+      button(2, 364, 250, 78, 27, "Close",
+         :exitProc();
+         closewindow(0);)
+      button(3, 364, 30, 78, 27, "Redraw",
+         :drawPeakList();)
+      button(4, 364, 118, 78, 27, "Save list",
+         :saveList();)
+      button(5, 364, 162, 78, 27, "Print to CLI",
+         :printList();)
+      button(6, 364, 206, 78, 27, "Help",
+         :showHelp();)
+      groupbox(7, "Auto-peak", 20, 194, 221, 87)
+      groupbox(8, "Reference", 20, 240, 103, 42)
+      button(9, 364, 74, 78, 27, "Load list",
+         :loadList();)
+      groupbox(10, "Expected FWHM", 132, 240, 108, 42)
+      statictext(11, 189, 259, "right", "Width (Hz)")
+      textbox(12, 196, 255, 35)
+      groupbox(100, "Format", 20, 42, 221, 145)
+      statictext(101, 77, 213, 43, 27, "center", "Noise threshold")
+      textbox(102, 115, 218, 26)
+      statictext(103, 175, 221, "center", "x noise SD")
+      statictext(104, 82, 247, 54, 29, "center", "Peak prominence")
+      textbox(105, 115, 249, 26)
+      statictext(106, 175, 252, "center", "x noise SD")
+      statictext(107, 105, 64, "right", "Font name")
+      textmenu(108, 115, 61, 95, 200)
+      statictext(109, 105, 94, "right", "Font style")
+      textmenu(110, 115, 91, 95, 200)
+      statictext(111, 105, 123, "right", "Font color")
+      textbox(112, 115, 121, 66)
+      button(113, 195, 121, 20, 22, "...",
+         :getItemColor(peakFontColorCtrl);)
+      statictext(114, 105, 154, "right", "Font size")
+      textbox(115, 115, 151, 56)
+      button(116, 254, 59, 87, 28, "Add peak",
+         :addPeak();)
+      button(118, 254, 227, 87, 28, "Auto pick",
+         :autoPeakPick();)
+      button(120, 254, 103, 87, 28, "Remove peak",
+         :removeOnePeak();)
+      button(122, 254, 147, 87, 28, "Remove all ",
+         :removeAllPeaks();
+         :drawPeakList();)
+      groupbox(200, "Format", 20, 42, 221, 193)
+      statictext(201, 67, 259, "right", "Integral")
+      textbox(202, 75, 255, 35)
+      statictext(203, 105, 64, "right", "Font name")
+      textmenu(204, 115, 61, 95, 200)
+      statictext(205, 105, 93, "right", "Font style")
+      textmenu(206, 115, 90, 95, 200)
+      statictext(207, 105, 121, "right", "Font color")
+      textbox(208, 115, 119, 66)
+      button(209, 195, 119, 20, 22, "...",
+         :getItemColor(intFontColorCtrl);)
+      statictext(210, 105, 151, "right", "Font size")
+      textbox(211, 115, 148, 56)
+      statictext(212, 105, 181, "right", "Integral color")
+      textbox(213, 115, 177, 66)
+      button(214, 195, 177, 20, 22, "...",
+         :getItemColor(integralColorCtrl);)
+      statictext(215, 105, 208, "right", "Line thickness")
+      textmenu(216, 115, 206, 56, 200)
+      button(217, 254, 59, 87, 28, "Add integral",
+         :addIntegral();)
+      button(219, 254, 251, 87, 28, "Pick reference",
+         :scaleIntegrals();)
+      button(221, 254, 103, 87, 28, "Remove integral",
+         :removeIntegral();)
+      button(223, 254, 147, 87, 28, "Remove all",
+         :removeAllIntegrals();)
+      button(225, 254, 191, 87, 28, "Auto integrate",
+         :autoIntegrate();)
+
+     # Set other control parameters
+      setpar(n,1,"inittabs",["Picking","Integration"])
+      setpar(n,7,"tabparent",[1,0])
+      setpar(n,8,"tabparent",[1,1])
+      setpar(n,10,"tabparent",[1,1])
+      setpar(n,11,"tabparent",[1,1])
+      setpar(n,12,"objID","expectedFWHMCtrl",
+                  "valueID","expectedFWHM",
+                  "type","float",
+                  "tabparent",[1,1])
+      setpar(n,100,"tabparent",[1,0])
+      setpar(n,101,"tabparent",[1,0])
+      setpar(n,102,"objID","noiseFactorCtrl",
+                  "valueID","noiseFactor",
+                  "type","float",
+                  "tabparent",[1,0])
+      setpar(n,103,"tabparent",[1,0])
+      setpar(n,104,"tabparent",[1,0])
+      setpar(n,105,"objID","prominenceCtrl",
+                  "valueID","prominence",
+                  "type","float",
+                  "tabparent",[1,0])
+      setpar(n,106,"tabparent",[1,0])
+      setpar(n,107,"tabparent",[1,0])
+      setpar(n,108,"objID","peakFontNameCtrl",
+                  "valueID","peakFontName",
+                  "type","string",
+                  "tabparent",[1,0],
+                  "menu",["Arial","Times","Courier","Cambria","Calibri"])
+      setpar(n,109,"tabparent",[1,0])
+      setpar(n,110,"objID","peakFontStyleCtrl",
+                  "valueID","peakFontStyle",
+                  "type","string",
+                  "tabparent",[1,0],
+                  "menu",["regular","italic","bold","bolditalic"])
+      setpar(n,111,"tabparent",[1,0])
+      setpar(n,112,"objID","peakFontColorCtrl",
+                  "valueID","peakFontColor",
+                  "type","array",
+                  "tabparent",[1,0])
+      setpar(n,113,"tabparent",[1,0])
+      setpar(n,114,"tabparent",[1,0])
+      setpar(n,115,"objID","peakFontSizeCtrl",
+                  "valueID","peakFontSize",
+                  "type","integer",
+                  "tabparent",[1,0])
+      setpar(n,116,"tabparent",[1,0])
+      setpar(n,118,"tabparent",[1,0])
+      setpar(n,120,"tabparent",[1,0])
+      setpar(n,122,"tabparent",[1,0])
+      setpar(n,200,"tabparent",[1,1])
+      setpar(n,201,"tabparent",[1,1])
+      setpar(n,202,"objID","refIntegralCtrl",
+                  "valueID","refIntegral",
+                  "type","float",
+                  "tabparent",[1,1])
+      setpar(n,203,"tabparent",[1,1])
+      setpar(n,204,"objID","intFontNameCtrl",
+                  "valueID","intFontName",
+                  "type","string",
+                  "tabparent",[1,1],
+                  "menu",["Arial","Times","Courier","Cambria","Calibri"])
+      setpar(n,205,"tabparent",[1,1])
+      setpar(n,206,"objID","intFontStyleCtrl",
+                  "valueID","intFontStyle",
+                  "type","string",
+                  "tabparent",[1,1],
+                  "menu",["regular","italic","bold","bolditalic"])
+      setpar(n,207,"tabparent",[1,1])
+      setpar(n,208,"objID","intFontColorCtrl",
+                  "valueID","intFontColor",
+                  "type","array",
+                  "tabparent",[1,1])
+      setpar(n,209,"tabparent",[1,1])
+      setpar(n,210,"tabparent",[1,1])
+      setpar(n,211,"objID","intFontSizeCtrl",
+                  "valueID","intFontSize",
+                  "type","integer",
+                  "tabparent",[1,1])
+      setpar(n,212,"tabparent",[1,1])
+      setpar(n,213,"objID","integralColorCtrl",
+                  "valueID","integralColor",
+                  "type","array",
+                  "tabparent",[1,1])
+      setpar(n,214,"tabparent",[1,1])
+      setpar(n,215,"tabparent",[1,1])
+      setpar(n,216,"objID","lineThicknessCtrl",
+                  "valueID","lineThickness",
+                  "tabparent",[1,1],
+                  "menu",["1","2","3","4","5"])
+      setpar(n,217,"tabparent",[1,1])
+      setpar(n,219,"tabparent",[1,1])
+      setpar(n,221,"tabparent",[1,1])
+      setpar(n,223,"tabparent",[1,1])
+      setpar(n,225,"tabparent",[1,1])
+
+     # Set other window parameters
+endproc(n)
+
+################################################
+# Check for changes to peaklist on exit
+################################################
+ 
+procedure(exitProc)
+
+   if(wvChanged)
+      if(query("Warning","The peak list have been changed.\rDo you want to save them?") == "yes")
+         :saveList()
+      endif
+   endif
+
+   :savePar()
+   wvPlt->hold("off")
+
+endproc()
+
+
+################################################
+# Select a font color
+################################################
+ 
+procedure(getItemColor,ctrl)
+
+   col = ctrl->value
+   col = getcolor(col)
+   if(col != null)
+      ctrl->text("$col[0:2]$")
+   endif
+
+endproc()
+
+################################################
+# Load the last GUI parameters
+################################################
+ 
+procedure(loadPar)
+
+   bak = getcwd()
+   file = "$prefdir$\\SpinsolveParameters\\PeakAnalysis.par"
+   if(isfile(file))
+      par = load(file)
+   else
+      peakFontColor = [0,0,255]
+      peakFontSize = 8
+      peakFontName = "Calibri"
+      peakFontStyle = "regular"
+      intFontColor = [0,0,255]
+      intFontSize = 8
+      intFontName = "Calibri"
+      intFontStyle = "regular"
+      noiseFactor = 20
+      prominence = 10
+      showThreshold = "no"
+      integralColor = [255,128,255]
+      lineThickness = 2
+      refIntegral = 1
+      expectedFWHM = 1
+      par = mkparlist()
+   endif
+
+   setctrlvalues(0,par)
+   cd(bak)
+
+endproc()
+   
+################################################
+# Save the GUI parameters
+################################################
+ 
+procedure(savePar)
+
+   par = getctrlvalues(0)
+   dir = "$prefdir$\\SpinsolveParameters"
+   mkdir(dir)
+   cd(dir)
+   save("PeakAnalysis.par",par)
+
+endproc()
+
+################################################
+# Automatically find peaks factor times above
+# the noise threshold
+################################################
+ 
+procedure(autoPeakPick, inPlt)
+
+   assignlist(getctrlvalues(0))
+
+# Get data
+  (x,y)= wvPlt->trace(0)->getdata()
+   wvPlt->rmlines()
+   wvPlt->rmtext()
+   y = real(y)
+   sz = size(y)
+
+# Get the noise level
+   nl = sd(y[0:sz/32])
+
+# A peak must be fac times the noise level
+   fac = noiseFactor
+
+   (position,amplitude) = :peakPick(wvPlt, x, y, nl, noiseFactor, 0.5)
+
+# Make this the peak list
+   nrPeaks = size(position)
+   wvPL = matrix(6,nrPeaks)-1
+   for(k = 0 to nrPeaks-1)
+      wvPL[0,k] = x[position[k]]
+      wvPL[1,k] = amplitude[k]
+   next(k)
+
+   :drawPeakList()
+   
+   wvChanged = 1
+
+ #   wvPlt->addtext([10,10],"Ibuprofen",[0,0;0,0],"Cambria",16,0,"italic",[128,0,0],"pixels")
+
+endproc()
+
+################################################
+# Remove one peak from the plot interactively
+################################################
+ 
+procedure(removeOnePeak)
+
+   xPos = getx("value")
+
+# Search for closest peak in the peak list
+   (w,h) = size(wvPL)
+   peak = -1
+   dis = 1e30
+   for(k = 0 to h-1)
+      if(abs(wvPL[0,k]-xPos) < dis)
+        dis = abs(wvPL[0,k]-xPos)
+        peak = k
+      endif
+   next(k)
+
+  if(peak == -1)
+     message("Error","Peak not found","error")
+     return
+   endif
+
+# Remove peak from list
+   if(peak == h-1)
+     wvPL = wvPL[~,[0:peak-1]]
+   elseif(peak == 0)
+     wvPL = wvPL[~,[1:h-1]]
+   else
+      wvPL = join(wvPL[~,[0:peak-1]],wvPL[~,[peak+1:h-1]],"horiz")
+   endif
+
+   :drawPeakList()
+   
+   wvChanged = 1
+
+endproc()
+
+################################################
+# Remove all peaks from the plot
+################################################
+
+procedure(removeAllPeaks)
+
+   wvPL = null
+   wvChanged = 1
+   wvIntCalFactor = 1
+  :drawPeakList()
+
+endproc()
+
+################################################
+# Add a single peak to the plot interactively
+################################################
+
+procedure(addPeak)
+
+  assignlist(getctrlvalues(0))
+
+  (idx,pos) = getx("both")
+  (x,y) = wvPlt->trace(0)->getdata()
+   y = real(y)
+
+   if(wvPL == null)
+      wvPL = [pos,y[idx],-1,-1,-1,-1]
+   else
+      wvPL = join(wvPL,[pos,y[idx],-1,-1,-1,-1],"horiz")
+   endif
+
+   :drawPeakList()
+
+   wvChanged = 1
+
+endproc()
+
+procedure(drawPeakList)
+
+  assignlist(getctrlvalues(0))
+
+# Get the calibration factor
+   cal = wvIntCalFactor
+
+# Draw the peak list
+   (x1,x2,y1,y2) = wvPlt->zoom()
+
+   wvPlt->draw("false")
+
+   (x,y) = wvPlt->trace(0)->getdata()
+   y = real(y)
+   sz = size(y)
+
+# Use the noise level to define the peak label offset
+   ns = (sd(y[0:sz/32]) +sd(y[sz-sz/32:-1]))/2
+   len = ns*50
+   miny = min(y)
+   off = miny - len/2
+
+   ppmScale = (wvPlt->axes->xppmscale() == "true")
+
+# Remove the integral traces
+   lst = wvPlt->tracelist()
+   for(k = 1 to size(lst)-1)
+      wvPlt->rmtrace(lst[k])
+   next(k)
+
+# Remove lines and text
+   wvPlt->rmlines()
+   wvPlt->rmtext()
+
+   if(wvPL == null)
+      wvPlt->draw("true")
+      return
+   endif
+
+# Add the peaks and integral info
+   wvPlt->hold("on")
+
+   (w,h) = size(wvPL)
+
+   for(k = 0 to h-1)
+      pos = wvPL[0,k]
+      if(ppmScale)
+         txt = "$pos,1.2f$"
+      else
+         txt = "$pos,1.1f$"
+      endif
+
+      wvPlt->addline(pos,off,pos,off-len,peakFontColor,1,"solid")
+      wvPlt->addtext([pos,off-len],txt,[0,-0.5;1.2,0],peakFontName,peakFontSize,-90,peakFontStyle,peakFontColor)
+
+      posL = wvPL[3,k]
+      posR = wvPL[4,k]
+
+      if(posL < posR)
+
+         idx1 = findindex(x,posL)
+         idx2 = findindex(x,posR)  
+         int = wvPL[5,k]
+         
+      # Work out the cumulative sum and plot
+      # along with the integral value
+         ysub = y[idx1:idx2]
+         ys = cumsum(ysub)
+         xs = linspace(posL,posR,size(ys))
+         ys = max(ysub)*ys/max(ys)
+         ys = ys[-1]-ys
+         ys = ys+max(ysub)
+         wvPlt->plot(xs,ys,"color",integralColor,"tracewidth",lineThickness)
+         xtxt = (posL+posR)/2
+         ytxt = (max(ys)+min(ys))/2
+         wvPlt->addtext([xtxt,ytxt],"$int*cal,1.1f$",[-0.5,0;0,-0.5],intFontName,intFontSize,0,intFontStyle,intFontColor)
+
+      endif
+
+   next(k)
+
+   wvPlt->zoom(x1,x2,y1,y2)
+   wvPlt->hold("off")
+   wvPlt->draw("true")
+
+endproc()
+
+
+################################################
+# Print out the sorted peak list to the CLI
+################################################
+
+procedure(printList, silent)
+
+   if(nrArgs == 0)
+     silent = 0
+   endif
+
+# Get the calibration factor
+   cal = wvIntCalFactor
+   pos = sortrows(wvPL,0,"descending")
+
+   if(not(silent))
+      pr("\n  Position (ppm)  Amplitude   FWHM(Hz)  Left (ppm)  Right (ppm)  Integral\n\n")
+      (w,h) = size(pos)
+      for(k = 0 to h-1)
+         pr("\t$pos[0,k],7.3g$\t$pos[1,k],7.3g$\t$pos[2,k],7.3g$\t$pos[3,k],7.3g$\t$pos[4,k],7.3g$\t$pos[5,k]*cal,7.3g$\n")
+      next(k)
+   endif
+
+endproc(pos,cal)
+
+################################################
+# Load a peak list from a file
+################################################
+
+procedure(loadList)
+
+   bak = getcwd()
+
+   assignlist(getctrlvalues(0))
+
+# Get the data location
+   pw = getobj(wvPlt->parent->parent->nr)
+   dataDir = pw->winvar->dataFolderCtrl->text
+   exptName = pw->winvar->exptListCtrl->text   
+
+# Import the peak list
+   cd("$dataDir$\\$exptName$")
+   if(not(isfile("peakInfo.mac")))
+      #message("Error","No peak list file defined","error")
+      return
+   endif
+
+   try
+      (wvPL,wvIntCalFactor) = peakInfo()
+      :drawPeakList()
+   catch
+      pr "Malformed peak list\n"
+      pr lasterror()
+   endtry
+
+# Update the peak list in the plot
+
+   cd(bak)
+
+endproc()
+
+################################################
+# Save a peak list to a file
+################################################
+
+procedure(saveList)
+
+   bak = getcwd()
+
+# Get the data location from the parent window
+   pw = getobj(wvPlt->parent->parent->nr)
+   dataDir = pw->winvar->dataFolderCtrl->text
+   exptName = pw->winvar->exptListCtrl->text
+
+# Get the peak list sliently
+   (lst,cal) = :printList(1)
+   
+# Save  as a macro
+   dir = "$dataDir$\\$exptName$"
+   cd(dir)
+ 
+   printtofile("peakInfo.mac")
+   pr("####################################################################################")
+   pr("\n# Automatically generated peak information macro used by PeakAnalysis.mac")
+   pr("\n# Call this procedure to extract the peak list and integral calibration information.")
+   pr("\n####################################################################################\n\n")
+
+   pr("procedure(peakInfo)\n")
+   (w,h) = size(lst)
+
+   pr("\n#\n# Peak information. Manual selection and integration only uses Position, Left, Right and Integral fields")
+   pr("\n# automatic picking and integration used Position, Amplitude, FWHM and Integral fields")
+   pr("\n#\n#  Position (ppm), Amplitude, FWHM(Hz), Left (ppm), Right (ppm), Integral\n#\n")
+   if(h == 1)
+      pr("   peakList = [$lst[0,0],7.3f$,$lst[1,0],7.3g$,$lst[2,0],7.3f$,$lst[3,0],7.3f$,$lst[4,0],7.3f$,$lst[5,0],7.3f$]\n")
+   else
+      pr("   peakList = [$lst[0,0],7.3f$,$lst[1,0],7.3g$,$lst[2,0],7.3f$,$lst[3,0],7.3f$,$lst[4,0],7.3f$,$lst[5,0],7.3f$;\n")
+      for(k = 1 to h-2)
+        pr("               $lst[0,k],7.3f$,$lst[1,k],7.3g$,$lst[2,k],7.3f$,$lst[3,k],7.3f$,$lst[4,k],7.3f$,$lst[5,k],7.3f$;\n")  
+      next(k)
+      pr("               $lst[0,k],7.3f$,$lst[1,k],7.3g$,$lst[2,k],7.3f$,$lst[3,k],7.3f$,$lst[4,k],7.3f$,$lst[5,k],7.3f$]\n\n")
+   endif
+
+   pr("\n#\n# Integration calibration information\n#\n")
+
+   pr("   intCalFactor = $wvIntCalFactor$\n")
+
+   pr("\nendproc(peakList,intCalFactor)\n")
+   closeprint()
+
+   cd(bak)
+
+   message("Information","Peak list saved to data folder:\r\r'$dir$'","info")
+   wvChanged = 0
+
+endproc()
+
+
+############################################################
+# Main entry point. Pass:
+# plt - plot reference
+# x,y - data
+# noiseFactor - ignore data below this (this is a number 
+# of noise standard deviations)
+# prominence - peaks must have this prominence (this is a 
+# number of noise standard deviations)
+#
+############################################################
+
+procedure(peakPick, plt, x, y, ns, noiseFactor, prominence)
+
+   assignlist(getctrlvalues(0))
+
+ #  plt->draw("false")
+
+# Peak must be larger than this value
+   noiseThreshold = noiseFactor*ns
+# We want the peak prominence to be larger than this value
+   minHeight = prominence*ns
+
+# Draw the threshold line
+   plt->addline(x[0],noiseThreshold,x[-1],noiseThreshold,[0,128,0])
+
+   w = size(x)
+   position =  [0]
+   amplitude =  [0]
+   len = max(y)/10
+   off = len/3
+
+   ppmScale = (wvPlt->axes->xppmscale() == "true")
+
+# Look at each point in the data set
+   for(k = 1 to w-2)
+      if(y[k] > noiseThreshold) # Above noise threshold
+         if(y[k-1] < y[k] & y[k+1] < y[k]) # Local peak 
+            if(:checkProminence(k,x,y,minHeight)) # Check prominence
+               position = join(position,[k])
+               amplitude = join(amplitude,[y[k]])
+            endif
+         endif
+      endif
+   next(k)
+
+# Remove the first point in the peak list
+   if(size(position) > 1)
+      position = position[1:-1]
+      amplitude = amplitude[1:-1]
+   else
+      message("Information","No peaks found with these parameters","info")
+   endif
+
+endproc(position,amplitude)
+
+######################################################################
+# The peak must have a prominence >= to the specified value and
+# it must have a peak width >= minWidth at this point
+######################################################################
+
+procedure(checkProminence, pos, x, y, minHeight)
+
+   w = size(x)  # Width of data set
+   val = y[pos] # Height if start point (a possible peak)
+  # del = (x[1]-x[0])
+
+# Check the indicies above the peak
+   minVal = 1e30
+   minPos = 0
+   for(k = pos+1 to w-2)
+ 
+    # Record the lowest point away from the peak
+      if(y[k] < minVal)
+         minVal = y[k]
+         minPos = k
+      endif
+
+    # If a peak is found larger than the original then investigate
+      if(y[k] > y[k-1] & y[k] > y[k+1]) 
+         if(y[k] > val)
+            if(val-minVal > minHeight) # If prominence greater than minHeight then pick
+               if(:checkWidth(minPos-pos,(val-minVal)/val))
+                  exitfor 
+               else
+                  return(0)
+               endif
+            else
+               return(0)   # Prominence is too small so ignore
+            endif
+         endif
+      endif
+
+     # Isolated peak so just check height
+      if(y[k] < 0.5*val)
+         if(val-y[k] > minHeight) # If half height greater than minHeight then pick
+            if(:checkWidth(k-pos,(val-y[k])/val))
+               exitfor 
+            else
+               return(0)
+            endif
+         else
+            return(0)  # Half height is too small so ignore
+         endif
+      endif
+
+   next(k)
+
+# Check the indicies below the peak
+   minVal = 1e30
+   minPos = 0
+   for(k = pos-1 to 1 step -1)
+ 
+    # Record the lowest point away from the peak
+      if(y[k] < minVal)
+         minVal = y[k]
+         minPos = k
+      endif
+
+    # If a peak is found larger than the original then investigate
+      if(y[k] > y[k-1] & y[k] > y[k+1])
+         if(y[k] > val)
+            if(val-minVal > minHeight)# If prominence greater than minHeight then pick
+               if(:checkWidth(pos-minPos,(val-minVal)/val))
+                  exitfor 
+               else
+                  return(0)
+               endif
+            else
+               return(0)   # Prominence is too small so ignore
+            endif
+         endif
+      endif
+
+     # Isolated peak so just check height
+      if(y[k] < 0.5*val)
+         if(val-y[k] > minHeight) # If half height greater than minHeight then pick
+            if(:checkWidth(pos-k,(val-y[k])/val))
+               exitfor 
+            else
+               return(0)
+            endif
+         else
+            return(0)  # Half height is too small so ignore
+         endif
+      endif
+
+   next(k)
+
+endproc(1) # Ok its a peak
+
+# Optional linewidth check, currently turned off
+procedure(checkWidth, halfWidth, prominence)
+
+   return(1)
+   fwhm = 1.5 # Typical line width Hz
+   w0.5 = fwhm/2*sqrt(1/prominence-1)
+   if(halfWidth > w0.5)
+      return(1)
+   endif
+
+endproc(0)
+
+
+################################################
+# Remove one peak from the plot interactively
+################################################
+ 
+procedure(removeIntegral)
+
+   xPos = getx("value")
+
+# Search for the closest peak in the peak list
+   (w,h) = size(wvPL)
+   peak = -1
+   dis = 1e30
+   for(k = 0 to h-1)
+      if(abs(wvPL[0,k]-xPos) < dis)
+        dis = abs(wvPL[0,k]-xPos)
+        peak = k
+      endif
+   next(k)
+
+  if(peak == -1)
+     message("Error","Peak not found","error")
+     return
+   endif
+
+# Reset integral info
+   wvPL[1,peak] = -1
+   wvPL[2,peak] = -1
+   wvPL[3,peak] = -1
+   wvPL[4,peak] = -1
+   
+   :drawPeakList()
+
+   wvChanged = 1
+
+endproc()
+
+################################################
+# Remove all peaks from the plot
+################################################
+
+procedure(removeAllIntegrals)
+
+   if(wvPL == null)
+      return
+   endif
+   (w,h) = size(wvPL)
+   for(k = 0 to h-1)
+      wvPL[1,k] = -1
+      wvPL[2,k] = -1
+      wvPL[3,k] = -1
+      wvPL[4,k] = -1     
+      wvPL[5,k] = -1     
+   next(k)
+
+   :drawPeakList()
+
+   wvIntCalFactor = 1
+   wvChanged = 1
+
+endproc()
+
+################################################
+# Scale the integrals such that the selected one
+# has the reference value.
+################################################
+
+procedure(scaleIntegrals)
+
+# Allow the user to select the reference integral
+   xPos = getx("value")
+
+   refInfo = wvPlt->gettext(xPos)
+
+ # Get the gui parameters  
+   assignlist(getctrlvalues(0))
+   
+# Search for the closest peak in the peak list
+   (w,h) = size(wvPL)
+   peak = -1
+   dis = 1e30
+   for(k = 0 to h-1)
+      if(abs(wvPL[0,k]-xPos) < dis)
+        dis = abs(wvPL[0,k]-xPos)
+        peak = k
+      endif
+   next(k)
+
+  if(peak == -1)
+     message("Error","Peak not found","error")
+     return
+   endif
+
+# Get the reference information
+  wvIntCalFactor = refIntegralCtrl->value/wvPL[5,peak]
+
+  :drawPeakList()
+
+
+endproc()
+
+################################################
+# Add a single peak to the plot interactively
+################################################
+
+procedure(addIntegral)
+
+   assignlist(getctrlvalues(0))
+
+# Get the integration calibration factor (if defined)
+   cal = 1 #:getCalibration()
+    
+# Remember the current zoom
+   (x1,x2,y1,y2) = wvPlt->zoom()
+   
+# Select the integration limits
+   pos1 = getx("value")
+   wvPlt->addline(pos1,y1,pos1,y2,[0,128,0],2,"solid")
+   
+   pos2 = getx("value")
+   wvPlt->rmlines(pos1,(y1+y2)/2)
+   if(pos1 > pos2)
+      swapvar(pos1,pos2)
+   endif
+
+# Search for the peak in the peak list
+   peak = -1
+   if(wvPL != null)
+      (w,h) = size(wvPL)
+      for(k = 0 to h-1)
+         if(wvPL[0,k] > pos1 & wvPL[0,k] < pos2)
+           peak = k
+           exitfor
+         endif
+      next(k)
+   endif
+
+# None found so add one at average position
+   if(peak == -1)
+      pos = (pos1+pos2)/2
+      if(wvPL == null)
+         wvPL = [pos,-1,-1,-1,-1,-1]
+      else
+         wvPL = join(wvPL,[pos,-1,-1,-1,-1,-1],"horiz")
+      endif
+      peak = size(wvPL,2)-1
+   endif
+
+  
+# Perform the integral on the selected trace 
+   tc = wvPlt->trace(0)
+   (x,y) = tc->getdata()
+   y = real(y)   
+   idx1 = findindex(x,pos1)
+   idx2 = findindex(x,pos2)  
+   int = sum(y[idx1:idx2])
+
+   wvPL[3,peak] = pos1
+   wvPL[4,peak] = pos2
+   wvPL[5,peak] = int
+
+   :drawPeakList()
+
+   wvChanged = 1
+
+endproc()
+
+
+################################################
+# Use curve fitting to get the integrals.
+# Requires Lorentzian shaped peaks which means
+# reference deconvolution must be applied
+################################################
+
+procedure(autoIntegrate)
+
+   assignlist(getctrlvalues(wvParWin))
+
+# Get the b0 frequency
+   if(isvar("nucleus"))
+      if(nucleus == "1H")
+         f0 = single(b1Freq1H)
+      elseif(nucleus == "13C")
+         f0 = single(b1Freq13C)
+      elseif(nucleus == "19F")
+         f0 = single(b1Freq19F)
+      elseif(nucleus == "31P")
+         f0 = single(b1Freq31P)
+      else
+         message("Error","Unsupported nucleus $nucleus$","error")
+         return
+      endif
+   else
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+   assignlist(getctrlvalues(0))
+
+  (w,h) = size(wvPL)
+
+  pl = matrix(3,h)
+  pl[0,~] = wvPL[1,~]
+  pl[1,~] = wvPL[0,~]
+  pl[2,~] = 2*f0/expectedFWHM
+
+  (x,y) = wvPlt->trace(0)->getdata()
+  (xl,xr,yb,yt) = wvPlt->zoom()
+
+  (s,e) = findindex(x,dispRangeMinPPM,dispRangeMaxPPM)
+   x1 = x[s:e]
+   y1 = y[s:e]
+
+  (f,p) = peakfit(x1,real(y1),pl,[1,1,1])
+
+   specWidth = x[-1]-x[0]
+   N = size(x)
+  
+   for(k = 0 to h-1)
+   
+      wvPL[0,k] = p[1,k]
+      wvPL[1,k] = p[0,k]
+      wvPL[2,k] = abs(2/p[2,k]*f0)
+      wvPL[5,k] = abs(pi*p[0,k]*1/p[2,k]*N/specWidth)
+
+   next(k)
+ 
+     
+# The chisquared   
+ #  pr(sum((real(y1)-f)^2)/size(y1))
+   
+   :drawPeakList()
+
+# Plot the fitted spectrum
+   wvPlt->hold("on")
+   wvPlt->plot(x1,f,"color",blue)
+   wvPlt->hold("off")
+   wvPlt->zoom(xl,xr,yb,yt)
+
+   wvChanged = 1
+
+endproc()
+
+
+################################################
+# Display the help for this dialog
+################################################
+
+procedure(showHelp)
+
+   message("Information","Watch this space!","info")
+
+endproc()

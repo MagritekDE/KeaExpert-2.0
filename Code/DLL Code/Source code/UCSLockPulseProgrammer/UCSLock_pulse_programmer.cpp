@@ -1,0 +1,4723 @@
+/*************************************************************
+                 UCS Pulse Programmer 
+
+Provides DLL commands to generate pulse sequences for the 
+Ultra-compact spectrometer - lock module only
+
+*************************************************************/
+
+#include "stdafx.h"
+#include "../Global files/includesDLL.h"
+#include <shellapi.h>
+
+#define DSP_MEMORY_ADRS 10000
+
+#define VERSION 1.9 // 15 Nov 2020
+
+/*****************************************************************************************************************
+   Version history
+  
+   1.0 - copied from UCS folder and updated for lock channel
+  
+   1.1 -----------------------------
+  
+   1. Added the shim16 command for use with the ultracompact spectrometer
+   2. Removed shim command.
+  
+   1.2 -----------------------------
+  
+   1. Modified softpulse to work with lock channel
+  
+   1.3 -----------------------------
+  
+   1. Added gradramp16 command
+   2. Simplified shim16 ASM code - increased serial transfer rate to allow 2 us steps.
+  
+   1.4 -----------------------------
+  
+   1. Fixed bug in txon for two channels. The second ch. phase and frequency were always the same as the first.
+  
+   1.5 -----------------------------
+  
+   1. Added nops to cleardata and acquire to improve data transfer reliability
+  
+   1.6 -----------------------------
+   
+   1. Change clock phase on shim16 and gradramp16 commands to make them more reliable
+  
+   1.7 -----------------------------
+  
+   1. Changed named of gradramp16 to shimramp16 (as we now have a new gradient board).
+  
+   1.8 -----------------------------
+  
+   1. Made read/write address 0x30000 to suit new DSP (and old) board.
+	2. Added option ni and n1 to txon to switch on this outputs without gating RF (for testing)
+	3. Added single instruction delays in txoff and pulse commands which was preventing new DSP board from working correctly.
+  
+   1.9 ------------------------------
+
+	1. Reverted address to 0x10000 - other address wasn't necessary (this was done earlier but not documented)
+	2. Removed access to TTL functions. Not relevant here.
+
+	Last modified 15 Nov 2020 CDE
+  
+******************************************************************************************************************/
+
+
+// Locally defined procedure and global variables
+
+EXPORT short AddCommands(char*, char*, DLLParameters*);
+EXPORT void  ListCommands(void);
+EXPORT bool  GetCommandSyntax(char* cmd, char* syntax);
+//short UpdateTx(DLLParameters*,char *args);
+short AcquireData(DLLParameters*,char *args);
+short BothChannelsRFPulse(DLLParameters*,char *args);
+short ChannelOneRFPulse(DLLParameters*,char *args);
+short ClearData(DLLParameters*,char *args);
+short CloseHandle(DLLParameters* par, char *args);
+short DecrementTableIndex(DLLParameters*,char *args);
+short EitherChannelRFPulse(DLLParameters*,char *args);
+short EndPP(DLLParameters*,char *args);
+short ExecuteAndWait(DLLParameters*,char*);
+short GetHelpFolder(DLLParameters*,char *args);
+short GetPPVersion(DLLParameters*,char *args);
+short IncFrequency(DLLParameters*,char *args);
+short IncrementTableIndex(DLLParameters*,char *args);
+short IncRxFrequency(DLLParameters*,char *args);
+short IncTxAmplitude(DLLParameters*,char *args);
+short IncTxFrequency(DLLParameters*,char *args);
+short InitialisePP(DLLParameters*,char*);
+short LoopEnd(DLLParameters*,char *args);
+short LoopStart(DLLParameters*,char *args);
+short MakeADelay(DLLParameters*,char*);
+short MakeALongDelay(DLLParameters*,char *args);
+short MakeAnRFPulse(DLLParameters*,char*);
+short NoOperation(DLLParameters* par, char *args);
+short RampedGradient(DLLParameters* par, char *args);
+short ResetMemoryPointer(DLLParameters*,char *args);
+short SelectAmplitude(Interface *itfc ,FILE* fp, CText amp, CText channel);
+short SelectDuration(Interface *itfc ,FILE* fp, char *reg, CText duration);
+short SelectFrequency(Interface *itfc, FILE*fp, CText freq, CText channel);
+short SelectNumber(Interface *itfc ,FILE* fp, CText num, char *dst, long min, long max);
+short SelectPhase(Interface *itfc ,FILE* fp, CText phase, CText channel);
+short SelectRxAmplifier(DLLParameters*,char *args);
+short SetRxFreq(DLLParameters*,char *args);
+short SetRxGain(DLLParameters*,char *args);
+short SetTableIndex(DLLParameters*,char *args);
+short SetTTL(DLLParameters*,char *args);
+short SetTxFreq(DLLParameters*,char *args);
+short ShapedRFPulse(DLLParameters*,char *args);
+short SwitchOffTx(DLLParameters*,char *args);
+short SwitchOnBothTxChannels(DLLParameters*,char *args);
+short SwitchOnOneTxChannel(DLLParameters*,char *args, short nrargs);
+short SwitchOnShim16(DLLParameters*,char*);
+short SwitchOnTx(DLLParameters*,char *args);
+short TTLOff(DLLParameters*,char *args);
+short TTLOn(DLLParameters*,char *args);
+short TTLPulse(DLLParameters*,char*);
+short TTLTranslate(DLLParameters*,char *args);
+short UpdateFrequencies(DLLParameters*,char *args);
+short WaitForTrigger(DLLParameters*,char *args);
+void InsertUniqueStringIntoList(char *str, char ***list, long &position);
+short RampedShim16(DLLParameters* par, char *args);
+short SelectGradient16(Interface *itfc ,FILE* fp, CText grad);
+
+
+char **parList; // Parameter list - built up by pp commands
+long szList;    // Number of entries in parameter list
+long label;     // label counter (to generate unique label)
+
+
+/*******************************************************************************
+   Extension procedure to add commands to Prospa 
+*******************************************************************************/
+
+EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
+{
+   short r = RETURN_FROM_DLL;
+      
+        if(!strcmp(command,"acquire"))      r = AcquireData(dpar,parameters);  
+   else if(!strcmp(command,"cleardata"))    r = ClearData(dpar,parameters);      
+   else if(!strcmp(command,"delay"))        r = MakeADelay(dpar,parameters);   
+   else if(!strcmp(command,"decindex"))     r = DecrementTableIndex(dpar,parameters);   
+   else if(!strcmp(command,"endloop"))      r = LoopEnd(dpar,parameters);      
+   else if(!strcmp(command,"endpp"))        r = EndPP(dpar,parameters);  
+   else if(!strcmp(command,"execwait"))     r = ExecuteAndWait(dpar,parameters);
+   else if(!strcmp(command,"helpfolder"))   r = GetHelpFolder(dpar,parameters);  
+   else if(!strcmp(command,"incindex"))     r = IncrementTableIndex(dpar,parameters);   
+   else if(!strcmp(command,"inctxamp"))     r = IncTxAmplitude(dpar,parameters);   
+   else if(!strcmp(command,"incrxfreq"))    r = IncRxFrequency(dpar,parameters);   
+   else if(!strcmp(command,"inctxfreq"))    r = IncTxFrequency(dpar,parameters);
+   else if(!strcmp(command,"initpp"))       r = InitialisePP(dpar,parameters);      
+   else if(!strcmp(command,"loop"))         r = LoopStart(dpar,parameters);     
+   else if(!strcmp(command,"memreset"))     r = ResetMemoryPointer(dpar,parameters);     
+   else if(!strcmp(command,"nop"))          r = NoOperation(dpar,parameters);     
+   else if(!strcmp(command,"ppversion"))    r = GetPPVersion(dpar,parameters);      
+   else if(!strcmp(command,"pulse"))        r = MakeAnRFPulse(dpar,parameters);
+   else if(!strcmp(command,"selectrxamp"))  r = SelectRxAmplifier(dpar,parameters);   
+   else if(!strcmp(command,"setindex"))     r = SetTableIndex(dpar,parameters);   
+   else if(!strcmp(command,"setrxfreq"))    r = SetRxFreq(dpar,parameters);   
+   else if(!strcmp(command,"setrxgain"))    r = SetRxGain(dpar,parameters);   
+   else if(!strcmp(command,"settxfreq"))    r = SetTxFreq(dpar,parameters); 
+   else if(!strcmp(command,"shapedrf"))     r = ShapedRFPulse(dpar,parameters);  
+   else if(!strcmp(command,"shim16"))       r = SwitchOnShim16(dpar,parameters);   
+   else if(!strcmp(command,"shimramp16"))   r = RampedShim16(dpar,parameters);   
+ //  else if(!strcmp(command,"ttl"))          r = TTLOn(dpar,parameters);      
+ //  else if(!strcmp(command,"ttlon"))        r = TTLOn(dpar,parameters);      
+ //  else if(!strcmp(command,"ttloff"))       r = TTLOff(dpar,parameters);      
+ //  else if(!strcmp(command,"ttlpulse"))     r = TTLPulse(dpar,parameters);      
+ //  else if(!strcmp(command,"ttltranslate")) r = TTLTranslate(dpar,parameters);      
+   else if(!strcmp(command,"trigger"))      r = WaitForTrigger(dpar,parameters);       
+   else if(!strcmp(command,"txoff"))        r = SwitchOffTx(dpar,parameters);   
+   else if(!strcmp(command,"txon"))         r = SwitchOnTx(dpar,parameters);  
+   else if(!strcmp(command,"wait"))         r = MakeALongDelay(dpar,parameters);   
+    
+                
+   return(r);
+}
+
+/*******************************************************************************
+   Extension procedure to list commands in DLL
+*******************************************************************************/
+
+EXPORT void  ListCommands(void)
+{
+   TextMessage("\n\n   UCS (Lock) Pulse Programmer DLL module (V%1.2f)\n\n",VERSION);
+   TextMessage("   acquire ..... acquire some data\n");
+   TextMessage("   cleardata ... clear data memory\n");
+   TextMessage("   decindex .... decrement a table index\n");
+   TextMessage("   delay ....... generate a short delay\n");
+   TextMessage("   endloop ..... end a loop\n");
+   TextMessage("   endpp ....... finish the pulse program\n");
+   TextMessage("   execwait .... execute a program and wait for it to exit\n");
+   TextMessage("   incrxfreq ... increment the rx frequency\n");
+   TextMessage("   inctxfreq ... increment the tx frequency\n");
+   TextMessage("   initpp ...... initialise pulse program\n");
+   TextMessage("   incindex .... increment a table index\n");
+   TextMessage("   inctxamp .... increment tx amplitude\n");
+   TextMessage("   loop ........ start a loop\n");
+   TextMessage("   memreset .... reset memory pointer\n");
+   TextMessage("   ppversion ... returns the version number of this DLL\n");
+   TextMessage("   pulse ....... generate an RF pulse\n");
+   TextMessage("   selectrxamp . select rx amplifier to use\n");
+   TextMessage("   setindex .... set a table index\n");
+   TextMessage("   setrxfreq ... set the receive frequency\n");
+   TextMessage("   setrxgain ... set the receive amplifier gain\n");
+   TextMessage("   settxfreq ... set the pulse frequency\n");
+   TextMessage("   shapedrf .... make a phase and amplitude moduated RF pulse\n");
+   TextMessage("   shim16 ...... set a 16 channel shim current\n");
+   TextMessage("   shimramp16 .. change a shim via linear ramp (16 channel)\n");
+   //TextMessage("   ttlon ....... switch on a TTL level\n");
+   //TextMessage("   ttloff ...... switch off a TTL level\n");
+   //TextMessage("   ttlpulse .... generate TTL pulse\n");
+   //TextMessage("   ttltranslate  translate TTL pin number to byte code\n");
+   TextMessage("   trigger ..... wait for trigger input\n");
+   TextMessage("   txoff ....... turn off the transmitter output\n");
+   TextMessage("   txon ........ turn on the transmitter output\n");
+   TextMessage("   wait ........ generate a long delay\n");
+}
+
+/*******************************************************************************
+   Extension procedure to return syntax in DLL 
+*******************************************************************************/
+
+EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
+{
+   syntax[0] = '\0';
+
+   if(!strcmp(cmd,"acquire"))             strcpy(syntax,"acquire(mode, number points:n, [duration:d])");
+   else if(!strcmp(cmd,"cleardata"))     strcpy(syntax,"cleardata(number:n)");
+   else if(!strcmp(cmd,"decindex"))      strcpy(syntax,"decindex(table:t)");
+   else if(!strcmp(cmd,"delay"))         strcpy(syntax,"delay(duration:d)");
+   else if(!strcmp(cmd,"endloop"))       strcpy(syntax,"endloop(name)");
+   else if(!strcmp(cmd,"endpp"))         strcpy(syntax,"endpp()");
+   else if(!strcmp(cmd,"execwait"))      strcpy(syntax,"execwait(program,arguments)");
+   else if(!strcmp(cmd,"incindex"))      strcpy(syntax,"incindex(table:t)");
+   else if(!strcmp(cmd,"incrxfreq"))     strcpy(syntax,"incrxfreq(increment:f)");
+   else if(!strcmp(cmd,"inctxfreq"))     strcpy(syntax,"inctxfreq(increment:f)");
+   else if(!strcmp(cmd,"inctxamp"))      strcpy(syntax,"inctxamp(amp:a, increment:a)");
+   else if(!strcmp(cmd,"initpp"))        strcpy(syntax,"initpp(filename)");
+   else if(!strcmp(cmd,"loop"))          strcpy(syntax,"loop(name,n)");
+   else if(!strcmp(cmd,"memreset"))      strcpy(syntax,"memreset([address:n])");
+   else if(!strcmp(cmd,"nop"))           strcpy(syntax,"nop()");     
+   else if(!strcmp(cmd,"ppversion"))     strcpy(syntax,"(INT v) = ppversion()");
+	else if(!strcmp(cmd,"pulse"))         strcpy(syntax,"pulse(mode, amp:a, phase:p, duration:d [,freq:f] OR pulse(ch1 ,a1, p1, f1, ch2 ,a2, p2, f2, d])");
+   else if(!strcmp(cmd,"selectrxamp"))   strcpy(syntax,"selectrxamp(number n)");
+   else if(!strcmp(cmd,"setindex"))      strcpy(syntax,"setindex(table:t,index:n)");
+   else if(!strcmp(cmd,"setrxfreq"))     strcpy(syntax,"setrxfreq(freq:f)");
+   else if(!strcmp(cmd,"settxfreq"))     strcpy(syntax,"settxfreq(freq:f)");
+   else if(!strcmp(cmd,"setrxgain"))     strcpy(syntax,"setrxgain(channel:n, gain:g)");
+   else if(!strcmp(cmd,"shapedrf"))      strcpy(syntax,"shapedrf(mode, atable:t, stable:t, phase:p, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"shim16"))        strcpy(syntax,"shim16(channel:n, amplitude:n)");
+   else if(!strcmp(cmd,"shimramp16"))    strcpy(syntax,"shimramp16(address:n, start:n/t, end:n/t, steps:n, delay:d)");
+   else if(!strcmp(cmd,"trigger"))       strcpy(syntax,"trigger()");
+   //else if(!strcmp(cmd,"ttltranslate"))  strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
+   //else if(!strcmp(cmd,"ttl"))           strcpy(syntax,"ttl(byte:b)");
+   //else if(!strcmp(cmd,"ttlon"))         strcpy(syntax,"ttlon(byte:b)");
+   //else if(!strcmp(cmd,"ttloff"))        strcpy(syntax,"ttloff(byte:b)");
+   //else if(!strcmp(cmd,"ttlpulse"))      strcpy(syntax,"ttlpulse(byte:b, duration:d)");
+   else if(!strcmp(cmd,"txoff"))         strcpy(syntax,"txoff(mode)");
+	else if(!strcmp(cmd,"txon"))          strcpy(syntax,"txon(mode, amp:a, phase:p [,freq:f]) OR txon(ch1, a1, p1, f1, ch2, a2, p2, f2)");
+   else if(!strcmp(cmd,"wait"))          strcpy(syntax,"wait(duration:w)");
+
+
+   if(syntax[0] == '\0')
+      return(false);
+   return(true);
+}
+
+/*******************************************************************************
+  Return the name of the help file
+*******************************************************************************/
+
+short GetHelpFolder(DLLParameters* par, char *args)
+{
+   par->retVar[1].MakeAndSetString("Macros\\Pulse Programming");
+   par->nrRetVar = 1;
+   return(OK);
+}
+
+/*******************************************************************************
+  Adds a nop
+*******************************************************************************/
+
+short NoOperation(DLLParameters* par, char *args)
+{
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; No operation");
+   fprintf(fp,"\n        nop");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+/*******************************************************************************
+  This function will generate a file with the pulse parameters 
+  and initialization code 
+*******************************************************************************/
+
+short InitialisePP(DLLParameters* par, char *args)
+{
+   CText dir;
+   short nrArgs;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"working directory","e","t",&dir)) < 0)
+      return(nrArgs);
+
+   if(!SetCurrentDirectory(dir.Str()))
+   {
+      Error(par->itfc,"directory '%s' not found",dir);
+      return(ERR);
+   }
+
+// Free any previous storage
+   if(szList > 0)
+      FreeList(parList,szList+1);
+   parList = MakeList(1);
+
+   szList = 0;
+   label = 1;
+
+// Delete the temp file if it is still present
+   int result = remove("midCode.asm");
+
+   return(OK);
+}
+
+/*******************************************************************************
+  Return the version number
+*******************************************************************************/
+
+short GetPPVersion(DLLParameters* par, char *args)
+{
+   par->retVar[1].MakeAndSetFloat(VERSION);
+   par->nrRetVar = 1;
+   return(OK);
+}
+      
+/*******************************************************************************
+  Return the DSP memory pointer
+*******************************************************************************/
+
+short ResetMemoryPointer(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText adrs;
+
+   if((nrArgs = ArgScan(par->itfc,args,0,"memory address","e","t",&adrs)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(adrs.Str(),&parList,szList);
+
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   if(nrArgs == 0)
+   {
+      fprintf(fp,"\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Reset the memory pointer");
+	   fprintf(fp,"\n        move    #$%d,r5              ; Make r5 point to the start of fid memory", DSP_MEMORY_ADRS);
+   }
+   else
+   {
+      fprintf(fp,"\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Reset the memory pointer");
+      fprintf(fp,"\n        move    x:NR%s,a1",adrs.Str()+1);
+	   fprintf(fp,"\n        move    a1,r5                 ; Make r5 point to the start of fid memory");
+   }
+      
+   fclose(fp);
+
+   return(OK);
+}
+
+/*****************************************************************************
+
+   Translate TTL pin-number to TTL code (for use with ttlon/ttloff commands)
+
+******************************************************************************/
+
+short TTLTranslate(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   static short pinNr;
+   unsigned short translate[] = {0x00,0x00,0x40,0x10,0x04,0x01,0x80,0x20,0x08,0x02};
+   float code;
+   
+   if((nrArgs = ArgScan(par->itfc,args,1,"pin number","e","d",&pinNr)) < 0)
+      return(nrArgs);
+
+   if(pinNr < 2 || pinNr > 9)
+   {
+      Error(par->itfc,"Invalid pin number (2-9)");
+      return(ERR);
+   }
+
+  code = (float)translate[pinNr];
+
+  par->retVar[1].MakeAndSetFloat(code);
+  par->nrRetVar = 1;
+
+  return(OK);
+}
+
+
+
+/**********************************************************************
+              Increment the transmitter frequency (6/3/09)
+
+     Adds a constant to the current tx frequency and then send this 
+     out to the DDS.
+
+     inctxfreq(increment_value)
+
+
+     increment_value ......... a frequency variable (e.g. "f1") units MHz
+
+     Command takes xxxx ns.
+
+**********************************************************************/
+
+short IncTxFrequency(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText incTx;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"increment name","e","q",&incTx)) < 0)
+      return(nrArgs);
+
+   if(incTx[0] != 'f')
+   {
+      Error(par->itfc,"Invalid frequency reference '%s'",incTx.Str());
+      return(ERR);
+   }
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(incTx.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Increment the transmitter frequency");
+
+   fprintf(fp,"\n\n; Read in the base transmitter frequency");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        clr     b");
+   fprintf(fp,"\n        move    x:TXF00,a1");
+   fprintf(fp,"\n        lsr     #8,a");
+   fprintf(fp,"\n        move    a1,a2");
+	fprintf(fp,"\n        move    x:TXF00,a1");
+	fprintf(fp,"\n        lsl	   #16,a");
+   fprintf(fp,"\n        move    a1,b1");
+   fprintf(fp,"\n        move    a2,b2");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:TXF01,a1");
+   fprintf(fp,"\n        add     a,b");
+
+
+   fprintf(fp,"\n\n; Add Tx frequency step to base frequency");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:FX%s_0,a1",incTx.Str()+1);
+   fprintf(fp,"\n        lsr     #8,a");
+   fprintf(fp,"\n        move    a1,a2");
+   fprintf(fp,"\n        move    x:FX%s_0,a1",incTx.Str()+1);
+   fprintf(fp,"\n        lsl     #16,a");
+   fprintf(fp,"\n        add     a,b");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:FX%s_1,a1",incTx.Str()+1);
+   fprintf(fp,"\n        add     a,b");
+
+
+   fprintf(fp,"\n\n; Write over base frequency");
+
+
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    b1,a1");
+   fprintf(fp,"\n        move    b2,a2");
+   fprintf(fp,"\n        and     #$00FFFF,a");
+   fprintf(fp,"\n        move    a1,x:TXF01");
+   fprintf(fp,"\n        move    b1,a1");
+   fprintf(fp,"\n        lsr     #16,a");
+   fprintf(fp,"\n        move    b2,b1");
+   fprintf(fp,"\n        lsl     #8,b");
+   fprintf(fp,"\n        add     b,a");
+   fprintf(fp,"\n        move    a1,x:TXF00");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+/**********************************************************************
+              Increment the transmitter amplitude (6/4/09)
+
+     Adds a constant to the current amplitude and then send this 
+     out to the DDS.
+
+     inctxamp(mode, amplitude_to_increment, increment_value)
+
+     mode .................... "rf"/"number"  
+                               Update the rf amplitude or just the number
+     amplitude_to_increment .. variable to increment (e.g. "a1")
+     increment_value ......... a 14 bit number variable (e.g. "n1")
+
+     Command takes xx ns in rf mode
+**********************************************************************/
+
+short IncTxAmplitude(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText amp,inc;
+
+   if((nrArgs = ArgScan(par->itfc,args,2,"amplitude_name, increment_name","ee","qq",&amp,&inc)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(amp.Str(),&parList,szList);
+   InsertUniqueStringIntoList(inc.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Increment the transmitter amplitude");
+
+   fprintf(fp,"\n\n; Read in the base transmitter amplitude");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        clr     b");
+
+	fprintf(fp,"\n        move    x:TXA%s,b1",amp.Str()+1);
+ 
+   fprintf(fp,"\n\n; Add Tx amplitude step");
+	fprintf(fp,"\n        move    x:NR%s,a1",inc.Str()+1);
+   fprintf(fp,"\n        add     a,b");
+
+   fprintf(fp,"\n\n; Write over base amplitude");
+	fprintf(fp,"\n        move    b1,x:TXA%s",amp.Str()+1);
+
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+              Increment the receiver frequency (4/11/07)
+**********************************************************************/
+
+short IncRxFrequency(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText incRx;
+
+   
+   if((nrArgs = ArgScan(par->itfc,args,1,"increment name","e","q",&incRx)) < 0)
+      return(nrArgs);
+
+   if(incRx[0] != 'f')
+   {
+      Error(par->itfc,"Invalid frequency reference '%s'",incRx.Str());
+      return(ERR);
+   }
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(incRx.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Increment the receiver frequency");
+
+   fprintf(fp,"\n\n; Read in the base receiver frequency");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        clr     b");
+   fprintf(fp,"\n        move    x:RXF00,a1");
+   fprintf(fp,"\n        lsr     #8,a");
+   fprintf(fp,"\n        move    a1,a2");
+	fprintf(fp,"\n        move    x:RXF00,a1");
+	fprintf(fp,"\n        lsl	   #16,a");
+   fprintf(fp,"\n        move    a1,b1");
+   fprintf(fp,"\n        move    a2,b2");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:RXF01,a1");
+   fprintf(fp,"\n        add     a,b");
+
+   fprintf(fp,"\n\n; Add Rx frequency step to base frequency");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:FX%s_0,a1",incRx.Str()+1);
+   fprintf(fp,"\n        lsr     #8,a");
+   fprintf(fp,"\n        move    a1,a2");
+   fprintf(fp,"\n        move    x:FX%s_0,a1",incRx.Str()+1);
+   fprintf(fp,"\n        lsl     #16,a");
+   fprintf(fp,"\n        add     a,b");
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    x:FX%s_1,a1",incRx.Str()+1);
+   fprintf(fp,"\n        add     a,b");
+
+   fprintf(fp,"\n\n; Write over base frequency");
+
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        move    b1,a1");
+   fprintf(fp,"\n        move    b2,a2");
+   fprintf(fp,"\n        and     #$00FFFF,a");
+   fprintf(fp,"\n        move    a1,x:RXF01");
+   fprintf(fp,"\n        move    b1,a1");
+   fprintf(fp,"\n        lsr     #16,a");
+   fprintf(fp,"\n        move    b2,b1");
+   fprintf(fp,"\n        lsl     #8,b");
+   fprintf(fp,"\n        add     b,a");
+   fprintf(fp,"\n        move    a1,x:RXF00");
+
+   fprintf(fp,"\n\n; Update Rx frequencies");
+   fprintf(fp,"\n        move    x:RXF00,a1");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_PI");
+   fprintf(fp,"\n        move    x:RXF01,a1");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_PI");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+            Modify the receiver amplifier gain (8/5/12)
+
+            3 Rx gain stages can be controlled
+
+            1. Lock (0/4)
+            2. Proton (2/6)
+            3. Carbon (1/5)
+**********************************************************************/
+
+short SetRxGain(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText gain;
+   CText channel = "lock";
+
+   if((nrArgs = ArgScan(par->itfc,args,2,"channel,gain","ee","qq",&channel,&gain)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   if(gain[0] == 'g')
+      InsertUniqueStringIntoList(gain.Str(),&parList,szList);
+   if(channel[0] == 'n')
+      InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set Rx gain - lock option");
+
+
+   fprintf(fp,"\n        movep   #$2C,x:A_PCRC           ; Set up SSI 0"); 
+   fprintf(fp,"\n        movep   #$10080A,x:A_CRA0       ; /10 clk, 16 bit word transferred"); 
+   fprintf(fp,"\n        movep   #$13C3C,x:A_CRB0        ; Enable SSI port with sc1/2 are outputs"); 
+
+   if(channel == "lock")
+      fprintf(fp,"\n        movep   #$0000,x:A_PDRE         ; Select first gain block");
+   else if(channel == "proton")
+      fprintf(fp,"\n        movep   #$0002,x:A_PDRE         ; Select first gain block");
+   else if(channel == "carbon")
+      fprintf(fp,"\n        movep   #$0001,x:A_PDRE         ; Select first gain block");
+   else if(channel[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",channel.Str()+1);
+      fprintf(fp,"\n        lsr     #8,a");
+      fprintf(fp,"\n        move    a1,x:A_PDRE         ; Select first gain block");
+   }
+   else
+   {
+      ErrorMessage("invalid channel (lock/carbon/proton or nx)");
+      fclose(fp);
+      return(ERR);
+   }
+   fprintf(fp,"\n        move    x:GAIN%s_0,a1",gain.Str()+1); 
+   fprintf(fp,"\n        move    a1,x:A_TX00");
+   fprintf(fp,"\n        move    #10,r7                  ; Wait 10 us");
+   fprintf(fp,"\n        bsr     wait");
+
+   if(channel == "lock")
+      fprintf(fp,"\n        movep   #$0004,x:A_PDRE         ; Select second gain block");
+   else if(channel == "proton")
+      fprintf(fp,"\n        movep   #$0006,x:A_PDRE         ; Select second gain block");
+   else if(channel == "carbon")
+      fprintf(fp,"\n        movep   #$0005,x:A_PDRE         ; Select second gain block");
+   else if(channel[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",channel.Str()+1);
+      fprintf(fp,"\n        and     #$0000FF,a");
+      fprintf(fp,"\n        move    a1,x:A_PDRE         ; Select second gain block");
+   }
+   else
+   {
+      ErrorMessage("invalid channel (lock/carbon/proton or nx)");
+      fclose(fp);
+      return(ERR);
+   }
+   fprintf(fp,"\n        move    x:GAIN%s_1,a1",gain.Str()+1);
+   fprintf(fp,"\n        move    a1,x:A_TX00");
+   fprintf(fp,"\n        move    #10,r7                  ; Wait 10 us");
+   fprintf(fp,"\n        bsr     wait");
+
+   fprintf(fp,"\n        movep   #$0007,x:A_PDRE         ; Select unused serial port"); 
+   fprintf(fp,"\n        movep   #$3c3c,x:A_CRB0         ; Disable SSI 0"); 
+   fprintf(fp,"\n        movep   #$24,x:A_PCRC"); 
+
+   fclose(fp);
+
+ 
+
+   return(OK);
+}
+
+
+/**********************************************************************
+        Select which Receiver amplifer to connect to port A (8/5/12)
+
+        One of two Rx gain stages can be selected:
+
+        1. Proton (0x000)
+        2. Carbon (0x200)
+**********************************************************************/
+
+short SelectRxAmplifier(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText channel;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"channel","e","t",&channel)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Select Receiver Amplifier Channel");
+
+   fprintf(fp,"\n        movep   #$2C,x:A_PCRC           ; Set up SSI 0"); 
+   fprintf(fp,"\n        movep   #$10080A,x:A_CRA0       ; /2 clk, 16 bit word transferred"); 
+   fprintf(fp,"\n        movep   #$13C3C,x:A_CRB0        ; Enable SSI port with sc1/2 are outputs"); 
+
+   if(channel[0] == 'n')
+      fprintf(fp,"\n        move    x:NR%s,a1",channel.Str()+1);
+   else if( channel == "carbon")
+       fprintf(fp,"\n        move    #$0000,a1"); 
+   else if(channel == "proton")
+       fprintf(fp,"\n        move    #$0200,a1"); 
+   else
+   {
+      ErrorMessage("invalid channel (carbon/proton or nx)");
+      fclose(fp);
+      return(ERR);
+   }
+
+   fprintf(fp,"\n        movep   #$0003,x:A_PDRE         ; Select first gain block");
+   fprintf(fp,"\n        move    a1,x:A_TX00");
+   fprintf(fp,"\n        move    #10,r7                  ; Wait 10 us");
+   fprintf(fp,"\n        bsr     wait");
+
+   fprintf(fp,"\n        movep   #$0007,x:A_PDRE         ; Select unused serial port"); 
+   fprintf(fp,"\n        movep   #$3c3c,x:A_CRB0         ; Disable SSI 0"); 
+   fprintf(fp,"\n        movep   #$24,x:A_PCRC"); 
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+            Modify the receiver frequency (8/7/11)
+
+            This sets the current receive frequency and also the 
+            frequency stored in the parameter list.
+**********************************************************************/
+
+short SetRxFreq(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText freq;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"freq name","e","q",&freq)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set Rx frequency");
+
+   fprintf(fp,"\n        move    x:FX%s_0,a1",freq.Str()+1);
+   fprintf(fp,"\n        move    a1,x:RXF00");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_PI");
+   fprintf(fp,"\n        move    x:FX%s_1,a1",freq.Str()+1);
+   fprintf(fp,"\n        move    a1,x:RXF01");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_PI");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+            Modify the transceiver transmitter frequency (31/5/11)
+**********************************************************************/
+
+short SetTxFreq(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText freq,channel = "1";
+   CArg carg;
+
+   nrArgs = carg.Count(args);
+  
+   if(nrArgs == 1)
+   {
+      if((nrArgs = ArgScan(par->itfc,args,1,"freq","e","q",&freq)) < 0)
+         return(nrArgs);
+   }
+   else if(nrArgs == 2)
+   {
+      if((nrArgs = ArgScan(par->itfc,args,2,"channel, freq","ee","qq",&channel,&freq)) < 0)
+         return(nrArgs);
+   }
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+   if(channel[0] == 'n')
+      InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set Tx frequency");
+   fprintf(fp,"\n;"); 
+
+
+   fprintf(fp,"\n        move    x:FX%s_0,a1",freq.Str()+1); // Copy the new frequency to
+   fprintf(fp,"\n        move    a1,x:TXF00");               // the main Tx frequency location
+   fprintf(fp,"\n        move    x:FX%s_1,a1",freq.Str()+1); // Tx buffer
+   fprintf(fp,"\n        move    a1,x:TXF01");
+   fprintf(fp,"\n        rep     #27");
+   fprintf(fp,"\n        nop");
+
+   if(channel == "1" || channel == "i" || channel == "e")
+   {
+      fprintf(fp,"\n        move    y:TX_AMP,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0"); // Amplitude
+      fprintf(fp,"\n        move    #0,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0"); // Phase
+      fprintf(fp,"\n        move    x:FX%s_0,a1",freq.Str()+1);
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0"); // Freq word 1
+      fprintf(fp,"\n        move    x:FX%s_1,a1",freq.Str()+1);
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0"); // Freq word 2
+      fprintf(fp,"\n        rep     #124                    ; Make duration 2us");
+      fprintf(fp,"\n        nop");
+   }
+   else
+   {
+      ErrorMessage("Invalid channel reference");
+      fclose(fp);
+      return(ERR);
+   }
+   
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+     Generate an RF pulse setting the amplitude, (4/11/07)
+     phase and duration.
+
+     Note that there is a user define delay 'pgo' before the rf appears. 
+     This allows the pulse phase and amplitude to be set and gives time for the 
+     HPA biasing to be switched on.
+
+     There are two operating modes:
+
+     internal ... gate pulse is sent to the internal Kea RF amplifier
+     external ... gate pulse is sent to the external TTL port (pin 5)
+
+**********************************************************************/
+
+short MakeAnRFPulse(DLLParameters* par, char *args)
+{
+   CArg carg;
+
+   short nrArgs = carg.Count(args);
+
+   if(nrArgs <= 5)
+      EitherChannelRFPulse(par,args);
+
+   else if(nrArgs == 9)
+      BothChannelsRFPulse(par,args);
+
+   else
+   {
+      Error(par->itfc,"invalid number of arguments");
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+
+
+/*********************************************************************************************************
+ Produce a dual RF pulse on channel 1 & 2 of specified amplitude frequency, phase and duration 
+ Channel 1 pulse uses the internal TTL gate or external pin 5 while channel 2 used the external TTL pin 4. 
+**********************************************************************************************************/
+
+short BothChannelsRFPulse(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText ch1,amp1,freq1,phase1;
+   CText ch2,amp2,freq2,phase2;
+   CText duration,channel;
+   long Phase1,Phase2;
+   long Amplitude1,Amplitude2;
+   long Frequency1,Frequency2;
+   long Duration;
+   float fDuration;
+   short ph;
+
+  if((nrArgs = ArgScan(par->itfc,args,9,"ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2, duration","eeeeeeeee","qqqqqqqqq",&ch1,&amp1,&phase1,&freq1,&ch2,&amp2,&phase2,&freq2,&duration)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(amp1[0] == 'a')
+      InsertUniqueStringIntoList(amp1.Str(),&parList,szList);
+   if(freq1[0] == 'f')
+      InsertUniqueStringIntoList(freq1.Str(),&parList,szList);
+   if(phase1[0] == 'p' || phase1[0] == 't')
+      InsertUniqueStringIntoList(phase1.Str(),&parList,szList);
+   if(amp2[0] == 'a')
+      InsertUniqueStringIntoList(amp2.Str(),&parList,szList);
+   if(freq2[0] == 'f')
+      InsertUniqueStringIntoList(freq2.Str(),&parList,szList);
+   if(phase2[0] == 'p' || phase2[0] == 't')
+      InsertUniqueStringIntoList(phase2.Str(),&parList,szList);
+   if(duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+	fprintf(fp,"\n\n;");
+	fprintf(fp,"\n;***************************************************************************");
+	fprintf(fp,"\n; Generate an dual channel pulse");
+	fprintf(fp,"\n;"); 
+
+   fprintf(fp,"\n; Check for invalid pulse length");
+   fprintf(fp,"\n        clr    a");
+
+   if(SelectDuration(par->itfc ,fp, "a1", duration) == ERR) return(ERR);
+
+// Test for valid pulse length
+   fprintf(fp,"\n        move   #1,b1                     ; Abort code");
+   fprintf(fp,"\n        cmp    #49999,a                  ; Pulse must be < 1 ms");
+   fprintf(fp,"\n        jgt    ABORT");
+   fprintf(fp,"\n        move   #2,b1                     ; Abort code");
+   fprintf(fp,"\n        cmp    #24,a                     ; Pulse must be >= 500 ns");
+   fprintf(fp,"\n        jlt    ABORT");
+
+// Gate the RF amplifiers
+   fprintf(fp,"\n; Gate the RF amplifiers");
+
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+
+   if((ch1 == "1" && ch2 == "2") || (ch1 == "e" && ch2 == "2"))
+      fprintf(fp,"\n        or      #$50000,a               ; TTL 0x01 (pin 5) & TTL 0x04 (pin 4)");
+   else if(ch1 == "i" && ch2 == "2")
+      fprintf(fp,"\n        or      #$44000,a               ; Internal HPA & TTL 0x04 (pin 4)");
+   else
+   {
+      Error(par->itfc,"invalid channel values ch1 = {i,e,1} ch2 = {2}");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL RF remains the same");
+
+   fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+   fprintf(fp,"\n        move    x:PGO,a1");
+   fprintf(fp,"\n        add     #4,a                   ; Tweek it"); //
+   fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+	fprintf(fp,"\n        nop");
+	fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   
+// Set channel i/1 amplitude
+	fprintf(fp,"\n; Set channel i/1 amplitude");
+   channel = "1";
+   if(SelectAmplitude(par->itfc ,fp, amp1, channel) == ERR) return(ERR);
+
+// Set channel i/1 phase
+   fprintf(fp,"\n; Set channel i/1 phase");
+	if(SelectPhase(par->itfc ,fp, phase1,channel) == ERR) return(ERR);
+
+// Set channel 1 frequency
+   fprintf(fp,"\n; Set channel i/1 frequency");
+   if(SelectFrequency(par->itfc ,fp, freq1, channel) == ERR) return(ERR);
+
+
+// Set channel 1 update
+   fprintf(fp,"\n; Wait 2.0 us for channel 1 to update");
+   fprintf(fp,"\n        move    #20,r7");
+	fprintf(fp,"\n        bsr     svwait");
+
+// Set channel 2 amplitude
+	fprintf(fp,"\n; Set channel 2 amplitude");
+   channel = "2";
+   if(SelectAmplitude(par->itfc ,fp, amp2, channel) == ERR) return(ERR);
+
+// Set channel 2 phase
+   fprintf(fp,"\n; Set channel 2 phase");
+	if(SelectPhase(par->itfc ,fp, phase2,channel) == ERR) return(ERR);
+
+// Set channel 2 frequency
+   fprintf(fp,"\n; Set channel 2 frequency");
+   if(SelectFrequency(par->itfc ,fp, freq2, channel) == ERR) return(ERR);
+
+// Wait for parameters to update
+	fprintf(fp,"\n; Wait for parameters to update");
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer");
+
+	fprintf(fp,"\n; Start pulse");
+
+   if(SelectDuration(par->itfc ,fp, "r3", duration) == ERR) return(ERR);
+	fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+
+   fprintf(fp,"\n        nop                             ; Eliminated pulse length jitter");
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL level");
+   fprintf(fp,"\n        or      #$00000A,a              ; Switch channel 1 & 2 RF");
+   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update Kea");
+
+	fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Start timer"); 
+	fprintf(fp,"\n        nop");
+ 	fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+
+	fprintf(fp,"\n; End pulses");
+	fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL level");
+
+   if(ch1 == "1" || ch1 == "e")
+      fprintf(fp,"\n        and     #$FAFFF0,a               ; Switch off channel 1 & 2");
+   else if(ch1 == "i")
+      fprintf(fp,"\n        and     #$FBBFF0,a               ; Switch off internal channel & channel 2");
+
+   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update Kea");
+
+   fprintf(fp,"\n        move    #$000000,a1             ; Zero amplitude"); 
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+	fprintf(fp,"\n        move    x:FX%s_0,a1",freq1.Str()+1);
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+	fprintf(fp,"\n        move    x:FX%s_1,a1",freq1.Str()+1);
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+	fclose(fp);
+
+   return(OK);
+}
+
+/*********************************************************************************************************
+ Produce a single RF pulse on channel 1 or 2 of specified amplitude frequency, phase and duration 
+ Channel 1 pulse use the internal TTL gate channel 2 the external TTL gate pulse. 
+**********************************************************************************************************/
+
+short EitherChannelRFPulse(DLLParameters* par,char *args)
+{
+   short nrArgs;
+   CText channel,amp,freq,phase,duration;
+   long Frequency;
+   short ph;
+   char ch;
+
+   if((nrArgs = ArgScan(par->itfc,args,4,"channel,amp,phase,duration,[freq]","eeeee","qqqqq",&channel,&amp,&phase,&duration,&freq)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   if(amp[0] == 'a')
+      InsertUniqueStringIntoList(amp.Str(),&parList,szList);
+   if(freq[0] == 'f')
+      InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+   if(phase[0] == 'p' || phase[0] == 't')
+      InsertUniqueStringIntoList(phase.Str(),&parList,szList);
+   if(duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   if(channel == "i" || channel == "e" || channel == "1" || channel == "2")
+	{
+		fprintf(fp,"\n\n;");
+		fprintf(fp,"\n;***************************************************************************");
+		fprintf(fp,"\n; Generate an RF pulse");
+		fprintf(fp,"\n;"); 
+
+	// Get the user defined delay
+      fprintf(fp,"\n        clr    a");
+		if(SelectDuration(par->itfc ,fp, "a1", duration) == ERR) return(ERR);
+
+	// Test for invalid delay (< 0.5 us or > 1 ms)
+      fprintf(fp,"\n; Check for invalid pulse length");
+      fprintf(fp,"\n        move   #1,b1                     ; Abort code");
+      fprintf(fp,"\n        cmp    #49999,a                  ; Pulse must be < 1 ms");
+      fprintf(fp,"\n        jgt    ABORT");
+      fprintf(fp,"\n        move   #2,b1                     ; Abort code");
+      fprintf(fp,"\n        cmp    #24,a                     ; Pulse must be >= 500 ns");
+      fprintf(fp,"\n        jlt    ABORT");
+
+	// Update channel TTL gate
+      fprintf(fp,"\n; Unblank the RF amp");
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL level");
+	   if(channel == "i") // Internal channel 1 Kea pulse
+		   fprintf(fp,"\n        or      #$000800,a              ; Internal HPA");
+	   else if(channel == "1" || channel == "e") // External channel 1 Kea pulse
+			fprintf(fp,"\n        or      #$010000,a              ; TTL 0x01 (pin 5)");
+      else
+         fprintf(fp,"\n        or      #$040000,a               ; TTL 0x04 (pin 4)");
+
+		fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL RF remains the same");
+
+      fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp,"\n        move    x:PGO,a1");
+      fprintf(fp,"\n        add     #3,a");
+      fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+		fprintf(fp,"\n        nop");
+		fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");   
+      
+	// Update channel amplitude
+		fprintf(fp,"\n; Set channel amplitude");
+		if(SelectAmplitude(par->itfc ,fp, amp, channel) == ERR) return(ERR);
+
+	// Update channel phase (allow more general phase value?)
+      fprintf(fp,"\n; Set phase");
+	   if(SelectPhase(par->itfc ,fp, phase,channel) == ERR) return(ERR);
+
+	// Update channel frequency
+		if(nrArgs == 5)
+		{
+		   fprintf(fp,"\n; Set channel frequency");
+		   if(SelectFrequency(par->itfc ,fp, freq, channel) == ERR) return(ERR);
+		}
+
+	// Wait for parameters to update (delay PGO)
+	//	fprintf(fp,"\n        nop");
+		fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for parameters to update");
+
+	// Start RF pulse
+		fprintf(fp,"\n; Start pulse");
+		if(SelectDuration(par->itfc ,fp, "r3", duration) == ERR) return(ERR);
+
+		fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+
+      fprintf(fp,"\n       nop");
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+		if(channel == "2")
+			fprintf(fp,"\n        or      #$000002,a             ; Channel 2 RF on");
+		else  
+			fprintf(fp,"\n        or      #$000008,a             ; Channel 1/i/e RF on");
+		fprintf(fp,"\n        move    a1,y:TTL                ; Load the current TTL word");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+
+		fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Start timer"); 
+		fprintf(fp,"\n        nop");
+    	fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+
+	// End RF pulse
+		fprintf(fp,"\n; End pulse");
+    	fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+ 
+      if(channel == "1" || channel == "e")
+         fprintf(fp,"\n        and     #$FEFFF7,a               ; Switch off channel 1");
+      else if(channel == "i")
+         fprintf(fp,"\n        and     #$FFF7F7,a               ; Switch off internal channel");
+      else if(channel == "2")
+         fprintf(fp,"\n        and     #$FBFFFD,a               ; Switch off channel 2");
+
+      fprintf(fp,"\n        move    a1,y:TTL                 ; Update TTL word");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+
+      fprintf(fp,"\n        move    #$000000,a1"); 
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ;Zero amplitude");
+	   fprintf(fp,"\n        move    #$000000,a1                  ; (add delay for bus write"); 
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+		fprintf(fp,"\n        move    x:TXF00,a1");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set last saved frequency");
+		fprintf(fp,"\n        move    x:TXF01,a1");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+		
+		fclose(fp);
+	}
+   else
+   {
+		fclose(fp);
+      Error(par->itfc,"unknown RF pulse mode");
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+
+/*********************************************************************************************************
+ Produce a single RF pulse on channel 1 or 2 of specified amplitude frequency, phase and duration 
+ Channel 1 pulse use the internal TTL gate channel 2 the external TTL gate pulse. 
+**********************************************************************************************************/
+
+short EitherChannelRFPulseTomco(DLLParameters* par,char *args)
+{
+   short nrArgs;
+   CText channel,amp,freq,phase,duration;
+   long Frequency;
+   short ph;
+   char ch;
+
+   if((nrArgs = ArgScan(par->itfc,args,4,"channel,amp,phase,duration,[freq]","eeeee","qqqqq",&channel,&amp,&phase,&duration,&freq)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   if(amp[0] == 'a')
+      InsertUniqueStringIntoList(amp.Str(),&parList,szList);
+   if(freq[0] == 'f')
+      InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+   if(phase[0] == 'p' || phase[0] == 't')
+      InsertUniqueStringIntoList(phase.Str(),&parList,szList);
+   if(duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   if(channel == "i" || channel == "e" || channel == "1" || channel == "2")
+	{
+		fprintf(fp,"\n\n;");
+		fprintf(fp,"\n;***************************************************************************");
+		fprintf(fp,"\n; Generate an RF pulse");
+		fprintf(fp,"\n;"); 
+
+	// Get the user defined delay
+      fprintf(fp,"\n        clr    a");
+		if(SelectDuration(par->itfc ,fp, "a1", duration) == ERR) return(ERR);
+
+	// Test for invalid delay (< 0.5 us or > 1 ms)
+      fprintf(fp,"\n; Check for invalid pulse length");
+      fprintf(fp,"\n        move   #1,b1                     ; Abort code");
+      fprintf(fp,"\n        cmp    #49999,a                  ; Pulse must be < 1 ms");
+      fprintf(fp,"\n        jgt    ABORT");
+      fprintf(fp,"\n        move   #2,b1                     ; Abort code");
+      fprintf(fp,"\n        cmp    #24,a                     ; Pulse must be >= 500 ns");
+      fprintf(fp,"\n        jlt    ABORT");
+
+	// Update channel TTL gate
+      fprintf(fp,"\n; Unblank the RF amp");
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL level");
+	   if(channel == "i") // Internal channel 1 Kea pulse
+		   fprintf(fp,"\n        or      #$004000,a              ; Internal HPA");
+	   else if(channel == "1" || channel == "e") // External channel 1 Kea pulse
+			fprintf(fp,"\n        or      #$010000,a              ; TTL 0x01 (pin 5)");
+      else
+         fprintf(fp,"\n        or      #$040000,a               ; TTL 0x04 (pin 4)");
+
+		fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL RF remains the same");
+
+      fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp,"\n        move    x:PGO,a1");
+      fprintf(fp,"\n        add     #3,a");
+      fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+		fprintf(fp,"\n        nop");
+		fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");   
+      
+	// Update channel amplitude
+		fprintf(fp,"\n; Set channel amplitude");
+		if(SelectAmplitude(par->itfc ,fp, amp, channel) == ERR) return(ERR);
+
+	// Update channel phase (allow more general phase value?)
+      fprintf(fp,"\n; Set phase");
+	   if(SelectPhase(par->itfc ,fp, phase,channel) == ERR) return(ERR);
+
+	// Update channel frequency
+		if(nrArgs == 5)
+		{
+		   fprintf(fp,"\n; Set channel frequency");
+		   if(SelectFrequency(par->itfc ,fp, freq, channel) == ERR) return(ERR);
+		}
+
+	// Wait for parameters to update (delay PGO)
+	//	fprintf(fp,"\n        nop");
+		fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for parameters to update");
+
+	// Start RF pulse
+		fprintf(fp,"\n; Start pulse");
+		if(SelectDuration(par->itfc ,fp, "r3", duration) == ERR) return(ERR);
+
+		fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+
+      fprintf(fp,"\n       nop");
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+		if(channel == "2")
+			fprintf(fp,"\n        or      #$000002,a             ; Channel 2 RF on");
+		else  
+			fprintf(fp,"\n        or      #$000008,a             ; Channel 1/i/e RF on");
+		fprintf(fp,"\n        move    a1,y:TTL                ; Load the current TTL word");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+
+		fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2      ; Start timer"); 
+		fprintf(fp,"\n        nop");
+    	fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+
+	// End RF pulse
+		fprintf(fp,"\n; End pulse");
+    	fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ;Zero amplitude");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+		fprintf(fp,"\n        move    x:TXF00,a1");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set last saved frequency");
+		fprintf(fp,"\n        move    x:TXF01,a1");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+	
+		fclose(fp);
+	}
+   else
+   {
+		fclose(fp);
+      Error(par->itfc,"unknown RF pulse mode");
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+
+
+
+
+/**********************************************************************
+     Generate a shaped rf pulse (24/5/11)
+
+     shapedrf(mode, amplitude, amplitudeTable, phaseTable, phase, tableSize, tableStep)
+
+     mode ............. internal or external RF pulse (i,e/1,2)
+     amplitudeTable ... table of amplitudes (0 -> 2^14-1)
+     phaseTable ....... table of phases (0 -> 2^16-1)
+     phase ............ a phase to add to the phase table (0 -> 2^16-1)
+     tableSize ........ number of value in the table
+     tableStep ........ duration of each table value (in us)
+
+     There are three operating modes:
+
+     internal(i)  ... gate pulse is sent to the internal Kea RF amplifier
+                      RF to channel 1.
+     external (e/1) . gate pulse is sent to the external TTL port (pin 5)
+                      RF to channel 1.
+     second ch (2) .. gate pulse is sent to the external TTL port (pin 4)
+                      RF to channel 2.
+
+**********************************************************************/
+
+
+short ShapedRFPulse(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText channel,dur,atable,ptable,size,phase,duration;
+   long Duration,Phase,Size;
+   float fDuration;
+   CArg carg;
+   const int pgoOffset =  5;
+   const int firstDelay = 198;
+   const int midDelay =   159;
+   const int endDelay =   162;
+
+   if((nrArgs = ArgScan(par->itfc,args,6,"mode, atable, stable, phase, table_size, table_step","eeeeee","qqqqqq",&channel,&atable,&ptable,&phase,&size,&duration)) < 0)
+      return(nrArgs);
+   if(!parList)
+   {
+      ErrorMessage("Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(atable.Str(),&parList,szList);
+   InsertUniqueStringIntoList(ptable.Str(),&parList,szList);
+   if(phase[0] == 'p' || phase[0] == 'n')
+      InsertUniqueStringIntoList(phase.Str(),&parList,szList);
+   if(size[0] == 'n')
+      InsertUniqueStringIntoList(size.Str(),&parList,szList);
+   if(duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      ErrorMessage("Can't open output file");
+      return(ERR);
+   }
+
+   if(channel == "i") // Internal Kea pulse channel 1
+   {
+	   fprintf(fp,"\n\n;");
+	   fprintf(fp,"\n;***************************************************************************");
+	   fprintf(fp,"\n; Generate a modulated internal pulse (ch 1)");
+	   fprintf(fp,"\n;"); 
+
+      fprintf(fp,"\n        clr a                           ; Clear the accumulator");
+      fprintf(fp,"\n        move    y:TTL,x1                ; Load the current TTL level");
+      fprintf(fp,"\n        move    #$00800,a1              ; Switch on rf bias (internal ch1)");
+	   fprintf(fp,"\n        or      x1,a1                   ; Combine with ttl output");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL"); 
+
+      fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp,"\n        move    x:PGO,a1                ; All delays add to 1us before pulse comes on"); 
+      fprintf(fp,"\n        add     #%d,a",pgoOffset);
+      fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+      fprintf(fp,"\n        nop");
+	   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+
+     // Get the table addresses
+      fprintf(fp,"\n; Get the amplitude and phase table pointers");
+      fprintf(fp,"\n        move    x:TABLE%s,r5",atable.Str()+1);
+      fprintf(fp,"\n        move    x:TABLE%s,r4",ptable.Str()+1);
+
+     // Get the size of the tables
+      if(size[0] == 'n')
+      {
+          fprintf(fp,"\n        move    x:NR%s,r2",size.Str()+1);
+      }
+      else if(sscanf(size.Str(),"%ld",&Size) == 1)
+      {
+         if(Size < 2)
+         {
+            ErrorMessage("invalid table size '%s' [>= 2]",size);
+            fclose(fp);
+            return(ERR);
+         }
+         fprintf(fp,"\n        move    #%ld,r2",Size);
+      }
+	   fprintf(fp,"\n        move    r2,a0"); 
+	   fprintf(fp,"\n        dec     a                        ; Decrement because first value already used"); 
+	   fprintf(fp,"\n        move    a0,r2"); 
+
+      fprintf(fp,"\n; Set the rf output to its initial value");
+      fprintf(fp,"\n        move    y:(r5)+,a1               ; Load amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      fprintf(fp,"\n        move    y:(r4)+,a1               ; Load phase"); 
+   // Add phase shift for phase cycling
+      if(phase[0] == 'p')
+         fprintf(fp,"\n        move    x:TXP%s,y1",phase.Str()+1);
+      else if(phase[0] == 'n')
+         fprintf(fp,"\n        move    x:NR%s,y1",phase.Str()+1);
+      else if(sscanf(phase.Str(),"%ld",&Phase) == 1)
+         fprintf(fp,"\n        move    #%ld,y1",Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'",phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+
+      fprintf(fp,"\n        add     y1,a                    ; Add phase to table"); 
+     
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+      fprintf(fp,"\n; Wait for pgo delay to end");
+ 	   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+      fprintf(fp,"\n; Start modulated pulse");
+      fprintf(fp,"\n        move    #$00808,a1              ; Switch on rf (internal ch1)");
+	   fprintf(fp,"\n        or      x1,a1                   ; and combine with internal ttl bias line");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL"); 
+	   fprintf(fp,"\n        move    a,b"); 
+
+   // Load step length
+      fprintf(fp,"\n; Load step length");
+      if(duration[0] == 'd')
+      {
+	      fprintf(fp,"\n        move    x:DELAY%s,a1",duration.Str()+1);
+      }
+      else if(sscanf(duration.Str(),"%f",&fDuration) == 1)
+      {
+         if(fDuration < 2 || fDuration > 327670)
+         {
+            ErrorMessage("invalid duration '%g' [2...327670]",fDuration);
+            fclose(fp);
+            return(ERR);
+         }
+         Duration = (long)(fDuration * 50 - 1 + 0.5);
+         fprintf(fp,"\n        move   #%ld,a1",Duration);
+      }
+      else
+      {
+         ErrorMessage("Invalid duration reference '%s'",duration.Str());
+         fclose(fp);
+         return(ERR);
+      }
+    // Delay to get length of first pulse step correct
+      fprintf(fp,"\n        lsl     #1,a");
+      fprintf(fp,"\n        sub     #%d,a",firstDelay);
+      fprintf(fp,"\n        move    a1,a0");
+
+      fprintf(fp,"\n; Delay for correct first step length");
+      fprintf(fp,"\n        rep     a0");
+      fprintf(fp,"\n        nop");
+
+   // Calculate delay for subsequent steps
+      fprintf(fp,"\n; Calculate subsequent step length delay");
+      fprintf(fp,"\n        add     #%d,a",midDelay);
+      fprintf(fp,"\n        move    a1,a0");
+
+   // Loop over the tables
+      fprintf(fp,"\n        do      r2,LBL%ld               ; Step the amplitude r2 times",label);
+
+      fprintf(fp,"\n        move    y:(r5)+,a1               ; Load amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set amplitude");   
+
+      fprintf(fp,"\n        move    y:(r4)+,a1               ; Load phase"); 
+
+   // Add phase shift for phase cycling
+      if(phase[0] == 'p')
+         fprintf(fp,"\n        move    x:TXP%s,y1",phase.Str()+1);
+      else if(phase[0] == 'n')
+         fprintf(fp,"\n        move    x:NR%s,y1",phase.Str()+1);
+      else if(sscanf(phase.Str(),"%ld",&Phase) == 1)
+         fprintf(fp,"\n        move    #%ld,y1",Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'",phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        add     y1,a                    ; Add phase to table"); 
+
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set phase");  
+
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+      fprintf(fp,"\n; Adjust for correct step length");
+      fprintf(fp,"\n        rep     a0");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\nLBL%ld  nop",label++);
+
+      fprintf(fp,"\n; End Delay (correct for last pulse)");
+      fprintf(fp,"\n        rep     #%d",endDelay);
+      fprintf(fp,"\n        nop");
+
+	   fprintf(fp,"\n; End pulse");
+	   fprintf(fp,"\n        move    #$000000,a1");
+	   fprintf(fp,"\n        or      x1,a1                   ; Combine with TTL output");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL");
+
+      fprintf(fp,"\n        move    #$000000,a1             ; Zero amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+	   fclose(fp);
+   }
+
+   else if(channel == "1" || channel == "e") // External Kea pulse channel 1
+   {
+	   fprintf(fp,"\n\n;");
+	   fprintf(fp,"\n;***************************************************************************");
+	   fprintf(fp,"\n; Generate a modulated external pulse (ch 1)");
+	   fprintf(fp,"\n;"); 
+
+      fprintf(fp,"\n        clr a                           ; Clear the accumulator");
+      fprintf(fp,"\n        move    y:TTL,x1                ; Load the current TTL level");
+      fprintf(fp,"\n        move    #$10000,a1              ; Switch on rf bias (external ch1)");
+	   fprintf(fp,"\n        or      x1,a1                   ; Combine with ttl output");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL"); 
+
+      fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp,"\n        move    x:PGO,a1                ; All delays add to 1us before pulse comes on"); 
+      fprintf(fp,"\n        add     #%d,a",pgoOffset);
+      fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+      fprintf(fp,"\n        nop");
+	   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+
+     // Get the table addresses
+      fprintf(fp,"\n; Get the amplitude and phase table pointers");
+      fprintf(fp,"\n        move    x:TABLE%s,r5",atable.Str()+1);
+      fprintf(fp,"\n        move    x:TABLE%s,r4",ptable.Str()+1);
+
+     // Get the size of the tables
+      if(size[0] == 'n')
+      {
+          fprintf(fp,"\n        move    x:NR%s,r2",size.Str()+1);
+      }
+      else if(sscanf(size.Str(),"%ld",&Size) == 1)
+      {
+         if(Size < 2)
+         {
+            ErrorMessage("invalid table size '%s' [>= 2]",size);
+            fclose(fp);
+            return(ERR);
+         }
+         fprintf(fp,"\n        move    #%ld,r2",Size);
+      }
+	   fprintf(fp,"\n        move    r2,a0"); 
+	   fprintf(fp,"\n        dec     a                        ; Decrement because first value already used"); 
+	   fprintf(fp,"\n        move    a0,r2"); 
+
+      fprintf(fp,"\n; Set the rf output to its initial value");
+      fprintf(fp,"\n        move    y:(r5)+,a1               ; Load amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      fprintf(fp,"\n        move    y:(r4)+,a1               ; Load phase"); 
+   // Add phase shift for phase cycling
+      if(phase[0] == 'p')
+         fprintf(fp,"\n        move    x:TXP%s,y1",phase.Str()+1);
+      else if(phase[0] == 'n')
+         fprintf(fp,"\n        move    x:NR%s,y1",phase.Str()+1);
+      else if(sscanf(phase.Str(),"%ld",&Phase) == 1)
+         fprintf(fp,"\n        move    #%ld,y1",Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'",phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        add     y1,a                    ; Add phase to table"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+      fprintf(fp,"\n; Wait for pgo delay to end");
+ 	   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+      fprintf(fp,"\n; Start modulated pulse");
+      fprintf(fp,"\n        move    #$10008,a1              ; Switch on rf (external ch1)");
+	   fprintf(fp,"\n        or      x1,a1                   ; and combine with internal ttl bias line");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL"); 
+	   fprintf(fp,"\n        move    a,b"); 
+
+   // Load step length
+      fprintf(fp,"\n; Load step length");
+      if(duration[0] == 'd')
+      {
+	      fprintf(fp,"\n        move    x:DELAY%s,a1",duration.Str()+1);
+      }
+      else if(sscanf(duration.Str(),"%f",&fDuration) == 1)
+      {
+         if(fDuration < 2 || fDuration > 327670)
+         {
+            ErrorMessage("invalid duration '%g' [2...327670]",fDuration);
+            fclose(fp);
+            return(ERR);
+         }
+         Duration = (long)(fDuration * 50 - 1 + 0.5);
+         fprintf(fp,"\n        move   #%ld,a1",Duration);
+      }
+      else
+      {
+         ErrorMessage("Invalid duration reference '%s'",duration.Str());
+         fclose(fp);
+         return(ERR);
+      }
+    // Delay to get length of first pulse step correct
+      fprintf(fp,"\n        lsl     #1,a");
+      fprintf(fp,"\n        sub     #%d,a",firstDelay);
+      fprintf(fp,"\n        move    a1,a0");
+
+      fprintf(fp,"\n; Delay for correct first step length");
+      fprintf(fp,"\n        rep     a0");
+      fprintf(fp,"\n        nop");
+
+   // Calculate delay for subsequent steps
+      fprintf(fp,"\n; Calculate subsequent step length delay");
+      fprintf(fp,"\n        add     #%d,a",midDelay);
+      fprintf(fp,"\n        move    a1,a0");
+
+   // Loop over the tables
+      fprintf(fp,"\n        do      r2,LBL%ld               ; Step the amplitude r2 times",label);
+
+      fprintf(fp,"\n        move    y:(r5)+,a1               ; Load amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set amplitude");   
+
+      fprintf(fp,"\n        move    y:(r4)+,a1               ; Load phase"); 
+   // Add phase shift for phase cycling
+      if(phase[0] == 'p')
+         fprintf(fp,"\n        move    x:TXP%s,y1",phase.Str()+1);
+      else if(phase[0] == 'n')
+         fprintf(fp,"\n        move    x:NR%s,y1",phase.Str()+1);
+      else if(sscanf(phase.Str(),"%ld",&Phase) == 1)
+         fprintf(fp,"\n        move    #%ld,y1",Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'",phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        add     y1,a                    ; Add phase to table"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set phase");  
+
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+      fprintf(fp,"\n; Adjust for correct step length");
+      fprintf(fp,"\n        rep     a0");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\nLBL%ld  nop",label++);
+
+      fprintf(fp,"\n; End Delay (correct for last pulse)");
+      fprintf(fp,"\n        rep     #%d",endDelay);
+      fprintf(fp,"\n        nop");
+
+	   fprintf(fp,"\n; End pulse");
+	   fprintf(fp,"\n        move    #$000000,a1");
+	   fprintf(fp,"\n        or      x1,a1                   ; Combine with TTL output");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL");
+
+      fprintf(fp,"\n        move    #$000000,a1             ; Zero amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+	   fclose(fp);
+   }
+
+   else
+   {
+		fclose(fp);
+      ErrorMessage("unknown RF pulse mode");
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+
+/**********************************************************************
+     Switch on the transceiver transmitter output (4/11/07)
+
+     txon(mode, amplitude, phase)
+
+     There are several operating modes:
+
+     internal ... gate pulse is sent to the internal Kea RF amplifier
+     external ... gate pulse is sent to the external TTL port (pin 5)
+     none ....... no gate pulse is generated (phase & amp optional)
+
+     Note that there is a delay (pgo) before the rf appears. This allows
+     the pulse phase and amplitude to be set and gives time for the 
+     HPA biasing to be switched on.
+
+**********************************************************************/
+
+short SwitchOnTx(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CArg carg;
+
+   nrArgs = carg.Count(args);
+
+   if(nrArgs <= 4)
+   {
+      return(SwitchOnOneTxChannel(par,args,nrArgs));
+   }
+
+   if(nrArgs == 8)
+   {
+      return(SwitchOnBothTxChannels(par,args));
+   }
+	else
+	{
+		Error(par->itfc,"invalid number of arguments");
+		return(ERR);
+	}
+
+   return(OK);
+
+}
+
+/**********************************************************************
+     Switch on the transceiver transmitter outputs
+
+     txon(ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2)
+
+     There are several operating modes:
+
+     internal ... gate pulse is sent to the internal Kea RF amplifier
+     external ... gate pulse is sent to the external TTL port (pin 5)
+     none ....... no gate pulse is generated (phase & amp optional)
+
+     Note that there is a delay (pgo) before the rf appears. This allows
+     the pulse phase and amplitude to be set and gives time for the 
+     HPA biasing to be switched on.
+
+**********************************************************************/
+
+short SwitchOnBothTxChannels(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText ch1,amp1,freq1,phase1;
+   CText ch2,amp2,freq2,phase2;
+   long Frequency1,Frequency2;
+   short ph;
+   CText channel;
+
+  if((nrArgs = ArgScan(par->itfc,args,8,"ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2","eeeeeeee","qqqqqqqq",&ch1,&amp1,&phase1,&freq1,&ch2,&amp2,&phase2,&freq2)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(amp1[0] == 'a')
+      InsertUniqueStringIntoList(amp1.Str(),&parList,szList);
+   if(freq1[0] == 'f')
+      InsertUniqueStringIntoList(freq1.Str(),&parList,szList);
+   if(phase1[0] == 'p' || phase1[0] == 't' )
+      InsertUniqueStringIntoList(phase1.Str(),&parList,szList);
+   if(amp2[0] == 'a')
+      InsertUniqueStringIntoList(amp2.Str(),&parList,szList);
+   if(freq2[0] == 'f')
+      InsertUniqueStringIntoList(freq2.Str(),&parList,szList);
+   if(phase2[0] == 'p' || phase1[0] == 't' )
+      InsertUniqueStringIntoList(phase2.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Switch on both transmitter channels");
+   fprintf(fp,"\n;"); 
+
+   fprintf(fp,"\n; Unblank the RF amplifiers");
+
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+
+   if((ch1 == "1" && ch2 == "2") || (ch1 == "e" && ch2 == "2"))
+      fprintf(fp,"\n        or      #$50000,a               ; TTL 0x01 (pin 5) & TTL 0x04 (pin 4)");
+   else if(ch1 == "i" && ch2 == "2")
+      fprintf(fp,"\n        or      #$44000,a               ; Internal HPA & TTL 0x04 (pin 4)");
+
+   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL RF remains the same");
+
+   fprintf(fp,"\n; Start a timer to give pgo delay before RF comes on");
+   fprintf(fp,"\n        move    x:PGO,a1");
+   fprintf(fp,"\n        add     #5,a                   ; Tweek it"); //
+   fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+	fprintf(fp,"\n        nop");
+	fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   
+// Set channel i/1 amplitude
+	fprintf(fp,"\n; Set channel i/1 amplitude");
+   channel = "1";
+	if(SelectAmplitude(par->itfc ,fp, amp1, channel) == ERR) return(ERR);
+
+// Set channel i/1 phase
+   fprintf(fp,"\n; Set channel i/1 phase");
+	if(SelectPhase(par->itfc ,fp, phase1, channel) == ERR) return(ERR);
+
+// Set channel 1 frequency
+   fprintf(fp,"\n; Set channel i/1 frequency");
+	if(SelectFrequency(par->itfc ,fp, freq1, channel) == ERR) return(ERR);
+
+// Set channel 1 update
+   fprintf(fp,"\n; Wait 2.0 us for channel 1 to update");
+   fprintf(fp,"\n        move    #20,r7");
+	fprintf(fp,"\n        bsr     svwait");
+
+// Set channel 2 amplitude
+	fprintf(fp,"\n; Set channel 2 amplitude");
+   channel = "2";
+	if(SelectAmplitude(par->itfc ,fp, amp2, channel) == ERR) return(ERR);
+
+// Set channel 2 phase
+   fprintf(fp,"\n; Set channel 2 phase");
+	if(SelectPhase(par->itfc ,fp, phase2, channel) == ERR) return(ERR);
+
+// Set channel 2 frequency
+   fprintf(fp,"\n; Set channel 2 frequency");
+	if(SelectFrequency(par->itfc ,fp, freq2, channel) == ERR) return(ERR);
+
+// Wait for parameters to update
+	fprintf(fp,"\n; Wait for parameters to update");
+//   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer");
+   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+// Start pulse
+	fprintf(fp,"\n; Start pulse");
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+   fprintf(fp,"\n        or      #$0000A,a              ; Channel 1 & 2 RF on");
+   fprintf(fp,"\n        move    a1,y:TTL                ; Load the current TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+	fprintf(fp,"\n        nop");
+
+	fclose(fp);
+
+   return(OK);
+}
+
+
+
+
+/**********************************************************************
+
+     Switch on one Tx channel + corresponding TTL line(s)
+
+     txon("i/e/1/2", ...) or
+     txon("wi/we/w1/w2", ...) (for wobble mode)
+
+	  other options
+
+	  txon(mode, amplitude, phase, [frequency])
+
+     "i" internal TTL (TTL-INT 6 HPA) CH 1 RF
+     "e" external TTL (TTL-EXT pin 5) CH 1 RF
+     "1" external TTL (TTL-EXT pin 5) Ch 1 RF
+     "n1" external TTL Ch 1 RF (no gate pulse)
+     "2" external TTL (TTL-EXT pin 4) Ch 2 RF
+     "wi" internal TTL (TTL-INT 6 HPA + TTL-INT 4 DUP) CH 1 RF
+     "we" external TTL (TTL-EXT pin 5+ TTL-INT 4 DUP) CH 1 RF
+     "w1" external TTL (TTL-EXT pin 5+ TTL-INT 4 DUP) Ch 1 RF
+     "w2" external TTL (TTL-EXT pin 4+ TTL-INT 4 DUP) Ch 2 RF
+
+**********************************************************************/
+
+
+short SwitchOnOneTxChannel(DLLParameters* par, char *args, short nrArgs)
+{
+   CText channel,amp,freq,phase;
+   short ph;
+   char ch;
+
+	if((nrArgs = ArgScan(par->itfc,args,3,"channel,amp,phase[,freq]","eeee","qqqq",&channel,&amp,&phase,&freq)) < 0)
+		return(nrArgs);
+	
+	if(amp[0] == 'a')
+		InsertUniqueStringIntoList(amp.Str(),&parList,szList);
+	if(nrArgs == 4 && freq[0] == 'f')
+		InsertUniqueStringIntoList(freq.Str(),&parList,szList);
+	if(phase[0] == 'p' || phase[0] == 't')
+		InsertUniqueStringIntoList(phase.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Switch on one transmitter channel");
+   fprintf(fp,"\n;"); 
+
+
+   fprintf(fp,"\n; Unblank the RF amp");
+
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+
+   if(channel == "i" || channel == "1")
+      fprintf(fp,"\n        or      #$00800,a              ; Internal HPA");
+   else if(channel == "wi" || channel == "w1")
+      fprintf(fp,"\n        or      #$00A00,a              ; Internal HPA + Duplexer relay");
+   else if(channel == "n1" || channel == "ni")
+      fprintf(fp,"\n        or      #$00000,a              ; No TTL line");
+
+   fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL RF remains the same");
+
+   fprintf(fp,"\n        move    x:PGO,a1                ; All delays add to pgo before pulse comes on");
+   fprintf(fp,"\n        add     #4,a"); // Tweek it
+   fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+	fprintf(fp,"\n        nop");
+	fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   
+	fprintf(fp,"\n; Set channel amplitude");
+   if(SelectAmplitude(par->itfc ,fp, amp, channel) == ERR) return(ERR);
+	fprintf(fp,"\n        move    a1,y:TX_AMP");
+
+   fprintf(fp,"\n; Set channel phase");
+   if(SelectPhase(par->itfc ,fp, phase, channel) == ERR) return(ERR);
+ 
+   if(nrArgs == 4)
+   {
+      fprintf(fp,"\n; Set channel frequency");
+	   if(SelectFrequency(par->itfc ,fp, freq, channel) == ERR) return(ERR);
+   }
+   else
+   {
+      if(channel == "i" || channel == "1" || channel == "wi" || channel == "n1" || channel == "ni")
+      {
+		   fprintf(fp,"\n        move    x:TXF00,a1");
+		   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set last saved frequency");
+		   fprintf(fp,"\n        move    x:TXF01,a1");
+		   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      }
+   }
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for parameters to update");
+   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+	fprintf(fp,"\n; Start pulse");
+
+   fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+   fprintf(fp,"\n        or      #$00008,a              ; Channel 1 RF on");
+
+   fprintf(fp,"\n        move    a1,y:TTL                ; Load the current TTL word");
+	fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+	fprintf(fp,"\n        nop");
+
+	fclose(fp);
+
+
+   return(OK);
+}
+
+
+/**********************************************************************
+
+     Switch off the transceiver transmitter output
+
+     txoff(["w"])              # All channels off
+     txoff("i/e/1/2")     # Internal/external/channel1/2 off
+
+     Note: keeps the TTL and other RF channels status intact. 
+
+     This command takes xxx ns before the RF turns off
+
+**********************************************************************/
+
+
+short SwitchOffTx(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText mode;
+
+   
+   if((nrArgs = ArgScan(par->itfc,args,0,"[mode]","e","q",&mode)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+	if(nrArgs == 0 || mode == "w") // Switch off both channels
+   {
+      fprintf(fp,"\n\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Switch off transmitter");
+      fprintf(fp,"\n;"); 
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+      fprintf(fp,"\n        and     #$FFF7F5,a              ; Switch off final RF TTL line");
+      fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL state");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update system");
+
+
+      fprintf(fp,"\n        move    #$000000,a1             ; Zero amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      fprintf(fp,"\n        move    #$000000,a1             ; (add delay for bus write"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Zero phase");
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0      ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+
+      fclose(fp);
+   }
+   else
+   {
+      fprintf(fp,"\n\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Switch off one TX channel");
+      fprintf(fp,"\n;"); 
+
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL word");
+
+      if(mode == "1" || mode == "e")
+         fprintf(fp,"\n        and     #$FEFFF7,a               ; Switch off channel 1");
+      else if(mode == "i")
+         fprintf(fp,"\n        and     #$FFBFF7,a               ; Switch off internal channel");
+      else if(mode == "2")
+         fprintf(fp,"\n        and     #$FBFFFD,a               ; Switch off channel 2");
+		else
+		{
+			Error(par->itfc,"invalid channel (i/e/1/2)");
+			fclose(fp);
+			return(ERR);
+		}
+
+      fprintf(fp,"\n        move    a1,y:TTL                 ; Update TTL word");
+	   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL & RF");
+
+      fprintf(fp,"\n        move    #$000000,a1             ; Zero amplitude"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+	   fprintf(fp,"\n        move    #$000000,a1             ; (add delay for bus write"); 
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0     ; Zero phase");
+      fprintf(fp,"\n        move    x:TXF00,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0     ; Set correct frequency");
+      fprintf(fp,"\n        move    x:TXF01,a1");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+      
+
+      fclose(fp);
+   }
+   return(OK);
+
+}
+
+
+/**********************************************************************
+     Generate a TLL pulse 
+
+     Note that the duration of the pulse including setup and shutdown
+     will be correct however the pulse itself will be 150 ns shorter
+     than expected and will be delayed by this amount.
+
+     ttlpulse(byte, duration)
+**********************************************************************/
+
+
+short TTLPulse(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText byte,duration;
+
+   if((nrArgs = ArgScan(par->itfc,args,2,"byte, duration","ee","qq",&byte,&duration)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(byte.Str(),&parList,szList);
+   InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Pulse TTL level");
+
+   fprintf(fp,"\n        move    x:TTL%s,a1              ; Read in the new TTL byte",byte.Str()+1);
+   fprintf(fp,"\n        move    y:TTL,x1                ; Read in the current TTL state");
+   fprintf(fp,"\n        or      x1,a1                   ; Combine with current TTL state");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL output");
+
+ // fprintf(fp,"\n        move    #10,r7");
+	//fprintf(fp,"\n        bsr     svwait");
+
+   fprintf(fp,"\n; Delay");
+   fprintf(fp,"\n        move    x:DELAY%s,a1",duration.Str()+1);
+   fprintf(fp,"\n        sub     #12,a"); // Tweek delay
+   fprintf(fp,"\n        move    a1,r3");
+   fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+   fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+   fprintf(fp,"\n; Reset TTL level");
+   fprintf(fp,"\n        move    y:TTL,a1                ; Read in the original TTL state");
+   fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL output");
+
+   fclose(fp);
+
+   return(OK);
+
+}
+
+/**********************************************************************
+     Set the index for table access
+**********************************************************************/
+
+short SetTableIndex(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText table,index;
+   long Index;
+
+// Get the table name and desired index value
+   if((nrArgs = ArgScan(par->itfc,args,2,"table,index","ee","qq",&table,&index)) < 0)
+      return(nrArgs);
+
+// Add names to parameter list
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(table.Str(),&parList,szList);
+   if(index[0] == 'n')
+       InsertUniqueStringIntoList(index.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set table index");
+
+  
+   if(table[0] == 't')
+   {
+      if(index[0] == 'n')
+      {
+         fprintf(fp,"\n        move    x:TABLE%s,a0",table.Str()+1);
+         fprintf(fp,"\n        dec a"); // a0 points to table index
+         fprintf(fp,"\n        move    a0,r5");
+         fprintf(fp,"\n        move    x:NR%s,a0",index.Str()+1);
+         fprintf(fp,"\n        move    a0,y:(r5)"); // Update table index
+      }
+      else if(sscanf(index.Str(),"%ld",&Index) == 1)
+      {
+         fprintf(fp,"\n        move    x:TABLE%s,a0",table.Str()+1);
+         fprintf(fp,"\n        dec a"); // a0 points to table index
+         fprintf(fp,"\n        move    a0,r5");
+         fprintf(fp,"\n        move    #%ld,a0",Index);
+         fprintf(fp,"\n        move    a0,y:(r5)"); // Update table index
+      }
+      else
+      {
+         Error(par->itfc,"Invalid index '%s'",index.Str());
+         fclose(fp);
+         return(ERR);
+      }
+   }
+   else
+   {
+      Error(par->itfc,"Invalid table reference '%s'",table.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+     Trigger input control
+**********************************************************************/
+
+short WaitForTrigger(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText mode = "on high";
+
+// Get the table name and desired index value
+   if((nrArgs = ArgScan(par->itfc,args,0,"mode","e","t",&mode)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Wait for trigger input");
+   if(mode == "on high")
+      fprintf(fp,"\n        jset    #12,x:A_HDR,*         ;Wait for trigger level to go high");
+   else
+      fprintf(fp,"\n        jclr    #12,x:A_HDR,*         ;Wait for trigger level to go low");
+   fprintf(fp,"\n;");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+/**********************************************************************
+     Increment the index for table access
+**********************************************************************/
+
+short IncrementTableIndex(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText table;
+
+// Get the table name and desired index value
+   if((nrArgs = ArgScan(par->itfc,args,1,"table","e","q",&table)) < 0)
+      return(nrArgs);
+
+// Add names to parameter list
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(table.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Increment a table index");
+
+   if(table[0] == 't')
+   {
+      fprintf(fp,"\n        move    x:TABLE%s,a0",table.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0"); 
+      fprintf(fp,"\n        inc a"); // increment the table index
+      fprintf(fp,"\n        move    a0,y:(r5)"); // Update table index
+   }
+   else
+   {
+      Error(par->itfc,"invalid table reference '%s'",table.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+     Decrement the index for table access
+**********************************************************************/
+
+short DecrementTableIndex(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText table;
+
+// Get the table name and desired index value
+   if((nrArgs = ArgScan(par->itfc,args,1,"table","e","q",&table)) < 0)
+      return(nrArgs);
+
+// Add names to parameter list
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(table.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Increment a table index");
+
+   if(table[0] == 't')
+   {
+      fprintf(fp,"\n        move    x:TABLE%s,a0",table.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0"); 
+      fprintf(fp,"\n        dec a"); // decrement the table index
+      fprintf(fp,"\n        move    a0,y:(r5)"); // Update table index
+   }
+   else
+   {
+      Error(par->itfc,"invalid table reference '%s'",table.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   fclose(fp);
+
+   return(OK);
+}
+
+
+
+/**********************************************************************
+     Set a shim current level - takes 3.2 us
+
+     shimon([0 ... 7]/nx, [-2^15 ... 2^15]/nx)
+
+     Note this is designed to work with the 8-channel shim controller
+
+**********************************************************************/
+
+short SwitchOnShim(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText channel,amplitude;
+   long Channel, Amplitude;
+   
+   if((nrArgs = ArgScan(par->itfc,args,2,"channel,amplitude","ee","qq",&channel,&amplitude)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+// Add to parameter list if not a constant
+   if(channel[0] == 'n')
+      InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+   if(amplitude[0] == 'n')
+      InsertUniqueStringIntoList(amplitude.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set Shim level");
+
+// Get the channel number
+   if(channel[0] != 'n')
+   {
+      if(sscanf(channel.Str(),"%ld",&Channel) == 1)
+      {
+         if(Channel < 0 || Channel > 7)
+         {
+            Error(par->itfc,"invalid shim index '%s' [0 ... 7]",channel);
+            fclose(fp);
+            return(ERR);
+         }
+      }
+	   else
+      {
+         Error(par->itfc,"invalid shim index '%s' [0 ... 7]",channel);
+         fclose(fp);
+         return(ERR);
+      }
+   }
+
+   fprintf(fp,"\n        movep   #$2C,x:A_PCRD           ; Set up SSI 1"); 
+   fprintf(fp,"\n        movep   #$180803,x:A_CRA1       ; /2 clk, 24 bit word transferred"); 
+   fprintf(fp,"\n        movep   #$13C3C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+
+// Set the amplitude
+   if(amplitude[0] != 'n')
+   {
+      if(sscanf(amplitude.Str(),"%ld",&Amplitude) == 1)
+      {
+         if(Amplitude > 32768 || Amplitude < -32767)
+         {
+            Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+            fclose(fp);
+            return(ERR);
+         }
+      }
+	   else
+      {
+         Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #$%X,a1",Amplitude); 
+   }
+   else
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",amplitude.Str()+1); 
+   }
+   fprintf(fp,"\n        move    #$00FFFF,x1"); 
+   fprintf(fp,"\n        and      x1,a1"); 
+
+   if(channel[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,b1",channel.Str()+1); // Load channel number
+      fprintf(fp,"\n        lsr     #2,b");                     // Shift 2 bits to right to remove subchannel
+      fprintf(fp,"\n        move    #$4,a0");                   // Set data register mode bit
+      fprintf(fp,"\n        move    a0,x1");                    // Set data register mode bit
+      fprintf(fp,"\n        or      x1,b1");                    // Set data register mode bit
+      fprintf(fp,"\n        move    b1,x:A_PDRE");              // Select shim block
+
+      fprintf(fp,"\n        move    x:NR%s,b1",channel.Str()+1); // Load channel number
+      fprintf(fp,"\n        lsl     #16,b");                    // Shift 16 bits to left
+      fprintf(fp,"\n        move    #$030000,x1");               // Extract lower 2 bits of channel number
+      fprintf(fp,"\n        and      x1,b"); 
+      fprintf(fp,"\n        move    #$100000,x1");               // Set data register mode bit
+      fprintf(fp,"\n        or       x1,b"); 
+      fprintf(fp,"\n        move     b1,x1");
+      fprintf(fp,"\n        or       x1,a"); 
+
+      fprintf(fp,"\n        move    a1,x:A_TX10            ; Send data to DAC"); 
+      fprintf(fp,"\n        move    #3,r7                  ; Wait 3 us");
+      fprintf(fp,"\n        bsr     wait");
+      fprintf(fp,"\n        movep   #$24,x:A_PCRD           ; Turn off SSI 1 on Port D");
+
+   }
+   else
+   {
+      if(Channel < 4)
+         fprintf(fp,"\n        movep   #$0004,x:A_PDRE         ; Select Shim block 2");
+      else
+         fprintf(fp,"\n        movep   #$0005,x:A_PDRE         ; Select Shim block 1");
+
+      int n = Channel%4;
+      if(n == 0)
+         fprintf(fp,"\n        move    #$100000,x1             ; Select channel 1");
+      else if(n == 1)
+         fprintf(fp,"\n        move    #$110000,x1             ; Select channel 2");
+      else if(n == 2)
+         fprintf(fp,"\n        move    #$120000,x1             ; Select channel 3");
+      else if(n == 3)
+         fprintf(fp,"\n        move    #$130000,x1             ; Select channel 4");
+
+      fprintf(fp,"\n        or      x1,a1"); 
+
+      fprintf(fp,"\n        move    a1,x:A_TX10            ; Send data to DAC"); 
+      fprintf(fp,"\n        move    #3,r7                  ; Wait 2 us");
+      fprintf(fp,"\n        bsr     wait");
+      fprintf(fp,"\n        movep   #$24,x:A_PCRD           ; Turn off SSI 1 on Port D");
+   }
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+
+
+
+
+/**********************************************************************
+     Generate a short delay 
+
+     delay(duration)
+
+     duration can be a reference e.g. "d1" or d1 
+     or a constant in us e.g. 100
+     or a table entry
+     Delay range is 0.5 ... 327670 us
+
+**********************************************************************/
+
+short MakeADelay(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText duration;
+   float fDuration;
+   long Duration;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"duration name","e","q",&duration)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(duration[0] == 'd' || duration[0] == 't')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Delay");
+
+   if(duration[0] == 'd')
+   {
+      fprintf(fp,"\n        move    x:DELAY%s,a1",duration.Str()+1);
+      fprintf(fp,"\n        sub     #9,a"); // Tweek it
+      fprintf(fp,"\n        move    a1,r3");
+      fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+      fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+   }
+   else if(sscanf(duration.Str(),"%f",&fDuration) == 1)
+   {
+      if(fDuration < 0.25 || fDuration > 327670)
+      {
+         Error(par->itfc,"invalid delay '%f' [0.25 -> 327670]",fDuration);
+         fclose(fp);
+         return(ERR);
+      }
+      Duration = (long)(fDuration * 50 - 1 + 0.5);
+      fprintf(fp,"\n        move    #%ld,a1",Duration);
+      fprintf(fp,"\n        sub     #9,a"); // Tweek it
+      fprintf(fp,"\n        move    a1,r3");
+      fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+      fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+   }
+   else if(duration[0] == 't')
+   {
+      fprintf(fp,"\n        clr a");
+      fprintf(fp,"\n        clr b");
+      fprintf(fp,"\n        move    x:TABLE%s,a0",duration.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0");
+
+      fprintf(fp,"\n        move    x:TABLE%s,b0",duration.Str()+1);
+
+      fprintf(fp,"\n        add     b,a");  // Add the index to table start to find current value
+      fprintf(fp,"\n        move    a0,r5"); // 
+      fprintf(fp,"\n        move    y:(r5),a1"); // Read the table value
+
+      fprintf(fp,"\n        sub     #19,a"); // Tweek it
+      fprintf(fp,"\n        move    a1,r3");
+      fprintf(fp,"\n        movep   r3,x:A_TCPR2");
+      fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+   }
+   else
+   {
+      Error(par->itfc,"invalid delay or delay reference '%s'",duration.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+
+   return(OK);
+
+}  
+
+/**********************************************************************
+     Generate a long delay 
+
+     wait(duration)
+
+**********************************************************************/
+
+short MakeALongDelay(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText wait;
+   long nrSteps;
+   long delay1,delay2;
+   float fWait;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"duration name","e","q",&wait)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(wait[0] == 'w')
+      InsertUniqueStringIntoList(wait.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   };
+
+
+   fprintf(fp,"\n\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; General delay");
+
+   if(wait[0] == 'w')
+   {
+      fprintf(fp,"\n        clr     a");
+      fprintf(fp,"\n        move    x:WAIT%s_0,a1            ; Number of delay steps",wait.Str()+1); 
+      fprintf(fp,"\n        move    a1,r1");
+      fprintf(fp,"\n        move    x:WAIT%s_1,a1            ; Delay size 1",wait.Str()+1);
+
+      fprintf(fp,"\n        rep     a");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        clr     a");
+      fprintf(fp,"\n        move    x:WAIT%s_2,a1            ; Delay size 2",wait.Str()+1);
+      fprintf(fp,"\n        do      r1,LBL%ld                 ; Repeat delay ",label);
+      fprintf(fp,"\n        rep     a");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\nLBL%ld    nop",label++);
+   }
+   else if(sscanf(wait.Str(),"%f",&fWait) == 1)
+   {
+      if(fWait < 2 || fWait > 167e6)
+      {
+         Error(par->itfc,"invalid delay '%ld' [2 us...167 s]",wait);
+         fclose(fp);
+         return(ERR);
+      }
+
+      if(fWait/16777216 < 1) // Can be represented in < 2^24 1us steps?
+      {
+         float in = (long)fWait; // number of 1us steps
+         float fr = fWait - in; // remaining time
+         if(in > 1)
+         {
+            nrSteps = (long)fWait-1; // Number of steps
+            delay1 = 103 + (long)(fr*100+0.5) - 19; // Remaining time as 10 ns steps
+            delay2 = 95; // Fiddle factor
+         }
+         else if(fWait > 0.2)
+         {
+            nrSteps = 0;
+            delay1 = (long)(fWait*100+0.5) - 20;
+            delay2 = 0;
+         }
+      }
+      else if(fWait/16777216 < 10) // Can be represented in < 2^24 1us steps?
+      {
+         long in = (long)(fWait/10); // number of 10us steps
+         float fr = fWait - in*10; // remaining time
+         if(in > 10)
+         {
+            nrSteps = in-1; // Number of 10 us steps
+            delay1 = 1000 + (long)(fr*100+0.5) - 19; // Remaining time as 10 ns steps
+            delay2 = 995; // Fiddle factor
+         }
+         else if(fWait > 0.2)
+         {
+            nrSteps = 0;
+            delay1 = (long)(fWait*1000+0.5) - 19;
+            delay2 = 0;
+         }
+      }
+      else
+      {
+         Error(par->itfc,"invalid delay '%ld' [2 us...167 s]",wait);
+         fclose(fp);
+         return(ERR);
+      }
+
+      fprintf(fp,"\n        clr     a");
+      fprintf(fp,"\n        move    #%ld,a1            ; Number of delay steps",nrSteps); 
+      fprintf(fp,"\n        move    a1,r1");
+      fprintf(fp,"\n        move    #%ld,a1            ; Delay size 1",delay1);
+
+      fprintf(fp,"\n        rep     a");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        clr     a");
+      fprintf(fp,"\n        move     #%ld,a1            ; Delay size 2",delay2);
+      fprintf(fp,"\n        do      r1,LBL%ld           ; Repeat delay ",label);
+      fprintf(fp,"\n        rep     a");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\nLBL%ld    nop",label++);
+   }
+
+
+   fclose(fp);
+
+   return(OK);
+
+}  
+
+
+/**********************************************************************
+     Switch on a TTl level 
+
+     ttlon(byte)
+
+     Takes 150 ns to set up level. The TTL level is combined with the
+     lower 16 bits to prevent any disruption to the RF.
+**********************************************************************/
+
+short TTLOn(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText byte;
+   long Byte;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"byte name","e","q",&byte)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(byte[0] == 'b')
+      InsertUniqueStringIntoList(byte.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   };
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set TTL level");
+
+   if(byte[0] == 'b')
+   {
+      fprintf(fp,"\n        move    x:TTL%s,a1              ; Read in the new TTL byte",byte.Str()+1);
+      fprintf(fp,"\n        move    y:TTL,x1                ; Read in the current TTL state");
+      fprintf(fp,"\n        or      x1,a1                   ; Combine with current TTL state");
+      fprintf(fp,"\n        move    a1,y:TTL                ; Save total TTL state");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Update TTL output");
+   }
+   else if(sscanf(byte.Str(),"%ld",&Byte) == 1)
+   {
+      if(Byte < 1 || Byte > 0x80)
+      {
+         Error(par->itfc,"Invalid TTL value '%ld'",Byte);
+         fclose(fp);
+         return(ERR);
+      }
+      Byte = Byte << 16;
+
+      fprintf(fp,"\n        move    #%ld,a1                 ; Read in the new TTL byte",Byte);
+      fprintf(fp,"\n        move    y:TTL,x1                ; Read in the current TTL state");
+      fprintf(fp,"\n        or      x1,a1                   ; Combine with current TTL state");
+      fprintf(fp,"\n        move    a1,y:TTL                ; Save total TTL state");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL             ; Update TTL output");
+   }
+   else
+   {
+      Error(par->itfc,"Invalid TTL reference '%s'",byte.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+   return(OK);
+
+}  
+
+/**********************************************************************
+     Switch off a TTl level 
+
+     ttloff(byte)
+
+     Takes 150 ns to set up level. The TTL level is combined with the
+     lower 16 bits to prevent any disruption to the RF.
+**********************************************************************/
+
+short TTLOff(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText byte;
+   long Byte;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"byte name","e","q",&byte)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(byte[0] == 'b')
+      InsertUniqueStringIntoList(byte.Str(),&parList,szList);
+
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   };
+
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set TTL level");
+
+   if(byte[0] == 'b')
+   {
+      fprintf(fp,"\n        move    x:TTL%s,a1              ; Read in the TTL byte",byte.Str()+1);
+      fprintf(fp,"\n        not     a                       ; Invert the byte");
+      fprintf(fp,"\n        move    y:TTL,x1                ; Read the current TTL state");
+      fprintf(fp,"\n        and     x1,a1                   ; And with current TTL state to switch off TTL line");
+      fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL state");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL             ; Update TTL output");
+   }
+   else if(sscanf(byte.Str(),"%ld",&Byte) == 1)
+   {
+      if(Byte < 1 || Byte > 0x80)
+      {
+         Error(par->itfc,"Invalid TTL value '%ld'",Byte);
+         fclose(fp);
+         return(ERR);
+      }
+      Byte = Byte << 16;
+      fprintf(fp,"\n        move    #%ld,a1                 ; Read in the TTL byte",Byte);
+      fprintf(fp,"\n        not     a                       ; Invert the byte");
+      fprintf(fp,"\n        move    y:TTL,x1                ; Read the current TTL state");
+      fprintf(fp,"\n        and     x1,a1                   ; And with current TTL state to switch off TTL line");
+      fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL state");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL             ; Update TTL output");
+   }
+   else
+   {
+      Error(par->itfc,"Invalid TTL reference '%s'",byte.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+   return(OK);
+
+}  
+
+
+/**********************************************************************
+     Generate the first statement of a loop 
+
+     loop(name, repeats)
+
+**********************************************************************/
+
+short LoopStart(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText nrTimes;
+   long NrTimes;
+   CText loopName;
+   FILE *fp;
+
+   if((nrArgs = ArgScan(par->itfc,args,2,"loop name, number repeats","ee","qq",&loopName,&nrTimes)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(nrTimes[0] == 'n')
+      InsertUniqueStringIntoList(nrTimes.Str(),&parList,szList);
+
+   InsertUniqueStringIntoList(loopName.Str(),&parList,szList);
+
+
+   fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Loop");
+
+   if(loopName[0] == 'l')
+   {
+      if(nrTimes[0] == 'n')
+      {
+         fprintf(fp,"\n        move    x:NR%s,r1                 ; Load number repeats into r1",nrTimes.Str()+1);
+         fprintf(fp,"\n        do      r1,LOOP%s                 ; Repeat code until Loop end",loopName.Str()+1);
+      }
+      else if(sscanf(nrTimes.Str(),"%ld",&NrTimes) == 1)
+      {
+         fprintf(fp,"\n        move    #%ld,r1                   ; Load number repeats into r1",NrTimes);
+         fprintf(fp,"\n        do      r1,LOOP%s                 ; Repeat code until Loop end",loopName.Str()+1);
+      }
+      else
+      {
+         Error(par->itfc,"invalid number of loops '%s'",nrTimes.Str());
+         fclose(fp);
+         return(ERR);
+      }
+   }
+   else
+   {
+      Error(par->itfc,"invalid loop name '%s'",loopName.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+
+   return(OK);
+}
+
+/**********************************************************************
+     Generate the last statement of a loop 
+
+     endloop(name)
+
+**********************************************************************/
+
+short LoopEnd(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText loopName;
+   FILE *fp;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"loop name","e","q",&loopName)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   InsertUniqueStringIntoList(loopName.Str(),&parList,szList);
+
+   fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   };
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Loop end");
+
+   if(loopName[0] == 'l')
+   {
+      fprintf(fp,"\nLOOP%s  nop                ; Identifies end of loop",loopName.Str()+1);
+   }
+   else
+   {
+      Error(par->itfc,"invalid loop name '%s'",loopName.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/**********************************************************************
+     Clear the data memory 
+
+     cleardata(number of complex points to clear)
+
+**********************************************************************/
+
+short ClearData(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText nrPnts;
+   long NrPnts;
+   FILE *fp;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"number","e","q",&nrPnts)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+   if(nrPnts[0] == 'n')
+      InsertUniqueStringIntoList(nrPnts.Str(),&parList,szList);
+
+   fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   };
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Clear the data memory");
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n        move    #$%d,r5              ; Make r5 point to the start of fid memory", DSP_MEMORY_ADRS);
+
+   if(nrPnts[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,r7                ; Zero NR%s*2 points",nrPnts.Str()+1,nrPnts.Str()+1);
+   }
+   else if(sscanf(nrPnts.Str(),"%ld",&NrPnts) == 1)
+   {
+      fprintf(fp,"\n        move    #%ld,r7                ; Zero %ld*2 points",NrPnts,NrPnts);
+   }
+
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        do      r7,clearm");
+   fprintf(fp,"\n        move    a1,y:(r5)+");
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        move    a1,y:(r5)+");
+   fprintf(fp,"\nclearm  nop");
+   fprintf(fp,"\n        move    #$%d,r5              ; Make r5 point to the start of fid memory", DSP_MEMORY_ADRS);
+   fclose(fp);
+
+   return(OK);
+}
+
+/******************************************************************************************
+  Acquire data from the Kea transceiver. 
+  
+  acquire(mode, nr_points, [[duration], address])
+  
+  Possible modes are:
+
+  overwrite ... data is always written to location y:0x10000 or y:address
+  append ...... data is appended to the last acquired data
+  sum ......... data is summed to the previously acquired data starting at location y:0x10000 or y:address
+  integrate ... data is summed and stored as one complex point 
+
+  The optional duration parameter specifies a minimum period for the acquisition command.
+
+  Last modified: 3-3-2014
+*******************************************************************************************/
+
+short AcquireData(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText nrPnts;
+   CText duration;
+   CText mode; 
+   CText adrs; 
+   long NrPnts;
+   FILE *fp;
+
+   if((nrArgs = ArgScan(par->itfc,args,2,"mode, nr points","ee","qq",&mode,&nrPnts)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+// Add new variables to the list
+   InsertUniqueStringIntoList(nrPnts.Str(),&parList,szList);
+
+// Open the output file
+   fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+// Overwrite mode
+   if(mode == "overwrite")
+   {
+		fprintf(fp,"\n\n;");
+		fprintf(fp,"\n;***************************************************************************");
+		fprintf(fp,"\n; Acquire data (overwrite without delay)");
+
+		if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+      fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+      fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+      fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+
+		fprintf(fp,"\n        movep   #0,x:A_TLR2             ; Set up ADC timer 2");
+		fprintf(fp,"\n        movep   #0,x:A_TCSR2            ; Disable timer 2");
+		fprintf(fp,"\n        movep   #$361,x:A_TCSR2         ; Set up timer2 (T1) for input capture");
+      if(nrArgs == 4)
+          fprintf(fp,"\n        move    x:MEM%s,r5               ; Specify the save address",adrs.Str()+1);
+      else
+          fprintf(fp,"\n        move    #$%d,r5               ; Specify the save address", DSP_MEMORY_ADRS);
+	   if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+      fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer 2 flag");
+		fprintf(fp,"\n        movep   #$200361,x:A_TCSR2      ; Clear timer 2 flag");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_SampleA,a1        ; Load data from channel A");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n         move    a1,y:(r5)+              ; Save to memory");
+
+      fprintf(fp,"\n         move    x:FPGALOCK_SampleB,a1       ; Load data from channel B");
+      fprintf(fp,"\n         nop");
+      fprintf(fp,"\n         nop");
+
+      fprintf(fp,"\n         move    a1,y:(r5)+              ; Save to memory");
+      fprintf(fp,"\nLBL%ld    nop",label);
+
+      fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2       ; Disable timer 2");
+
+      label += 1;
+		fclose(fp);
+   }
+	else if(mode == "append")
+	{
+		fprintf(fp,"\n\n;");
+		fprintf(fp,"\n;***************************************************************************");
+		fprintf(fp,"\n; Acquire (append without delay)");
+
+		if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+      fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+      fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+      fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+
+      fprintf(fp,"\n        move    y:DATA_ADRS,r5           ; Specify the data address",adrs.Str()+1);
+
+		fprintf(fp,"\n        movep   #0,x:A_TLR2             ; Set up ADC timer");
+		fprintf(fp,"\n        movep   #0,x:A_TCSR2            ; Disable timer");
+		fprintf(fp,"\n        movep   #$200361,x:A_TCSR2         ; Set up timer 2 (T1) for input capture");
+	   if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+
+      fprintf(fp,"\n        do      r7,LBL%ld               ; Collect n samples",label);
+		fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; wait for timer 2 flag");
+		fprintf(fp,"\n        movep   #$200361,x:A_TCSR2      ; clear timer 2 flag");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_SampleA,a1       ; Load data from channel A");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_SampleB,a1       ; Load data from channel B");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Save to memory");
+
+      fprintf(fp,"\nLBL%ld  nop",label);
+
+      fprintf(fp,"\n        move    y:TTL,a1                ; Stop ADC capture");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+
+      fprintf(fp,"\n        move    r5,y:DATA_ADRS           ; Save data address",adrs.Str()+1);
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2       ; Disable timer 2");
+
+		fclose(fp);
+
+      label++;	
+	}
+
+
+	else if(mode == "sum")
+	{
+      fprintf(fp,"\n\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Acquire (summing without delay)");
+
+      fprintf(fp,"\n        clr     a                       ; Clear register a");
+      fprintf(fp,"\n        clr     b                       ; Clear register b");
+      fprintf(fp,"\n        movep   #0,x:A_TLR2             ; Set up ADC timer 2");
+      fprintf(fp,"\n        movep   #0,x:A_TCSR2            ; Disable timer 2");
+      fprintf(fp,"\n        movep   #$361,x:A_TCSR2          ; Set up timer 2 for input capture");
+
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer 2 flag");
+      fprintf(fp,"\n        movep   #$200361,x:A_TCSR2      ; Clear timer 2 flag");
+
+      if(nrArgs == 4)
+          fprintf(fp,"\n        move    x:MEM%s,r5               ; Load the number of samples into r7",adrs.Str()+1);
+      else
+          fprintf(fp,"\n        move    #$%d,r5              ; Load the number of samples into r7", DSP_MEMORY_ADRS);
+	   if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+      fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label+2);
+
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer 2 flag");
+      fprintf(fp,"\n        movep   #$200361,x:A_TCSR2      ; Clear timer 2 flag");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_TTL,a1             ; Load data from channel A");
+
+      fprintf(fp,"\n        lsl     #8,a");
+      fprintf(fp,"\n        move    a1,y1");
+      fprintf(fp,"\n        mpy     #$8000,y1,a");
+
+      fprintf(fp,"\nLBL%ld   move    y:(r5),b1               ; Get last value at this location",label);
+      fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_TTL,a1             ; Load data from channel B");
+
+      fprintf(fp,"\n        lsl     #8,a");
+      fprintf(fp,"\n        move    a1,y1");
+      fprintf(fp,"\n        mpy     #$8000,y1,a");
+
+      fprintf(fp,"\nLBL%ld   move    y:(r5),b1               ; Get last value at this location",label+1);
+      fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+
+      fprintf(fp,"\nLBL%ld  nop",label+2);
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2       ; Disable timer 2");
+
+      fclose(fp);
+
+      label += 3;
+   }
+	 
+   else if(mode == "integrate")
+   {
+      fprintf(fp,"\n;");
+      fprintf(fp,"\n;***************************************************************************");
+      fprintf(fp,"\n; Acquire (integrating without delay)");
+
+
+		if(SelectNumber(par->itfc,fp,nrPnts,"a1",2,65536)) return(ERR);
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_DRP1_SampleNo  ; FPGA for the wrap-up algorithm to use ### make sure this is the same number as the loop count or major errors could occur");
+
+      fprintf(fp,"\n        move    y:TTL,a1                ; Load the current TTL state");
+      fprintf(fp,"\n        or      #$000010,a              ; Reset CIC");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+      fprintf(fp,"\n        and     #$ffffef,a              ; Remove CIC flag");
+      fprintf(fp,"\n        or      #$000001,a              ; Start ADC capture ");
+		fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL           ; Send to FPGA");
+
+      fprintf(fp,"\n        movep   #0,x:A_TLR2             ; Set up ADC timer 2");
+      fprintf(fp,"\n        movep   #0,x:A_TCSR2            ; Disable timer 2");
+      fprintf(fp,"\n        movep   #$361,x:A_TCSR2         ; Set up timer 2 for input capture");
+
+	   if(SelectNumber(par->itfc,fp,nrPnts,"r7",2,65536)) return(ERR);
+      fprintf(fp,"\n        do      r7,LBL%ld                ; Collect n samples",label);
+
+      fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for timer 2 flag");
+      fprintf(fp,"\n        movep   #$200361,x:A_TCSR2      ; Clear timer 2 flag");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_SampleA,a1        ; Load data from channel A");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+      fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+
+      fprintf(fp,"\n        move    x:FPGALOCK_SampleB,a1       ; Load data from channel B");
+      fprintf(fp,"\n        nop");
+      fprintf(fp,"\n        nop");
+
+      fprintf(fp,"\n        move    y:(r5),b1               ; Get last value at this location");
+      fprintf(fp,"\n        add     b,a                     ; Accumulate in a");
+      fprintf(fp,"\n        move    a1,y:(r5)+              ; Write to memory");
+
+      fprintf(fp,"\n        move    r5,a1");
+      fprintf(fp,"\n        sub     #2,a");
+      fprintf(fp,"\n        move    a1,r5                    ; Restore r5");
+
+
+      fprintf(fp,"\nLBL%ld  nop",label);
+
+      fprintf(fp,"\n        move    r5,a1");
+      fprintf(fp,"\n        add     #2,a");
+      fprintf(fp,"\n        move    a1,r5                    ; Increment r5 by 2");
+
+      fprintf(fp,"\n        move    y:TTL,a1                 ; Stop ADC capture");
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_TTL        ; Send to FPGA");
+      fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2       ; Disable timer 2");
+
+      fclose(fp);
+
+      label ++;
+   }
+   else
+   {
+      fclose(fp);
+      Error(par->itfc,"invalid acquire mode");
+      return(ERR);
+   }
+   return(OK);
+} 
+
+/**********************************************************************
+     Run an external script file and wait for it to complete.
+
+     execwait(file to run, argument list)
+**********************************************************************/
+
+STARTUPINFO startupinfo;
+PROCESS_INFORMATION processinfo;
+
+short ExecuteAndWait(DLLParameters* par, char *args)
+{
+   CText cmdline;
+   CText file;
+   CText arguments;
+   short nrArgs;
+
+   if((nrArgs = ArgScan(par->itfc,args,1,"file,arguments","ee","qq",&file,&arguments)) < 0)
+      return(nrArgs);
+
+   cmdline.Format("%s %s",file.Str(),arguments.Str());
+   startupinfo.cb = sizeof(STARTUPINFO);
+   bool st = CreateProcess(file.Str(),cmdline.Str(),NULL,NULL,false,NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW,NULL,NULL,&startupinfo,&processinfo);
+   WaitForSingleObject(processinfo.hProcess, INFINITE);
+   CloseHandle(processinfo.hProcess);
+
+   return(OK);
+
+}
+
+/**********************************************************************
+     End the pulse program generation process by adding the parameter 
+     block and joining all code segments together.
+**********************************************************************/
+
+void ReplaceStr(CText &ctext, char* text, char* oldStr, char* newStr);
+
+
+short EndPP(DLLParameters* par, char *args)
+{
+   char *text;
+   FILE *fp;
+   char varName[50];
+   long sz,len;
+   short nrArgs;
+   CText startFile = "startCodeLock.asm";
+
+
+// Write the header file
+   fp = fopen("temp.asm","w");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n      nolist");
+   fprintf(fp,"\n      include  'ioequ.asm'");
+   fprintf(fp,"\n      include  'FPGALock.asm'");
+   fprintf(fp,"\n      list");
+   fprintf(fp,"\n;***************************************************************************\n");
+
+   fprintf(fp,"\n                org     x:$0\n\n");
+   fprintf(fp,"\nPARAM_BASE      equ     *       ; Memory for pulse program parameters");
+   fprintf(fp,"\nRXG1            ds      1       ; 00 - Receiver gain block 1");
+   fprintf(fp,"\nRXG2            ds      1       ; 01 - Receiver gain block 2");
+   fprintf(fp,"\nDEC1            ds      1       ; 02 - Decimation for CIC1");
+   fprintf(fp,"\nDEC5            ds      1       ; 03 - Decimation for CIC5");
+   fprintf(fp,"\nDECFIR          ds      1       ; 04 - Decimation for FIR");
+   fprintf(fp,"\nATT1            ds      1       ; 05 - Attenuation for CIC1");
+   fprintf(fp,"\nDELAYFIR        ds      1       ; 06 - Delay for CIC5");
+   fprintf(fp,"\nATTFIR          ds      1       ; 07 - Attenuation for FIR");
+   fprintf(fp,"\nNtaps           ds      1       ; 08 - Taps for FIR");
+   fprintf(fp,"\nTXF00           ds      1       ; 09 - Tx Frequency word 0");
+   fprintf(fp,"\nTXF01           ds      1       ; 10 - Tx Frequency word 1");
+   fprintf(fp,"\nRXSETCHANNEL    ds      1       ; 11 - RxAmp set channel code");
+   fprintf(fp,"\nRXSETGAIN       ds      1       ; 12 - RxAmp set gain code");
+   fprintf(fp,"\nRXF00           ds      1       ; 13 - Rx Frequency word 0");
+   fprintf(fp,"\nRXF01           ds      1       ; 14 - Rx Frequency word 1");
+   fprintf(fp,"\n                ds      1       ; 15 - Rx Frequency word 2");
+   fprintf(fp,"\n                ds      1       ; 16 - Rx Frequency word 3");
+   fprintf(fp,"\nRXP0            ds      1       ; 17 - Rx Phase word 0");
+   fprintf(fp,"\nNRSCANS         ds      1       ; 18 - Number of scans to perform");
+   fprintf(fp,"\nEXPDELAY        ds      1       ; 19 - Delay between experiments");
+   fprintf(fp,"\nPGO             ds      1       ; 20 - Pulse gate overhead delay");
+   fprintf(fp,"\nGRADRESET       ds      1       ; 21 - 1 if gradients are to be reset");
+   fprintf(fp,"\nLFRXAMP         ds      1       ; 22 - 1 if low frequency Kea");
+   fprintf(fp,"\nSKIPPNTS        ds      1       ; 23 - Points to skip at start of acquisition");
+   fprintf(fp,"\nJITTER_CH1      ds      1       ; 24 - DDS channel 1 antiphase jitter parameter");
+   fprintf(fp,"\nJITTER_CH2      ds      1       ; 25 - DDS channel 2 antiphase jitter parameter");
+   fprintf(fp,"\nSoftVersion     ds      1       ; 26 - FPGA software version return");
+   fprintf(fp,"\nHardVersion     ds      1       ; 27 - FPGA hardware version return");
+   fprintf(fp,"\n\n; Pulse program info\n");
+
+// Loop over variable list extracting variable names
+   short c = 28;
+   for(short i = 0; i < szList; i++)
+   {
+	   strncpy(varName,parList[i],50);
+      if(varName[0] == 'f')
+      {
+         fprintf(fp,"\nFX%s_0           ds      1       ; %hd - Frequency %s word 0",varName+1,c++,varName+1);
+         fprintf(fp,"\nFX%s_1           ds      1       ; %hd - Frequency %s word 1",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'a')
+      {
+         fprintf(fp,"\nTXA%s            ds      1       ; %hd - Tx amplitude %s word 0",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'g')
+      {
+         fprintf(fp,"\nGAIN%s_0         ds      1       ; %hd - Rx gain %s word 0",varName+1,c++,varName+1);
+         fprintf(fp,"\nGAIN%s_1         ds      1       ; %hd - Rx gain %s word 1",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'p')
+      {
+         fprintf(fp,"\nTXP%s            ds      1       ; %hd - Tx phase %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'd')
+      {
+         fprintf(fp,"\nDELAY%s          ds      1       ; %hd - Delay %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'w')
+      {
+         fprintf(fp,"\nWAIT%s_0         ds      1       ; %hd - Wait steps %s",varName+1,c++,varName+1);
+         fprintf(fp,"\nWAIT%s_1         ds      1       ; %hd - Wait unit1 %s", varName+1,c++,varName+1);
+         fprintf(fp,"\nWAIT%s_2         ds      1       ; %hd - Wait unit2 %s", varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'n')
+      {
+         fprintf(fp,"\nNR%s             ds      1       ; %hd - Number %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'b')
+      {
+         fprintf(fp,"\nTTL%s            ds      1       ; %hd - Byte %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 't')
+      {
+         fprintf(fp,"\nTABLE%s          ds      1       ; %hd - Table %s",varName+1,c++,varName+1);
+      }
+      else if(varName[0] == 'm')
+      {
+         fprintf(fp,"\nMEM%s          ds      1       ; %hd - Memory address %s",varName+1,c++,varName+1);
+      }
+   }
+   fprintf(fp,"\n\n");
+   fclose(fp);
+
+// Readin start code
+   fp = fopen(startFile.Str(),"r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append a trigger string is desired
+   CText ctext = text;
+   delete [] text;
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(ctext.Str(),1,ctext.Size(),fp);
+   fclose(fp);
+
+// Readin middle code
+   fp = fopen("midCode.asm","r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open midCode file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open temporary file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(text,1,sz,fp);
+   fclose(fp);
+   delete [] text;
+
+// Readin end code
+   fp = fopen("endCodeLock.asm","r");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open endCode file");
+      return(ERR);
+   }
+   fseek(fp,0,SEEK_END);
+   len = ftell(fp);
+   text = new char[len+1];
+   fseek(fp,0,SEEK_SET);
+   sz = fread(text,1,len,fp);
+   text[sz] = '\0';
+   fclose(fp);
+
+// Append to total
+   fp = fopen("temp.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+   fprintf(fp,"\n\n");
+   fwrite(text,1,sz,fp);
+   fclose(fp);
+   delete [] text;
+
+// Delete the temp file
+   remove("midCode.asm");
+
+// Copy the variable list to ansVar	************************
+   par->retVar[1].MakeAndSetList(parList,szList);
+   par->nrRetVar = 1;
+   FreeList(parList,szList+1); // 1 bigger because we started with 1 dummy entry
+   szList = 0;
+   parList = NULL;
+
+   return(OK);
+}
+
+/**********************************************************************
+     Add string 'str' into 'list' at 'position'
+**********************************************************************/
+
+void InsertUniqueStringIntoList(char *str, char ***list, long &position)
+{
+   for(int i = 0; i < position; i++)
+   {
+      if(!strcmp(str,(*list)[i]))
+         return;
+   }
+   InsertStringIntoList(str,list,position,position++);
+}
+
+void ReplaceStr(CText &result, char* text, char* oldStr, char* newStr)
+{
+   long i,j,k;
+   long lenText,lenOld,lenNew;
+
+   lenText = strlen(text);
+   lenOld = strlen(oldStr);
+   lenNew = strlen(newStr);
+
+   for(i = 0; i < lenText; i++)
+   {
+      for(j = 0; j < lenOld; j++)
+      {
+         if(text[i+j] != oldStr[j])
+            break;
+      }
+      if(j == lenOld) // Match found
+      {
+         for(k = 0; k < lenNew; k++)
+            result.Append(newStr[k]);
+         i += lenOld-1;
+      }
+      else
+         result.Append(text[i]);
+   }
+}
+
+
+// Utility routine which generates the gradient set up code based on the gradient number or letter
+
+
+short SelectGradient(Interface *itfc ,FILE* fp, CText grad)
+{
+   long Grad;
+
+// Choose first gradient to change
+   if(grad[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",grad.Str()+1);
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+   else if(grad == "x")
+   {
+      fprintf(fp,"\n        move    #3,a1");
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+   else if(grad == "y")
+   {
+      fprintf(fp,"\n        move    #2,a1");
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+   else if(grad == "z")
+   {
+      fprintf(fp,"\n        move    #1,a1");
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+   else if(grad == "o")
+   {
+      fprintf(fp,"\n        move    #0,a1");
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+   else if(sscanf(grad.Str(),"%ld",&Grad) == 1)
+   {
+      if(Grad < 0 || Grad > 3)
+      {
+         Error(itfc,"invalid gradient index '%s' [0,1,2,3]",grad);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #%ld,a1",Grad);
+      fprintf(fp,"\n        movep   a1,x:A_PDRE");
+   }
+	else
+   {
+      Error(itfc,"invalid gradient index '%s' [0,1,2,3] or [x,y,z,o]",grad);
+      fclose(fp);
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+
+
+
+/**************************************************************************************************
+Utility routine which initializes a register with a number either as a variable or a constant.
+also includes bounds check in the case of a constant
+***************************************************************************************************/
+
+short SelectNumber(Interface *itfc ,FILE* fp, CText num, char *reg, long min, long max)
+{
+   long Number;
+
+   if(num[0] == 'n')
+	{
+	   fprintf(fp,"\n        move    x:NR%s,%s",num.Str()+1,reg);
+	}
+	else if(sscanf(num.Str(),"%ld",&Number) == 1)
+	{
+		if(Number < 2 || Number > 65536)
+		{
+			Error(itfc,"invalid number of points '%ld' [%ld ... %ld]",Number,min,max);
+			fclose(fp);
+         return(ERR);
+		}
+      fprintf(fp,"\n        move    #%ld,%s",Number,reg);
+	}
+	else
+	{
+		Error(itfc,"Invalid number reference '%s'",num.Str());
+		fclose(fp);
+		return(ERR);
+	}
+
+   return(OK);
+}
+
+/**************************************************************************************************
+Utility routine which initializes the a1 register with a phase value
+***************************************************************************************************/
+
+
+short SelectPhase(Interface *itfc ,FILE* fp, CText phase, CText channel)
+{
+   float Phase;
+   bool correct;
+
+   if(phase[0] == 'p') // Entry for phase cycling
+   {
+	   fprintf(fp,"\n        move    x:TXP%s,a1",phase.Str()+1);
+      correct = true;
+   }
+   else  if(phase[0] == 't') // Table based phase
+   {
+      fprintf(fp,"\n        clr a");
+      fprintf(fp,"\n        clr b");
+      fprintf(fp,"\n        move    x:TABLE%s,a0",phase.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0");
+
+      fprintf(fp,"\n        move    x:TABLE%s,b0",phase.Str()+1);
+
+      fprintf(fp,"\n        add     b,a");  // Add the index to table start to find current value
+      fprintf(fp,"\n        move    a0,r5"); // 
+      fprintf(fp,"\n        move    y:(r5),a1"); // Read the table value
+      correct = false;
+   }
+   else if(sscanf(phase.Str(),"%f",&Phase) == 1) // Constant from 0 ... 4 
+   {
+      if(Phase < 0 || Phase >= 4)
+      {
+         Error(itfc,"invalid phase '%f' [0 ... 4)",Phase);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #%ld,a1",(long)(Phase*16384.0+0.5));
+      correct = true;
+   }
+   else
+   {
+      Error(itfc,"Invalid phase reference '%s'",phase.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+// Save this to current phase
+   fprintf(fp,"\n        move    a1,y:TX_PHASE"); 
+
+// Send to appropriate FPGA channel
+   if(channel == "1" || channel == "i" || channel == "e" || channel == "ni" ||
+      channel == "w1" || channel == "wi" || channel == "we" || channel == "n1")
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+ 
+   if(correct) 
+      fprintf(fp,"\n        nop                             ; Eliminate pulse length jitter");
+
+
+   return(OK);
+}
+
+/**************************************************************************************************
+Utility routine which initializes the a1 register with an RF amplitude value
+***************************************************************************************************/
+
+short SelectAmplitude(Interface *itfc ,FILE* fp, CText amp, CText channel)
+{
+   long Amplitude;
+
+   if(amp[0] == 'a')
+   {
+	   fprintf(fp,"\n        move    x:TXA%s,a1",amp.Str()+1);
+   }
+   else if(sscanf(amp.Str(),"%ld",&Amplitude) == 1)
+   {
+      if(Amplitude < 0 || Amplitude > 16384)
+      {
+         Error(itfc,"invalid amplitude '%ld' [0 ... 16383]",Amplitude);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #%ld,a1",Amplitude);
+   }
+   else
+   {
+      Error(itfc,"Invalid amplitude reference '%s'",amp.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+// Save this to current amplitude
+   fprintf(fp,"\n        move    a1,y:TX_AMP");
+
+// Send to appropriate FPGA channel
+   if(channel == "1" || channel == "i" || channel == "e" || channel == "ni" ||
+      channel == "w1" || channel == "wi" || channel == "we" || channel == "n1")
+      fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+   else
+   {
+      Error(itfc,"Invalid channel reference '%s'",channel.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+short SelectDuration(Interface *itfc ,FILE* fp, char *reg, CText duration)
+{
+	float fDuration;
+	long Duration;
+
+   if(duration[0] == 'd') // Variable based delay
+   {
+	   fprintf(fp,"\n        move   x:DELAY%s,%s",duration.Str()+1,reg);
+   }
+   else if(sscanf(duration.Str(),"%f",&fDuration) == 1) // Fixed delay
+   {
+      if(fDuration < 0.25 || fDuration > 327670)
+      {
+         Error(itfc,"invalid delay '%f' [0.25...327670]",fDuration);
+         fclose(fp);
+         return(ERR);
+      }
+      Duration = (long)(fDuration * 50 - 1 + 0.5);
+      fprintf(fp,"\n        move   #%ld,%s",Duration,reg);
+   }
+   else
+   {
+      Error(itfc,"Invalid duration reference '%s'",duration.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   return(OK);
+}
+
+short SelectFrequency(Interface *itfc, FILE*fp, CText freq, CText channel)
+{
+   double fFreq;
+
+   if(freq[0] == 'f') // Frequency parameter
+   {
+	   if(channel == "1" || channel == "i" || channel == "e" || channel == "ni" ||
+         channel == "n1" || channel == "w1" || channel == "wi" || channel == "we")
+	   {
+		   fprintf(fp,"\n        move    x:FX%s_0,a1",freq.Str()+1);
+		   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+		   fprintf(fp,"\n        move    x:FX%s_1,a1",freq.Str()+1);
+		   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+	   }
+      else
+      {
+         Error(itfc,"Invalid channel reference '%s'",channel.Str());
+         fclose(fp);
+         return(ERR);
+      }
+   }
+// This code is not reliable - for some reason the pulse duration becomes unstable for some
+// frequencies.
+  // else if(sscanf(freq.Str(),"%lf",&fFreq) == 1) // Fixed frequency
+  // {
+  //    if(fFreq < 0 || fFreq > 500)
+  //    {
+  //       Error(itfc,"invalid frequency '%lg' [0 ... 500]",fFreq);
+  //       fclose(fp);
+  //       return(ERR);
+  //    }
+  //    __int64 DDSFword = (__int64)((fFreq * 4294967296.0L)/1000.0L + 0.5); 
+  //    long w1  = (unsigned long)((DDSFword & 0xFFFF0000)/65536.0L);
+  //    long w2 = (unsigned long)(DDSFword & 0x0000FFFF);
+
+	 //  if(channel == "1" || channel == "i" || channel == "e")
+	 //  {
+  //       fprintf(fp,"\n        move    #%ld,a1",w1);
+		//   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+  //       fprintf(fp,"\n        move    #%ld,a1",w2);
+		//   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS1_Pro0");
+	 //  }
+	 //  else if(channel == "2")
+	 //  {
+  //       fprintf(fp,"\n        move    #%ld,a1",w1);
+		//   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS2_Pro0");
+  //       fprintf(fp,"\n        move    #%ld,a1",w2);
+		//   fprintf(fp,"\n        move    a1,x:FPGALOCK_DDS2_Pro0");
+	 //  }
+  ////  fprintf(fp,"\n        nop                             ; Eliminate pulse length jitter");
+
+  // }
+   else
+   {
+      Error(itfc,"Invalid frequency reference '%s'",freq.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   return(OK);
+}
+
+
+///**********************************************************************
+//     Set a shim (16 channel version) current level - takes 3.2 us
+//
+//     shimon([0 ... 15]/nx, [-2^15 ... 2^15]/nx)
+//
+//     Note this is designed to work with the 16-channel shim controller
+//
+//**********************************************************************/
+//
+//short SwitchOnShim16(DLLParameters* par, char *args)
+//{
+//   short nrArgs;
+//   CText channel,amplitude;
+//   long Channel, Amplitude;
+//   
+//   if((nrArgs = ArgScan(par->itfc,args,2,"channel,amplitude","ee","qq",&channel,&amplitude)) < 0)
+//      return(nrArgs);
+//
+//   if(!parList)
+//   {
+//      Error(par->itfc,"Pulse sequence not initialised");
+//      return(ERR);
+//   }
+//
+//// Add to parameter list if not a constant
+//   if(channel[0] == 'n')
+//      InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+//   if(amplitude[0] == 'n')
+//      InsertUniqueStringIntoList(amplitude.Str(),&parList,szList);
+//
+//   FILE *fp = fopen("midCode.asm","a");
+//   if(!fp)
+//   {
+//      Error(par->itfc,"Can't open output file");
+//      return(ERR);
+//   }
+//
+//   fprintf(fp,"\n;");
+//   fprintf(fp,"\n;***************************************************************************");
+//   fprintf(fp,"\n; Set 16 channel shim level");
+//
+//// Get and check the channel number
+//   if(channel[0] != 'n')
+//   {
+//      if(sscanf(channel.Str(),"%ld",&Channel) == 1)
+//      {
+//         if(Channel < 0 || Channel > 15)
+//         {
+//            Error(par->itfc,"invalid shim index '%s' [0 ... 15]",channel);
+//            fclose(fp);
+//            return(ERR);
+//         }
+//      }
+//	   else
+//      {
+//         Error(par->itfc,"invalid shim index '%s' [0 ... 15]",channel);
+//         fclose(fp);
+//         return(ERR);
+//      }
+//   }
+//
+//   fprintf(fp,"\n        movep   #$2C,x:A_PCRD           ; Set up SSI 1"); 
+//   fprintf(fp,"\n        movep   #$180803,x:A_CRA1       ; /2 clk, 24 bit word transferred"); 
+//   fprintf(fp,"\n        movep   #$13C3C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+//
+//   fprintf(fp,"\n        clr     a");
+//   fprintf(fp,"\n        clr     b");
+//
+//   
+//   if(channel[0] == 'n')
+//      fprintf(fp,"\n        move    x:NR%s,a1                ; Load channel number",channel.Str()+1);
+//   else
+//      fprintf(fp,"\n        move    #%ld,a1                  ; Load channel number",Channel);
+//
+//   fprintf(fp,"\n        move    #$0001,b1               ; Select first group");
+//   fprintf(fp,"\n        cmp     #8,a                    ; See if channel is < 8");
+//   fprintf(fp,"\n        jlt     LBL%ld",label);
+//   fprintf(fp,"\n        sub     #8,a                    ; Subtract 8");
+//   fprintf(fp,"\n        move    #$0000,b1               ; Select second group");
+//   fprintf(fp,"\nLBL%ld  nop",label++);
+//   fprintf(fp,"\n        movep   b1,x:A_PDRC");
+//
+//// Set the amplitude
+//   if(amplitude[0] != 'n')
+//   {
+//      if(sscanf(amplitude.Str(),"%ld",&Amplitude) == 1)
+//      {
+//         if(Amplitude > 32768 || Amplitude < -32767)
+//         {
+//            Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+//            fclose(fp);
+//            return(ERR);
+//         }
+//      }
+//	   else
+//      {
+//         Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+//         fclose(fp);
+//         return(ERR);
+//      }
+//      fprintf(fp,"\n        move    #$%X,a1",Amplitude); 
+//   }
+//   else
+//   {
+//      fprintf(fp,"\n        move    x:NR%s,a1",amplitude.Str()+1); 
+//   }
+//   fprintf(fp,"\n        move    #$00FFFF,x1"); 
+//   fprintf(fp,"\n        and      x1,a1"); 
+//
+//   if(channel[0] == 'n')
+//      fprintf(fp,"\n        move    x:NR%s,b1                ; Load channel number",channel.Str()+1);
+//   else
+//      fprintf(fp,"\n        move    #%ld,b1                  ; Load channel number",Channel);
+//
+//   fprintf(fp,"\n        cmp     #8,b                    ; See if channel is < 8");
+//   fprintf(fp,"\n        jlt     LBL%ld",label);
+//   fprintf(fp,"\n        sub     #8,b                    ; Subtract 8");
+//   fprintf(fp,"\nLBL%ld  nop",label++);
+//
+//   fprintf(fp,"\n        lsr     #2,b");                     // Shift 2 bits to right to remove subchannel
+//   fprintf(fp,"\n        move    #$4,a0");                   // Set data register mode bit
+//   fprintf(fp,"\n        move    a0,x1");                    // Set data register mode bit
+//   fprintf(fp,"\n        or      x1,b1");                    // Set data register mode bit
+//   fprintf(fp,"\n        move    b1,x:A_PDRE");              // Select shim block
+//
+//   if(channel[0] == 'n')
+//      fprintf(fp,"\n        move    x:NR%s,b1                ; Load channel number",channel.Str()+1);
+//   else
+//      fprintf(fp,"\n        move    #%ld,b1                  ; Load channel number",Channel);
+//
+//   fprintf(fp,"\n        cmp     #8,b                    ; See if channel is < 8");
+//   fprintf(fp,"\n        jlt     LBL%ld",label);
+//   fprintf(fp,"\n        sub     #8,b                    ; Subtract 8");
+//   fprintf(fp,"\nLBL%ld  nop",label++);
+//   fprintf(fp,"\n        lsl     #16,b");                    // Shift 16 bits to left
+//   fprintf(fp,"\n        move    #$030000,x1");               // Extract lower 2 bits of channel number
+//   fprintf(fp,"\n        and      x1,b"); 
+//   fprintf(fp,"\n        move    #$100000,x1");               // Set data register mode bit
+//   fprintf(fp,"\n        or       x1,b"); 
+//   fprintf(fp,"\n        move     b1,x1");
+//   fprintf(fp,"\n        or       x1,a"); 
+//
+//   fprintf(fp,"\n        move    a1,x:A_TX10            ; Send data to DAC"); 
+//   fprintf(fp,"\n        move    #3,r7                  ; Wait 3 us");
+//   fprintf(fp,"\n        bsr     wait");
+//   fprintf(fp,"\n        movep   #$24,x:A_PCRD           ; Turn off SSI 1 on Port D");
+//
+//   fclose(fp);
+//
+//   return(OK);
+//}
+
+
+/**********************************************************************
+
+     Set a shim (16 channel version) current level 
+
+     shim16([0 ... 15]/nx, [-2^15 ... 2^15]/nx)
+
+     Note this is designed to work with the 16-channel shim controller
+
+     Control from DSP to Gradient board is via the SSI-1 serial interface.
+     The 16 lines are divided between two PCBs. The boards are selected
+     via the PCO line which is accessed with the x:A_PDRC memory location.
+     On each board are two 4 channel DACs. These are selected using the lines
+     PE0/1/2 which are set via the x:A_PDRE memory location. Addresses for the 
+     DACs are 4 and 5 rather than 0 and 1 due to board layout (hence the +4).
+     When writing to the DACs the 16 bit data word is combined with channel
+     info according to the following 24 bit word:
+
+     0001|00xx|xxxx|xxxx|xxxx|xxxx
+       20   16   12    8    4    0
+
+     bits 0-15 : data
+     bits 16 & 17 : which DAC channel
+     bit 20 : write to DAC
+
+     Timing: - command 2.5 us.
+             - output appears at this time.
+
+**********************************************************************/
+
+short SwitchOnShim16(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText channel,amplitude;
+   long Channel, Amplitude;
+   
+   if((nrArgs = ArgScan(par->itfc,args,2,"channel,amplitude","ee","qq",&channel,&amplitude)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+
+// Add to parameter list if not a constant
+   if(channel[0] == 'n')
+      InsertUniqueStringIntoList(channel.Str(),&parList,szList);
+   if(amplitude[0] == 'n')
+      InsertUniqueStringIntoList(amplitude.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Set 16 channel shim level");
+
+// Set the serial port
+   fprintf(fp,"\n        movep   #$2C,x:A_PCRD          ; Turn on SSI 1 on Port D");
+   fprintf(fp,"\n        movep   #$180802,x:A_CRA1       ; /2 clk, 24 bit word transferred"); 
+ //  fprintf(fp,"\n        movep   #$13C3C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+   fprintf(fp,"\n        movep   #$01343C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+
+// Select the gradient channel
+   if(SelectGradient16(par->itfc,fp,channel)) return(ERR);
+
+// Set the gradient amplitude
+   if(amplitude[0] != 'n')
+   {
+      if(sscanf(amplitude.Str(),"%ld",&Amplitude) == 1)
+      {
+         if(Amplitude > 32768 || Amplitude < -32767)
+         {
+            Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+            fclose(fp);
+            return(ERR);
+         }
+      }
+	   else
+      {
+         Error(par->itfc,"invalid shim amplitude '%s' [-32767 ... 32768]",channel);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #$%X,a1           ; Get gradient amplitude",Amplitude); 
+   }
+   else
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1                ; Get gradient amplitude",amplitude.Str()+1); 
+   }
+   fprintf(fp,"\n        move    #$00FFFF,x1"); 
+   fprintf(fp,"\n        and      x1,a1");  // Mask out data
+
+   fprintf(fp,"\n        move    b0,b1                  ; Restore subgroup"); 
+   fprintf(fp,"\n        lsl     #16,b                  ; Move into correct format for DAC");    // Shift 16 bits to left
+   fprintf(fp,"\n        move    #$030000,x1");               // Extract lower 2 bits of channel number
+   fprintf(fp,"\n        and      x1,b"); 
+   fprintf(fp,"\n        move    #$100000,x1");               // Set data register mode bit
+   fprintf(fp,"\n        or       x1,b"); 
+   fprintf(fp,"\n        move     b1,x1");
+   fprintf(fp,"\n        or       x1,a                  ; Add amplitude word"); 
+
+   fprintf(fp,"\n        move    a1,x:A_TX10            ; Send channel info + grad. amplitude to DAC"); 
+   fprintf(fp,"\n        move    #2,r7                  ; Wait 2 us");
+   fprintf(fp,"\n        bsr     wait");
+   fprintf(fp,"\n        movep   #$24,x:A_PCRD           ; Turn off SSI 1 on Port D");
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+/*******************************************************************************
+
+   Make a gradient ramp which has a start and end amplitude and a duration
+  
+   Syntax   shimramp16(channel, start, end, nrSteps, stepDuration)
+  
+   - channel can be a number or a number variable.
+   - start and end can be constants or tables.
+   - nrSteps and stepDuration can be constants or number variables. 
+
+   This version is for the 16 channel gradient controller. See shim16 for more
+   details.
+
+*********************************************************************************/
+
+short RampedShim16(DLLParameters* par, char *args)
+{
+   short nrArgs;
+   CText grad,start,end,steps,duration;
+   long Steps;
+   long Start,End;
+   long Address;
+   long Duration;
+   float fDuration;
+   long number,amplitude;
+   
+   if((nrArgs = ArgScan(par->itfc,args,5,"gradient,start,end,steps,duration","eeeee","qqqqq",&grad,&start,&end,&steps,&duration)) < 0)
+      return(nrArgs);
+
+   if(!parList)
+   {
+      Error(par->itfc,"Pulse sequence not initialised");
+      return(ERR);
+   }
+   if(grad[0] == 'n')
+      InsertUniqueStringIntoList(grad.Str(),&parList,szList);
+   if(start[0] == 'n' || start[0] == 't')
+      InsertUniqueStringIntoList(start.Str(),&parList,szList);
+   if(end[0] == 'n' || end[0] == 't')
+      InsertUniqueStringIntoList(end.Str(),&parList,szList);
+   if(steps[0] == 'n')
+      InsertUniqueStringIntoList(steps.Str(),&parList,szList);
+   if(duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(),&parList,szList);
+
+   FILE *fp = fopen("midCode.asm","a");
+   if(!fp)
+   {
+      Error(par->itfc,"Can't open output file");
+      return(ERR);
+   }
+
+   fprintf(fp,"\n;");
+   fprintf(fp,"\n;***************************************************************************");
+   fprintf(fp,"\n; Generate a ramped gradient (16 channel)");
+
+// Set the serial port configuration
+   fprintf(fp,"\n        movep   #$2C,x:A_PCRD          ; Turn on SSI 1 on Port D");
+   fprintf(fp,"\n        movep   #$180802,x:A_CRA1       ; /2 clk, 24 bit word transferred"); 
+ //  fprintf(fp,"\n        movep   #$13C3C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+   fprintf(fp,"\n        movep   #$01343C,x:A_CRB1        ; Enable SSI port with sc1/2 are outputs"); 
+
+// Select the gradient channel
+   if(SelectGradient16(par->itfc,fp,grad)) return(ERR);
+
+   fprintf(fp,"\n        move    b0,b1                  ; Restore subgroup"); 
+   fprintf(fp,"\n        lsl     #16,b                  ; Move into correct format for DAC");    // Shift 16 bits to left
+   fprintf(fp,"\n        move    #$030000,x1");               // Extract lower 2 bits of channel number
+   fprintf(fp,"\n        and      x1,b"); 
+   fprintf(fp,"\n        move    #$100000,x1");               // Set data register mode bit
+   fprintf(fp,"\n        or       x1,b"); 
+   fprintf(fp,"\n        move    b1,y:(TMP+10)          ; Save");
+
+// Get the start amplitude
+   if(start[0] == 'n') // Start amplitude is via a number reference
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",start.Str()+1);
+      fprintf(fp,"\n        move    a1,y:(TMP+7)");    
+   }
+   else if(start[0] == 't') // start amplitude is t[index]
+   {
+      fprintf(fp,"\n        clr a");
+      fprintf(fp,"\n        clr b");
+      fprintf(fp,"\n        move    x:TABLE%s,a0",start.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0");
+
+      fprintf(fp,"\n        move    x:TABLE%s,b0",start.Str()+1);
+
+      fprintf(fp,"\n        add     b,a"); // Add current index to table start address
+      fprintf(fp,"\n        move    a0,r5"); 
+      fprintf(fp,"\n        move    y:(r5),a1"); // Read table value
+      fprintf(fp,"\n        move    a1,y:(TMP+7)");
+   }
+   else if(sscanf(start.Str(),"%ld",&amplitude) == 1) // Start amplitude is a number
+   {
+      fprintf(fp,"\n        move    #$%X,a1",amplitude);
+      fprintf(fp,"\n        move    a1,y:(TMP+7)");  
+   }
+   else
+   {
+      Error(par->itfc,"Invalid start amplitude '%s'",steps.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+// Get the end amplitude
+   if(end[0] == 'n') // End amplitude is via a number reference
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",end.Str()+1);
+      fprintf(fp,"\n        move    a1,y:(TMP+8)");    
+   }
+   else if(end[0] == 't') // End amplitude is t[index]
+   {
+      fprintf(fp,"\n        clr a");
+      fprintf(fp,"\n        clr b");
+      fprintf(fp,"\n        move    x:TABLE%s,a0",end.Str()+1);
+      fprintf(fp,"\n        dec a"); // a0 points to table index
+      fprintf(fp,"\n        move    a0,r5"); // Read current table index
+      fprintf(fp,"\n        move    y:(r5),a0");
+
+      fprintf(fp,"\n        move    x:TABLE%s,b0",end.Str()+1);
+
+      fprintf(fp,"\n        add     b,a"); // Add current index to table start address
+      fprintf(fp,"\n        move    a0,r5"); 
+      fprintf(fp,"\n        move    y:(r5),a1"); // Read table value
+      fprintf(fp,"\n        move    a1,y:(TMP+8)");
+   }
+   else if(sscanf(end.Str(),"%ld",&amplitude) == 1) // End amplitude is a number
+   {
+      fprintf(fp,"\n        move    #$%X,a1",amplitude);
+      fprintf(fp,"\n        move    a1,y:(TMP+8)");  
+   }
+   else
+   {
+      Error(par->itfc,"Invalid end amplitude '%s'",steps.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+// Get the number of steps
+   if(steps[0] == 'n') // Steps via a number reference
+   {
+   // Set the level
+      fprintf(fp,"\n        move    x:NR%s,a0",steps.Str()+1);
+      fprintf(fp,"\n        dec     a");
+      fprintf(fp,"\n        move    a0,y:(TMP+6)");    
+   }
+   else if(sscanf(steps.Str(),"%ld",&number) == 1) // Steps is a number
+   {
+      if(number > 0)
+      {
+         fprintf(fp,"\n        move    #%ld,a0",number);
+         fprintf(fp,"\n        dec     a");
+         fprintf(fp,"\n        move    a0,y:(TMP+6)");  
+      }
+      else
+      {
+         Error(par->itfc,"Invalid number of steps '%s'",steps.Str());
+         fclose(fp);
+         return(ERR);
+      }
+   }
+   else
+   {
+      Error(par->itfc,"Invalid number of steps '%s'",steps.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+// Step duration
+   if(duration[0] == 'd')
+   {
+		fprintf(fp,"\n        move   x:DELAY%s,a1",duration.Str()+1);
+   }
+   else if(sscanf(duration.Str(),"%f",&fDuration) == 1)
+   {
+      if(fDuration < 0.25 || fDuration > 327670)
+      {
+         Error(par->itfc,"invalid delay '%g' [1...327670]",fDuration);
+         fclose(fp);
+         return(ERR);
+      }
+      Duration = (long)(fDuration * 50 - 1 + 0.5);
+      fprintf(fp,"\n        move   #%ld,a1",Duration);
+   }
+   else
+   {
+      Error(par->itfc,"Invalid step duration '%s'",duration.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   fprintf(fp,"\n        move    a1,y:(TMP+9)");    
+
+// Set the initial n value
+   fprintf(fp,"\n        move    #0000,a1");
+   fprintf(fp,"\n        move    a1,y:(TMP+5)");    
+
+   fprintf(fp,"\n        move    y:(TMP+6),a0             ; Load the steps into r7");
+   fprintf(fp,"\n        inc     a                        ; Load the steps into r7");
+   fprintf(fp,"\n        move    a0,r2                    ; Load the steps into r7");
+
+   fprintf(fp,"\n        do      r2,LBL%ld                ; Calculate each step value",label);
+
+   fprintf(fp,"\n; **************************************************");
+   fprintf(fp,"\n; v = n*(end-start)/steps + start");
+   fprintf(fp,"\n; **************************************************");
+   fprintf(fp,"\n        move    y:(TMP+8),b");  
+   fprintf(fp,"\n        move    b1,y:(TMP+2)");  
+   fprintf(fp,"\n        move    y:(TMP+7),x1");  
+   fprintf(fp,"\n        move    y:(TMP+2),b");  
+   fprintf(fp,"\n        sub     x1,b");  
+   fprintf(fp,"\n        move    b1,x0");  
+   fprintf(fp,"\n        move    y:(TMP+5),y0");
+
+   fprintf(fp,"\n        mpy     y0,x0,b");  
+   fprintf(fp,"\n        asl     #23,b,b");  
+   fprintf(fp,"\n        move    b1,y:(TMP+2)");
+
+   fprintf(fp,"\n        move    y:(TMP+6),y0");  
+   fprintf(fp,"\n        tfr     b,a");  
+   fprintf(fp,"\n        abs     b");  
+   fprintf(fp,"\n        clr     b	b1,x0");  
+   fprintf(fp,"\n        move    x0,b0");  
+   fprintf(fp,"\n        asl     b");  
+   fprintf(fp,"\n        rep     #$18");  
+   fprintf(fp,"\n        div     y0,b");  
+   fprintf(fp,"\n        eor     y0,a");   
+   fprintf(fp,"\n        bpl     LBL%ld",label+1);
+   fprintf(fp,"\n        neg     b"); 
+   fprintf(fp,"\nLBL%ld    nop",label+1);
+   fprintf(fp,"\n        move    b0,b"); 
+   fprintf(fp,"\n        move    b1,y:(TMP+3)"); 
+   fprintf(fp,"\n        move    y:(TMP+7),x0"); 
+   fprintf(fp,"\n        add     x0,b"); 
+   fprintf(fp,"\n        move    b1,y:(TMP+4)");   
+   fprintf(fp,"\n        move    #$00FFFF,x1"); 
+   fprintf(fp,"\n        and      x1,b1"); 
+   fprintf(fp,"\n        move     y:(TMP+10),a1");
+   fprintf(fp,"\n        move     a1,x1"); 
+   fprintf(fp,"\n        or       x1,b                  ; Add amplitude word"); 
+
+   fprintf(fp,"\n        movep   b1,x:A_TX10"); // Send to gradient board
+
+
+// Include a delay to make the step the right length
+   fprintf(fp,"\n        move    y:(TMP+9),a1"); 
+   fprintf(fp,"\n        sub     #46,a");
+   fprintf(fp,"\n        movep   a1,x:A_TCPR2");
+	fprintf(fp,"\n        movep   #$200A01,x:A_TCSR2");
+   fprintf(fp,"\n        nop");
+   fprintf(fp,"\n        jclr    #21,x:A_TCSR2,*         ; Wait for pulse to end");
+   fprintf(fp,"\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+   fprintf(fp,"\n        move    y:(TMP+5),a0");  
+   fprintf(fp,"\n        inc    a"); 
+   fprintf(fp,"\n        move    a0,y:(TMP+5)");  
+   
+  fprintf(fp,"\nLBL%ld    nop",label);
+
+// Include a delay to make the last step the right length
+   fprintf(fp,"\n        rep     #80                  ; Wait 1us");
+   fprintf(fp,"\n        nop");
+
+   fprintf(fp,"\n        movep   #$24,x:A_PCRD          ; Turn off SSI 1 on Port D");
+
+   label += 2;
+
+   fclose(fp);
+
+   return(OK);
+}
+
+
+short SelectGradient16(Interface *itfc ,FILE* fp, CText grad)
+{
+   long Grad;
+   long Channel;
+
+// Choose the gradient channel
+   fprintf(fp,"\n        clr     a");
+   fprintf(fp,"\n        clr     b");
+
+   if(grad[0] == 'n')
+   {
+      fprintf(fp,"\n        move    x:NR%s,a1",grad.Str()+1);
+   }
+   else if(sscanf(grad.Str(),"%ld",&Channel) == 1) // channel is a number
+   {
+      if(Channel < 0 || Channel > 16)
+      {
+         Error(itfc,"invalid gradient index '%s' [0, ... 16]",grad.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp,"\n        move    #%ld,a1",Channel);
+   }
+	else
+   {
+      Error(itfc,"invalid gradient index '%s' [0, ... 16]",grad.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fprintf(fp,"\n        move    #$0001,b1               ; Assume first group");
+   fprintf(fp,"\n        cmp    #8,a                     ; See if channel is < 8");
+   fprintf(fp,"\n        jlt    LBL%ld",label);
+   fprintf(fp,"\n        sub    #8,a                     ; Subtract 8");
+   fprintf(fp,"\n        move    #$0000,b1               ; Second group");
+   fprintf(fp,"\nLBL%ld  nop",label++);
+   fprintf(fp,"\n        movep   b1,x:A_PDRC             ; Select group of 8 DACs");
+
+   fprintf(fp,"\n        move    a1,b0                   ; Save subgroup (4 channels)");
+   fprintf(fp,"\n        lsr     #2,a                    ; Shift 2 bits to right to determine subgroup (result 0/1)");                     // 
+   fprintf(fp,"\n        add     #4,a                    ; Add 4 to only access pins Y4 or Y5 on U7"); 
+   fprintf(fp,"\n        move    a1,x:A_PDRE             ; Select block of 4 DACs");
+
+
+   return(OK);
+}

@@ -1,0 +1,39 @@
+procedure(InitPlot, layout)
+
+   gPlot->layoutPlots(layout)            
+   gPlot->showPlots(layout)
+
+# Return the subplot references
+   if(vartype(layout) == "list2d")
+      plts = listto1d(layout)
+   else
+      plts = layout
+   endif
+
+   gPlot->usePlots = plts
+
+   sz = size(plts)
+   if(sz > gView->nrGraphs)
+      abort("too many graphs")
+   endif
+
+# Convert the plot names into plot objects in a structure
+   retVar = struct()
+   for(k = 0 to sz-1)
+      name = plts[k]
+      if(name[0:1] == "pt")
+         nr = eval(name[2:-1])
+         txt = "gView->g$nr$->subplot(1,1)"   
+      elseif(name[0:1] == "im")
+         nr = eval(name[2:-1])
+         txt = "gView->g$nr+gView->nr1DPlots$->subplot(1,1)"  
+      else
+         abort("invalid plot/imag name")
+      endif      
+      plt = eval(txt)  
+      assign("retVar->arg$k+1$",plt,"local")
+   next(k)
+   
+# Return a list of plot objects
+
+endproc("...",retVar)

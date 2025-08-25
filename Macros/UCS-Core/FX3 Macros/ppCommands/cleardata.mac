@@ -1,0 +1,21 @@
+###################################################################################
+# cleardata command - initialises the parameters for acquire sum-mode.
+# Zeroes the sum data and sets the number of loops to sum. 
+##################################################################################
+
+procedure(cleardata, nrLoops)
+
+   if(wvFX3Info->mode == "run")
+
+      ps = [20d, 0x04084, nrLoops]  # Number of points to sum
+
+      updatePSArray(ps)
+     
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(nrPnts)
+
+   endif
+
+endproc()
+

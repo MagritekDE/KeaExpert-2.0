@@ -1,0 +1,287 @@
+procedure(addMacros,dir)
+
+   name = getmenuname()
+   n = :windowdefinition(name)
+   windowvar(dstDir,menuName,libdir)
+   menuName = name
+   dstDir = dir
+   :init()
+   :update2(dir)
+   libdir = "$appdir$\\Libraries\\$getbasedir(dir)$"
+   :update1(libdir)
+   setpar(n,17,"text",libdir)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition,name)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Add or remove macros", -1, -1, 386, 335)
+
+      # Define all controls with basic parameters
+       listbox(1, 20, 100, 130, 170)
+       listbox(2, 200, 100, 130, 170)
+       statictext(5, 85, 79, "center", "Library macros")
+       statictext(6, 265, 79, "center", "$name$ macros")
+       button(7, 159, 153, 32, 25, "",
+          :copyMacro();)
+       button(10, 280, 300, 56, 25, "Finish",
+          closewindow(0);)
+       button(11, 170, 300, 56, 25, "Help",
+          :showHelp();)
+       groupbox(12, "", 4, 62, 372, 228)
+       groupbox(15, "Macro library", 5, 5, 370, 54)
+       button(16, 333, 26, 28, 20, "...",
+          :setLibraryFolder();)
+       textbox(17, 20, 25, 300)
+       button(18, 340, 173, 31, 25, "",
+          :deleteMacro();)
+       button(19, 40, 300, 80, 25, "Macro Help",
+          :macroHelp();)
+       button(20, 159, 193, 32, 25, "All",
+          :copyAllMacros();)
+     # Set other control parameters
+       setpar(n,10,"mode","default")
+
+endproc(n)
+
+####################################################
+# Update the button icons
+####################################################
+
+procedure(init)
+
+   bak = getcwd()
+   cd("$getmacropath()$\\$rmext(getmacroname())$")
+   setpar(0,7,"icon","rightarrow.png")
+   setpar(0,18,"icon","cross.png")
+   cd(bak)
+
+endproc()
+
+####################################################
+# Update list1 with the library macros
+####################################################
+
+procedure(update1, dir)
+
+   if(isdir(dir))
+      bak = getcwd()
+      cd(dir)
+      lst =  ls("*.mac","files","no")
+      if(isfile("macrohelp.mac"))
+         lst = rmfromlist(lst,"macrohelp.mac","nocase")
+      endif
+      if(lst != null)
+         lst = sortlist(rmext(lst))
+         setpar(0,1,"list",lst)
+      endif
+      cd(bak)
+      setpar(0,18,"enable","true")
+      setpar(0,5,"text","Library macros ($size(lst)$)")
+   else
+      message("Error","No library macros for this folder","error")
+      setpar(0,18,"enable","false")
+   endif
+
+endproc()
+
+####################################################
+# Update list2 with my macros
+####################################################
+
+procedure(update2, dir)
+
+   bak = getcwd()
+   cd(dir)
+   lst =  ls("*.mac","files","no")
+   try
+      lst = rmfromlist(lst,"AddMacros.mac","nocase")
+      lst = rmfromlist(lst,"macrohelp.mac","nocase")
+   catch
+   endtry
+   if(lst != null)
+      lst = sortlist(rmext(lst))
+      setpar(0,2,"list",lst)
+   endif
+   setpar(0,6,"text","$menuName$ macros ($size(lst)$)")
+   cd(bak)
+
+
+endproc()
+
+####################################################
+# Choose a library folder
+####################################################
+
+procedure(setLibraryFolder)
+
+   dir = "$appdir$\\Macros\\Libraries"
+   dir = getfolder(dir,"Select a macro libray folder",dir)
+
+   if(dir != "cancel")
+      setpar(0,17,"text",dir)
+      :update1(dir)
+   endif
+
+
+endproc()
+
+####################################################
+# Copy macro from the library
+####################################################
+
+procedure(copyMacro)
+
+  indx = getpar(0,1,"zindex")
+  if(indx == -1)
+    message("Error","No library macro selected","error")
+    return
+  endif
+
+  macro = getpar(0,1,"text")
+
+  src = getpar(0,17,"text") + "\\$macro$.mac"
+  dst = dstDir + "\\$macro$.mac"
+
+  copyfile(src,dst)
+
+  src = getpar(0,17,"text") + "\\$macro$"
+  dst = dstDir + "\\$macro$"
+  if(isdir(src))
+    :copyfolder(src,dst)
+  endif
+
+  :update2(dstDir)
+
+endproc()
+
+
+####################################################
+# Copy macro from the library
+####################################################
+
+procedure(copyAllMacros)
+
+
+  if(isdir(libdir))
+   
+   # Copy files
+     srcDir = getpar(0,17,"text")
+     lst = getpar(0,1,"list")
+     for(k = 0 to size(lst)-1)
+        src = srcDir + "\\$lst[k]$.mac"
+        dst = dstDir + "\\$lst[k]$.mac"
+        copyfile(src,dst)
+     next(k)
+   
+   # Copy sub-directories
+     lst = getdirlist(srcDir)
+     for(k = 0 to size(lst)-1)
+        src = srcDir + "\\$lst[k]$"
+        dst = dstDir + "\\$lst[k]$"
+       :copyfolder(src,dst)
+     next(k)
+   
+   # Update the output list
+     :update2(dstDir)
+
+   else
+      message("Error","No library macros for this folder","error")
+   endif
+
+endproc()
+
+
+####################################################
+# Remove a macro from destination folder
+####################################################
+
+procedure(deleteMacro)
+
+  top = getpar(0,2,"topindex")
+  indx = getpar(0,2,"zindex")
+  if(indx == -1)
+    message("Error","No macro selected","error")
+    return
+  endif
+
+  macro = getpar(0,2,"text")
+
+  dst = dstDir + "\\$macro$.mac"
+
+  if(isfile(dst))
+     if(query("Warning","Do you really want to delete the macro '$macro$'?","no") == "no")
+       return
+     endif
+     rmfile(dst)
+
+     dst = dstDir + "\\$macro$"
+     if(isdir(dst))
+       :rmfolder(dst)
+     endif
+
+     :update2(dstDir)
+     sz = size(getpar(0,2,"list"))
+
+     if(indx < sz-1 & sz > 0)
+        setpar(0,2,"zindex",indx)
+     elseif(sz > 0)
+        setpar(0,2,"zindex",sz-1)
+     endif
+  else
+     message("Error","Macro file $macro$ not found","error")
+  endif
+  setpar(0,2,"topindex",top)
+
+endproc()
+
+procedure(copyfolder,src,dst)
+
+   bak = getcwd()
+   mkdir(dst)
+   cd(src)
+     lst = getfilelist(".")
+     for(k = 0 to size(lst)-1)
+        srcFile = src + "\\$lst[k]$"
+        dstFile = dst + "\\$lst[k]$"
+        copyfile(srcFile,dstFile)
+     next(k)
+   cd(bak)
+
+endproc()
+
+procedure(rmfolder,dir)
+
+   bak = getcwd()
+   cd(dir)
+   lst = getfilelist(".")
+   for(k = 0 to size(lst)-1)
+      rmfile(lst[k])
+   next(k)
+   cd(bak)
+   rmdir(dir)
+
+endproc()
+
+procedure(macroHelp)
+
+  indx = getpar(0,1,"zindex")
+  if(indx == -1)
+    message("Error","No library macro selected","error")
+    return
+  endif
+
+  macro = getpar(0,1,"text")
+  help("Macros\\$menuName$","$macro$.htm")
+
+endproc()
+
+procedure(showHelp)
+
+  help("Macros\\core","AddMacros.htm")
+
+endproc()
+ 

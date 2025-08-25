@@ -1,0 +1,286 @@
+#######################################################################
+# Compile all standard Spinsolve-Expert DSP pulse programs
+#
+# Can also be used and generate FX3 update tables for the standard 
+# software. To do this set the last parameter to compileOneFolder
+# to 1 as well as the gFX3->updateDebug and gFX3->useUpdateTables flags
+#######################################################################
+
+
+procedure(CompileAll)
+   
+   # Compile the macros
+   dirCompiler = "$appdir$\\Macros\\Spinsolve-Expert\\Other Macros"
+   pr "\n --------------------------------------------\n"
+   pr " Spinsolve Expert DSP Pulse-Program compilation"
+   pr "\n --------------------------------------------\n\n"
+   
+   pr "\n Core experiments"
+   pr "\n --------------------------------------------\n\n"
+   
+   
+   par = struct()
+   par->supportV3Ctrl = "no"
+   par->supportV4Ctrl = "no"
+   par->supportV5Ctrl = "yes"
+
+   windowvar(nrAttempts,nrErrors)
+   nrAttempts = 0
+   nrErrors = 0
+    
+   par->lockMode = "no"
+   gFX3->updateDebug = 0
+   gFX3->useUpdateTable = 0
+
+# Other experiments can be added here for compilation
+   gFX3->updateDebug = 0
+   gFX3->useUpdateTable = 0
+#   dirPP = "C:\\Users\\Craig\\Projects\\Experimental sequences\\TestExperiments"
+
+#  # dirPP = "$appdir$\\Macros\\Proton"
+#   :compileOneFolder(dirCompiler, par, dirPP, "Wobble1H", 1) 
+#   return
+#   
+
+# Compile all standard experiments
+   try
+   
+   
+   # All experiments in Proton folder
+      dirPP = "$appdir$\\Macros\\Proton"
+     :compileOneFolder(dirCompiler, par, dirPP)  
+
+   # All experiments in ProtonExamples folder
+      dirPP = "$appdir$\\Macros\\ProtonExamples"
+     :compileOneFolder(dirCompiler, par, dirPP)  
+  
+   # All experiments in Carbon folder
+      dirPP = "$appdir$\\Macros\\Carbon"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+ 
+   # All experiments in CarbonMLEV folder
+      dirPP = "$appdir$\\Macros\\CarbonMLEV"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in Fluorine folder
+      dirPP = "$appdir$\\Macros\\Fluorine"
+      :compileOneFolder(dirCompiler,par, dirPP)
+
+   # All experiments in Phosphorus folder
+     dirPP = "$appdir$\\Macros\\Phosphorus"
+    :compileOneFolder(dirCompiler,par, dirPP)
+   
+   # All experiments in Nitrogen folder
+     dirPP = "$appdir$\\Macros\\Nitrogen"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+   # All experiments in NUS folder
+     dirPP = "$appdir$\\Macros\\NUS"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in Diffusion folder
+      dirPP = "$appdir$\\Macros\\Diffusion"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+    
+   # All experiments in Deuterium folder
+     dirPP = "$appdir$\\Macros\\Deuterium"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+   # All experiments in Imaging folder
+     dirPP = "$appdir$\\Macros\\Imaging"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+   # All experiments in X folder
+     dirPP = "$appdir$\\Macros\\X"
+     :compileOneFolder(dirCompiler,par, dirPP)
+   
+   # All experiments in Lithium folder
+     dirPP = "$appdir$\\Macros\\Lithium"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in Sodium folder
+     dirPP = "$appdir$\\Macros\\Sodium"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in Silicon folder
+      dirPP = "$appdir$\\Macros\\Silicon"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in Boron folder
+      dirPP = "$appdir$\\Macros\\Boron"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+
+   # All experiments in Setup folder
+      dirPP = "$appdir$\\Macros\\Setup"
+      :compileOneFolder(dirCompiler,par, dirPP, "FindF0-H") 
+      :compileOneFolder(dirCompiler,par, dirPP, "TestShims") 
+      :compileOneFolder(dirCompiler,par, dirPP, "UpdateShims") 
+      :compileOneFolder(dirCompiler,par, dirPP, "UpdateB0Offset") 
+
+   # All experiments in WET folder
+      dirPP = "$appdir$\\Macros\\Suppression"
+      :compileOneFolder(dirCompiler,par, dirPP) 
+   
+   # All experiments in NOAH folder
+     dirPP = "$appdir$\\Macros\\NOAH"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+   # Experiments in \Setup Macros\ folder
+     dirPP = "$appdir$\\Macros\\Spinsolve-Expert\\Setup Macros\\CheckWobble1H"
+     :compileOneFolder(dirCompiler,par, dirPP,"Wobble1H") 
+     dirPP = "$appdir$\\Macros\\Spinsolve-Expert\\Setup Macros\\CheckWobbleX"
+     :compileOneFolder(dirCompiler,par, dirPP,"UCSWobbleX") 
+
+
+   # End of normal Expert 2 experiments
+   
+      par->lockMode = "yes"
+
+      # All experiments in LockTest folder
+      dirPP = "$appdir$\\Macros\\LockTest"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+      par->lockMode = "no"
+
+     # All experiments in CarbonTest folder
+     dirPP = "$appdir$\\Macros\\CarbonTest"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+      
+      # All experiments in FluorineTest folder
+     dirPP = "$appdir$\\Macros\\FluorineTest"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+      
+      # All experiments in ProtonTest folder
+     dirPP = "$appdir$\\Macros\\ProtonTest"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+      
+      # All experiments in XChannelTest folder
+     dirPP = "$appdir$\\Macros\\XChannelTest"
+     :compileOneFolder(dirCompiler,par, dirPP) 
+
+     # All experiments in FX3Test folder
+     dirPP = "$appdir$\\Macros\\FX3Tests"
+     :compileOneFolder(dirCompiler,par, dirPP)  
+
+     # All experiments in PSExamples folder
+     dirPP = "$appdir$\\Macros\\PSExamples"
+     :compileOneFolder(dirCompiler,par, dirPP)  
+
+     # All experiments in Experimental folder
+     dirPP = "$appdir$\\Macros\\Experimental"
+     :compileOneFolder(dirCompiler,par, dirPP)  
+
+   catch
+
+      pr lasterror()
+
+   endtry
+
+# Revert to having fx3 as the first DLL
+   dspCurPort = dspsetport()
+   fx3CurPort = fx3setport()
+   try
+      usedll("fx3PPRun.dll")
+   catch
+      usedll("fx3PPDebug.dll")
+   endtry
+   dspsetport(dspCurPort)
+   fx3setport(fx3CurPort)
+
+   pr "\n   Number of FX3 compile attempts = $nrAttempts$\n"
+   pr "   Number of FX3 compile failures = $nrErrors$\n"
+
+   gFX3->updateDebug = 0
+
+endproc()
+
+procedure(compileOneFolder, dirCompiler, par, dirPP, experiment = null, runTableCheck=0)
+   
+   
+   pr "\n $getbasedir(dirPP)$ experiments"
+   pr "\n --------------------------------------------\n\n"
+   
+   par->outputFolder = dirPP
+
+
+   if(experiment != null)
+
+      par->baseName = experiment
+      cd(dirCompiler)
+      (r, ppInfo) = CompilerBackDoor:compileIt(par)
+      if(r == 0)
+         print("   $experiment$ compiled for DSP\n")
+      else
+         print("   $experiment$ compilation for DSP FAILED\n")
+      endif
+      if(gFX3->useUpdateTable)
+         try
+            nrAttempts = nrAttempts + 1
+            pr "\n   $experiment$ compiled for FX3\n"
+            CompileFX3PP(dirPP, experiment, ppInfo)
+            if(runTableCheck)
+               :RunEventTableCheck(dirPP, experiment, ppInfo)
+            endif
+   
+         catch
+            pr lasterror()
+            print("\n   $experiment$ compilation for FX3 FAILED\n")
+            nrErrors = nrErrors + 1
+         endtry
+      endif
+
+   else
+   
+      expts = getdirlist(dirPP)
+      for(k = 0 to size(expts)-1)   
+         par->baseName = expts[k]     
+         cd(dirCompiler)
+         (r, ppInfo) = CompilerBackDoor:compileIt(par)
+         if(r == 0)
+            print("   $par->baseName$ compiled for DSP\n")
+         else
+            print("   $par->baseName$ compilation for DSP FAILED\n")
+         endif 
+         if(gFX3->useUpdateTable)
+            try
+               nrAttempts = nrAttempts + 1
+               CompileFX3PP(dirPP, par->baseName, ppInfo)
+               pr "   $par->baseName$ compiled for FX3\n"
+               if(runTableCheck)
+                  :RunEventTableCheck(dirPP, par->baseName, ppInfo)
+               endif
+   
+            catch
+               pr lasterror()
+               print("\n   $par->baseName$ compilation for FX3 FAILED\n")
+               nrErrors = nrErrors + 1
+            endtry  
+         endif   
+      next(k)
+   endif
+
+
+
+endproc()
+
+# Run the experiment in update debug mode
+procedure(RunEventTableCheck, path, protocol, ppInfo)
+
+   nr = guiwinnr()
+   guiwinnr(gView->wn)
+
+   gFX3->updateDebug = 1
+
+  # ppGroup = getbasedir(path)
+
+   gExpt->addExperiment(path,protocol,null)
+   gExpt->runExperiment()   
+   print("\n")
+
+   guiwinnr(nr)
+
+endproc()
+
+
+   
+   

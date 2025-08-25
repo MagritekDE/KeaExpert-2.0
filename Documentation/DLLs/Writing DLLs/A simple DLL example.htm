@@ -1,0 +1,354 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>A simple DLL example</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>A simple DLL example</span></b></p>
+
+<p class=MsoNormal><b><span lang=EN-NZ>&nbsp;</span></b></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>To add a new
+command you must generate a DLL and store it in the DLLs folder. The easiest
+way to do this is to copy the generic DLL project supplied with Prospa. This is
+called example.vcproj (assuming you are using Visual C++). It &nbsp;contains a
+simple DLL with several commands, one of which is called &quot;square&quot;.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The code listing for this DLL is given
+below with only the lines relevant to “square” being listed, it has also been
+simplified to only handle real data.</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>#include</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+&quot;stdafx.h&quot;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>#include</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+&quot;../Global files/includesDLL.h&quot;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Locally defined procedure and global variables</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+<span style='color:blue'>short</span> AddCommands(<span style='color:blue'>char</span>*,
+<span style='color:blue'>char</span>*, DLLParameters*);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+<span style='color:blue'>void</span>&nbsp; ListCommands(<span style='color:
+blue'>void</span>);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+bool GetCommandSyntax(char* cmd, char* syntax);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>Variable
+*ansVar;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>short</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+SquareFunction(<span style='color:blue'>char</span>*);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*******************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp;&nbsp; Extension procedure to add commands to Prospa </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+<span style='color:blue'>short</span>&nbsp; AddCommands(<span style='color:
+blue'>char</span> *command, <span style='color:blue'>char</span> *parameters,
+DLLParameters *dpar)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> r = RETURN_FROM_DLL;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+ansVar = dpar-&gt;ansVar;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>(!strcmp(command,&quot;square&quot;))&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+r = SquareFunction(parameters);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>return</span>(r);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*******************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp;&nbsp; Extension procedure to list commands in DLL </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+<span style='color:blue'>void</span>&nbsp; ListCommands(<span style='color:
+blue'>void</span>)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+TextMessage(&quot;\n\n&nbsp;&nbsp; Example DLL module\n\n&quot;);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+TextMessage(&quot;&nbsp;&nbsp; square ... squares argument\n&quot;);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*******************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp;&nbsp; Extension procedure to return syntax in DLL </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>EXPORT
+bool GetCommandSyntax(char* cmd, char* syntax)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+syntax[0] = '\0';</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+if(!strcmp(cmd,&quot;square&quot;))&nbsp; strcpy(syntax,&quot;FLOAT y =
+square(FLOAT x);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+if(syntax[0] == '\0')</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(false);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>&nbsp;&nbsp; return(true);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*******************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp; This function will square the passed argument if it is a
+scalar</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp; The result is returned in the global variable ansVar. </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>short</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+SquareFunction(<span style='color:blue'>char</span> *parameters)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;
+&nbsp;<span style='color:blue'>short</span> nrArgs;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+Variable *ansVar;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+float result;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> type;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Argument can be a constant float or a variable containing one</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs = ArgScan(parameters,1,&quot;data to
+be squared&quot;,&quot;e&quot;,&quot;f&quot;,&amp;result)) &lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs);&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Square the result and return to user via ansVar</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;
+&nbsp;&nbsp;ansVar-&gt;MakeAndSetFloat(result*result);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+&nbsp;NumberReturnedValues(1);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>return</span>(OK);&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:8.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>This simple
+example introduces a new command called &quot;square&quot; which returns the
+square of a number or a matrix. Once the DLL has been installed you could
+access it by typing:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>&gt; pr</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'> </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>square</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(2.5)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>   square</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(2.5) = 6.25</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>from the Prospa
+CLI. This command can now be used like any other Prospa command. A more
+extensive example will be given later.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>You can also find out which DLLs are loaded
+and what they contain by typing</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>&gt; </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:green'>listdlls</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp; </span><span lang=EN-NZ style='font-size:10.0pt;
+font-family:"Courier New";color:purple'>Test DLL module</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:purple'>&nbsp;&nbsp; square ... squares argument</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>This command
+calls the </span><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:#333399'>ListCommands</span><span lang=EN-NZ> function which must be part
+of every DLL. This contains the name of the DLL module and a short description
+of each command in the module.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>If you place the
+cursor on the command in the Prospa texteditor or CLI the syntax statement
+shown in GetCommandSyntax will be shown in the status bar of the appropriate
+window. In this way you don't have to remember the command syntax.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-NZ><img
+width=198 height=99 src="A%20simple%20DLL%20example_files/image001.jpg"
+border=0></span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Also notice that
+the DLL command is coloured violet – this is also because the GetCommandSyntax
+refers to the square command.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

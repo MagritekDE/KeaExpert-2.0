@@ -1,0 +1,85 @@
+###########################################################
+# Command to return a sample to the sample changer rotor.
+###########################################################
+
+procedure(ReturnSample, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   elseif(iskeypressed("control"))
+      lst = gView->batch->list + "ReturnSample|"
+      gBatch->displayBatchList(lst)
+      gView->batch->index(size(lst))    
+   else
+      parameters = list(0)
+      gExpt->addExperiment(getmacropath(),"ReturnSample", parameters)
+   endif
+
+endproc()
+
+############################################################
+## Add the ReturnSample command to the batch list
+############################################################
+
+procedure(addCommand)
+
+   entry = "ReturnSample|"  
+ 
+endproc(entry)
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = list(0)
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+
+#####################################################################
+# Return the sample from batchList or normal interface
+#####################################################################
+
+procedure(backdoor, ui)
+
+   assignstruct(ui)
+
+   bak = getcwd()
+   cd("$appdir$\\Spinsolve special programs\\Autosampler")
+
+   gView->statusCtrl->label("Returning sample)")
+
+   r = execandwait("AutoSamplerCSharpCLI.exe","armPosition")
+
+   if(r < 100) 
+      if(r != 0) # At bottom so first retrieve the sample
+         r = execandwait("AutoSamplerCSharpCLI.exe","up")
+         if(r != 0)
+            print("\n   Autosampler Error ($r$)!\n")
+         endif
+      else
+         print("\n   No sample in magnet\n")
+      endif
+   else
+      print("\n   Autosampler Error ($r$)!\n")
+   endif
+   cd(bak)
+   gView->statusCtrl->label("")
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   duration = 12
+
+endproc(duration)
+

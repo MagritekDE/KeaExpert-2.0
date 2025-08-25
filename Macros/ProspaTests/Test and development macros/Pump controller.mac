@@ -1,0 +1,121 @@
+procedure(Pump controller)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   :init()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Pump controler", -1, -1, 265, 150, "resizable")
+
+      # Define all controls with basic parameters
+      checkbox(1, 75, 68, "off,on", "off",:control())
+      statictext(2, 61, 67, "right", "Pump on")
+      statictext(3, 125, 57, "right", "cw")
+      radiobuttons(4, 139, 57, 20, "vertical", "cw,ccw", "cw",:control())
+      statictext(5, 126, 76, "right", "ccw")
+      textbox(6, 70, 110, 41,:control())
+      statictext(7, 62, 113, "right", "Speed")
+      statictext(8, 138, 113, "right", "rpm")
+      button(10, 199, 18, 47, 28, "Close",closewindow(0))
+      textmenu(11, 70, 20, 60, 200)
+      statictext(12, 62, 23, "right", "Port")
+
+     # Set other control parameters
+      setpar(n,1,"valueID","pumpStatus","objID","pumpStatusCtrl")
+      setpar(n,4,"valueID","direction","objID","directionCtrl")
+      setpar(n,6,"valueID","speed","objID","speedCtrl",
+                 "type","float",
+                 "range",[0,100])
+      setpar(n,11,"valueID","port","objID","portCtrl",
+                  "menu",["COM1","COM2","COM3","COM4","COM5",
+                          "COM6","COM7","COM8","COM9"])
+
+     # Set other window parameters
+endproc(n)
+
+procedure(init)
+
+   pumpStatusCtrl->text("off")
+   directionCtrl->text("ccw")
+   speedCtrl->text(10)
+   portCtrl->text("COM4")
+
+endproc()
+
+procedure(control)
+
+   port = portCtrl->text
+
+   try
+   closeserial(port)
+   catch;endtry
+   
+   status = pumpStatusCtrl->text()
+   speed = eval(speedCtrl->text())
+   direction = directionCtrl->text()
+   
+   # Convert speed to a number from 0 to 1000
+   code = hex(speed*10)
+   
+   # Start of command string
+   cmd1 = [0xE9,0x01,0x06,0x57,0x4a]
+   
+   # Pad codes E8 and E9 with 00 and 01 if
+   # they arrear in the speed code
+   byte1 = code[[0:1]]
+   byte2 = code[[2:3]]
+   if(byte2 == "E8")
+     cmd2 = [eval("0x$byte1$"),0xE8,0x00]
+   elseif(byte2 == "E9")
+     cmd2 = [eval("0x$byte1$"),0xE8,0x01]
+   else
+     cmd2 = [eval("0x$byte1$"),eval("0x$byte2$")]
+   endif
+   # Join the speed to the control codes
+   cmd = join(cmd1,cmd2)
+   
+   if(status == "on")
+      cmd = join(cmd,[0x01])
+   else
+      cmd = join(cmd,[0x00])
+   endif
+   
+   # Add direction
+   if(direction == "cw")
+      cmd = join(cmd,[0x00])
+   else
+      cmd = join(cmd,[0x01])
+   endif
+   
+   # Take xor off all but first entry
+   exor = 0
+   for(k = 1 to size(cmd)-1 step 1)
+     exor = xor(exor,cmd[k])
+   next(k)
+   
+   # Add the exclusive or result
+   cmd = join(cmd,[exor])
+ #  pr hex(cmd)
+   
+   try
+   openserial(port,1200,8,"even","1")
+   catch
+      message("Error","Can't open COM port - check number","error")
+      return
+   endtry
+   writeserial(port,cmd)
+   #pause(1)
+   #res = readserial("COM4","vector")
+   #pr hex(strtoascii(res))
+   
+   closeserial(port)
+
+endproc()
+   
+  

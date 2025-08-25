@@ -1,0 +1,426 @@
+#########################################
+# Generate a 2D DOSY spectrum from a
+# PGSTE stacked plot.
+#########################################
+
+procedure(DOSYAnalysis, specImg, dosyImg)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   parentPar = getctrlvalues(0)
+
+   n = findwin("title","DOSY processing")
+   if(n == -1)
+      n = :windowdefinition()
+   endif
+
+   func1d("drag plot")
+   setwindowpar(n,"sizelimits",[600,1200,304,304])
+  # setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+
+   windowvar(wvPar)
+   wvPar = struct(parentPar)
+   wvPar->specImg = specImg
+   wvPar->dosyImg = dosyImg
+   wvPar->lastInversionMethod = "none"
+
+   :loadPar()
+
+   :invertType(n)
+
+   showwindow(n)
+
+endproc()
+
+
+procedure(savePar)
+
+   par = getctrlvalues(0)
+
+   cd(gData->curExpt->dataPath)
+   save("DOSY.par",par)
+
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   save("DOSY.par",par)
+
+endproc()
+
+
+procedure(loadPar)
+
+   cd(gData->curExpt->dataPath)
+   if(isfile("DOSY.par"))
+      par = load("DOSY.par")
+   else
+      cd(prefdir)
+      cd("SpinsolveParameters")
+      if(isfile("DOSY.par"))
+         par = load("DOSY.par")
+      else
+         par = ["minDiff = 1e-11",
+                "maxDiff = 1e-8",
+                "diffSteps = 200",
+                "noiseThreshold = 10",
+                "smoothing = 1",
+                "broadening = 1",
+                "peakWidth = 3",
+                "peakHeight = 8",
+                "peakProminence = 20",
+                "inversionMethod = \"exp\""]
+      endif
+   endif
+   setctrlvalues(0,par)
+
+endproc()
+
+
+procedure(windowdefinition)
+
+   n = window("DOSY processing", -1, -1, 800, 304,"resizable")
+
+      minDCtrl = textbox(1, 130, 170, 41)
+      statictext(2, 125, 173, "right", "Min. D (m^2/s):")
+      maxDCtrl = textbox(3, 130, 200, 41)
+      statictext(4, 125, 203, "right", "Max. D (m^2/s):")
+      diffStepsCtrl = textbox(5, 130, 230, 41)
+      statictext(6, 125, 233, "right", "Diffusion steps:")
+      smoothingCtrl = textbox(7, 130, 260, 41)
+      statictext(8, 125, 263, "right", "I.L. smoothing:")
+      noiseThresholdCtrl = textbox(9, 130, 70, 41)
+      statictext(10, 125, 73, "right", "Noise threshold:")
+      button(11, 229, 234, 71, 34, "Apply",
+         DOSYAnalysis:process();)
+      button(12, 320, 234, 71, 34, "Close",
+         closewindow(0);)
+      textbox(13, 130, 40, 41)
+      statictext(14, 125, 36, 100, 32, "right", "Stacked plot    broadening (Hz):")
+      textbox(15, 330, 150, 41)
+      statictext(16, 325, 153, "right", "Peak width (Hz):")
+      fitTypeCtrl = radiobuttons(17, 352, 40, 20, "vertical", "exp,biexp,nnls", "exp",
+           :invertType(0);)
+      statictext(18, 346, 40, "right", "Single-exponential:")
+      statictext(19, 346, 60, "right", "Bi-exponential:")
+      statictext(20, 346, 80, "right", "Inverse Laplace:")
+      groupbox(21, "Type of fit", 210, 14, 191, 97)
+      groupbox(22, "Preprocessing/Peak picking", 11, 14, 181, 117)
+      groupbox(23, "Fitting parameters", 11, 144, 181, 147)
+      groupbox(24, "DOSY display", 210, 124, 191, 88)
+      textbox(25, 330, 180, 41)
+      statictext(26, 325, 183, "right", "Peak height (D/x):")
+      textbox(27, 130, 100, 41)
+      statictext(28, 125, 103, "right", "Peak prominence (%):")
+      refPlot = plot1d(29, 411, 11, "ww-422", 280)
+
+     # Set other control parameters
+      setpar(n,1,"valueID","minDiff",
+                  "tooltip","The minimum diffusion coefficient to fit to.")
+      setpar(n,3,"valueID","maxDiff",
+                  "tooltip","The maximum diffusion coefficient to fit to.")
+      setpar(n,5,"valueID","diffSteps",
+                  "tooltip","The number of point in the diffusion axis.")
+      setpar(n,7,"valueID","smoothing",
+                  "tooltip","The smooting coefficient for inverse Laplace.")
+      setpar(n,9,"valueID","noiseThreshold",
+                  "tooltip","Only look for peaks larger than this value x s.d. of noise.")
+      setpar(n,11,"mode","default")
+      setpar(n,13,"valueID","broadening",
+                  "tooltip","Apply this broadening to the stack plot data before fitting.")
+      setpar(n,15,"valueID","peakWidth",
+                  "tooltip","The width of the simulated peak in the DOSY spectrum.")
+      setpar(n,17,"valueID","inversionMethod",
+                  "tooltip","How to perform the inversion in the DOSY spectrum.")
+      setpar(n,25,"valueID","peakHeight",
+                  "tooltip","What fraction of the diffusion coefficient to use as a peak height.")
+      setpar(n,27,"valueID","peakProminence",
+                  "tooltip","Only peaks with a prominence greater than this value will be considered (0->100)")
+
+
+endproc(n)
+
+procedure(invertType, n)
+
+   mode = fitTypeCtrl->text
+
+   if(mode != "nnls")
+      setpar(0,7,"enable","false")
+      setpar(0,25,"enable","true")
+   else
+      setpar(0,7,"enable","true")
+      setpar(0,25,"enable","false")
+   endif     
+      
+
+endproc()   
+
+procedure(getNoiseLevel)
+
+   assignstruct(wvPar)
+   p = gPlot->getPlotObject(specImg)
+   (x,y) = getxy("horiz")
+
+endproc()
+
+procedure(process)
+
+   :savePar()
+
+   assignstruct(wvPar)
+
+# Get parameters from the UI
+   assignlist(getctrlvalues(0))
+
+# Get the stacked plot image
+   p = gPlot->getPlotObject(specImg)
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   (minPPM,maxPPM) = p->zoom()
+
+# Load in the stacked spectral data into matrix m
+# Apply line broadening when doing this
+   tl = p->tracelist()
+   h = size(tl)
+   (x,y) = p->trace(0)->getdata()
+   w = size(x)
+   t = [0:w-1]*dwellTime*1e-6
+   lb = exp(-t*broadening)
+   m = cmatrix(w,h)
+   m1 = cmatrix(w,h)
+   for(k = 0 to h-1)
+     (x,y) = p->trace(k)->getdata()
+      fid = ift(y).*lb
+      m1[~,k] = fid
+      m[~,k] = ft(fid)
+   next(k)
+
+# Get the first row
+   row1 = real(m[~,0])
+
+# Get the noise level at the edges
+   ns = sd(row1[0:round(w/32)])
+
+# Get the current zoom
+   (x1,x2,y1,y2) = p->zoom()
+
+# Plot first row
+   plt = refPlot->subplot(1,1)
+
+  # See if the data has already been plotted.
+  # If so record y range
+   try
+      xTemp = plt->getdata()
+      (xa1,xa2,y1,y2) = plt->zoom()
+   catch
+      xTemp = null
+   endtry
+
+   plt->draw("false")
+   plt->rmlines()
+   plt->plot(x,row1)
+   plt->addline(-inf,ns*noiseThreshold,inf,ns*noiseThreshold)
+   plt->xlabel(p->xlabel->text)
+   plt->ylabel("Amplitude")
+   plt->title("First row of stacked plot - with threshold")
+   plt->zoom(x1,x2)
+   if(xTemp == null) # Use full y range if first time
+      plt->zoom(x1,x2)
+   else # Use previous y-range otherwise
+      plt->zoom(x1,x2,y1,y2)
+   endif
+   plt->axes->xdirection("reversed")
+   plt->draw("true")
+
+# Draw the noise threshold in the orginal plot
+  print("\n   Noise threshold is: $ns*noiseThreshold$\n")
+
+# Define the q Axis
+   DELTA = bDelta
+   delta = lDelta+gradRamp
+   gradAmp = gradAmpPC/100*gradMax
+   dir = gData->curExpt->dataPath 
+   cd(dir)
+   import1dpar("ab", "ascii", "xyrc", "real")
+   if(isfile("gradients.par"))
+      gAxis = import1d("gradients.par")
+      qAxis = (gAxis*delta*1e-3*gamma)^2*(DELTA-delta/3)*1e-3
+   elseif(isfile("delayTimes.txt"))
+      qAxis = import1d("delayTimes.txt")
+   elseif(isfile("qAxis.par"))
+      qAxis = import1d("qAxis.par")
+   else
+      print("\n   Gradient or q-axis file not found\n")
+      return
+   endif
+
+# Define the output matrix
+   mOut = matrix(w,diffSteps)
+
+# Define a horizontal Lorentzian broadening function for the diffusion peaks
+# equal to the smoothing previously applied to the spectra
+   wb = peakWidth/(1e6/dwellTime)*w*10 # Make the function 10x the broadening
+   wb = trunc(wb/2)*2 # Make the width even
+   fAxis = ([0:wb-1]-wb/2)/wb*peakWidth*10
+   broadeningFunc = (1/pi)*(peakWidth/2)/(fAxis^2 + (peakWidth/2)^2)
+   dAxis = logspace(minDiff,maxDiff,diffSteps)
+
+# Loop over columns performing inversion on those with first points > ns*noiseThreshold
+
+# Search for peaks in the first row. If found perform a  inversion on the corresponding column. 
+   cnt = 0
+   for(colNr = 1 to w-2)
+      col = m[colNr,~]
+      if(row1[colNr] > ns*noiseThreshold)
+         if((row1[colNr] > row1[colNr-1]) & (row1[colNr] > row1[colNr+1])) # Check for peak
+
+            if(:prominanceOK(row1, colNr, (100-peakProminence)/100))
+                    
+              # print("   Inversion checked for peak at $x[colNr]$\n")
+               cnt = cnt + 1
+   
+               attenData = real(col')
+            
+            # Perform the inversion
+               if(inversionMethod == "exp")
+   
+                  try
+                     (fit,e0,P) = expfit(qAxis,attenData)
+                      D = 1/P
+                      peakD = e0*exp(-(dAxis-D)^2/(2*(D/peakHeight)^2))
+                      peak = peakD'*broadeningFunc
+                      mOut[colNr-wb/2:colNr+wb/2-1,~] = mOut[colNr-wb/2:colNr+wb/2-1,~] + peak
+                   catch
+                     print("   Inversion failed for peak at $x[colNr]$\n")
+                   endtry   
+
+               elseif(inversionMethod == "biexp")
+            
+                  try
+                     (fit,ea,Pa,eb,Pb) = biexpfit(qAxis,attenData)
+                      Da = 1/Pa
+                      Db = 1/Pb
+                      peakD = ea*exp(-(dAxis-Da)^2/(2*(Da/peakHeight)^2))+eb*exp(-(dAxis-Db)^2/(2*(Db/peakHeight)^2))
+                      peak = peakD'*broadeningFunc
+                      mOut[colNr-wb/2:colNr+wb/2-1,~] = mOut[colNr-wb/2:colNr+wb/2-1,~] + peak
+                  catch
+                     print("   Inversion failed for peak at $x[colNr]$\n")
+                  endtry
+         
+               elseif(inversionMethod == "nnls")
+               
+                  par = ["exp_type = \"exp(-t*T)\"",
+                         "designMat = \"exp(-xData'*xSpec)\"", 
+                         "alpha = $10^(8-log10(smoothing))$",
+                         "weightBins = \"no\"",
+                         "x_minimum = $minDiff$",
+                         "x_maximum = $maxDiff$",
+                         "x_steps = $diffSteps$",
+                         "logBin = \"no\""]
+      
+                  (specX,specY) = LHInvert(qAxis,attenData,par)
+      
+                  if(specX != null)
+                     peak = (specY')*broadeningFunc
+                     mOut[colNr-wb/2:colNr+wb/2-1,~] = mOut[colNr-wb/2:colNr+wb/2-1,~] + peak
+                  else
+                     print("   Inversion failed for peak at $x[colNr]$\n")
+                  endif
+               
+               endif # Inversion method   
+
+            endif # Prominance check                                                   
+
+         endif # Peak check
+
+      endif # Threshold check
+
+   next(colNr) 
+
+
+   print("   $cnt$ peaks analysed\n")
+
+
+# Draw the DOSY plot
+   di = gPlot->getPlotObject(dosyImg)
+   xRange = (x[-1]-x[0])
+   (cmin,cmax) = di->imagerange
+   di->draw("false")
+   di->image(mOut,[x[0],x[-1]],[minDiff,maxDiff])
+   di->axes->xdirection("reversed")
+   di->axes->ymapping("log")
+   di->contour(20,2)
+   di->datamapping("log")
+   di->autorange("off")
+   if((cmin == cmax) | (inversionMethod != wvPar->lastInversionMethod))
+      di->imagerange(max(mOut)/300,max(mOut))
+   endif
+   di->title("DOSY spectrum")
+   di->ylabel("Diffusion coefficent")
+   di->xlabel("PPM")
+   di->grid->xgrid("true")
+   di->grid->ygrid("true")
+   di->grid->finexgrid("true")
+   di->grid->fineygrid("true")
+   di->axes->xrange([minPPM,maxPPM])
+   di->axes->xppmscale("true")
+   di->draw("true")
+  # showcmap("true")
+
+# Set the image filename and path
+   proc = "$gData->curExpt->protocol$:getPlotInfo"
+   fileName = proc(wvPar->dosyImg)
+   di->filename(fileName)
+   di->filepath(gData->curExpt->dataPath)
+
+# Save the parameters to the data folder
+   :savePar()
+
+   wvPar->lastInversionMethod = inversionMethod
+
+endproc()
+
+# Return true if the peak has a prominence greater than past value
+procedure(prominanceOK, data, peakPos, prominence)
+
+   peak = data[peakPos]
+   sz = size(data)
+   found = 0
+   for(k = peakPos+1 to sz-2)
+   # Search for the next minimum
+      if((data[k] < data[k-1]) & (data[k] < data[k+1]))
+         if(data[k] < peak*prominence)
+            found = 1
+         else
+            found = 0
+         endif
+         exitfor()
+      endif
+   next(k)
+
+   if(found == 0)
+      return(0)
+   endif
+
+   found = 0
+
+   for(k = peakPos-1 to 2 step -1)
+   # Search for the next minimum
+      if((data[k] < data[k-1]) & (data[k] < data[k+1]))
+         if(data[k] < peak*prominence)
+            found = 1
+         else
+            found = 0
+         endif
+         exitfor()
+
+      endif
+   next(k)
+
+endproc(found)
+

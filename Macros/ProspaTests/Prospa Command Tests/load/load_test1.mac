@@ -1,0 +1,147 @@
+procedure(load_test1,verbose,delay)
+
+   dir = getcwd()
+   cd(getmacropath())
+
+   multiplot("1d",1,1)
+
+# Save and load 1D real
+   m1 = noise(100)
+   save("data.1d",m1)
+   m2 = load("data.1d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #1")
+   endif 
+   rmfile("data.1d")
+
+# Save and load 1D plot
+   plot(m1)
+   save("data.pt1")
+   load("data.pt1")
+   (x,y) = getplotdata("1d")
+
+   if(y != m1)
+     return(0,"Invalid result for load_test1 #2")
+   endif 
+   rmfile("data.pt1")
+
+# Save and load 1D complex
+   m1 = noise(100) + i*noise(100)
+   save("data.1d",m1)
+   m2 = load("data.1d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #3")
+   endif 
+   rmfile("data.1d")
+
+# Save and load 1D plot
+   plot(m1)
+   save("data.pt1")
+   load("data.pt1")
+   (x,y) = getplotdata("1d")
+   if(y != m1)
+     return(0,"Invalid result for load_test1 #4")
+   endif 
+   rmfile("data.pt1")
+
+# Save and load 2D real
+   m1 = noise(100,100)
+   save("data.2d",m1)
+   m2 = load("data.2d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #5")
+   endif 
+   rmfile("data.2d")
+
+# Save and load 2D plot
+   image(m1)
+   save("data.pt2")
+   load("data.pt2")
+   (m2) = getplotdata("2d")
+   if(m2 != m1)
+     return(0,"Invalid result for load_test1 #6")
+   endif 
+   rmfile("data.pt2")
+
+# Save and load 2D complex
+   m1 = noise(100,100) + i*noise(100,100)
+   save("data.2d",m1)
+   m2 = load("data.2d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #7")
+   endif 
+   rmfile("data.2d")
+
+# Save and load 2D plot
+   image(m1)
+   save("data.pt2")
+   load("data.pt2")
+   (m2) = getplotdata("2d")
+   if(m2 != m1)
+     return(0,"Invalid result for load_test1 #8")
+   endif
+   rmfile("data.pt2")
+
+# Save and load 3D real
+   m1 = noise(20,20,20)
+   save("data.3d",m1)
+   m2 = load("data.3d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #9")
+   endif 
+   rmfile("data.3d")
+
+# Save and load 3D complex
+   m1 = noise(20,20,20) + i*noise(20,20,20)
+   save("data.3d",m1)
+   m2 = load("data.3d")
+   if(m1 != m2)
+     return(0,"Invalid result for load_test1 #10")
+   endif 
+   rmfile("data.3d")
+
+# Save some text
+   s1 = "this is some text to save"
+   save("data.txt",s1)
+   s2 = load("data.txt")
+   if(s1 != s2)
+     return(0,"Invalid result for load_test1 #11")
+   endif 
+   rmfile("data.txt")
+
+
+# Save and load a list
+   lst1 = list(100)
+   save("data.lst",lst1)
+   lst2 = load("data.lst")
+   if(lst1 != lst2)
+     return(0,"Invalid result for load_test1 #12")
+   endif 
+   rmfile("data.lst")
+
+  cd(dir)  
+
+# Plotfile version tests. These shouldn't fail or cause error messages: that's the test.
+   orig_dir = pwd()
+   # Go to the dir containing this macro.
+   cd ("../../Prospa Tests/Prospa Command Tests/load")
+   # Load the 1D plots.
+   load("1D/fid_1_4.pt1")
+   load("1D/fid_2_1.pt1")
+   load("1D/image_sectionBW_2_0.pt1")
+   load("1D/log_cross_sections_1_0.pt1")
+   load("1D/plot_2_1.pt1")
+   load("1D/spectrum_phased_2_1.pt1")
+   load("1D/spectrum_phased_reverse_3_2.pt1")
+   load("1D/untitled_3_2.pt1")
+   load("1D/untitled_3_3.pt1")
+   # Load the 2D plots
+   load("2D/four_plots_2_1.pt2")
+   load("2D/kumquat_2_1.pt2")
+   load("2D/kumquat2_3_0.pt2")
+   load("2D/man_3_0.pt2")
+   load("2D/wiggles_3_0.pt2")
+   # Return to wherever we were before.
+   cd (orig_dir)
+
+endproc(1,"")

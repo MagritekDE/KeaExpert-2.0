@@ -1,0 +1,334 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>logvec- generate a logarithmically spaced vector</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span style='font-size:20.0pt'>pseudologvec</span></b></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><i><span lang=EN-AU
+style='font-family:"Tahoma","sans-serif"'>&nbsp;</span></i></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Generate a
+vector with spacing between elements which is approximately logarithmic with
+the constraint that the minimum element spacing is no less than the first
+value.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Syntax</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>result = psuedologvec(first,last,N)   (eee:fff)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>first .... first value in
+vector (FLOAT)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>last ..... last value in
+vector  (FLOAT)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>N ........ number of
+elements in vector (INT)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>result ... vector of number
+elements (VEC)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Description</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Conversion of a linearly
+spaced data set to a logarithmically spaced one will necessarily produce the
+first entries very close together. If you require that the closest spacing is
+no less than the first value in the vector but with mostly logarithmic spacing
+for the rest of the values then this command will help.</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>x =
+[0.1:0.1:1000]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>xl = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>logvec</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,1000,50)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>xpl = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pseudologvec</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,1000,50)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pr</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'> x[0:5]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pr</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'> xl[0:5]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> xpl[0:5]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>   x[0:5] = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>   0.1   0.2   0.3   0.4   0.5   0.6</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>   xl[0:5] = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>        0.1   0.120679   0.145635   0.175751  
+0.212095   0.255955</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>   xpl[0:5] = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>        0.1   0.215884   0.350176     0.5058  
+0.686143   0.895132</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Note that first
+4 entries in the log-spaced vector fall between 0.1 and 0.2 while in the
+pseudolog vector the minimum spacing is always greater than the first value of
+0.1</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU> </span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Example</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>N = 50</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>x =
+[0.1:0.1:1000]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>y = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x/20) + </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x/200)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,y)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pseudologvec</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,1000,N))</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>trace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolshape&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;circle&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolcolor&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,[0,0,255])</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>axes</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;ymapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>title</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Pseudolog
+vector comparison&quot;</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>hold</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;on&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>logvec</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,1000,N))</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>trace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolshape&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;diamond&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolcolor&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,[255,0,0])</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>linvec</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(0.1,1000,N))</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>trace</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolshape&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;square&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolcolor&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,[0,128,0])</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>curplot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;1d&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)-&gt;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#F04000'>showlegend</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;true&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>hold</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;off&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New";color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:purple'><img width=656 height=315 id="Picture 2"
+src="pseudologvec_files/image001.png"></span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Note</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>The start and end points should be &gt; 0.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>The pseudo-log spaced curve will get closer
+to the linear curve as the number of elements (N) increases.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>See also</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU><a href="logvec.htm">logvec</a></span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,130 @@
+procedure(varlist_test1,verbose,delay)
+
+   rmvar("verbose","delay")
+
+   a = 12
+   b = 12+2i
+   c = "string"
+   d = ["a","b","c","d"]
+   e = [1,2,3,4]
+   f = {1+i,2+i,3+i}
+   g = [1,2;3,4]
+   h = {1+i,2+2i;3+3i,4+4i}
+   ii = noise(10,10,10)
+   jj = noise(10,10,10) + i
+   kk = matrix(1,2,3,4)
+   ll = cmatrix(1,2,3,4)
+
+# String access
+   lst = sortlist(varlist("all","local"))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","jj","kk","ll","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 #1")
+   endif 
+
+   lst = sortlist(varlist("float","local"))
+   if(lst != ["a","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 #2")
+   endif 
+
+   lst = sortlist(varlist("complex","local"))
+   if(lst != ["b"])
+      return(0, "Invalid result for: varlist_test1 #3")
+   endif 
+
+   lst = sortlist(varlist("string","local"))
+   if(lst != ["c"])
+      return(0, "Invalid result for: varlist_test1 #4")
+   endif 
+
+   lst = sortlist(varlist("matrix1d","local"))
+   if(lst != ["e"])
+      return(0, "Invalid result for: varlist_test1 #5")
+   endif 
+
+   lst = sortlist(varlist("cmatrix1d","local"))
+   if(lst != ["f"])
+      return(0, "Invalid result for: varlist_test1 #6")
+   endif 
+
+   lst = sortlist(varlist("matrix2d","local"))
+   if(lst != ["g"])
+      return(0, "Invalid result for: varlist_test1 #7")
+   endif 
+
+   lst = sortlist(varlist("cmatrix2d","local"))
+   if(lst != ["h"])
+      return(0, "Invalid result for: varlist_test1 #8")
+   endif 
+
+   lst = sortlist(varlist("matrix3d","local"))
+   if(lst != ["ii"])
+      return(0, "Invalid result for: varlist_test1 #9")
+   endif 
+
+   lst = sortlist(varlist("cmatrix3d","local"))
+   if(lst != ["jj"])
+      return(0, "Invalid result for: varlist_test1 #10")
+   endif 
+
+# Numeric access
+   lst = sortlist(varlist(4095,1))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","jj","kk","ll","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 #11")
+   endif 
+
+   lst = sortlist(varlist(3,1))
+   if(lst != ["a","c","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 12")
+   endif 
+
+   lst = sortlist(varlist(7,1))
+   if(lst != ["a","b","c","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 12")
+   endif 
+
+   lst = sortlist(varlist(15,1))
+   if(lst != ["a","b","c","d","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 13")
+   endif 
+
+   lst = sortlist(varlist(31,1))
+   if(lst != ["a","b","c","d","e","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 14")
+   endif 
+
+   lst = sortlist(varlist(63,1))
+   if(lst != ["a","b","c","d","e","f","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 15")
+   endif 
+
+   lst = sortlist(varlist(127,1))
+   if(lst != ["a","b","c","d","e","f","g","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 16")
+   endif 
+
+   lst = sortlist(varlist(255,1))
+   if(lst != ["a","b","c","d","e","f","g","h","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 17")
+   endif 
+
+   lst = sortlist(varlist(511,1))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 18")
+   endif 
+
+   lst = sortlist(varlist(1023,1))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","jj","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 19")
+   endif 
+
+   lst = sortlist(varlist(2047,1))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","jj","kk","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 20")
+   endif 
+
+   lst = sortlist(varlist(4095,1))
+   if(lst != ["a","b","c","d","e","f","g","h","ii","jj","kk","ll","lst","nrArgs"])
+      return(0, "Invalid result for: varlist_test1 20")
+   endif 
+
+endproc(1,"")

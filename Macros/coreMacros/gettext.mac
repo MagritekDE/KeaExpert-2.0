@@ -1,0 +1,51 @@
+############################################################
+# A window is displayed with some prompt text as a title
+# The user types in their response and then presses
+# the OK button. The program then returns the 
+# text entered to the calling program
+#
+# prompt is the title text
+# init is the initial text to display
+# len is the approximate number of character to display
+#
+############################################################
+
+procedure(gettext,prompt,init,len,history)
+
+  if(nrArgs < 3)
+    len = 10
+  endif
+   origWin = guiwinnr()
+
+# Define dialog
+   n = window(prompt, -1, -1, len*12+120, 45, "resizable")
+
+       setwindowpar(n,"type","dialog")
+       setwindowpar(n,"sizelimits",[len*12+120,1000,45,45])
+       if(nrArgs == 4)
+          textmenu(2, 9, 12, "ww-120", 100)
+          setpar(n,2,"menu",history)
+       else
+          textbox(2, 9, 12, len*12-10)
+       endif
+       button(1, "ww-100", 8, 47, 28, "OK",
+          result = getpar(0,2,"text");
+          closedialog(result);)
+       button(3, "ww-50", 8, 47, 28, "Cancel",
+          closedialog("cancel");)
+       setpar(n,1,"mode","default");
+       setfocus(n,2) # Make sure we can type into the window
+
+       if(nrArgs > 1)
+         setpar(n,2,"text",init)
+       endif
+
+       setpar(n,2,"selectall","")
+       setfocus(n,2) # Make sure we can type into the window
+
+# Display dialog and wait for text to be returned
+
+  text = showdialog(n)
+  guiwinnr(origWin)
+
+endproc(text)

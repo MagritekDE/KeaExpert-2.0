@@ -1,0 +1,1813 @@
+###############################################################
+#
+# Apply a forward or reverse 2D Fourier transform
+# to the current 2D plot data.
+#
+# Note plot data must have power of 2 dimensions.
+#
+# Author: C Eccles
+# Last modified 3.11.2024
+#
+# History
+# 1.0 initial version
+# 1.1 added phase-antiphase option.
+#     and moved this and hypercomplex options to t1
+#
+# Copyright (c) Magritek 2016-2024
+#
+###############################################################
+
+procedure(2DPostProcessing, inPlt, outPlt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Check for an existing window
+   if(findwin("title","Process 2D FID (V1.1)") >= 0)
+      return
+   endif
+
+   parentNr = guiwinnr()
+   fidPlt = gPlot->getPlotObject(inPlt)
+   freqPlt = gPlot->getPlotObject(outPlt)
+   n = :windowdefinition()
+   assignctrls(n)
+   windowvar(wv_mIn,wv_rowFt,wv_mOut,wv_parent,
+             wvFidPlt,wvFreqPlt,wvPhaseVis)
+   wvFidPlt = fidPlt
+   wvFreqPlt = freqPlt
+   wv_parent = parentNr
+   wvPhaseVis = 1
+   :toggle_phase_controls()
+   :update_filter_menu()
+   :loadPar()
+   :updatePhaseSliders(0)
+   :setCtrlVisibility()
+   cd("$appdir$\\Macros\\1D_Macros")
+   cachemacro("filters.mac")
+   cacheproc("true")
+   setwindowpar(n,"statusbox",8)
+   showwindow(n)
+   w_winNr = n
+
+endproc()
+
+####################################################
+# Determine the frequency axis range based on 
+# the type of FT processing applied
+####################################################
+
+procedure(calcFrequencyAxes,xscale,yscale,guipar)
+
+   assignlist(guipar)
+
+   (f2Sz,f1Sz) = size(wv_mIn)
+
+# Display data
+   if(f2FTType == "Complex")
+      rngX = [-0.5*f2Sz/xscale[-1],0.5*f2Sz/xscale[-1]]
+   elseif(f2FTType == "Real")
+      rngX = [-0.25*f2Sz/xscale[-1],0.25*f2Sz/xscale[-1]]
+   else
+      rngX = xscale
+   endif
+
+   if(f1FTType == "Complex")
+      rngY = [-0.5*f1Sz/yscale[-1],0.5*f1Sz/yscale[-1]]
+   elseif(f1FTType == "Real")
+      rngY = [-0.25*f1Sz/yscale[-1],0.25*f1Sz/yscale[-1]]
+   elseif(f1FTType == "Hypercomplex")
+      rngY = [-0.25*f1Sz/yscale[-1],0.25*f1Sz/yscale[-1]]
+   elseif(f1FTType == "Echo-AntiEcho")
+      rngY = [-0.25*f1Sz/yscale[-1],0.25*f1Sz/yscale[-1]]
+   else
+      rngY = yscale
+   endif
+
+
+endproc(rngX,rngY)
+
+
+####################################################
+# Set the f1 phase control enable state
+####################################################
+
+procedure(choosef1PhaseMethod)
+
+   method = f1PhaseMethodCtrl->text
+   if(method == "Fixed")
+      for(k = 212 to 223)
+         if(isobj(0,k))
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+      for(k = 30 to 38)
+         if(isobj(0,k))
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+   else
+      for(k = 212 to 223)
+         if(isobj(0,k))
+            setpar(0,k,"enable","false")
+         endif
+      next(k)
+      for(k = 30 to 38)
+         if(isobj(0,k))
+            setpar(0,k,"enable","false")
+         endif
+      next(k)
+   endif
+
+endproc()
+
+####################################################
+# Set the f2 phase control enable state
+####################################################
+
+procedure(choosef2PhaseMethod)
+
+   method = f2PhaseMethodCtrl->text
+   if(method == "Fixed")
+      for(k = 112 to 123)
+         if(isobj(0,k))
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+      for(k = 14 to 22)
+         if(isobj(0,k))
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+   else
+      for(k = 112 to 123)
+         if(isobj(0,k))
+            setpar(0,k,"enable","false")
+         endif
+      next(k)
+      for(k = 14 to 22)
+         if(isobj(0,k))
+            setpar(0,k,"enable","false")
+         endif
+      next(k)
+   endif
+
+endproc()
+
+
+##########################################################
+# Display the 2D plot using the previous zoom and color
+# and contour scale. Allow for PPM or Hz setting changes
+# Note that the plot direction will be unchanged from
+# the original.
+##########################################################
+
+procedure(displayData,xscale,yscale,rngX,rngY,guipar)
+
+   assignlist(guipar)
+
+# Record the current frequency plot labels etc.
+   lbl = plotProc:getLabels(wvFreqPlt)
+   (nr,mode) = wvFreqPlt->contour()
+
+# Note the current zoom range
+   xr = wvFreqPlt->axes->xrange()
+   yr = wvFreqPlt->axes->yrange()
+
+# Note the direction - should be reverse always
+   xDir = wvFreqPlt->axes->xdirection
+   yDir = wvFreqPlt->axes->ydirection
+   map = wvFreqPlt->cmap
+
+# Note current ppm/hz setting
+   xPPM = wvFreqPlt->axes->xppmscale 
+   yPPM = wvFreqPlt->axes->yppmscale 
+
+# Get the B1 frequency from the main interface
+   assignlist(getctrlvalues(wv_parent))
+   if(isvar("nucleus"))
+      (nucleusf2,nucleusf1) = scanstr(nucleus,"%1-%2")
+      b1FreqF1 = single(eval("b1Freq$nucleusf1$"))
+      b1FreqF2 = single(eval("b1Freq$nucleusf2$"))
+      if(b1FreqF1 == null)
+         message("Error","Unsupported nucleus $nucleusf1$","error")
+         return
+      endif
+      if(b1FreqF2 == null)
+         message("Error","Unsupported nucleus $nucleusf2$","error")
+         return
+      endif
+   else
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+# Get input data dimensions in points
+   (t2Sz,t1Sz) = size(wv_mIn)
+
+   wvFreqPlt->draw("false")
+
+# Get any offsets
+   if(isvar("offFreq$nucleusf1$"))
+      off1 = eval("offFreq$nucleusf1$")
+   else
+      off1 = 0
+   endif
+   if(isvar("offFreq$nucleusf2$"))
+      off2 = eval("offFreq$nucleusf2$")
+   else
+      off2 = 0
+   endif
+   if(isvar("offFreq"))
+      off1 = eval("offFreq")
+      off2 = eval("offFreq")
+   endif
+
+# Calculate full range for ppm/Hz setting
+   f1PPMRange = rngY/b1FreqF1+f1PPMOffset+off1/b1FreqF1
+   f2PPMRange = rngX/b1FreqF2+f2PPMOffset+off2/b1FreqF2
+   f1HzRange = f1PPMRange*b1FreqF1
+   f2HzRange = f2PPMRange*b1FreqF2
+
+   wvFreqPlt->cmap(map)
+
+# We want f1 in PPM and f2 in PPM
+   if(f1PPMCtrl->text == "yes" & f2PPMCtrl->text == "yes")
+
+      wvFreqPlt->image(wv_mOut,f2PPMRange,f1PPMRange)
+      wvFreqPlt->contour(nr,mode)
+      plotProc:setLabels(lbl,wvFreqPlt)   
+      wvFreqPlt->title("transformed data")
+      if(f1FTType != "None")
+         wvFreqPlt->ylabel("Frequency f1 (ppm)")
+      endif
+      if(f2FTType != "None")
+         wvFreqPlt->xlabel("Frequency f2 (ppm)")
+      endif
+      if(xPPM == "true") # Do nothing already PPM
+         wvFreqPlt->axes->xrange(xr)
+         wvFreqPlt->axes->xppmscale("true")
+      else # Convert to PPM
+         wvFreqPlt->axes->xrange(xr/b1FreqF2)
+         wvFreqPlt->axes->xppmscale("true")
+      endif
+      if(yPPM == "true") # Do nothing already PPM
+         wvFreqPlt->axes->yrange(yr)
+         wvFreqPlt->axes->yppmscale("true")
+      else # Convert to PPM
+         wvFreqPlt->axes->yrange(yr/b1FreqF1)
+         wvFreqPlt->axes->yppmscale("true")
+      endif
+
+# We want f1 in PPM and f2 in Hz
+   elseif(f1PPMCtrl->text == "yes" & f2PPMCtrl->text == "no")
+
+      wvFreqPlt->image(wv_mOut, f2HzRange,f1PPMRange)
+      wvFreqPlt->contour(nr,mode)
+      plotProc:setLabels(lbl,wvFreqPlt)   
+      wvFreqPlt->title("transformed data")
+      if(f1FTType != "None")
+         wvFreqPlt->ylabel("Frequency f1 (PPM)")
+      endif
+      if(f2FTType != "None")
+         wvFreqPlt->xlabel("Frequency f2 (Hz)")
+      endif
+      if(xPPM == "true") # Convert to Hz
+         wvFreqPlt->axes->xrange(xr*b1FreqF2)
+         wvFreqPlt->axes->xppmscale("false")
+      else # Do nothing
+         wvFreqPlt->axes->xrange(xr)
+         wvFreqPlt->axes->xppmscale("false")
+      endif
+      if(yPPM == "true") # Do nothing
+         wvFreqPlt->axes->yrange(yr)
+         wvFreqPlt->axes->yppmscale("true")
+      else # Convert to Hz
+         wvFreqPlt->axes->yrange(yr*b1FreqF1)
+         wvFreqPlt->axes->yppmscale("true")
+      endif
+
+# We want f1 in Hz and f2 in PPM
+   elseif(f1PPMCtrl->text == "no" & f2PPMCtrl->text == "yes")
+
+      wvFreqPlt->image(wv_mOut,f2PPMRange,f1HzRange)
+      wvFreqPlt->contour(nr,mode)
+      plotProc:setLabels(lbl,wvFreqPlt)   
+      wvFreqPlt->title("transformed data")
+      if(f1FTType != "None")
+         wvFreqPlt->ylabel("Frequency f1 (Hz)")
+      endif
+      if(f2FTType != "None")
+         wvFreqPlt->xlabel("Frequency f2 (ppm)")
+      endif
+      if(xPPM == "true") # Do nothing already PPM
+         wvFreqPlt->axes->xrange(xr)
+         wvFreqPlt->axes->xppmscale("true")
+      else # Convert to PPM
+         wvFreqPlt->axes->xrange(xr/b1FreqF2)
+         wvFreqPlt->axes->xppmscale("true")
+      endif
+      if(yPPM == "true") # Convert to Hz
+         wvFreqPlt->axes->yrange(yr*b1FreqF1)
+         wvFreqPlt->axes->yppmscale("false")
+      else # Do nothing already Hz
+         wvFreqPlt->axes->yrange(yr)
+         wvFreqPlt->axes->yppmscale("false")
+      endif
+   
+# We want f1 in Hz and f2 in Hz
+   else
+
+      wvFreqPlt->image(wv_mOut,f2HzRange,f1HzRange)
+      wvFreqPlt->contour(nr,mode)
+      plotProc:setLabels(lbl,wvFreqPlt) 
+      if(f2FTType != "None")
+         wvFreqPlt->xlabel("Frequency f2 (Hz)")
+      endif
+      if(f1FTType != "None")
+         wvFreqPlt->ylabel("Frequency f1 (Hz)")
+      endif
+      if(xPPM == "true") # Convert to Hz
+         wvFreqPlt->axes->xrange(xr*b1FreqF2)
+         wvFreqPlt->axes->xppmscale("false")
+      else# Do nothing already Hz
+         wvFreqPlt->axes->xrange(xr)
+         wvFreqPlt->axes->xppmscale("false")
+      endif
+      if(yPPM == "true") # Convert to Hz
+         wvFreqPlt->axes->yrange(yr*b1FreqF1)
+         wvFreqPlt->axes->yppmscale("false")
+      else # Do nothing already Hz
+         wvFreqPlt->axes->yrange(yr)
+         wvFreqPlt->axes->yppmscale("false")
+      endif  
+ 
+   endif
+
+   wvFreqPlt->draw("true")
+
+# Flag the change
+   var = wvFreqPlt->parent->uservar
+   var->modified = 1
+   wvFreqPlt->parent->uservar(var)
+
+
+endproc()
+
+
+####################################################
+# If the data is in stacked plot mode then display
+# it (is this ever used?)
+####################################################
+
+procedure(displayStackedData,xscale,yscale,rngX,rngY,guipar)
+
+   assignlist(guipar)
+
+# Record the current frequency plot labels etc.
+   lbl = plotProc:getLabels(wvFreqPlt)
+   xLabelFreq = wvFreqPlt->xLabel->text()
+   yLabelFreq = wvFreqPlt->yLabel->text()
+   titleFreq = wvFreqPlt->title->text()
+   xrFreq = wvFreqPlt->axes->xrange()
+   yrFreq = wvFreqPlt->axes->yrange()
+   (x1,x2,y1,y2) = wvFreqPlt->zoom()
+   xDir = wvFreqPlt->axes->xdirection
+   yDir = wvFreqPlt->axes->ydirection
+   xrFid = wvFidPlt->axes->xrange()
+   yrFid = wvFidPlt->axes->yrange()
+
+# Get the B1 frequency from the main interface
+   assignlist(getctrlvalues(wv_parent))
+   if(isvar("nucleus"))
+      (nucleusf2,nucleusf1) = scanstr(nucleus,"%1-%2")
+      #b1FreqF1 = :getB1Freq(nucleusf1,wv_parent)
+      #b1FreqF2 = :getB1Freq(nucleusf2,wv_parent)
+
+      b1FreqF1 = single(eval("b1Freq$nucleusf1$"))
+      b1FreqF2 = single(eval("b1Freq$nucleusf2$"))
+
+      if(b1FreqF1 == null)
+         message("Error","Unsupported nucleus $nucleusf1$","error")
+         return
+      endif
+      if(b1FreqF2 == null)
+         message("Error","Unsupported nucleus $nucleusf2$","error")
+         return
+      endif
+   else
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+# Get input data dimensions
+   (t2Sz,t1Sz) = size(wv_mIn)
+   (f2Sz,f1Sz) = size(wv_mOut)
+
+# Get any offsets
+   if(isvar("offFreq$nucleusf2$"))
+      off2 = eval("offFreq$nucleusf2$")
+   else
+      off2 = 0
+   endif
+   if(isvar("offFreq"))
+      off2 = eval("offFreq")
+   endif
+
+   fAxisHz = ([0:1:f2Sz-1]-f2Sz/2)/xrFid[-1] # Hz
+   fAxis = (fAxisHz+off2)/b1FreqF2 + gData->ppmOffset1H
+   wvFreqPlt->axes->type("box_y_independent")
+   wvFreqPlt->axes->minaxisvalue(0)
+   wvFreqPlt->axes->maxaxisvalue(f1Sz)
+   wvFreqPlt->axes->xdirection("reversed")
+   wvFreqPlt->axes->xppmscale("true")
+   wvFreqPlt->rmlines()
+   wvFreqPlt->draw("false")
+   wv_mOut = wv_mOut/t2Sz*xrFid[-1]
+
+   for(k = 0 to f1Sz-1)
+      row = wv_mOut[~,k]
+      n = wvFreqPlt->plot(fAxis,row)
+      tc = wvFreqPlt->trace(n)
+      tc->yoffset(0.9*k/(f1Sz-1)+0.05)
+      r = k*255/(f1Sz-1)
+      b = 255-r
+      tc->color([r,0,b])
+      if(k == 0)
+         wvFreqPlt->hold("on")
+      endif
+   next(k)
+   wvFreqPlt->xLabel->text(xLabelFreq)
+   wvFreqPlt->yLabel->text(yLabelFreq)
+   wvFreqPlt->title->text(titleFreq)
+   wvFreqPlt->zoom(x1,x2,y1,y2)
+   wvFreqPlt->hold("off")
+   wvFreqPlt->draw("true")
+ 
+endproc()
+
+
+####################################################
+# Perform options in the Other tab - currently
+# only tilt-45
+####################################################
+
+procedure(extraProcessing, rngX,  rngY, guipar)
+
+   assignlist(guipar)
+
+   (w,h) = size(wv_mOut)
+
+   r = w/h*(rngY[1]-rngY[0])/(rngX[1]-rngX[0])
+
+   if(tilt45Ctrl->text == "yes")
+
+      for(y = 0 to h-1)
+         row = wv_mOut[~,y]
+         wv_mOut[~,y] = rotate(row,round(r*(y-h/2)))
+      next(y)
+
+   endif
+
+endproc()
+
+
+
+
+###############################################################
+# Callbacks for up-down phase controls
+###############################################################
+
+procedure(f1P0CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p0 =  f1P0PhaseCtrl->value + offset
+   f1P0PhaseCtrl->text(p0)
+
+endproc()
+
+procedure(f1P1CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p1 =  f1P1PhaseCtrl->value + offset
+   f1P1PhaseCtrl->text(p1)
+
+endproc()
+
+procedure(f1PivotCallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   pivot =  f1P1PivotPPMCtrl->value + offset
+   f1P1PivotPPMCtrl->text(pivot)
+
+endproc()
+
+
+procedure(f2P0CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p0 =  f2P0PhaseCtrl->value + offset
+   f2P0PhaseCtrl->text(p0)
+
+endproc()
+
+procedure(f2P1CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p1 =  f2P1PhaseCtrl->value + offset
+   f2P1PhaseCtrl->text(p1)
+
+endproc()
+
+procedure(f2PivotCallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   pivot =  f2P1PivotPPMCtrl->value + offset
+   f2P1PivotPPMCtrl->text(pivot)
+
+endproc()
+
+####################################################
+# Load the PPM offsets from the main interface
+# and update the list 'proc'
+####################################################
+
+procedure(getPPMOffsets, proc)
+
+   assignlist(getctrlvalues(wv_parent),"list","list",["nucleus"])
+   try
+      (nucx,nucy) = scanstr(nucleus,"%1-%2")
+   catch
+      pr lasterror()
+      abort("Incorrect nuclei parameter")
+   endtry
+   f2Offset = getlistvalue(proc,"ppmOffset$nucx$")
+   f1Offset = getlistvalue(proc,"ppmOffset$nucy$")
+   proc = setlistvalue(proc,"f2PPMOffset","$f2Offset$")
+   proc = setlistvalue(proc,"f1PPMOffset","$f1Offset$")
+
+endproc(proc)
+
+####################################################
+# Calculate the ppm scale limits
+####################################################
+
+procedure(getSpecPPMScale, rngX, rngY)
+
+   assignlist(getctrlvalues(0))
+
+# Get the B1 frequency from the main interface
+   assignlist(getctrlvalues(wv_parent))
+   if(isvar("nucleus"))
+      (nucleusf2,nucleusf1) = scanstr(nucleus,"%1-%2")
+      b1FreqF1 = single(eval("b1Freq$nucleusf1$"))
+      b1FreqF2 = single(eval("b1Freq$nucleusf2$"))
+      if(b1FreqF1 == null)
+         message("Error","Unsupported nucleus $nucleusf1$","error")
+         return(null,null)
+      endif
+      if(b1FreqF2 == null)
+         message("Error","Unsupported nucleus $nucleusf2$","error")
+         return(null,null)
+      endif
+   else
+      message("Error","Nucleus not defined","error")
+      return(null,null)
+   endif
+
+# Get input data dimensions
+   (t2Sz,t1Sz) = size(wv_mIn)
+
+   wvFreqPlt->draw("false")
+
+# Get any offsets
+   if(isvar("offFreq$nucleusf1$"))
+      off1 = eval("offFreq$nucleusf1$")
+   else
+      off1 = 0
+   endif
+   if(isvar("offFreq$nucleusf2$"))
+      off2 = eval("offFreq$nucleusf2$")
+   else
+      off2 = 0
+   endif
+   if(isvar("offFreq"))
+      off1 = eval("offFreq")
+      off2 = eval("offFreq")
+   endif
+
+# Account for ppm/Hz setting. Note only PPM setting has offsets applied
+   f1PPMRange = rngY/b1FreqF1+f1PPMOffset+off1/b1FreqF1
+   f2PPMRange = rngX/b1FreqF2+f2PPMOffset+off2/b1FreqF2
+   f1HzRange = rngY
+   f2HzRange = rngX
+
+endproc(f2PPMRange,f1PPMRange)
+
+
+####################################################
+# Load existing parameters
+####################################################
+
+procedure(loadPar)
+
+   bak = getcwd()
+
+   defaults =  ["f1Filter = \"sinebellsquared\"",
+                "f2Filter = \"sinebellsquared\"",
+                "f1FTType = \"Complex\"",
+                "f2FTType = \"Complex\"",
+                "f1FTInvert = \"yes\"",
+                "f2FTInvert = \"no\"",
+                "f1FTOrigin = \"Start\"",
+                "f2FTOrigin = \"Start\"",
+                "f1ZeroFill = 1",
+                "f2ZeroFill = 1",
+                "f1PPMOffset = 0",
+                "f2PPMOffset = 0",
+                "f1PhaseMethod = \"Magnitude\"",
+                "f2PhaseMethod = \"None\"",
+                "f1DisplayInPPM = \"yes\"",
+                "f2DisplayInPPM = \"yes\"",
+                "f1RefDeconvMethod = \"None\"",
+                "f2RefDeconvMethod = \"None\"",
+                "f1RefDeconvLinewidth = 0",
+                "f2RefDeconvLinewidth = 0",
+                "f1BaseLineCorrectionMethod = \"None\"",
+                "f2BaseLineCorrectionMethod = \"None\"",
+                "f1BaseLineNrSegments = 64",
+                "f2BaseLineNrSegments = 64",
+                "f1BaseLineNoiseFactor = 3",
+                "f2BaseLineNoiseFactor = 3",
+                "f1P0Phase = 0",
+                "f1P0Lim = 180",
+                "f1P1Phase = 0",
+                "f1P1Lim = 180",
+                "f1P1FixedPhase = 0",
+                "f1P1Pivot = 0",
+                "f1P1PivotLim = 100",
+                "f1P1PivotPPM = 0",
+                "f2P0Phase = 0",
+                "f2P0Lim = 180",
+                "f2P1Phase = 0",
+                "f2P1Lim = 180",
+                "f2P1FixedPhase = 0",
+                "f2P1Pivot = 0",
+                "f2P1PivotLim = 100",
+                "f2P1PivotPPM = 0",
+                "ftVersion = 1"
+                "halveFirstf1 = 1",
+                "halveFirstf2 = 1"]
+ 
+   plt =  wvFidPlt
+   path = plt->filepath
+
+   found = 0
+   if(isdir(path)) # Try using proc.par
+      cd(path)
+      if(isfile("proc_temp.par"))
+         procPar = load("proc_temp.par")
+         procPar = mergelists(procPar,defaults)
+         found = 1
+      elseif(isfile("proc.par"))
+         procPar = load("proc.par")
+         procPar = mergelists(procPar,defaults)
+         found = 1
+      endif
+   endif
+
+   if(found == 0) # Otherwise use global preferences
+      cd(prefdir)
+      mkdir("SpinsolveParameters\\Preferences")
+      cd("SpinsolveParameters\\Preferences")
+      file = "ucsPreferences.par" 
+      procPar = defaults
+      if(isfile(file))
+         proc = load(file)
+         proc = :getPPMOffsets(proc)
+         procPar = setlistvalues(procPar,proc)
+      endif
+   endif
+
+   sProcPar = struct(procPar)
+
+# Fix some prexisting file bugs
+   if(sProcPar->f1P1PivotPPM = "")
+      sProcPar->f1P1PivotPPM = 0
+   endif
+   if(sProcPar->f2P1PivotPPM = "")
+      sProcPar->f2P1PivotPPM = 0
+   endif
+   procPar = list(sProcPar)
+
+   wvVersion = sProcPar->ftVersion
+
+   setctrlvalues(0,procPar)
+   cd(bak)
+
+endproc(procPar)
+
+####################################################
+# Load specific parameters from proc.par
+####################################################
+
+procedure(loadSomePar, keys)
+
+   plt =  wvFidPlt
+   path = plt->filepath
+
+   if(isdir(path)) # Try using proc.par
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         procPar = load(file)
+         procPar = getsublist(procPar,keys)
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         procPar = load(file)
+         procPar = getsublist(procPar,keys)
+      endif
+   endif
+
+endproc(procPar)
+
+####################################################
+# Apply the 2D phase
+####################################################
+
+procedure(phase2D, which)
+
+   pos = parentCtrl->value
+
+   if(which == "f2:p0")
+      range = f2P0LimCtrl->value
+      f2P0PhaseCtrl->text(pos/100*range)
+   elseif(which == "f2:p1")
+      range = f2P1LimCtrl->value
+      f2P1PhaseCtrl->text(pos/100*range)
+   elseif(which == "f2:piv")
+      range = f2P1PivLimCtrl->value
+      f2P1PivotPPMCtrl->text(pos/100*range)
+
+   elseif(which == "f1:p0")
+      range = f2P0LimCtrl->value
+      f1P0PhaseCtrl->text(pos/100*range)
+   elseif(which == "f1:p1")
+      range = f1P1LimCtrl->value
+      f1P1PhaseCtrl->text(pos/100*range)
+   elseif(which == "f1:piv")
+      range = f1P1PivLimCtrl->value
+      f1P1PivotPPMCtrl->text(pos/100*range)
+   endif
+
+   :process2D("forward")
+
+   setfocus(0,parentCtrl->winnr)
+
+endproc()
+
+###################################################
+# Process the 2D data
+###################################################
+
+procedure(process2D,dir,verbose=0)
+
+  tStart = time()
+
+# Check to see if a 2D data set is present
+   (wv_mIn,xscale,yscale) = wvFidPlt->getdata()
+   if(wv_mIn == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Get the window parameters
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+# Calculate the frequency domain axes
+  (rngX,rngY) = :calcFrequencyAxes(xscale,yscale,guipar)
+
+# Convert Hz range to ppm
+   (f2PPMRange,f1PPMRange) = :getSpecPPMScale(rngX, rngY)
+   if(f2PPMRange == null)
+      return
+   endif
+
+# Get input matrix size
+   (f2Sz,f1Sz) = size(wv_mIn)
+
+# Convert the pivots from PPM to a fraction of the data set size
+   f2P1Pivot = (f2P1PivotPPM-f2PPMRange[0])/(f2PPMRange[1]-f2PPMRange[0])
+   f1P1Pivot = (f1P1PivotPPM-f1PPMRange[0])/(f1PPMRange[1]-f1PPMRange[0])
+
+# Process wv_mIn -> wv_mOut
+   if(verbose)
+      statusBoxCtrl->text("Processing ...")
+   endif
+
+# f2 transform
+   :transformf2(f2ZeroFill*f2Sz,f1ZeroFill*f1Sz,
+                f2Filter,
+                f2FTOrigin,
+                f2FTType,
+                f2FTInvert,f2PhaseMethod,
+                f2P0Phase,f2P1Phase,f2P1Pivot,xscale,halveFirstf2)
+# f1 transform
+   :transformf1(f2ZeroFill*f2Sz,f1ZeroFill*f1Sz,
+               f1Filter,
+               f1FTOrigin,
+               f1FTType,
+               f1FTInvert,f1PhaseMethod,
+               f1P0Phase,f1P1Phase,f1P1Pivot,yscale,halveFirstf1)
+
+# Apply extra processing
+   :extraProcessing(rngX,rngY,guipar)
+
+# Display the total processing time 
+   if(verbose)
+      statusBoxCtrl->text("Finished - time taken = $time()-tStart,0.3g$s")
+   endif
+
+# Display the data
+   if(wvFreqPlt->dim == "1d") # Check for stacked plot output
+      :displayStackedData(xscale,yscale,rngX,rngY,guipar)
+   else
+      :displayData(xscale,yscale,rngX,rngY,guipar)
+   endif
+
+endproc()
+
+
+####################################################
+# Get updates from other macros
+####################################################
+
+procedure(processMessage)
+
+  (src,cmd) = getpar(0,0,"text")
+   callingwin = getpar(0,0,"source")
+   parentwin = guiwinnr()
+   if(src == "Macro" & callingwin != parentwin)
+
+      if(cmd == "offset update")
+         procPar = :loadSomePar(["f1PPMOffset","f2PPMOffset"])
+         setctrlvalues(0,procPar)
+      endif
+
+   endif
+    
+# Check if new data has been loaded
+   if(src == "mainWindow" & callingwin != parentwin)
+
+      if(cmd == "newExperimentSelected")
+         wvFidPlt = gPlot->getPlotObject("im1")
+         wvFreqPlt = gPlot->getPlotObject("im2")
+         :loadPar()
+      endif
+
+   endif
+
+endproc()
+
+####################################################
+# Save current parameters to proc_temp.par
+# This will be copied to proc.par when the plot
+# is saved.
+####################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+# Save to default location
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   par = getctrlvalues(0)
+
+# Save to data area in proc.par
+   plt =  wvFidPlt
+
+   try
+      path = plt->filepath
+   
+      if(isdir(path))
+         cd(path)
+         guipar = getctrlvalues(0)
+         if(isfile("proc.par"))
+            procPar = load("proc.par")
+            procPar = mergelists(guipar,procPar)
+         elseif(isfile("proc_temp.par"))
+            procPar = load("proc_temp.par")
+            procPar = mergelists(guipar,procPar)
+         else
+            procPar = guipar
+         endif
+         save("proc_temp.par",sortlist(procPar))
+      endif
+   catch # If plot has been closed
+   endtry
+
+   cd(bak)
+
+endproc()
+
+
+
+###############################################################
+# Select which controls are enabled and visible
+###############################################################
+
+procedure(setCtrlVisibility)
+
+  :choosef2PhaseMethod()
+  :choosef1PhaseMethod()
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+
+   help("Macros\\Post Processing","Processing 2D Data Sets.htm")
+
+endproc()
+
+
+########################################################
+# Toggle the visibility of the phase controls
+########################################################
+
+procedure(toggle_phase_controls)
+
+   if(wvPhaseVis == 1)
+      for(k = 13 to 38)
+         if(isobj(0,k))
+            getobj(0,k)->visible("false")
+         endif
+      next(k)
+      setwindowpar(0, "height", 437)
+      wvPhaseVis = 0
+   else
+      for(k = 13 to 38)
+         if(isobj(0,k))
+            getobj(0,k)->visible("true")
+         endif
+      next(k)
+     setwindowpar(0, "height", 547)
+      wvPhaseVis = 1
+   endif
+
+endproc()
+
+###########################################################
+# row transform routine : transforms wv_mIn to wv_rowFt
+# (dim w1,h1 and w2,h2)
+# The filter fxWindowFunction is applied in y
+# direction during the transform.
+# If fxOrigin == Center then the origin is moved to the centre
+# fxType == Real or Complex 
+###########################################################
+
+
+procedure(transformf2,w2,h2,fxWindowFunction,
+                            fxOrigin,fxType,
+                            fxFTInvert,f2PhaseMethod,
+                            f2P0,f2P1,f2Pivot,tAxis,halveFirst=0)
+
+   (w1,h1) = size(wv_mIn)
+
+   if(fxOrigin == "Start")
+      xWindowFunctionType = "FTFid"
+   else
+      xWindowFunctionType = "FTEcho"
+   endif
+
+   h2 = h1
+
+   if(fxType == "Real")
+      w2m = w2/2
+   else
+      w2m = w2
+   endif
+
+   wv_rowFt  = cmatrix(w2m,h2)
+
+   if(f2PhaseMethod == "Fixed")
+      f2Pivot = w2m*f2Pivot
+      px = exp(i*pi*(f2P0 + f2P1*([0:w2m-1]-f2Pivot)/w2m)/180)
+   else
+      px = matrix(w2m)+1
+   endif
+
+# Get the apodization file - special case for exponentials
+   if(issubstr(fxWindowFunction,"exp:"))
+      tAxis = linspace(0,tAxis[-1],w1)
+   else
+      tAxis = w1
+   endif
+   Flt = filters:get_filter(fxWindowFunction,xWindowFunctionType,tAxis)
+
+# Row transforms
+   if(fxType == "None")
+      for (y = 0 to h2-1)
+         if(halveFirst)
+            wv_mIn[0,y] = wv_mIn[0,y]/2   
+         endif
+	   wv_rowFt[~,y] = zerofill(Flt.*wv_mIn[~,y],w2m,"sides")+i0
+      next(y)
+
+   elseif(fxOrigin == "Start" & fxType == "Complex")
+      for (y = 0 to h2-1)
+         if(halveFirst)
+            wv_mIn[0,y] = wv_mIn[0,y]/2   
+         endif
+         wv_rowFt[~,y] = ft(zerofill(Flt.*wv_mIn[~,y],w2m,"end")) .* px
+      next(y)
+
+   elseif(fxOrigin == "Center" & fxType == "Complex")
+      for (y = 0 to h2-1)
+         if(halveFirst)
+            wv_mIn[0,y] = wv_mIn[0,y]/2   
+         endif
+	   wv_rowFt[~,y] = ft(ftshift(zerofill(Flt.*wv_mIn[~,y],w2m,"sides"))) .* px
+      next(y)
+
+   elseif(fxOrigin == "Start" & fxType == "Real")
+      for (y = 0 to h2-1)
+         if(halveFirst)
+            wv_mIn[0,y] = wv_mIn[0,y]/2   
+         endif
+	   wv_rowFt[~,y] = rft(zerofill(Flt.*wv_mIn[~,y],w2,"end")) .* px
+      next(y)
+
+   elseif(fxOrigin == "Center" & fxType == "Real")
+      for (y = 0 to h2-1)
+         if(halveFirst)
+            wv_mIn[0,y] = wv_mIn[0,y]/2   
+         endif
+	   wv_rowFt[~,y] = rft(ftshift(zerofill(Flt.*wv_mIn[~,y],w2m,"sides"))) .* px
+      next(y)
+
+   endif
+
+# Reflect horizontally
+   if(fxFTInvert == "yes")
+      wv_rowFt = reflect(wv_rowFt,"vert")
+   endif
+
+endproc()
+
+
+###########################################################
+# column transform routine : transforms wv_rowFt to wv_mOut
+# (dim w2,h2 and w3,h3)
+# The filter fyWindowFunction is applied in y
+# direction during the transform.
+# If fyOrigin == Center then the origin is moved to the centre
+# fyType == Real or Complex 
+###########################################################
+
+procedure(transformf1,w3,h3,fyWindowFunction,
+                            fyOrigin,fyType,
+                            fyFTInvert,f1PhaseMethod,
+                            f1P0,f1P1,f1Pivot,tAxis,halveFirst=0)
+
+
+  # (w1,h1) = size(wv_mIn)
+   (w2,h2) = size(wv_rowFt)
+
+   if(fyOrigin == "Start")
+      yWindowFunctionType = "FTFid"
+   else
+      yWindowFunctionType = "FTEcho"
+   endif
+
+   if(fyType == "Hypercomplex" | fyType == "Echo-AntiEcho")
+      h2f = h2/2
+      h3 = h3/2
+   else
+      h2f = h2
+   endif
+
+# Output matrix
+   wv_mOut = cmatrix(w3,h3)
+
+# Get the apodization file - special case for exponentials
+   if(issubstr(fyWindowFunction,"exp:"))
+      tAxis = linspace(tAxis[0],tAxis[-1],h2f)
+   else
+      tAxis = h2f
+   endif
+   Flt = filters:get_filter(fyWindowFunction,yWindowFunctionType,tAxis)'
+
+# Phasing
+   if(f1PhaseMethod == "Fixed")
+      f1Pivot = h3*f1Pivot
+      py = (exp(i*pi*(f1P1*(([0:h3-1]-f1Pivot)/h3) + f1P0)/180))'
+   else
+      py = (matrix(h3)+1)'
+   endif
+
+# Column transforms
+   if(fyType == "None")
+      for (x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+	   wv_mOut[x,~] = zerofill((Flt.*wv_rowFt[x,~]),h3,"sides")+i0
+      next(x)
+
+   elseif(fyOrigin == "Start" & fyType == "Complex")
+      for (x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+         wv_mOut[x,~] = ft(zerofill(Flt.*wv_rowFt[x,~],h3,"end")) .* py
+      next(x)
+
+   elseif(fyOrigin == "Center" & fyType == "Complex")
+      for (x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+	   wv_mOut[x,~] = ft(ftshift(zerofill((Flt.*wv_rowFt[x,~]),h3,"sides")))
+      next(x)
+
+   elseif(fyOrigin == "Start" & fyType == "Real")
+      for (x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+	   wv_mOut[x,~] = rft(zerofill((Flt.*wv_rowFt[x,~]),h3*2,"end")) .* py
+      next(x)
+
+   elseif(fyOrigin == "Center" & fyType == "Real")
+      for (x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+	   wv_mOut[x,~] = rft(ftshift(zerofill((Flt.*wv_rowFt[x,~]),h3,"sides"))) .* py
+      next(x)
+
+   elseif(fyOrigin == "Start" & fyType == "Hypercomplex")
+      for(y = 0 to h2-2 step 2)
+          rowR = wv_rowFt[~,y]
+          rowI = wv_rowFt[~,y+1]
+          wv_rowFt[~,y/2] = (real(rowR) + i*real(rowI))
+      next(y)
+      for(x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+         wv_mOut[x,~] = ft(zerofill(Flt.*wv_rowFt[x,0:h2/2-1],h3,"end")) .* py
+      next(y)
+
+   elseif(fyOrigin == "Start" & fyType == "Echo-AntiEcho")
+      for(y = 0 to h2-2 step 2)
+         rowR = wv_rowFt[~,y]
+         rowI = wv_rowFt[~,y+1]
+         wv_rowFt[~,y/2] = ((real(rowR)-real(rowI)) - i*(imag(rowR)+imag(rowI)))
+      next(y)
+      for(x = 0 to w3-1)
+         if(halveFirst)
+            wv_rowFt[x,0] = wv_rowFt[x,0]/2   
+         endif
+         wv_mOut[x,~] = ft(zerofill(Flt.*wv_rowFt[x,0:h2/2-1],h3,"end")) .* py
+      next(y)
+   endif
+
+   if(f1PhaseMethod == "Magnitude")
+      wv_mOut = mag(wv_mOut)
+   endif
+
+# Reflect vertically
+   if(fyFTInvert == "yes")
+      wv_mOut = reflect(wv_mOut,"horiz")
+   endif
+
+endproc()
+
+
+####################################################
+# Update the apodization filter menu
+####################################################
+
+procedure(updateApodizationMenus)
+
+   lst = filters:get_menu()
+   lst = lst + ["exp:1"]
+   f2FilterCtrl->menu(lst)
+
+endproc()
+
+
+####################################################
+# Get the latest filter menu
+####################################################
+
+procedure(update_filter_menu)
+
+   filtermenu = filters:get_menu()
+   filtermenu = insertinlist(filtermenu,"exp:1",1)
+
+   f1FilterCtrl->menu(filtermenu)
+   f1FilterCtrl->text(filtermenu[0])
+   f2FilterCtrl->menu(filtermenu)
+   f2FilterCtrl->text(filtermenu[0])
+
+endproc()
+
+
+####################################################
+# Update the range and value on phase sliders
+####################################################
+
+procedure(updatePhaseSliders, process=1)
+
+    range = f2P0LimCtrl->value
+    value = f2P0PhaseCtrl->value()
+    f2P0SliderCtrl->value(100*value/range)
+
+    range = f2P1LimCtrl->value
+    value = f2P1PhaseCtrl->value()
+    f2P1SliderCtrl->value(100*value/range)
+
+    range = f2P1PivLimCtrl->value
+    value = f2P1PivotPPMCtrl->value()
+    f2P1PivSliderCtrl->value(100*value/range)
+
+    range = f1P0LimCtrl->value
+    value = f1P0PhaseCtrl->value()
+    f1P0SliderCtrl->value(100*value/range)
+
+    range = f1P1LimCtrl->value
+    value = f1P1PhaseCtrl->value()
+    f1P1SliderCtrl->value(100*value/range)
+
+    range = f1P1PivLimCtrl->value
+    value = f1P1PivotPPMCtrl->value()
+    f1P1PivSliderCtrl->value(100*value/range)
+
+   if(process)
+      :process2D()
+   endif
+
+endproc()
+
+
+###############################################################
+# Define the window layout
+###############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Process 2D FID (V1.2)", -1, -1, 724, 440)
+
+      # Define all controls with basic parameters
+      getmessage(0,:processMessage())
+      groupbox(1, "Processing Parameters", 10, 8, "ww-91", 388)
+      tab(2, 29, 33, "ww-124", 350,:setCtrlVisibility())
+      button(3, "ww-70", 30, 63, 31, "Transform",
+         :process2D("forward",1);)
+      button(4, "ww-70", 82, 63, 31, "Filters",
+         n = filters();)
+      button(5, "ww-70", 134, 63, 31, "Phase",
+         :toggle_phase_controls();)
+      button(6, "ww-70", 186, 63, 31, "Help",
+         :showHelp();)
+      button(7, "ww-70", 238, 63, 31, "Close",
+         :savePar();
+         closewindow(0);)
+      statusbox(8)
+      statictext(9, 80, 193, "right", "Invert")
+      checkbox(10, 85, 194, "no,yes", "no")
+      statictext(11, 80, 193, "right", "Invert")
+      checkbox(12, 85, 194, "no,yes", "no")
+      groupbox(13, "Real-time Phasing", 10, 400, "ww-91", 106)
+
+      statictext(14, 50, 420, "right", "f2:p0")
+      slider(15, 55, 420, 200, 20,"horizontal",:phase2D("f2:p0"))
+      textbox(16 ,260, 418, 40,:updatePhaseSliders())
+      setpar(0,15,"objID","f2P0SliderCtrl","type","float","range",[-100,100])
+      setpar(0,16,"objID","f2P0LimCtrl","valueID","f2P0Lim")
+
+      statictext(17, 50, 450, "right", "f2:p1")
+      slider(18, 55, 450, 200, 20,"horizontal",:phase2D("f2:p1"))
+      textbox(19 ,260, 448, 40,:updatePhaseSliders())
+      setpar(0,18,"objID","f2P1SliderCtrl","type","float","range",[-100,100])
+      setpar(0,19,"objID","f2P1LimCtrl","valueID","f2P1Lim")
+
+      statictext(20, 50, 480, "right", "f2:piv")
+      slider(21, 55, 480, 200, 20,"horizontal",:phase2D("f2:piv"))
+      textbox(22 ,260, 478, 40,:updatePhaseSliders())
+      setpar(0,21,"objID","f2P1PivSliderCtrl","type","float","range",[-100,100])
+      setpar(0,22,"objID","f2P1PivLimCtrl","valueID","f2P1PivotLim")
+
+      statictext(30, 360, 420, "right", "f1:p0")
+      slider(31, 360, 420, 200, 20,"horizontal",:phase2D("f1:p0"))
+      textbox(32 ,565, 418, 40,:updatePhaseSliders())
+      setpar(0,31,"objID","f1P0SliderCtrl","type","float","range",[-100,100])
+      setpar(0,32,"objID","f1P0LimCtrl","valueID","f1P0Lim")
+
+      statictext(33, 360, 450, "right", "f1:p1")
+      slider(34, 360, 450, 200, 20,"horizontal",:phase2D("f1:p1"))
+      textbox(35 ,565, 448, 40,:updatePhaseSliders())
+      setpar(0,34,"objID","f1P1SliderCtrl","type","float","range",[-100,100])
+      setpar(0,35,"objID","f1P1LimCtrl","valueID","f1P1Lim")
+
+      statictext(36, 360, 480, "right", "f1:piv")
+      slider(37, 360, 480, 200, 20,"horizontal",:phase2D("f1:piv"))
+      textbox(38 ,565, 478, 40)
+      setpar(0,37,"objID","f1P1PivSliderCtrl","type","float","range",[-100,100])
+      setpar(0,38,"objID","f1P1PivLimCtrl","valueID","f1P1PivotLim")
+
+      statictext(100, 118, 83, "center", "Fourier transform")
+      statictext(101, 80, 108, "right", "Origin")
+      textmenu(102, 85, 104, 71, 200)
+      statictext(103, 80, 138, "right", "Type")
+      textmenu(104, 85, 134, 71, 200)
+      statictext(105, 80, 168, "right", "Zero-fill")
+      textmenu(106, 85, 164, 57, 200)
+      statictext(107, 149, 168, "center", "\215")
+      divider(108, 179, 70, 3, 157, "vertical")
+      statictext(109, 304, 83, "center", "Phasing")
+      statictext(110, 238, 108, "right", "Method")
+      textmenu(111, 245, 104, 150, 200,:choosef2PhaseMethod();)
+      statictext(112, 238, 137, "right", "p0 phase")
+      textbox(113, 245, 134, 41,:updatePhaseSliders())
+      statictext(114, 290, 137, "left", "deg")
+      statictext(115, 238, 167, "right", "p1 phase")
+      textbox(116, 245, 164, 41,:updatePhaseSliders())
+      statictext(117, 290, 167, "left", "deg")
+      updown(118, 323, 132, 20, 26, "vert",:f2P0CallBack();:updatePhaseSliders())
+      updown(119, 323, 162, 20, 26, "vert",:f2P1CallBack();:updatePhaseSliders())
+      updown(120, 323, 192, 20, 26, "vert",:f2PivotCallBack();:updatePhaseSliders())
+      statictext(121, 238, 198, "right", "p1 pivot")
+      textbox(122, 245, 194, 41,:updatePhaseSliders())
+      statictext(123, 290, 198, "left", "ppm")
+      divider(124, 408, 70, 3, 157, "vertical")
+#      statictext(125, 505, 83, "center", "Deconvolution")
+#      statictext(126, 470, 109, "right", "Method")
+#      textmenu(127, 475, 105, 100, 200)
+#      statictext(128, 534, 138, "right", "Select reference FID")
+#      button(129, 539, 135, 19, 19, "...",
+#         :selectReferenceFile();)
+#      statictext(130, 470, 168, "right", "Linewidth")
+#      textmenu(131, 475, 165, 47, 200)
+#      statictext(132, 527, 168, "left", "Hz")
+      divider(133, 42, 231, 560, 3, "horizontal")
+#      statictext(134, 126, 247, "center", "Baseline correction")
+#      statictext(135, 89, 274, "right", "Method")
+#      textmenu(136, 94, 270, 100, 200)
+#      statictext(137, 110, 304, "right", "Nr. segments")
+#      textmenu(138, 115, 300, 57, 200)
+#      statictext(139, 110, 334, "right", "Noise factor")
+#      textmenu(140, 115, 330, 57, 200)
+#      statictext(141, 221, 303, "right", "Debug")
+#      checkbox(142, 200, 320, "no,yes", "no")
+      divider(143, 239, 239, 3, 122, "vertical")
+      statictext(144, 301, 247, "center", "PPM display")
+      statictext(145, 302, 282, "right", "Apply")
+      checkbox(146, 307, 283, "no,yes", "no")
+      statictext(147, 302, 316, "right", "PPM offset")
+      textbox(148, 307, 313, 47)
+      divider(149, 368, 239, 3, 122, "vertical")
+      statictext(150, 419, 276, "right", "Function")
+      textmenu(151, 430, 271, 131, 200)
+      statictext(152, 522, 247, "right", "Apodization")
+      button(153, 570, 272, 19, 19, "...",
+         filters();)
+   #   textbox(154, 10, 10, 47)
+
+      statictext(155, 150, 193, "right", "Halve 1st")
+      checkbox(156, 155, 194, "0,1", "0")
+
+
+      statictext(200, 118, 83, "center", "Fourier transform")
+      statictext(201, 80, 108, "right", "Origin")
+      textmenu(202, 85, 104, 71, 200)
+      statictext(203, 80, 138, "right", "Type")
+      textmenu(204, 85, 134, 71, 200)
+      statictext(205, 80, 168, "right", "Zero-fill")
+      textmenu(206, 85, 164, 57, 200)
+      statictext(207, 149, 168, "center", "\215")
+      divider(208, 179, 70, 3, 157, "vertical")
+      statictext(209, 304, 83, "center", "Phasing")
+      statictext(210, 238, 108, "right", "Method")
+      textmenu(211, 245, 104, 150, 200, :choosef1PhaseMethod();)
+      statictext(212, 238, 137, "right", "p0 phase")
+      textbox(213, 245, 134, 41,:updatePhaseSliders())
+      statictext(214, 290, 137, "left", "deg")
+      statictext(215, 238, 167, "right", "p1 phase")
+      textbox(216, 245, 164, 41,:updatePhaseSliders())
+      statictext(217, 290, 167, "left", "deg")
+      statictext(218, 238, 198, "right", "p1 pivot")
+      textbox(219, 245, 194, 41,:updatePhaseSliders())
+      statictext(220, 290, 198, "left", "ppm")
+
+      updown(221, 323, 132, 20, 26, "vert",:f1P0CallBack();:updatePhaseSliders())
+      updown(222, 323, 162, 20, 26, "vert",:f1P1CallBack();:updatePhaseSliders())
+      updown(223, 323, 192, 20, 26, "vert",:f1PivotCallBack();:updatePhaseSliders())
+
+      divider(224, 408, 70, 3, 157, "vertical")
+#      statictext(225, 505, 83, "center", "Deconvolution")
+#      statictext(226, 470, 109, "right", "Method")
+#      textmenu(227, 475, 105, 100, 200)
+#      statictext(228, 534, 138, "right", "Select reference FID")
+#      button(229, 539, 135, 19, 19, "...",
+#         :selectReferenceFile();)
+#      statictext(230, 470, 168, "right", "Linewidth")
+#      textmenu(231, 475, 165, 47, 200)
+#      statictext(232, 527, 168, "left", "Hz")
+      divider(233, 41, 231, 560, 3, "horizontal")
+#      statictext(234, 126, 247, "center", "Baseline correction")
+#      statictext(235, 89, 274, "right", "Method")
+#      textmenu(236, 94, 270, 100, 200)
+#      statictext(237, 110, 304, "right", "Nr. segments")
+#      textmenu(238, 115, 300, 57, 200)
+#      statictext(239, 110, 334, "right", "Noise factor")
+#      textmenu(240, 115, 330, 57, 200)
+#      statictext(241, 221, 303, "right", "Debug")
+#      checkbox(242, 200, 320, "no,yes", "no")
+      divider(243, 239, 239, 3, 122, "vertical")
+      statictext(244, 301, 247, "center", "PPM display")
+      statictext(245, 302, 282, "right", "Apply")
+      checkbox(246, 307, 283, "no,yes", "no")
+      statictext(247, 302, 316, "right", "PPM offset")
+      textbox(248, 307, 313, 47)
+      divider(249, 368, 239, 3, 122, "vertical")
+      statictext(250, 419, 276, "right", "Function")
+      statictext(251, 522, 247, "right", "Apodization")
+      textmenu(252, 430, 271, 131, 200)
+      button(253, 570, 272, 19, 19, "...",
+         filters();)
+
+
+      statictext(255, 150, 193, "right", "Halve 1st")
+      checkbox(256, 155, 194, "0,1", "0")
+
+      checkbox(300, 80, 80, "no,yes", "no")
+      statictext(301, 70, 80, "right", "tilt45")
+
+
+     # Set other control parameters
+      setpar(n,2,"tab_number",6,
+                  "inittabs",["f2 axis","f1 axis","Other"])
+      setpar(n,3,"tab_number",1, "tooltip", "Apply the 2D transform to the FID.")
+      setpar(n,4,"tab_number",2, "tooltip", "Display the apodization filter dialog.")
+      setpar(n,5,"tab_number",3, "tooltip", "Toggle the display of the manual phasing controls.")
+      setpar(n,6,"tab_number",4, "tooltip", "Display some help.")
+      setpar(n,7,"tab_number",5, "tooltip", "Close the window and save the parameters.")
+      setpar(n,8,"objID","statusBoxCtrl")
+      setpar(n,9,"tabparent",[2,0])
+      setpar(n,10,"objID","f2FTInvertCtrl",
+                  "valueID","f2FTInvert",
+                  "tab_number",24,
+                  "tabparent",[2,0])
+      setpar(n,11,"tabparent",[2,1])
+      setpar(n,12,"objID","f1FTInvertCtrl",
+                  "valueID","f1FTInvert",
+                  "tab_number",24,
+                  "tabparent",[2,1])
+      setpar(n,100,"fgcolor",[0,128,0],
+                  "tabparent",[2,0])
+      setpar(n,101,"tabparent",[2,0])
+      setpar(n,102,"objID","f2FTOriginCtrl",
+                  "valueID","f2FTOrigin",
+                  "tab_number",7,
+                  "tabparent",[2,0],
+                  "menu",["Start","Center"])
+      setpar(n,103,"tabparent",[2,0])
+      setpar(n,104,"objID","f2FTTypeCtrl",
+                  "valueID","f2FTType",
+                  "tab_number",8,
+                  "tabparent",[2,0],
+                  "menu",["None","Real","Complex"])
+      setpar(n,105,"tabparent",[2,0])
+      setpar(n,106,"objID","f2ZeroFillCtrl",
+                  "valueID","f2ZeroFill",
+                  "readonly","true",
+                  "tab_number",9,
+                  "tabparent",[2,0],
+                  "type","integer",
+                  "menu",["1","2","4","8","16"])
+      setpar(n,107,"tab_number",10,
+                  "tabparent",[2,0])
+      setpar(n,108,"tabparent",[2,0],
+                   "eventactive","false")
+      setpar(n,109,"fgcolor",[0,128,0],
+                  "tabparent",[2,0])
+      setpar(n,110,"tabparent",[2,0])
+      setpar(n,111,"objID","f2PhaseMethodCtrl",
+                  "valueID","f2PhaseMethod",
+                  "tab_number",11,
+                  "tabparent",[2,0],
+                  "menu",["None","Fixed"])
+      setpar(n,112,"tabparent",[2,0])
+      setpar(n,113,"objID","f2P0PhaseCtrl",
+                  "valueID","f2P0Phase",
+                  "tab_number",12,
+                  "tabparent",[2,0])
+      setpar(n,114,"tabparent",[2,0])
+      setpar(n,115,"tabparent",[2,0])
+      setpar(n,116,"objID","f2P1PhaseCtrl",
+                  "valueID","f2P1Phase",
+                  "tab_number",13,
+                  "tabparent",[2,0])
+      setpar(n,117,"tabparent",[2,0])
+      setpar(n,118,"tabparent",[2,0],
+                   "base",0,
+                   "stepsize",1,
+                   "nrSteps",1,
+                   "tooltip","Increment or decrement p0 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.")
+      setpar(n,119,"base",0,
+                   "stepsize",1,
+                   "nrSteps",1,
+                   "tab_number",15,
+                   "tooltip","Increment or decrement p1 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.",
+                   "tabparent",[2,0])
+      setpar(n,120,"tabparent",[2,0],
+                   "base",0,
+                   "stepsize",1,
+                   "tooltip","Increment or decrement pivot by 1 ppm, with the shift key pressed, 10 ppm, with the alt key 0.1 ppm.",
+                   "nrSteps",1)
+      setpar(n,121,"tabparent",[2,0])
+      setpar(n,122,"objID","f2P1PivotPPMCtrl",
+                  "valueID","f2P1PivotPPM",
+                  "tab_number",14,
+                  "tabparent",[2,0])
+      setpar(n,123,"tabparent",[2,0])
+      setpar(n,124,"tabparent",[2,0],
+                   "eventactive","false")
+#      setpar(n,125,"fgcolor",[0,128,0],
+#                  "tabparent",[2,0])
+#      setpar(n,126,"tabparent",[2,0])
+#      setpar(n,127,"objID","f2RefDeconvMethodCtrl",
+#                  "valueID","f2RefDeconvMethod",
+#                  "tab_number",16,
+#                  "tabparent",[2,0],
+#                  "menu",["None","Reference fid"])
+#      setpar(n,128,"tabparent",[2,0])
+#      setpar(n,129,"tab_number",17,
+#                  "tabparent",[2,0])
+#      setpar(n,130,"tabparent",[2,0])
+#      setpar(n,131,"objID","f2RefDeconvLinewidthCtrl",
+#                  "valueID","f2RefDeconvLinewidth",
+#                  "tab_number",18,
+#                  "tabparent",[2,0],
+#                  "menu",["0.1","0.2","0.3","0.4","0.5","1.0","2.0","5.0"])
+#      setpar(n,132,"tab_number",19,
+#                  "tabparent",[2,0])
+      setpar(n,133,"tabparent",[2,0],
+                   "eventactive","false")
+#      setpar(n,134,"fgcolor",[0,128,0],
+#                  "tabparent",[2,0])
+#      setpar(n,135,"tabparent",[2,0])
+#      setpar(n,136,"objID","f2BaseLineCorrectionCtrl",
+#                  "valueID","f2BaseLineCorrectionMethod",
+#                  "tab_number",20,
+#                  "tabparent",[2,0],
+#                  "menu",["None","Offset"])
+#      setpar(n,137,"tabparent",[2,0])
+#      setpar(n,138,"objID","f2BaseLineNrSegmentsCtrl",
+#                  "valueID","f2BaseLineNrSegments",
+#                  "tab_number",21,
+#                  "tabparent",[2,0],
+#                  "menu",["16","32","64","128","256"])
+#      setpar(n,139,"tabparent",[2,0])
+#      setpar(n,140,"objID","f2BaseLineNoiseFactorCtrl",
+#                  "valueID","f2BaseLineNoiseFactor",
+#                  "tab_number",22,
+#                  "tabparent",[2,0],
+#                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+#      setpar(n,141,"tabparent",[2,0])
+#      setpar(n,142,"objID","f2BLDebugCtrl",
+#                  "valueID","f2BLDebug",
+#                  "tab_number",23,
+#                  "tabparent",[2,0])
+      setpar(n,143,"tabparent",[2,0],
+                   "eventactive","false")
+      setpar(n,144,"fgcolor",[0,128,0],
+                  "tabparent",[2,0])
+      setpar(n,145,"tabparent",[2,0])
+      setpar(n,146,"objID","f2PPMCtrl",
+                  "valueID","f2DisplayInPPM",
+                  "tab_number",24,
+                  "tabparent",[2,0])
+      setpar(n,147,"tabparent",[2,0])
+      setpar(n,148,"objID","f2PPMOffsetCtrl",
+                  "valueID","f2PPMOffset",
+                  "tab_number",25,
+                  "tabparent",[2,0])
+      setpar(n,149,"tabparent",[2,0],
+                   "eventactive","false")
+      setpar(n,150,"tabparent",[2,0])
+      setpar(n,151,"objID","f2FilterCtrl",
+                  "valueID","f2Filter",
+                  "tab_number",26,
+                  "tabparent",[2,0],
+                  "menu",["none","exponential","cosinebell","cosinebellsquared","sinebell","sinebellsquared","gaussian","vee","shsinebellsquared","vee2","shgaussian"])
+      setpar(n,152,"fgcolor",[0,128,0],
+                  "tabparent",[2,0])
+      setpar(n,153,"tab_number",27,
+                  "tabparent",[2,0])
+#      setpar(n,154,"objID","refDeconvFileCtrl",
+#                  "valueID","refDeconvFile",
+#                  "tabparent",[2,0])
+      setpar(n,155,"tabparent",[2,0])
+      setpar(n,156,"valueID","halveFirstf2",
+                  "tabparent",[2,0])
+
+      setpar(n,200,"fgcolor",[0,128,0],
+                  "tabparent",[2,1])
+      setpar(n,201,"tabparent",[2,1])
+      setpar(n,202,"objID","f1FTOriginCtrl",
+                  "valueID","f1FTOrigin",
+                  "tab_number",28,
+                  "tabparent",[2,1],
+                  "menu",["Start","Center"])
+      setpar(n,203,"tabparent",[2,1])
+      setpar(n,204,"objID","f1FTTypeCtrl",
+                  "valueID","f1FTType",
+                  "tab_number",29,
+                  "tabparent",[2,1],
+                  "menu",["None","Real","Complex","Hypercomplex","Echo-AntiEcho"])
+      setpar(n,205,"tabparent",[2,1])
+      setpar(n,206,"objID","f1ZeroFillCtrl",
+                  "valueID","f1ZeroFill",
+                  "readonly","true",
+                  "tab_number",30,
+                  "tabparent",[2,1],
+                  "menu",[1,2,4,8,16])
+      setpar(n,207,"tab_number",31,
+                  "tabparent",[2,1])
+      setpar(n,208,"tabparent",[2,1],
+                   "eventactive","false")
+      setpar(n,209,"fgcolor",[0,128,0],
+                  "tabparent",[2,1])
+      setpar(n,210,"tabparent",[2,1])
+      setpar(n,211,"objID","f1PhaseMethodCtrl",
+                  "valueID","f1PhaseMethod",
+                  "tab_number",32,
+                  "tabparent",[2,1],
+                  "menu",["None","Fixed","Magnitude"])
+      setpar(n,212,"tabparent",[2,1])
+      setpar(n,213,"objID","f1P0PhaseCtrl",
+                  "valueID","f1P0Phase",
+                  "tab_number",33,
+                  "tabparent",[2,1])
+      setpar(n,214,"tabparent",[2,1])
+      setpar(n,215,"tabparent",[2,1])
+      setpar(n,216,"objID","f1P1PhaseCtrl",
+                  "valueID","f1P1Phase",
+                  "tab_number",34,
+                  "tabparent",[2,1])
+      setpar(n,217,"tabparent",[2,1])
+      setpar(n,218,"tabparent",[2,1])
+      setpar(n,219,"objID","f1P1PivotPPMCtrl",
+                  "valueID","f1P1PivotPPM",
+                  "tab_number",35,
+                  "tabparent",[2,1])
+      setpar(n,220,"tabparent",[2,1])
+      setpar(n,221,"base",0,
+                   "stepsize",1,
+                   "nrSteps",1,
+                   "tab_number",15,
+                   "tooltip","Increment or decrement p0 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.",
+                   "tabparent",[2,1]) 
+      setpar(n,222,"base",0,
+                   "stepsize",1,
+                   "nrSteps",1,
+                   "tab_number",15,
+                   "tooltip","Increment or decrement p1 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.",
+                   "tabparent",[2,1])
+      setpar(n,223,"base",0,
+                   "stepsize",1,
+                   "nrSteps",1,
+                   "tab_number",15,
+                   "tooltip","Increment or decrement pivot by 1 ppm, with the shift key pressed, 10 ppm, with the alt key 0.1 ppm.",
+                   "tabparent",[2,1])
+      setpar(n,224,"tabparent",[2,1],
+                   "eventactive","false")
+#      setpar(n,225,"fgcolor",[0,128,0],
+#                  "tabparent",[2,1])
+#      setpar(n,226,"tabparent",[2,1])
+#      setpar(n,227,"objID","f1RefDeconvMethodCtrl",
+#                  "valueID","f1RefDeconvMethod",
+#                  "tab_number",37,
+#                  "tabparent",[2,1],
+#                  "menu",["None"])
+#      setpar(n,228,"tabparent",[2,1])
+#      setpar(n,229,"tab_number",38,
+#                  "tabparent",[2,1])
+#      setpar(n,230,"tabparent",[2,1])
+#      setpar(n,231,"objID","f1RefDeconvLinewidthCtrl",
+#                  "valueID","f1RefDeconvLinewidth",
+#                  "tab_number",39,
+#                  "tabparent",[2,1],
+#                  "menu",["0.1","0.2","0.3","0.4","0.5"])
+#      setpar(n,232,"tab_number",40,
+#                  "tabparent",[2,1])
+      setpar(n,233,"tabparent",[2,1],
+                   "eventactive","false")
+#      setpar(n,234,"fgcolor",[0,128,0],
+#                  "tabparent",[2,1])
+#      setpar(n,235,"tabparent",[2,1])
+#      setpar(n,236,"objID","f1BaseLineCorrectionCtrl",
+#                  "valueID","f1BaseLineCorrectionMethod",
+#                  "tab_number",41,
+#                  "tabparent",[2,1],
+#                  "menu",["None","Offset"])
+#      setpar(n,237,"tabparent",[2,1])
+#      setpar(n,238,"objID","f1BaseLineNrSegmentsCtrl",
+#                  "valueID","f1BaseLineNrSegments",
+#                  "tab_number",42,
+#                  "tabparent",[2,1],
+#                  "type","integer",
+#                  "menu",[1,2,4,8,16])
+#      setpar(n,239,"tabparent",[2,1])
+#      setpar(n,240,"objID","f1BaseLineNoiseFactorCtrl",
+#                  "valueID","f1BaseLineNoiseFactor",
+#                  "tab_number",43,
+#                  "tabparent",[2,1],
+#                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+#      setpar(n,241,"tabparent",[2,1])
+#      setpar(n,242,"objID","f1BLDebugCtrl",
+#                  "valueID","f1BLDebug",
+#                  "tab_number",44,
+#                  "tabparent",[2,1])
+      setpar(n,243,"tabparent",[2,1],
+                   "eventactive","false")
+      setpar(n,244,"fgcolor",[0,128,0],
+                  "tabparent",[2,1])
+      setpar(n,245,"tabparent",[2,1])
+      setpar(n,246,"objID","f1PPMCtrl",
+                  "valueID","f1DisplayInPPM",
+                  "tab_number",45,
+                  "tabparent",[2,1])
+      setpar(n,247,"tabparent",[2,1])
+      setpar(n,248,"objID","f1PPMOffsetCtrl",
+                  "valueID","f1PPMOffset",
+                  "tab_number",46,
+                  "tabparent",[2,1])
+      setpar(n,249,"tabparent",[2,1],
+                   "eventactive","false")
+      setpar(n,250,"tabparent",[2,1])
+      setpar(n,251,"fgcolor",[0,128,0],
+                  "tabparent",[2,1])
+      setpar(n,252,"objID","f1FilterCtrl",
+                  "valueID","f1Filter",
+                  "tab_number",47,
+                  "tabparent",[2,1],
+                  "menu",["none","exponential","cosinebell","cosinebellsquared","sinebell","sinebellsquared","gaussian","vee","shsinebellsquared","vee2","shgaussian"])
+      setpar(n,253,"tab_number",48,
+                  "tabparent",[2,1])
+
+      setpar(n,255,"tabparent",[2,1])
+      setpar(n,256,"valueID","halveFirstf1",
+                  "tabparent",[2,1])
+
+      setpar(n,300,"objID","tilt45Ctrl",
+                  "valueID","tilt45",
+                  "tabparent",[2,2])
+      setpar(n,301,"tabparent",[2,2])
+
+     # Set other window parameters
+endproc(n)

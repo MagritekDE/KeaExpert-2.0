@@ -1,0 +1,73 @@
+procedure(test)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("DOSY processing", -1, -1, 950, 310, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(minDCtrl,maxDCtrl,diffStepsCtrl,smoothingCtrl,noiseThresholdCtrl,fitTypeCtrl)
+      minDCtrl = textbox(1, 130, 170, 41)
+      statictext(2, 125, 173, "right", "Min. D (m^2/s):")
+      maxDCtrl = textbox(3, 130, 200, 41)
+      statictext(4, 125, 203, "right", "Max. D (m^2/s):")
+      diffStepsCtrl = textbox(5, 130, 230, 41)
+      statictext(6, 125, 233, "right", "Diffusion steps:")
+      smoothingCtrl = textbox(7, 130, 260, 41)
+      statictext(8, 125, 263, "right", "I.L. smoothing:")
+      noiseThresholdCtrl = textbox(9, 130, 71, 41)
+      statictext(10, 125, 74, "right", "Noise threshold:")
+      button(11, 229, 234, 71, 34, "Apply",
+         DOSYAnalysis:process();)
+      button(12, 320, 234, 71, 34, "Close",
+         closewindow(0);)
+      textbox(13, 130, 41, 41)
+      statictext(14, 125, 37, 100, 32, "right", "Stacked plot    broadening (Hz):")
+      textbox(15, 330, 151, 41)
+      statictext(16, 325, 155, "right", "Peak width (Hz):")
+      fitTypeCtrl = radiobuttons(17, 352, 40, 20, "vertical", "exp,biexp,nnls", "exp",
+           :invertType(0);)
+      statictext(18, 346, 40, "right", "Single-exponential:")
+      statictext(19, 346, 60, "right", "Bi-exponential:")
+      statictext(20, 346, 80, "right", "Inverse Laplace:")
+      groupbox(21, "Type of fit", 210, 14, 191, 97)
+      groupbox(22, "Preprocessing", 11, 14, 181, 117)
+      groupbox(23, "Fitting parameters", 11, 144, 181, 147)
+      groupbox(24, "DOSY display", 210, 124, 191, 88)
+      textbox(25, 330, 178, 41)
+      statictext(26, 325, 182, "right", "Peak height (D/x):")
+      textbox(27, 130, 100, 41)
+      statictext(28, 125, 103, "right", "Peak prominence:")
+      plot1d(29, 411, 11, "ww-422", 280)
+
+     # Set other control parameters
+      setpar(n,1,"valueID","minDiff",
+                  "tooltip","The minimum diffusion coefficient to fit to.")
+      setpar(n,3,"valueID","maxDiff",
+                  "tooltip","The maximum diffusion coefficient to fit to.")
+      setpar(n,5,"valueID","diffSteps",
+                  "tooltip","The number of point in the diffusion axis.")
+      setpar(n,7,"valueID","smoothing",
+                  "tooltip","The smooting coefficient for inverse Laplace.")
+      setpar(n,9,"valueID","noiseThreshold",
+                  "tooltip","Only look for peaks larger than this value x s.d. of noise.")
+      setpar(n,11,"mode","default")
+      setpar(n,13,"valueID","broadening",
+                  "tooltip","Apply this broadening to the stack plot data before fitting.")
+      setpar(n,15,"valueID","peakWidth",
+                  "tooltip","The width of the simulated peak in the DOSY spectrum.")
+      setpar(n,17,"valueID","inversionMethod",
+                  "tooltip","How to perform the inversion in the DOSY spectrum.")
+      setpar(n,25,"valueID","peakHeight",
+                  "tooltip","What fraction of the diffusion coefficient to use as a peak height.")
+      setpar(n,27,"valueID","peakProminence",
+                  "tooltip","Only peaks with a prominence greater than this value will be considered (0->100)")
+
+     # Set other window parameters
+endproc(n)

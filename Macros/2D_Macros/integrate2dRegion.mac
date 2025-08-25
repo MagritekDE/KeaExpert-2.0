@@ -1,0 +1,164 @@
+####################################################
+#                  integrate2d.mac
+#
+# Integrate a 2D plot region defined by:
+#
+# 1. the currently visible region
+# 2. by a user defined rectangle
+# 3. by manually entered limits
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(integrate2dRegion)
+
+   n = :windowdefinition()
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Integrate 2D region", -1, -1, 304, 151)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mat,wv_xscale,wv_yscale)
+       button(1, 165, 99, 45, 25, "Help",
+          :showhelp();)
+       button(2, 94, 99, 51, 25, "Update",
+          :initialise();)
+       statictext(3, 43, 34, "left", "left")
+       textbox(4, 68, 31, 50)
+       groupbox(5, "Integral range (indices)", 6, 6, 285, 86)
+       statictext(6, 34, 61, "left", "base")
+       textbox(7, 68, 57, 50)
+       statictext(8, 171, 61, "left", "height")
+       textbox(9, 211, 57, 51)
+       statictext(11, 175, 35, "left", "width")
+       textbox(12, 211, 31, 51)
+       button(13, 230, 99, 45, 25, "Exit",
+          closewindow(0);)
+       button(14, 20, 99, 54, 25, "Integrate",
+          :integrate_region();)
+       statusbox(18)
+       getmessage(19,
+         :process_message();)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\2D","integrate2dRegion.htm")
+endproc()
+
+
+####################################################
+# Initialise the GUI boxes based on current rect.
+####################################################
+
+procedure(initialise)
+
+# Extract the data from the plot
+   m1 = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# See if there is a rectangle drawn
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      setpar(0,4,"text",x1)
+      setpar(0,7,"text",y1)
+      setpar(0,12,"text",x2-x1+1)
+      setpar(0,9,"text",y2-y1+1)
+   else
+      (x1,x2,y1,y2) = zoom2d("getargs")
+      setpar(0,4,"text",x1)
+      setpar(0,7,"text",y1)
+      setpar(0,12,"text",x2-x1+1)
+      setpar(0,9,"text",y2-y1+1)
+   endif
+
+   setwindowpar(0,"statusbox",18)
+
+endproc()
+
+
+####################################################
+# Extract the data from the selected region
+####################################################
+
+procedure(integrate_region)
+
+# Extract the data from the plot
+  (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Record the current 2D plot state
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+
+# Extract the submatrix range
+   x1 = getpar(0,4,"text")
+   y1 = getpar(0,7,"text")
+   iw  = getpar(0,12,"text")
+   ih  = getpar(0,9,"text")
+   if(x1 == "" | y1 == "" | iw == "" | ih == "")
+      message("Error","All region values must be entered")
+      return(0)
+   endif
+   x1 = eval(x1)
+   y1 = eval(y1)
+   iw = eval(iw)
+   ih = eval(ih)
+   x2 = x1+iw-1
+   y2 = y1+ih-1
+
+# Get the plot matrix dimensions
+   (w,h) = size(m1)
+
+# Check for invalid dimensions
+   if(x1 < 0 | y1 < 0 | x2 >= w | y2 >= h)
+      message("Error","Invalid range","error")
+      return()
+   endif
+
+# Perform the summation
+   m2 = submatrix(m1,x1,x2,y1,y2)
+   s = sum(m2)
+
+   setpar(0,18,"text","Integral : $s,2.4g$    Region : ($x1$,$y1$)->($x2+1$,$y2+1$)")
+   pr "Integral : $s,2.4g$    Region : ($x1$,$y1$)->($x2+1$,$y2+1$)\n"
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,19,"text")
+
+   if(src == "2D Plot")
+       :initialise()
+   endif
+
+endproc()

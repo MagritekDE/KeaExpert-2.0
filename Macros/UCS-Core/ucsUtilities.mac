@@ -1,0 +1,1797 @@
+   
+
+procedure(chirpFunction, ttt)
+   ps = 11
+
+#   p = [0, 1.7, 0.093, 1.36, -30, -0.274, 16.6, -0.136, 62]
+#   p = [0, 1.7, 0.093, 1.496, -52.5, 0, 16.6, 0, 62]
+#   p = [0, 1.7, 0.093, 1.0, -50, 0, 16.6, 0, 62]    # 23/09/09
+#p = [0, 11.3, 0.03, 1.19, -35, -0.27, 9, -0.1, 43] - [0, 0, 0, 0, 10, 0, 10, 0, 10]  # 23/09/09
+#   foft = p[3]*cos(2*pi*ttt/1000+p[4]*pi/180)+p[5]*cos(2*pi*3*ttt/1000+p[6]*pi/180)+p[7]*cos(2*pi*5*ttt/1000+p[8]*pi/180)
+
+#p = [0, 0.60, -0.125, 1.16, -27, -0.163, -5.5, -0.268, 27, -0.086, 67]-[0, 0, 0, 0, 30, 0, 30, 0, 30, 0, 30]  # 02/10/09
+#p = [0, -0.26, 0.035, 1.684, -21, -0.162, 5.0, -0.282, 35, 0.105, 255]-[0, 0, 0, 0, 27, 0, 27, 0, 27, 0, 27]  # 07/12/09
+# p = [0, -0.26, 0.035, 1.7, -38, -0.176, -30.0, -0.322, -17, 0.155, 171] # 11/12/09
+# p = [0, 0.5, -0.076, 3.38, -75, -0.034, -42, -0.19, 4.5, 0.095, 240]-[0, 0, 0, 0, 10, 0, 10, 0, 10, 0, 10] # 20/05/10
+# p = [0, -0.028, -0.0024, 3.367, -78.5, -0.0895, -25.0, -0.21, 5.0, 0.0867, 185]-[0, 0, 0, 0, 11, 0, 11, 0, 11, 0, 11] # 04/06/10
+# p = [0, -0.025, -0.0030, 3.36, -71.24, -0.106, -12, -0.209, 25.3, 0.071, 228]-[0, 0, 0, 0, 8, 0, 8, 0, 8, 0, 8] # 28/07/10
+# p = [0, -0.05, 0.01, 3.3, -78.9, -0.107, -17.5, -0.197, 3.2, 0.078, 194]-12*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 30/07/10
+# p = [0, -0.05, 0.01, 3.304, -79.5, -0.0817, -18.3, -0.201, 0.1, 0.092, 202]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 30/07/10
+# p = [0, -0.05, 0.01, 3.382, -71.9, -0.12, -6.3, -0.20, 23.6, 0.093, 236]-14*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 02/08/10
+# p = [0, -0.05, 0.01, 3.382, -71.9, -0.12, -6.3, -0.20, 23.6, 0.093, 236]-18*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 06/08/10
+# p = [0, 0, 0, 3.378, -78.6, -0.091, -23.5, -0.194, 0.8, 0.081, 191]-10*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 06/08/10
+# p = [0, 0, 0, 3.504, -75.6, -0.074, -24.2, -0.198, 10.6, 0.069, 200]-10*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 13/08/10
+# p = [0, 0, 0, 3.504, -75.6, -0.074, -24.2, -0.198, 10.6, 0.069, 200]-18*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 16/08/10
+# p = [0, 0, 0, 3.504, -75.6, -0.074, -24.2, -0.198, 10.6, 0.069, 200]-12*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 05/10/10
+# p = [0, 0, 0, 3.25, -84.4, -0.11, -49.4, -0.22, -13, 0.083, 166, 0.092, 122]-14*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 06/10/10
+# p = [0, 0, 0, 3.41, -85.8, -0.08, -68, -0.19, -29, 0.065, 157, 0.057, 92]-6*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 08/11/10
+# p = [0, 0, 0, 3.43, -82.4, -0.092, -57, -0.21, -37.8, 0.065, 117, 0.094, 127]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 18/11/10
+# p = [0, 0, 0, 3.356, -84.7, -0.104, -43.0, -0.216, 309, 0.0721, 98, 0.0874, 134, -0.063, 246]-6*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 25/01/11
+# p = [0, 0, 0, 3.397, -80, -0.09, -40.0, -0.217, 341, 0.054, 138, 0.097, 145, -0.147, 320]-6*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 03/02/11
+# p = [0, 0, 0, 3.348, -75, 0.093, 159, 0.216, 161, 0.063, 129, 0.104, 141, 0.085, 103]-18*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 15/03/11
+# p = [0, 0, 0, 3.551, -79.7, 0.0964, 141, 0.216, 142, 0.056, 122, 0.086, 135, 0.064, 86]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 13/04/11
+ p = [0, 0, 0, 3.351, -79.7, 0.0964, 141, 0.216, 142, 0.056, 122, 0.086, 135, 0.064, 86]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 3/06/11
+
+ttt = ttt
+foft = p[3]*cos(2*pi*ttt/1000+p[4]*pi/180)+p[5]*cos(2*pi*2*ttt/1000+p[6]*pi/180)+p[7]*cos(2*pi*3*ttt/1000+p[8]*pi/180)+p[9]*cos(2*pi*4*ttt/1000+p[10]*pi/180)+p[11]*cos(2*pi*5*ttt/1000+p[12]*pi/180)+p[13]*cos(2*pi*6*ttt/1000+p[14]*pi/180)
+return(foft)
+
+endproc()
+
+
+
+procedure(chirpTestFunction, ttt)
+   foft = 0*ttt+100
+   return(foft)
+endproc()
+
+
+#########################################################
+# 
+# turn off loop
+#
+# Writes to bit to turn off/on pulseseq loop
+#
+#########################################################
+
+procedure(controlPulseLoop, runPulseSeqLoop)
+
+  if(gData->procType == "DSP")
+      dspwrite("x",0x28001,[32])
+      if( runPulseSeqLoop != 0)
+         dspwrite("x",0x28400+128, [0, 1])
+      else
+         dspwrite("x",0x28400+128, [0, 0])
+      endif
+   else # FX3
+      fx3write("E",0x8001,[32])
+      if( runPulseSeqLoop != 0)
+         fx3write("E",0x8400+128, [0, 1])
+      else
+         fx3write("E",0x8400+128, [0, 0])
+      endif
+   endif
+
+endproc()
+
+# Correct the first few points of the FID to account for the digital filter
+
+procedure(correctFilter,a)
+
+   corr = matrix(6)
+   corr[0] = 1
+   corr[1] = 1.01854
+   corr[2] = 1.0053
+   corr[3] = 0.9915
+   corr[4] = 1.005
+   corr[5] = 0.9986
+
+   for k = 0 to 6-1
+     a[k] = a[k]/corr[k]
+   next k
+
+endproc(a)
+
+
+# Correct the first few points of the FID to account for the digital filter
+
+procedure(correctFilter1, a, dwellTime)
+   
+   if(abs(dwellTime-200)<1)       # 200 us
+  
+      a[0:5] = a[0:5]/[1.000,1.01854,1.0053,0.9915,1.005,0.9986]
+   
+   elseif(abs(dwellTime-100)<1)   # 100 us
+   
+      a[0:5] = a[0:5]/[1.0000,1.01854,1.0053,0.9915,1.005,0.9986]
+
+   elseif(abs(dwellTime-50)<1)    # 50 us
+
+      a[0:5] = a[0:5]/[1.000,1.01409,1.00605,0.989638,1.00392,0.996953]
+   
+   elseif(abs(dwellTime-20)<1)    # 20 us
+  
+      a[0:5] = a[0:5]/[1.000,1.00062,1.01434,0.991459,1.00505,0.998763]
+   
+   elseif(abs(dwellTime-10)<1)    # 10 us
+ 
+      a[0:5] = a[0:5]/[1.000,0.982322,1.00987,0.998906,1.00979,1.00343]
+   
+   else                           # other
+
+      a[0:5] = a[0:5]/[1.000,1.01854,1.0053,0.9915,1.005,0.9986]
+
+   endif
+
+endproc(a)
+
+
+
+procedure(correctFilter2,a, dwellTime)
+
+   if(abs(dwellTime-200)<1)    # 200 us
+      corr = matrix(6)
+      corr[0] = 1.0247
+      corr[1] = 1.01188
+      corr[2] = 0.99586
+      corr[3] = 1.00815
+      corr[4] = 0.999353
+      corr[5] = 1
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   elseif(abs(dwellTime-100)<1)    # 100 us
+      corr = matrix(6)
+      corr[0] = 1
+      corr[1] = 1.01854
+      corr[2] = 1.0053
+      corr[3] = 0.9915
+      corr[4] = 1.005
+      corr[5] = 0.9986
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   elseif(abs(dwellTime-50)<1)    # 50 us
+      corr = matrix(6)
+      corr[0] = 1
+      corr[1] = 1.01409
+      corr[2] = 1.00605
+      corr[3] = 0.989638
+      corr[4] = 1.00392
+      corr[5] = 0.996953
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   elseif(abs(dwellTime-20)<1)    # 20 us
+      corr = matrix(6)
+      corr[0] = 1
+      corr[1] = 1.00062
+      corr[2] = 1.01434
+      corr[3] = 0.991459
+      corr[4] = 1.00505
+      corr[5] = 0.998763
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   elseif(abs(dwellTime-10)<1)    # 10 us
+      corr = matrix(6)
+      corr[0] = 1
+      corr[1] = 0.982322
+      corr[2] = 1.00987
+      corr[3] = 0.998906
+      corr[4] = 1.00979
+      corr[5] = 1.00343
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   else                           # other
+      corr = matrix(6)
+      corr[0] = 1
+      corr[1] = 1.01854
+      corr[2] = 1.0053
+      corr[3] = 0.9915
+      corr[4] = 1.005
+      corr[5] = 0.9986
+   
+      for k = 0 to 6-1
+        a[k] = a[k]/corr[k]
+      next k
+   
+   endif
+endproc(a)
+
+# Procedures for correcting the first point or points in an FID
+
+procedure(correctFirstPoint, sumData)
+
+   x = linvec(1,6,6)
+   y = submatrix(sumData,1,6)
+   (fitr, p0r, p1, p2, p3) = polyfit(x,real(y),3,1,1,"false")
+   (fiti, p0i, p1, p2, p3) = polyfit(x,imag(y),3,1,1,"false")
+   sumDataCorr = sumData
+   sumDataCorr[0] = 1.0*(p0r+i*p0i)
+
+endproc(sumDataCorr)
+
+
+################################################################
+# Predict the phase and amplitude of point 0 in a short FID
+# segment by fitting a polynomial to the next 5 points
+# Used when the first data point is unknown
+################################################################
+
+procedure(correctFirstPointAmpPhase, sumData)
+
+   x = linvec(1,5,5)
+   y = submatrix(sumData,1,5)
+   yAmp = mag(y)
+   yPhase = :correctPhaseRoll(phase(y))
+   (fitA, p0A, p1, p2, p3) = polyfit(x,yAmp,3,1,1,"false")
+   (fitP, p0P, p1, p2, p3) = polyfit(x,yPhase,3,1,1,"false")
+   sumDataCorr = sumData
+   sumDataCorr[0] = p0A*exp(i*p0P)
+
+endproc(sumDataCorr)
+
+procedure(correctPhaseRoll,inphase)
+
+   threshold = 1.0*pi
+   thephase = inphase
+   nrPnts = size(thephase)
+   phasediff = thephase - rotate(thephase, -1)
+   mask = (phasediff>threshold)
+   mask = mask - (phasediff < -threshold)
+   (idx1, idx2) = findindex2(mask, 0, "right", 1, -1)
+   while((idx1 < nrPnts-1) | (idx2 < nrPnts-1))
+      if (idx1 < nrPnts-1)
+         ones = matrix(nrPnts - idx1-1)+1
+         phasecorr = thephase
+         phasecorr[idx1+1:nrPnts-1] = phasecorr[idx1+1:nrPnts-1] + 2*pi*ones
+         thephase = phasecorr
+         phasediff = thephase - rotate(thephase, -1)
+         mask = (phasediff>threshold)
+         mask = mask - (phasediff < -threshold)
+         (idx1, idx2) = findindex2(mask, 0, "right", 1, -1)
+      endif
+      if (idx2 < nrPnts-1)
+         ones = matrix(nrPnts - idx2-1)+1
+         phasecorr = thephase
+         phasecorr[idx2+1:nrPnts-1] = phasecorr[idx2+1:nrPnts-1] - 2*pi*ones
+         thephase = phasecorr
+         phasediff = thephase - rotate(thephase, -1)
+         mask = (phasediff>threshold)
+         mask = mask - (phasediff < -threshold)
+         (idx1, idx2) = findindex2(mask, 0, "right", 1, -1)
+      endif
+   endwhile
+
+endproc(thephase)
+
+
+procedure(correctPoints, sumData, shiftPoints)
+
+   x = linvec(shiftPoints,shiftPoints+5,6)
+   y = submatrix(sumData,shiftPoints,6+shiftPoints-1)
+   (fitr, p0r, p1r, p2r, p3r) = polyfit(x,real(y),3,1,1,"false")
+   (fiti, p0i, p1i, p2i, p3i) = polyfit(x,imag(y),3,1,1,"false")
+   sumDataCorr = sumData
+   sumDataCorr[0] = 1.0*(p0r+i*p0i)
+   sumDataCorr[1] = 1.0*(p0r+p1r+p2r+p3r+i*p0i+i*p1i+i*p2i+i*p3i)
+
+endproc(sumDataCorr)
+
+# calculate the cross-correlation of two spectra
+procedure(correlate, speca, specb)
+   cc=conj(ft(speca)).*ft(specb)
+   ccspec = ft(ftshift(cc))
+endproc(ccspec)
+
+procedure(disableLock)
+
+   if(gData->procType == "DSP")
+      dspwrite("x",0x28001,[32])
+      dspwrite("x",0x28400+128,[0,0])
+      dspwrite("x",0x28000,[0])
+   else
+      fx3write("e",0x8001,[32])
+      fx3write("e",0x8400+128,[0,0])
+      fx3write("e",0x8000,[0])
+   endif
+
+endproc
+
+
+
+
+procedure(eliminateLockSpikes, xdata,ydata,locktr)
+
+if (nrArgs < 1)
+   locktr = 20e-3   # lock repetition time 20 ms
+   curplot("1d",1,1)
+   (x,y) = getplotdata("1d")
+   x = x/1000   # in us
+else
+   x = xdata
+   y = ydata
+endif
+
+ysize = size(y)
+
+# Parameters for data
+   totPnts = ysize
+   zf = 4
+   totTime = totPnts*x[1]
+   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1e6
+   fAxis = ([0:1:zf*totPnts-1]-zf*totPnts/2+1)/totTime/zf
+
+
+ysmall = submatrix(y,ysize-1024,ysize-1)   # extract last 1024 points of FID
+xsmall = submatrix(x,0,1024-1)
+ylock = 0*ysmall
+ylocksize = size(ylock)
+xlock = [0:round(locktr/x[1]):ylocksize]   # create lock mask
+ylock[xlock] = 1
+lockcc = :correlate(abs(ysmall),ylock)     # correlate lock mask with FID
+#plot(xsmall,lockcc)
+(maxval,maxx) = max(abs(lockcc))
+xmax = x[ysize-1024]+xsmall[maxx]-xsmall[1024/2]
+firstspike = findindex(x, xmax) % xlock[1]   # line up lock mask with FID
+
+if (firstspike < 2)
+   firstspike = firstspike + locktr/x[1]   # if first spike falls on fisrt or second data point more to next spike
+endif
+
+# replace distorted FID points with average of neighbouring points
+ycorr = y
+for (iii = firstspike to ysize - 3 step locktr/x[1])
+   ycorr[iii] = 0.25*(y[iii-2] + y[iii-1] + y[iii+1] + y[iii+2])
+next(iii)
+
+if (nrArgs < 1)
+   # plot it all
+   curplot("1d",1,1)
+   plot(x,y,"tracecolor",[255,0,0])
+   hold("on")
+   plot(x,ycorr,"tracecolor",[0,0,255])
+   plot(x,y-ycorr,"tracecolor",[0,255,0])
+   hold("off")
+   
+   specRaw = ft(zerofill(y,zf*totPnts,"end"))
+   specCorr = ft(zerofill(ycorr,zf*totPnts,"end"))
+   specDiff = specRaw-specCorr
+   
+   curplot("1d",2,1)
+   plot(fAxis,specRaw,"tracecolor",[255,0,0])
+   hold("on")
+   plot(fAxis,specCorr,"tracecolor",[0,0,255])
+   plot(fAxis,specDiff,"tracecolor",[0,255,0])
+   hold("off")
+else
+   return(ycorr)
+endif
+
+endproc()
+
+procedure(enableLock)
+
+   if(gData->procType == "DSP")
+      dspwrite("x",0x28000,[3])
+      dspwrite("x",0x28001,[32])
+      dspwrite("x",0x28400+128,[0,1])
+   else
+      fx3write("e",0x8000,[3])
+      fx3write("e",0x8001,[32])
+      fx3write("e",0x8400+128,[0,1])
+   endif
+
+endproc
+
+# Find the b1Freq corresponding the nucleus variable
+
+procedure(find1DFreqFromUI, uiNR=0)
+
+  # Search the visible controls for the nucleus and corresponding B1 freq
+   par = struct(getctrlvalues(uiNR))
+   assignlist(par)
+   nucFound = 0
+   if(isvar("nucleus"))
+      if(isvar("b1Freq$nucleus$"))
+         b1Freq = single(eval("b1Freq$nucleus$"))
+      elseif(isvar("b1FreqXN"))
+         b1Freq = single(b1FreqXN)
+      endif
+      nucFound = 1
+   endif
+   
+  # It might be a script so search the gData->curExpt->parameters
+   if(nucFound == 0)
+      if(isvar("gData->curExpt->parameters->nucleus"))
+         nucleus = gData->curExpt->parameters->nucleus
+         par = gData->curExpt->parameters
+         if(isvar("gData->curExpt->parameters->b1Freq$nucleus$"))
+            b1Freq = single(eval("gData->curExpt->parameters->b1Freq$nucleus$"))
+            nucFound = 1
+         elseif(isvar("gData->curExpt->parameters->b1FreqXN"))
+            b1Freq = single(gData->curExpt->b1FreqXN)
+            nucFound = 1
+         endif
+      endif
+   endif
+
+  # Finally try the acqu.par
+   if(nucFound == 0)
+      if(isvar("gData->curExpt->dataPath"))
+         bak = getcwd()
+         cd(gData->curExpt->dataPath)
+         if(isfile("acqu.par"))
+            par = struct(load("acqu.par"))
+            try
+               nucleus = par->nucleus
+               b1Freq = single(eval("par->b1Freq$nucleus$"))
+               nucFound = 1
+            catch
+            endtry
+         endif
+         cd(bak)
+      endif
+   endif
+     
+# Not found
+   if(nucFound == 0)
+      return(null,null)
+   endif
+
+# Remove b1Freq from par if it exists
+   if(isvar("par->b1Freq"))
+      rmvar("par->b1Freq")
+   endif
+
+endproc(b1Freq, par)
+
+
+procedure(FindZeroCrossing, data)
+  (maxval, maxpos) = max(real(data))
+  index = maxpos-10
+  while((imag(data[index])*imag(data[index+1]))>0)
+    index = index+1
+  endwhile
+endproc(index)
+
+procedure(FindZeroCrossing2, xdata, ydata, displaySignal)
+  (maxval, maxpos) = max(real(ydata))
+  index = maxpos-50
+  while((imag(ydata[index])*imag(ydata[index+1]))>0)
+    index = index+1
+  endwhile
+  if(abs(imag(ydata[index+1]))<abs(imag(ydata[index])))
+    index = index + 1
+  endif
+  xa = submatrix(xdata, index-2, index+2)
+  ya = submatrix(imag(ydata), index-2, index+2)
+  (m, c, mErr, cErr) = :linregress(xa,ya)
+#  linfit:display(xa,ya,m,c,mErr,cErr)
+  xintercept = -c/m
+
+# plot the regression line
+  ya = c+m*xa
+  if(displaySignal == "yes")
+     plot(xa,ya)
+     trace("tracetype", "lines", "symbolshape", "none","tracecolor", [255,0,0],"tracewidth",2) 
+  endif
+
+endproc(xintercept)
+
+
+procedure(FindZeroCrossing3, xdata, ydata, displaySignal)
+  (maxval, maxpos) = max(real(ydata))
+# pr size(ydata)
+   try
+     index1 = findindex2(imag(ydata),maxpos,"right",0)
+   catch 
+      index1 = size(ydata)-1
+   endtry
+   try
+     index2 = findindex2(imag(ydata),maxpos,"left",0)
+   catch 
+      index2 = 0
+   endtry
+  if(abs(index1-maxpos) < abs(index2-maxpos))
+      index = index1
+  else
+      index = index2
+  endif
+  xa = submatrix(xdata, index-2, index+2)
+  ya = submatrix(imag(ydata), index-2, index+2)
+  (m, c, mErr, cErr) = :linregress(xa,ya)
+#  (m, c, mErr, cErr) = :fit(xa,ya)
+#  linfit:display(xa,ya,m,c,mErr,cErr)
+  xintercept = -c/m
+# plot the regression line
+  ya = c+m*xa
+
+
+  if(displaySignal == "yes")
+     pd = wvPP->subplot(2,1)
+#     pd->autorange("off")
+     pd->plot(xdata,ydata)
+     pd->hold("on")
+     pd->plot(xa,ya,"tracetype", "lines", 
+                    "symbolshape", "none",
+                    "tracecolor", [255,0,0],
+                    "tracewidth",2)
+     pd->autorange("on")
+     pd->hold("off")
+
+  endif
+
+endproc(xintercept)
+
+# Determine an acquisition delay to minimise P1 errors
+procedure(getacqDelay,pulseDur,shiftPoints,dwellTime)
+
+   acqDelay = (shiftPoints-1)*dwellTime + (0.255*dwellTime-0.63) - 0.57117*pulseDur
+
+  # acqDelay = (shiftPoints-1)*dwellTime + 0.25*dwellTime - 0.5*pulseDur
+
+   if(gData->procType == "FX3")
+      acqDelay = acqDelay-2
+   endif
+   if (acqDelay < 5.0)
+      acqDelay = 5.0
+    #  print("\n   Warning - no P1 acquisition delay is < 5 us - set to 5 us\n")
+   endif
+
+endproc(acqDelay)
+
+#procedure(getacqDelay,d90Dur,shiftPoints,dwellTime)
+#
+#   a = 8.6-1.7*d90Dur+0.0142*d90Dur*d90Dur
+#   acqDelay = (shiftPoints-1+0.24)*dwellTime + a
+#   if (acqDelay < 5.0)
+#      acqDelay = 5.0
+#   endif
+#endproc(acqDelay)
+
+
+procedure(getacqDelayF,d90Dur,shiftPoints,dwellTime)
+   a = 37-0.6*d90Dur
+   acqDelay = 0.5*dwellTime + a
+   if (acqDelay < 5.0)
+      acqDelay = 5.0
+   endif
+   return(acqDelay)
+endproc()
+
+
+procedure(getacqDelayLP,firdecimation,dwellTime)
+   
+   acqDelay = dwellTime/firdecimation - 5;
+   return(acqDelay)
+
+endproc()
+
+
+
+#######################################################
+# Run a 1pulse experiment to lock the field
+#
+# Some fixed parameters may need to be modified based 
+# on your particular probe and sample.
+#######################################################
+
+procedure(getB0, B0shim, b1Freq, offFreq)
+  
+#  assignlist(guipar)
+
+# Cache macros
+   cd("$appdir$\\Macros\\Kea-NMR-UC")
+   cachemacro("1pulselock.mac","local")
+# Set up gui par
+#   guipar = ["saveData = \"false\"",
+#             "incExpNr = \"no\"",
+#             "expNr = 1",
+#             "expName = \"pclock\"",
+#             "dataDirectory = \"C:\\Documents and Settings\\magritek\\My Documents\\Bertram\\3TMagnet\\090710\"",
+#             "dispRange = 0",
+#             "freqMag = \"no\"",
+#             "showFreqDomain = \"yes\"",
+#             "timeMag = \"no\"",
+#             "filterType = \"exponential\"",
+#             "filter = \"no\"",
+#             "acqTime = 819.2",
+#             "usePhaseCycle = \"no\"",
+#             "accumulate = \"no\"",
+#             "bandwidth = 10",
+#             "nrScans = 1",
+#             "bandwidthFile = \"20.0f\"",
+#             "nrPnts = 8192",
+#             "rxPhase = 0",
+#             "rxGain = 10",
+#             "acqDelay = 25",
+#             "doLock = \"yes\"",
+#             "nrlockScans = 1",
+#             "lockrepTime = 1",
+#             "B0shim = $B0shim$",
+#             "pulseLength = 15",
+#             "90Amplitude = -10",
+#             "displaySignal = \"no\"",
+#             "repTime = 500",
+#             "b1Freq = $b1Freq,f$"]
+
+      guipar = load("$prefdir$\\\KeaParameters\\Experiments\\UCS-NMR\\1PulseHLock\\1PulseHLockLastExp.par")
+      guipar = setlistvalue(guipar,"b1Freq","$b1Freq,3.8f$")
+      guipar = setlistvalue(guipar,"offFreq","$offFreq,3.8f$")
+      guipar = setlistvalue(guipar,"B0shim","$B0shim,3.8f$")
+      guipar = setlistvalue(guipar,"doLock","\"yes\"")
+      guipar = setlistvalue(guipar,"nrlockScans","1")
+      guipar = setlistvalue(guipar,"displaySignal","\"no\"")
+      guipar = setlistvalue(guipar,"expName","\"dummy\"")
+      guipar = setlistvalue(guipar,"expNr","0")
+      guipar = setlistvalue(guipar,"saveData","\"false\"")
+      guipar = setlistvalue(guipar,"showFreqDomain","\"yes\"")
+      guipar = setlistvalue(guipar,"showTimeDomain","\"yes\"")
+      guipar = setlistvalue(guipar,"incExpNr","\"no\"")
+
+# Run the macro via the backdoor
+   B0shim = 1pulsehlock:backdoor(guipar)
+   ucsCtrl:disableButtons()
+
+
+endproc(B0shim)
+
+
+
+
+
+#######################################################
+# Run a 1pulse experiment to lock the field and store spectrum
+#
+# Some fixed parameters may need to be modified based 
+# on your particular probe and sample.
+#######################################################
+
+procedure(getB0store, B0shim, b1Freq, expNr)
+  
+#  assignlist(guipar)
+
+# Cache macros
+   cd("$appdir$\\Macros\\Kea-Lock")
+   cachemacro("1pulselock.mac","local")
+# Set up gui par
+#   guipar = ["saveData = \"false\"",
+#             "incExpNr = \"no\"",
+#             "expNr = 1",
+#             "expName = \"pclock\"",
+#             "dataDirectory = \"C:\\Documents and Settings\\magritek\\My Documents\\Bertram\\3TMagnet\\090710\"",
+#             "dispRange = 0",
+#             "freqMag = \"no\"",
+#             "showFreqDomain = \"yes\"",
+#             "timeMag = \"no\"",
+#             "filterType = \"exponential\"",
+#             "filter = \"no\"",
+#             "acqTime = 819.2",
+#             "usePhaseCycle = \"no\"",
+#             "accumulate = \"no\"",
+#             "bandwidth = 10",
+#             "nrScans = 1",
+#             "bandwidthFile = \"20.0f\"",
+#             "nrPnts = 8192",
+#             "rxPhase = 0",
+#             "rxGain = 10",
+#             "acqDelay = 25",
+#             "doLock = \"yes\"",
+#             "nrlockScans = 1",
+#             "lockrepTime = 1",
+#             "B0shim = $B0shim$",
+#             "pulseLength = 15",
+#             "90Amplitude = -10",
+#             "displaySignal = \"no\"",
+#             "repTime = 500",
+#             "b1Freq = $b1Freq,f$"]
+
+      guipar = load("$appdir$\\Macros\\Kea-Lock\\1PulseLock\\1PulseLockLastExp.par")
+      guipar = setlistvalue(guipar,"b1Freq","$b1Freq,3.8f$")
+      guipar = setlistvalue(guipar,"B0shim","$B0shim,3.8f$")
+      guipar = setlistvalue(guipar,"doLock","\"yes\"")
+      guipar = setlistvalue(guipar,"nrlockScans","1")
+      guipar = setlistvalue(guipar,"displaySignal","\"yes\"")
+      guipar = setlistvalue(guipar,"expName","\"dummy\"")
+      guipar = setlistvalue(guipar,"expNr","$expNr$")
+      guipar = setlistvalue(guipar,"saveData","\"false\"")
+      guipar = setlistvalue(guipar,"incExpNr","\"no\"")
+
+# Run the macro via the backdoor
+   B0shim = 1pulselock:backdoor(guipar)
+
+
+endproc(B0shim)
+
+############################################################
+# Return parameters which change with the Spinsolve model.
+# This can be called from the getFactoryBasedParameters
+# procedure in each experiment.
+############################################################
+
+procedure(getModelBasedParameters, nucleus, specPar)
+
+   assignlist(specPar)
+
+# Check for the simulator
+   if(wvSpecType == "Simulator")
+      return(struct(rxGain=40) )
+   endif
+
+   HWbin = SpinsolveParameterUpdater:dec2bin(HardwareCap1)
+
+# Extract the model type
+   if(HWbin[30] == 1)
+      model = "90"
+   elseif(HWbin[20] == 1)
+      model = "80"
+   elseif(HWbin[17] == 1)
+      model = "60"
+   else
+      model = "43"
+   endif
+
+# Determine the rxGain and optiotnally recommended the 
+# dwelltime based on the nucleus and model type
+
+   rxGainV2 = (gData->specParameters->HardwareCap2 & 2d^12) > 0
+
+   if(nucleus == "1H")
+
+      if(rxGainV2) 
+         if(model == "90")     
+            rxGain = 17
+         elseif(model == "80")     
+            rxGain = 20
+         elseif(model == "60")  
+            rxGain = 23
+         elseif(model == "43")               
+            rxGain = 26
+         endif()
+      else
+        if(model == "90")     
+            rxGain = 19
+         elseif(model == "80")     
+            rxGain = 22
+         elseif(model == "60")  
+            rxGain = 25
+         elseif(model == "43")               
+            rxGain = 28
+         endif()
+
+      endif
+
+      return(struct(rxGain)) 
+
+   elseif(nucleus == "13C")
+
+      if(rxGainV2)
+         if(model == "90")     
+            rxGain = 29
+            dwellTime = 150
+         elseif(model == "80")     
+            rxGain = 32
+            dwellTime = 150
+         elseif(model == "60")  
+            rxGain = 35
+            dwellTime = 200
+         elseif(model == "43")               
+            rxGain = 35
+            dwellTime = 200
+         endif()
+      else
+         if(model == "90")     
+            rxGain = 31
+            dwellTime = 150
+         elseif(model == "80")     
+            rxGain = 34
+            dwellTime = 150
+         elseif(model == "60")  
+            rxGain = 37
+            dwellTime = 200
+         elseif(model == "43")               
+            rxGain = 40
+            dwellTime = 200
+         endif()
+      endif
+
+      return(struct(rxGain, dwellTime))
+
+   else
+
+      if(rxGainV2)
+
+         if(model == "90")     
+            rxGain = 29
+            dwellTime = 50
+         elseif(model == "80")     
+            rxGain = 32
+            dwellTime = 50
+         elseif(model == "60")  
+            rxGain = 35
+            dwellTime = 50
+         elseif(model == "43")               
+            rxGain = 35
+            dwellTime = 50
+         endif()
+
+
+      else
+
+         if(model == "90")     
+            rxGain = 31
+            dwellTime = 50
+         elseif(model == "80")     
+            rxGain = 34
+            dwellTime = 50
+         elseif(model == "60")  
+            rxGain = 37
+            dwellTime = 50
+         elseif(model == "43")               
+            rxGain = 40
+            dwellTime = 50
+         endif()
+
+      endif
+
+      return(struct(rxGain, dwellTime))
+
+   endif
+
+
+endproc(null)
+
+
+###############################################
+# Given a pulse shape, number of points,
+# and an output amplitude return a softpulse
+# corrected for duplexer diode non-linearity
+###############################################
+
+procedure(getRFPulse,shape,N,A)
+
+   R = 50       # load resistance
+   k = 1.38e-23 # Boltzman constant
+   T = 293      # Temperature
+   q = 1.6e-19  # Electronic charge
+   Is = 25e-9   # Duplexer diode reverse current
+   alpha = q/(k*T)
+   beta = 1/(R*Is)
+
+   if(shape == "rect")
+      x = linvec(-1.0,1.0,N)
+      sp = linvec(1.0,1.0,N)
+      gfac = 1
+   elseif(shape == "sinc5")
+      x = linvec(-1.5,1.5,N)
+      sp = sin(2*pi*x+1e-8)/(2*pi*x+1e-8)
+      gfac = 6
+   elseif(shape == "sinc3")
+      x = linvec(-1.0,1.0,N)
+      sp = sin(2*pi*x+1e-8)/(2*pi*x+1e-8)
+      gfac = 4
+   elseif(shape == "gauss")
+      x = linvec(-2.5,2.5,N)
+      sp = exp(-x^2)  
+      gfac = 10/pi
+   endif 
+
+# This is a bit of a simpliciation but
+# it works ok and requires only one parameter A
+   csp = 1/(alpha*A)*loge(mag(beta*sp)+1) + mag(sp)
+   csp = csp/(max(csp))
+
+endproc(csp,sp,gfac)
+
+
+#######################################################
+# Run a 1pulse experiment to lock the field and store spectrum
+#
+# Some fixed parameters may need to be modified based 
+# on your particular probe and sample.
+#######################################################
+
+procedure(getSpectrum, b1Freq, expNr)
+  
+# Cache macros
+   cd("$appdir$\\Macros\\Kea-NMR")
+   cachemacro("1pulsedisp.mac","local")
+
+      guipar = load("$appdir$\\Macros\\Kea-NMR\\1PulseDisp\\1PulseDispLastExp.par")
+      guipar = setlistvalue(guipar,"b1Freq","$b1Freq,3.8f$")
+      guipar = setlistvalue(guipar,"displaySignal","\"yes\"")
+      guipar = setlistvalue(guipar,"expName","\"Spectrum\"")
+      guipar = setlistvalue(guipar,"expNr","$expNr$")
+      guipar = setlistvalue(guipar,"saveData","\"true\"")
+      guipar = setlistvalue(guipar,"incExpNr","\"no\"")
+
+# Run the macro via the backdoor
+   1pulsedisp:backdoor(guipar)
+
+endproc()
+
+###########################################
+# Check if the lock is enabled and running
+# Returns 1 if running and enables
+# Returns 0 if running and disabled
+# Returns -1 if not running
+###########################################
+
+procedure(isLockEnabled)
+
+   if(gData->procType == "DSP")
+      s1 = dspread("x",0x28000,1)
+      if(s1[0] != 3)
+         return(0)
+      endif
+   
+      dspwrite("x",0x28001,[32]) 
+      s2 = dspread("x",0x28400+128,2)
+       if(s2 != [0,1])
+         return(0)
+      endif
+   else
+      s1 = fx3read("e",0x8000,1)
+      if(s1[0] != 3)
+         return(0)
+      endif
+   
+      fx3write("e",0x8001,[32]) 
+      s2 = fx3read("e",0x8400+128,2)
+       if(s2 != [0,1])
+         return(0)
+      endif
+   endif
+
+endproc(1)
+
+
+procedure(linregress,x,y)
+
+# Calculate various sums
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+     N = size(x)
+
+   xmean = sx/N
+   ymean = sy/N
+   x1 = x - xmean
+   y1 = y - ymean
+   sxx1 = sum(x1.*x1)
+   syy1 = sum(y1.*y1)
+   sxy1 = sum(x1.*y1)
+
+# Work out slope and intercept
+#   delta = sxx*N - sx*sx
+#   c = (sxx*sy - sx*sxy)/delta1;
+#   m = (sxy*N - sx*sy)/delta1;
+   delta1 = N*sxx1
+   c1 = ymean - N*xmean*sxy1/delta1;
+   m1 = sxy1*N/delta1;
+
+   delta = delta1
+   c = c1
+   m = m1
+
+# Work out standard error in slope and intercept
+# start by estimating variance in original data
+   vdat = (syy - 2*m*sxy - 2*c*sy
+           + 2*m*c*sx +m*m*sxx + N*c*c)/(N-2)
+
+   mErr = (N*vdat/delta1)^0.5
+   cErr = (sxx*vdat/delta1)^0.5
+
+endproc(m,c,mErr,cErr)
+
+
+procedure(monitorDatalock,N,guipar)
+
+#   guipar = load("$prefdir$\\\KeaParameters\\Experiments\\UCS-Lock\\lockdev_v1\\lockdev_v1LastExp.par")
+#   guipar = load("$prefdir$\\\KeaParameters\\Experiments\\UCS-Lock\\lock_softpulse\\lock_softpulseLastExp.par")
+   file = "$prefdir$\\SpinsolveParameters\\Lock\\$wvSpecName$LockInfo.par"
+   guipar = load(file)
+   status = "ok"
+  # Extract the gui variables
+   assignlist(guipar)
+   N = nrPnts
+
+#N = 32
+  # Run pulse program return "ok" or "abort"
+  # Read the data
+   if(status == "ok")
+      #using error checking
+#      D = program_mB:readData(0,N*2,1,2)
+      D = program_mB:readData(0,N*2+101,0,1)   #bm
+   else
+      D = matrix(N*2)
+   endif
+
+  # Check for DSP internal abort caused by invalid RF pulse
+   if(N*2 > 50)
+      if(submatrix(D,1,49) == matrix(49)+100)
+         if(D[0] == 2)
+            message("Error","RF pulse length too short - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         elseif(D[0] == 1)
+            message("Error","RF pulse length too long - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         else
+           message("Error","Unknown DSP error - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         endif 
+        return("abort",cmatrix(N))
+      endif
+   else
+      if(submatrix(D,1,N*2-1) == matrix(N*2-1)+100)
+         if(D[0] == 2)
+            message("Error","RF pulse length too short - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         elseif(D[0] == 1)
+            message("Error","RF pulse length too long - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         else
+           message("Error","Unknown DSP error - aborting","error")
+         endif 
+         return("abort",cmatrix(N))
+      endif
+   endif
+
+  # Uppack real and imaginary data from D and store in a complex data set
+#   cdata = rtoc(D)   
+   cdata = rtoc(submatrix(D,0,2*N-1)) #bm
+
+   ldata = submatrix(D, N*2, N*2+100) #bm
+   dacscale = 145.0/0x1000
+   ldata = ldata * dacscale
+   ldata[0] = ldata[0]/dacscale
+
+  # Calibrate
+#   if(wvUnits != "raw")
+#     # Apply transceiver rx channel gain
+#      cdata = cdata/wvRxCal 
+#
+#     # Apply rx amplifier gain
+#      if(wvApplyRxampFactor == "yes")
+#         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+#         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
+#         gainTot =  10^((gain1dB+gain2dB)/20)
+#         cdata = cdata*wvRxAmpCor/gainTot
+#      endif
+#
+#     # Apply preamp gain factor
+#      if(wvApplyPreampFactor == "yes")
+#         cdata = cdata/wvPreampGain
+#      endif
+#   endif
+
+#  wvDataModified = "true" # Data can now be saved on abort
+
+endproc(status, cdata, ldata)
+
+
+procedure(plot_frequencies,num,tm,freq,pd)
+#  pd = wvPP->subplot(plotNum,1)
+  E = submatrix(freq,0,num)
+  abscissa = submatrix(tm,0,num)
+  pd->autorange("true")
+  pd->draw("false")
+  pd->plot(abscissa,E,
+            "tracetype","none",
+            "symbolshape","opensquare",
+            "symbolsize",3,
+            "symbolcolor",[255,0,0])
+   pd->title("text","Frequency fluctuation","size",12)
+   pd->axes("fontsize",11)
+   pd->xlabel("text","time (s)","size",12)
+   pd->ylabel("text","Frequency (Hz)","size",12)
+   pd->draw("true")
+
+endproc()
+
+
+procedure(plot_frequencies2,num,tm,freq,lockfreq,pd)
+#  pd = wvPP->subplot(plotNum,1)
+  E1 = submatrix(freq,0,num)
+  E2 = submatrix(lockfreq,0,num)
+  abscissa = submatrix(tm,0,num)
+  pd->autorange("true")
+  pd->draw("false")
+  pd->plot(abscissa,E1,
+            "tracetype","none",
+            "symbolshape","opensquare",
+            "symbolsize",3,
+            "symbolcolor",[255,0,0])
+  pd->hold("on")
+  pd->plot(abscissa,E2,
+            "tracetype","none",
+            "symbolshape","opencircle",
+            "symbolsize",3,
+            "symbolcolor",[0,0,255])
+   pd->title("text","Frequency fluctuation (red), lock (blue)","size",12)
+   pd->axes("fontsize",11)
+   pd->xlabel("text","time (min)","size",12)
+   pd->ylabel("text","Frequency (Hz)","size",12)
+  pd->hold("off")
+   pd->draw("true")
+
+endproc()
+
+
+procedure(plot_linewidths,num,tm,width1,width2,pd)
+#  pd = wvPP->subplot(plotNum,1)
+  E1 = submatrix(width1,0,num)
+  E2 = submatrix(width2,0,num)
+  abscissa = submatrix(tm,0,num)
+  pd->autorange("true")
+  pd->draw("false")
+  pd->plot(abscissa,E1,
+            "tracetype","lines",
+            "symbolshape","none",
+            "color",[255,0,0])
+  pd->hold("on")
+  pd->plot(abscissa,E2,
+            "tracetype","lines",
+            "symbolshape","none",
+            "color",[0,0,255])
+   
+   pd->title("text","Linewidth","size",12)
+   pd->axes("fontsize",11)
+   pd->xlabel("text","time (min)","size",12)
+   pd->ylabel("text","Linewidth (ppm)","size",12)
+   pd->draw("true")
+  pd->hold("off")
+
+endproc()
+
+
+procedure(plot_temperatures,num,tm,temp1,temp2,temp3,temp4,temp5,pd)
+#  pd = wvPP->subplot(plotNum,1)
+  E1 = submatrix(temp1,0,num)
+  E2 = submatrix(temp2,0,num)
+  E3 = submatrix(temp3,0,num)
+  E4 = submatrix(temp4,0,num)
+  E5 = submatrix(temp5,0,num)
+  abscissa = submatrix(tm,0,num)
+  pd->autorange("true")
+  pd->draw("false")
+  pd->plot(abscissa,E1,
+            "tracetype","lines",
+            "axis","left",
+            "symbolshape","none",
+            "color",[255,0,0])
+  pd->hold("on")
+  pd->plot(abscissa,E2,
+            "tracetype","lines",
+            "symbolshape","none",
+            "color",[0,255,0])
+  pd->plot(abscissa,E3,
+            "tracetype","lines",
+            "symbolshape","none",
+            "color",[0,0,255])
+   
+   pd->title("text","Mo, box, room temperatures (red,green,blue)","size",12)
+   pd->axes("fontsize",11)
+   pd->xlabel("text","time (min)","size",12)
+   pd->ylabel("text","Temperature (^(o)C)","size",12)
+
+  pd->plot(abscissa,E4,
+            "tracetype","lines",
+            "axis","right",
+            "symbolshape","none",
+            "color",[255,0,255])
+  pd->plot(abscissa,E5,
+            "tracetype","lines",
+            "axis","right",
+            "symbolshape","none",
+            "color",[0,255,255])
+   pd->ylabel("text","Control output (V)","size",12)
+   pd->draw("true")
+  pd->hold("off")
+
+endproc()
+
+
+procedure(readoshim)
+   pref = ucsFiles:loadPref()
+   oshim = eval(getlistvalue(pref,"oshim"))  
+endproc(oshim)
+
+
+procedure(ReadPIDTemperatures)
+# Calibration for temperature ADCs
+   cal = dmatrix(3)
+   cal[0] = double(1/49636)
+   cal[1] = double(1/49636)
+   cal[2] = double(1/49636)
+
+   parList = TempPID:makeParList()
+   DSPpar = TempPID:readDSPPar(parList)
+#pr DSPpar
+   CalOffTempMag = eval(getlistvalue(DSPpar, "CalOffTempMag"))
+   CalOffTempBox = eval(getlistvalue(DSPpar, "CalOffTempBox"))
+   CalOffTempRoom = eval(getlistvalue(DSPpar, "CalOffTempRoom"))
+
+#   temp1 = dspread("y",0x0300DC,2)
+#   temp2 = dspread("y",0x0300DE,2)
+#   temp3 = dspread("y",0x0300E0,2)
+#   
+#   Tadc1 = double(eval("0x$hex(temp1[0])$$hex(temp1[1])$")*cal[0]+1.3-273)
+#   Tadc2 = double(eval("0x$hex(temp2[0])$$hex(temp2[1])$")*cal[1]+1.58-273)
+#   Tadc3 = double(eval("0x$hex(temp3[0])$$hex(temp3[1])$")*cal[2]+1.4-273)
+
+   temp1 = dspread("x",0x02F19E,2)
+   temp2 = dspread("x",0x02F29E,2)
+   temp3 = dspread("x",0x02F39E,2)
+   temp4 = dspread("x",0x02F296,2)   # Peltier control voltage output
+   temp5 = dspread("x",0x02F196,2)   # Heater control voltage output
+   
+#   Tadc1 = single(eval("0x$hex(temp1[1])$$hex(temp1[0])$")*cal[0]+1.3-273)
+#   Tadc2 = single(eval("0x$hex(temp2[1])$$hex(temp2[0])$")*cal[1]+1.58-273)
+#   Tadc3 = single(eval("0x$hex(temp3[1])$$hex(temp3[0])$")*cal[2]+1.4-273)
+   Tadc1 = SpinSolveParameterUpdater:IntToTemp(eval("0x$hex(temp1[1])$$hex(temp1[0])$"))-CalOffTempMag
+   Tadc2 = SpinSolveParameterUpdater:IntToTemp(eval("0x$hex(temp2[1])$$hex(temp2[0])$"))-CalOffTempBox
+   Tadc3 = SpinSolveParameterUpdater:IntToTemp(eval("0x$hex(temp3[1])$$hex(temp3[0])$"))-CalOffTempRoom
+   uctrl = single((temp4[1])*65536)/0xffff*34.36 - single((temp4[0]))/0xffff*34.36
+   mctrl = -single((temp5[1])*65536)/0xffff*24 + single((temp5[0]))/0xffff*24
+
+endproc(Tadc1, Tadc2, Tadc3, uctrl, mctrl)
+
+
+
+procedure(referenceDeconvolution, ttt, sexp, sref, f0)
+
+#> f0 = KeaUtilities:FindZeroCrossing2(fff,fref,"no")*1000
+   gb = 0.3
+   lb = 0.3
+
+   a = pi^2/4/log2(2)*gb^2
+   sideal = exp(-i*2*pi*f0*ttt).*exp(-ttt.*ttt*a).*exp(-ttt*pi*lb)
+   scomp = (sexp.*sideal)/sref
+
+
+endproc(scomp)
+
+
+
+procedure(referenceDeconvolution1, ttt, data)
+
+   a1=41.4;a2=8.3;a3=16.2;a4=13.6;a5=10.8;a6=9.8
+   t1=0.21;t2=1.5;t3=5.7;t4=26;t5=59;t6=210
+
+# 05/04/2012
+   width = 1e-3
+   a=[5, 9.9, 18.9, 26.6, 28.5, 11.1]
+   t=[0.36, 2, 5.8, 16, 72, 360]
+
+# 10/04/2012
+   width = 1.2e-3
+   a=[4, 13.7, 26, 26.5, 11.4, 18.3]
+   t=[0.2, 1.9, 8, 34, 91, 230]
+
+# 26/04/2012
+   width = 1.2e-3
+   a=[5.8,17.9,14.5,16.1,31.3,14.4]
+   t=[0.24,2.3,8,18,52,330]
+
+# 16/05/2012
+#   width = 1.5e-3
+#   a=[5.2,18.5,13.0,27.6,31.2,4.5]
+#   t=[0.21,2.3,6.2,21,100,380]
+
+   asum=sum(a)
+   asize = size(a)
+   fidsim = 0*ttt
+   for (iii = 0 to asize-1)
+      fidsim = fidsim + 1/asum*a[iii]*exp(-ttt/t[iii])
+   next(iii)
+#   datacorr = data/fidsim.*exp(-ttt*0.006)
+   lt = exp(-ttt*0.003)
+   gt = exp(-ttt.*ttt*width*width/2)
+# gt = 1.0
+   datacorr = data/fidsim.*gt.*lt
+
+endproc(datacorr)
+
+
+######################################################################
+# Start the lock and optionally optimise the shims for lock
+######################################################################
+
+procedure(resumeLock)
+
+   if((gData->specParameters->HardwareCap1 & 2d^27) != 0) 
+     :setLockShims() # Optimise the lock shims
+   endif
+  :controlPulseLoop(1) # resume lock
+
+endproc()
+
+
+# calculate the rms
+procedure(rms, indata)
+   xsize = size(indata)
+   cc=indata*conj(indata')
+   rms = sqrt(real(cc)/xsize)
+endproc(rms)
+
+
+procedure(saveoshim, value)
+   pref = ucsFiles:loadPref()
+   pref = setlistvalue(pref,"oshim","$value,.8f$")  
+   ucsFiles:savePref(pref)
+endproc()
+
+
+
+procedure(SetB0Shim,offField)
+#   n2 = round(offField*100/130) # B0 shim value
+   n2 = round(offField*1000/33) # B0 shim value
+   pref = ucsFiles:loadPref()
+   pref = setlistvalue(pref,"oshim","$n2,.8f$")  
+   ucsFiles:savePref(pref)
+
+# pr lockLevel
+endproc(n2)
+
+
+procedure(setB1Frequencies,SPType,SPDuration,sliceThick,sliceShift,b1Freq)
+
+# Make all gui parameters available
+   #guipar = getctrlvalues(0)
+  # assignlist(guipar)
+
+   if(SPType == "rect")
+      gfac = 1
+   elseif(SPType == "sinc5")
+      gfac = 6
+   elseif(SPType == "sinc3")
+      gfac = 4
+   elseif(SPType == "gauss")
+      gfac = 10/pi
+   endif 
+
+   sliceGrad = 2*pi*gfac/(SPDuration*1e-6*gamma*sliceThick*1e-3)
+   f1 = b1Freq
+   f2 = b1Freq-1e-6*gamma*sliceGrad*sliceShift*1e-3/(2*pi)
+   
+endproc(f1,f2)
+
+
+procedure(setDiffgrad, value, offset)
+
+  calibration = 0.10611 # T/m/V
+#  calibration = 1 # T/m/V
+  diffAmp = value/calibration/10*(2^19-1)
+  diffAmpShim = offset/calibration/10*(2^19-1)/1000
+
+endproc(diffAmp, diffAmpShim)
+
+procedure(setGradientAmplitudes,Nread,Nphase1,Nphase2,FOVr,FOVp1,FOVp2,acqTime,pGradDur,GradStabDur,GradRampDur)
+  # Extract pp parameters from GUI and make them available
+#   guipar = getctrlvalues(0)
+#   assignlist(guipar)
+#   readGrad = 2*pi*Nread/(2*gamma*FOVr*1e-3*(pGradDur+GradStabDur+GradRampDur)*1e-3)
+   readGrad = 2*pi*Nread/(acqTime*1e-3*gamma*FOVr*1e-3)
+   phaseGrad1 = 2*pi*Nphase1/(2*gamma*FOVp1*1e-3*(pGradDur+GradStabDur+GradRampDur)*1e-3)
+   phaseGrad2 = 2*pi*Nphase2/(2*gamma*FOVp2*1e-3*(pGradDur+GradStabDur+GradRampDur)*1e-3)
+
+endproc(readGrad,phaseGrad1,phaseGrad2)
+
+###############################################################
+# Convert gradient and shim values in mT/m to digital values
+###############################################################
+procedure(setGradients, gValue, gOffset)
+
+   pref       = struct(ucsFiles:loadPref())
+   oshim      = pref->oshim
+   resolution = pref->gradCtrlRes
+   maxOutput  = pref->gradCtrlMaxOP
+   oampcal    = pref->oampcal
+   ocoilcal   = pref->ocoilcal
+
+   calibration = oampcal*ocoilcal*maxOutput*1000 # mT/m
+
+   diffAmp     = gValue/calibration*(2^(resolution-1)-1) # Digital - resolution bits
+   diffAmpShim = gOffset/calibration*(2^(resolution-1)-1)
+
+endproc(diffAmp, diffAmpShim)
+
+procedure(setGradRampDur,GradRampDur,GradStabDur)
+  # Extract pp parameters from GUI and make them available
+#   guipar = getctrlvalues(0)
+#   assignlist(guipar)
+
+endproc(GradRampDur*10,GradStabDur*1000)
+
+#######################################################
+# Calculate the amplitude for each of the gradients
+# based on the selected plane
+#######################################################
+
+procedure(setImagingPlane,orient,Nread,Nphase1,Nphase2,FOVr,FOVp1,FOVp2,acqTime,pGradDur,GradStabDur,GradRampDur,xshim,yshim,zshim,xcal,ycal,zcal)
+
+  # Extract pp parameters from GUI and make them available
+#   guipar = getctrlvalues(0)
+#   assignlist(guipar)
+
+#gs=15/1000    # Spoil gradient
+ gs = 0
+
+   (readGrad,phaseGrad1,phaseGrad2)=:setGradientAmplitudes(Nread,Nphase1,Nphase2,FOVr,FOVp1,FOVp2,acqTime,pGradDur,GradStabDur,GradRampDur)
+
+# Shims are stored in mT/m not T/m
+#   xshim = xshim/1000
+#   yshim = yshim/1000
+#   zshim = zshim/1000
+
+   if((orient == "XYZ") | (orient =="Z"))
+     n1 = 1 # x
+     n2 = 2 # y
+     n3 = 0 # z
+     g1 = xshim
+     g2 = yshim
+     g3 = zshim
+     g11 = xshim+readGrad*xcal
+     g21 = phaseGrad1*ycal+yshim
+     g31 = phaseGrad2*zcal+zshim
+     gspoil = gs*zcal+zshim
+   elseif(orient == "YXZ")
+     n1 = 2 # y
+     n2 = 1 # x
+     n3 = 0 # z
+     g1 = yshim
+     g2 = xshim
+     g3 = zshim
+     g11 = yshim+readGrad*ycal
+     g21 = phaseGrad1*xcal+xshim
+     g31 = phaseGrad2*zcal+zshim
+     gspoil = gs*zcal+zshim
+   elseif((orient == "YZX") | (orient =="X"))
+     n1 = 2 # y
+     n2 = 0 # z
+     n3 = 1 # x
+     g1 = yshim
+     g2 = zshim
+     g3 = xshim
+     g11 = yshim+readGrad*ycal
+     g21 = phaseGrad1*zcal+zshim
+     g31 = phaseGrad2*xcal+xshim
+     gspoil = gs*xcal+xshim
+   elseif(orient == "ZYX")
+     n1 = 0 # z
+     n2 = 2 # y
+     n3 = 1 # x
+     g1 = zshim
+     g2 = yshim
+     g3 = xshim
+     g11 = zshim+readGrad*zcal
+     g21 = phaseGrad1*ycal+yshim
+     g31 = phaseGrad2*xcal+xshim
+     gspoil = gs*xcal+xshim
+   elseif(orient == "XZY")
+     n1 = 1 # x
+     n2 = 0 # z
+     n3 = 2 # y
+     g1 = xshim
+     g2 = zshim
+     g3 = yshim
+     g11 = xshim+readGrad*xcal
+     g21 = phaseGrad1*zcal+zshim
+     g31 = phaseGrad2*ycal+yshim
+     gspoil = gs*ycal+yshim
+   elseif((orient == "ZXY") | (orient =="Y"))
+     n1 = 0 # z
+     n2 = 1 # x
+     n3 = 2 # y
+     g1 = zshim
+     g2 = xshim
+     g3 = yshim
+     g11 = zshim+readGrad*zcal
+     g21 = phaseGrad1*xcal+xshim
+     g31 = phaseGrad2*ycal+yshim
+     gspoil = gs*ycal+yshim
+   else
+     abort("Invalid plane")
+   endif
+
+endproc(n1,g1,g11,n2,g2,g21,n3,g3,g31,gspoil)
+
+
+procedure(SetLockLevel,lockCurrent)
+   controlcal = 59.0/32768
+   lockcal = 1/controlcal
+   lockLevel = lockcal*lockCurrent/1000*5
+# pr lockLevel
+endproc(lockLevel)
+
+
+######################################################################
+# Optimise the shims for the lock sample
+######################################################################
+
+procedure(setLockShims)
+
+   if((gData->specParameters->HardwareCap1 & 2d^27) != 0) # Lock shims activated 
+   
+      if(gData->procType == "DSP")
+         
+       # Get the current x,y,z shims and the lock offsets
+         pref = gData->preferences
+         xShim = pref->xshim + gData->specParameters->xShimLock
+         yShim = pref->yshim + gData->specParameters->yShimLock
+         zShim = pref->zshim + gData->specParameters->zShimLock
+         newShims = [xShim,yShim,zShim]
+ 
+       # Load and run the set lock shims pulse program
+         dspwrite("x",0x1BF0,newShims) # Update the x,y,z shims for the lock
+         dsprunpp(0x1D00)              # Run the pulse program
+         pause(0.01) # Give time for shims to settle  
+
+      else
+
+         if(isvar("wvFX3Info->pref") == 0)
+            gFX3->initFX3Info()
+         endif
+         gFX3->setLockShims()
+
+      endif
+
+   endif
+
+endproc()
+
+ 
+procedure(setPhaseGradDur,pGradDur)
+  # Extract pp parameters from GUI and make them available
+#   guipar = getctrlvalues(0)
+#   assignlist(guipar)
+
+endproc(pGradDur*1000)
+
+
+######################################################################
+# Optimise the shims for the main sample
+######################################################################
+
+procedure(setSampleShims)
+
+   if((gData->specParameters->HardwareCap1 & 2d^27) != 0) # Lock shims activated
+
+     if(gData->procType == "DSP")
+      
+       # Get the current x,y,z shims
+         pref = gData->preferences
+         xShim = pref->xshim
+         yShim = pref->yshim
+         zShim = pref->zshim
+         newShims = [xShim,yShim,zShim]
+   
+       # Load and run the SetLockShims pulse program
+         dspwrite("x",0x1BF0,newShims)   # Update the x,y,z shims for the main coil
+         dsprunpp(0x1D00)                # Run the pulse program
+         pause(0.01) # Give time for shims to settle  
+
+      else
+
+         gFX3->setSampleShims()
+
+      endif
+
+   endif
+
+endproc()
+
+procedure(setSlice)
+  # Extract pp parameters from GUI and make them available
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+endproc(sliceThick,sliceShift)
+
+procedure(setSliceGradients,SPType,SPDuration,SPsf,sliceThick,sliceDir,xshim,yshim,zshim,xcal,ycal,zcal)
+
+# Make all gui parameters available
+#   guipar = getctrlvalues(0)
+#   assignlist(guipar)
+
+# Shims are stored in mT/m not T/m
+   xshim = xshim/1000
+   yshim = yshim/1000
+   zshim = zshim/1000
+
+   n14 = 1000
+   d16 = SPDuration/n14
+   (spmag,spsign,gfac) = :getRFPulse(SPType,n14,SPsf)
+#   sliceGrad = 2*pi*gfac/(d16*n12*1e-6*gamma*sliceThick*1e-3)
+   sliceGrad = 0
+   sliceGrad = 2*pi*gfac/(SPDuration*1e-6*gamma*sliceThick*1e-3)
+   if(sliceDir == "x") # x
+     n5 = 3 # x
+     n6 = xshim*xcal
+     n16 = (xshim+sliceGrad)*xcal
+   elseif(sliceDir == "y")
+     n5 = 2 # y
+     n6 = yshim*ycal
+     n16 = (yshim+sliceGrad)*ycal
+   elseif(sliceDir == "z")
+     n5 = 1 # z
+     n6 = zshim*zcal
+     n16 = (zshim+sliceGrad)*zcal
+   else
+     n5 = 1 # z
+     n6 = zshim*zcal
+     n16 = zshim*zcal
+   endif
+endproc(n5,n6,n16)
+
+# sort an array in increasing order and return the vector of indices
+procedure(sort, inarray)
+(xsize,ysize) = size(inarray)
+xxx = inarray
+if (ysize > 1)
+   pr("Sorting does not work for 2D arrays\n")
+   return()
+endif
+indexarray = [0:1:xsize-1]
+for (jjj = 0 to xsize-1)
+   smallest = 1e30
+   theindex = -1
+   for (iii = jjj to xsize - 1)
+      if (xxx[iii] < smallest)
+         smallest = xxx[iii]
+         theindex = iii
+      endif
+   next(iii)
+#   indexarray[jjj] = theindex
+   aaa = xxx[jjj]
+   xxx[jjj] = xxx[theindex]
+   xxx[theindex] = aaa
+   aaa = indexarray[jjj]
+   indexarray[jjj] = indexarray[theindex]
+   indexarray[theindex] = aaa
+next(jjj)
+endproc(indexarray)
+
+
+######################################################################
+# Pause the lock and optionally optimise the shims for the main sample
+######################################################################
+
+procedure(suspendLock)
+
+   if((gData->specParameters->HardwareCap1 & 2d^27) == 0) # For lock shims pausing is done on FX3
+      :controlPulseLoop(0) # pause lock 
+   else
+      :setSampleShims() # Optimise the sample shims
+   endif
+   
+endproc()
+
+
+procedure(unchirp, data, ttt, triggerDelay)
+
+   foft = :chirpFunction(ttt+triggerDelay)
+   tsize = size(ttt)
+   phi = matrix(tsize)
+   dt = ttt[1]-ttt[0]
+#   dphi = 0
+#   for(iii = 1 to tsize-1)
+# pr iii
+#      dphi = 2*pi*foft[iii-1]*dt/1000
+#      phi[iii]=phi[iii-1]+dphi
+#   next(iii)
+   dphi = 2*pi*foft*dt/1000
+   phi = cumsum(dphi)
+   datacorr = data.*exp(i*phi)
+
+endproc(datacorr)
+
+
+
+procedure(unchirp2, data, ttt, ps)
+
+# p = [0, 0, 0, 3.504, -75.6, -0.074, -24.2, -0.198, 10.6, 0.069, 200]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1] # 16/08/10
+# p = [0, 0, 0, 3.25, -84.4, -0.11, -49.4, -0.22, -13, 0.083, 166, 0.092, 122]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 06/10/10
+ p = [0, 0, 0, 3.41, -85.8, -0.08, -68, -0.19, -29, 0.065, 157, 0.057, 92]-ps*[0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] # 08/11/10
+
+foft = p[3]*cos(2*pi*ttt/1000+p[4]*pi/180)+p[5]*cos(2*pi*2*ttt/1000+p[6]*pi/180)+p[7]*cos(2*pi*3*ttt/1000+p[8]*pi/180)+p[9]*cos(2*pi*5*ttt/1000+p[10]*pi/180)+p[11]*cos(2*pi*4*ttt/1000+p[12]*pi/180)
+   tsize = size(ttt)
+   phi = matrix(tsize)
+   dt = ttt[1]-ttt[0]
+   dphi = 2*pi*foft*dt/1000
+   phi = cumsum(dphi)
+   datacorr = data.*exp(i*phi)
+
+endproc(datacorr)
+
+
+
+procedure(unchirpCPMG, data, ttt, nrPnts, nrEchos)
+
+   datacorr = 0*data
+   dt = ttt[1]-ttt[0]
+   echoTime = ttt[0]+nrPnts/2*dt
+   phi_start = 0
+   theTime = [0:dt:echoTime/2]   # 90 - 180 block
+   foft = :chirpFunction(theTime)
+   dphi = 2*pi*foft*dt/1000
+   phi = cumsum(dphi)
+   phi_end = phi[size(theTime)-1]
+
+   for (iii = 0 to nrEchos-1)    # 180 - 180 blocks
+      phi_start = -phi_end       # phase inversion by 180 pulse
+      theTime = (2*iii+1)*echoTime/2+[0:dt:echoTime]   # 180 - 180 block
+      foft = :chirpFunction(theTime)
+      dphi = 2*pi*foft*dt/1000
+      phi = phi_start + cumsum(dphi)
+      phi_end = phi[size(theTime)-1]
+      tacqStart = ttt[nrPnts*iii]
+      idx = findindex(theTime,tacqStart)
+      datacorr[nrPnts*iii:nrPnts*(iii+1)-1] = data[nrPnts*iii:nrPnts*(iii+1)-1].*exp(i*phi[idx:idx+nrPnts-1])
+      
+   next(iii)
+
+
+endproc(datacorr)
+
+
+# Send the shims to the shim controller
+procedure(updateShimController, shims)
+
+# Send x, y z shims to Kea shims
+   xshim = shims[0]
+   yshim = shims[1]
+   zshim = shims[2]
+   z2shim = shims[3]
+   :updateKeaShims(xshim, yshim, zshim, z2shim)
+
+# Update shim controller shims
+   cd("$getmacropath()$\\..\\Kea-NMR\\ShimPP")
+   pp = dspsrec("ShimPP.p")
+   dspwrite("p",0x2000,pp)
+   ShmP = matrix(10,1)      # ShmP = ShimParameters
+
+   shimMat = [2,2; # z2   LIN_ID, Channel_ID
+              2,3; # z3
+              2,4; # z4
+              1,5; # xy
+              1,4; # x2-y2
+              1,2; # zx
+              1,3; # zy
+              2,6; # z2x
+              2,7] # z2y
+#              1,6; # z2x
+#              1,7] # z2y
+
+   for(k = 0 to 8)
+      n = k + 3
+      current = shims[n]
+      val = 32768*current/2.5 + 32768
+      if(val > 65535)
+         val = 65535
+      elseif(val < 0)
+         val = 0
+      endif
+      ShmP[0] = 0
+      ShmP[1] = shimMat[0,k]
+      ShmP[2] = shimMat[1,k]
+      ShmP[3] = val
+
+      dspwritepar("x",0x00,ShmP)
+      r = dsprunpp(0x2000,0)
+
+   next(k)
+
+      
+endproc()

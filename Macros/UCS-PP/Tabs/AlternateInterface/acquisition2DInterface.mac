@@ -1,0 +1,44 @@
+procedure(interface_description)
+
+  interface = [
+      "rxGain","Receiver gain","tm", "integer", "$$gData->rxGainMenu$$",
+      "rxChannel","Receiver channel","tm", "string", "allNuclei",
+      "rxPhase","Receiver phase","tb", "float", "[-360,360]",
+      "nrPnts","Number of points","tm", "integer", "$$gData->nrPntsMenu$$",
+      "dwellTime","Dwell time (us)","tm", "float", "$$gData->dwellTimeMenu$$",
+      "nrScans","Number of scans","tb", "float", "[1,1e8]",
+      "flatFilter","Flat filter","cb", "string","no,yes",
+      "accumulate","Accumulate data","cb", "string","no,yes",
+      "usePhaseCycle","Phase cycle","cb", "string","no,yes",
+      "bandwidth","Bandwidth f2 (kHz)","tb2", "float", "",
+      "acqTime","Acquisition time (ms)","tb", "float", ""]
+
+endproc(interface,"Acquisition")
+
+procedure(help)
+
+pr "\n\n -------------- Acquisition 2D parameter information ---------------------\n\n"
+pr "   Receiver gain: (rxGain)\n"
+pr "      Defines the gain of the spectrometer receiver amplifier.\n      Units: dB.\n"
+pr "   Receiver phase: (rxPhase)\n"
+pr "      Defines a 0th order phase shift applied by the digital receiver.\n      Units : degrees\n"
+pr "   Number of points: (nrPnts)\n"
+pr "      The number of complex points collected per acquisition\n      (the total may be more for some experiments)\n"
+pr "   Dwell time: (dwellTime)\n"
+pr "      The time between collected data points on the FID (Units: us)\n"
+pr "   Number of scans: (nrScans)\n"
+pr "      The number of accumlations per f1 step.\n"
+pr "   Flat filter: (flatFilter)\n"
+pr "      Whether an FIR digitial filter is applied to flatten the\n      frequency response. If this option is not selected then only a\n      CIC filter is applied.\n"
+pr "   Accumulate data: (accumulate)\n"
+pr "      Whether scans will be signal averaged or not.\n"
+pr "   Phase cycle: (usePhaseCycle)\n"
+pr "      Whether the phase list will cycled when accumlating\n      data.\n"
+pr "   Bandwidth: (bandwidth)\n"
+pr "      The range of frequencies in the spectrum. Derived from the\n      dwelltime (1/dwellTime). Units: kHz\n"
+pr "   Acqusition time: (acqTime)\n"
+pr "      The duration of the FID. Calculated from the product of the\n      dwelltime and number of points. Units: ms.\n"
+pr "\n ------------------------------------------------------------------------\n"
+
+
+endproc()

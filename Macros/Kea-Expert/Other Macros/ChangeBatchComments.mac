@@ -1,0 +1,75 @@
+###########################################################
+# Add wait commands between each experiment
+###########################################################
+
+procedure(ChangeBatchComment)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      :changeComments()
+   endif
+
+endproc()
+
+###########################################################
+# Change specified comments
+###########################################################
+
+procedure(changeComments)
+
+# Check for modification
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file before changing comments?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+   commentList = gView->sampleNameCtrl->menu()
+   (oldComment,newComment) = changetext("Modify comment","Old comment:","New comment:",20,commentList)
+   if(newComment == "cancel")
+      return
+   endif
+
+   bak = getcwd()
+
+   cd(gBatch->batchFolder)
+
+   entries = gView->batch->list
+   sz = size(entries)
+   for(k = 1 to sz-1) # Skip title
+   
+      entry = entries[k]   
+      (protocol,comment,exptNr) = gBatch->parseBatchEntry(entry)
+     # Update the batch list
+      if(comment == oldComment)
+         entries[k] = "$protocol$|$newComment$|$exptNr$"
+        # Update the batch folders
+         if(exptNr > 0)
+            oldName = "$exptNr$ $protocol$ ($comment$)"
+            newName = "$exptNr$ $protocol$ ($newComment$)"
+            if(protocol == "WaitTime")
+                printtofile("$oldName$\\acqu.par")
+                  print("waitTimeValue = $newComment[0:-2]$")
+               closeprint() 
+            endif          
+         else
+            oldName = "$protocol$ ($comment$)"
+            newName = "$protocol$ ($newComment$)"
+         endif
+         if(isdir(oldName))
+            movefile(oldName,newName)
+         endif
+      endif
+
+   next(k)
+
+   gBatch->displayBatchList(entries)
+   gBatch->saveCurrentList()
+
+   cd(bak)
+
+endproc()
+

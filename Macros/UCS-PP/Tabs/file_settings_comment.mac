@@ -1,0 +1,43 @@
+procedure(file_settings_comment)
+
+   n = window("Files", -1, -1, 530, 141)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   # Define all controls with basic parameters
+    statictext(1, 40, 23, 43, 28, "center", "Working direcory")
+    textbox(2, 75, 24, 215)
+    button(3, 295, 24, 22, 22, "...",
+       ucsFiles:setWorkingDir();)
+    statictext(4, 40, 60, 52, 27, "center", "Experiment name")
+    textbox(5, 75, 63, 105)
+    button(6, 186, 63, 22, 22, "...",
+       ucsFiles:setExpName();)
+    statictext(7, 262, 60, 52, 26, "center", "Experiment number")
+    textbox(8, 296, 63, 25)
+    button(9, 326, 63, 22, 22, "...",
+       ucsFiles:setExpNr();)
+    statictext(10, 40, 104, 44, 13, "center", "Comment")
+    textbox(11, 75, 99, 436)
+    statictext(12, 358, 22, 25, 26, "center", "Save data")
+    checkbox(13, 378, 29, "false,true", "true")
+    statictext(14, 397, 60, 51, 29, "center", "Auto increment")
+    checkbox(15, 429, 68, "no,yes", "no")
+    button(16, 415, 17, 40, 36, "Load Data",
+       ucsFiles:loadData();)
+    button(17, 470, 17, 40, 50, "Open data folder",
+       ucsFiles:openDataFolder();)
+
+  # Set other control parameters
+    setpar(n,2,"valueID","dataDirectory")
+    setpar(n,5,"valueID","expName")
+    setpar(n,8,"valueID","expNr")
+    setpar(n,11,"valueID","exptComment")
+    setpar(n,13,"valueID","saveData")
+    setpar(n,15,"valueID","incExpNr")
+
+endproc(17,"File settings")

@@ -1,0 +1,210 @@
+###################################################
+#                 blur2d.mac
+#
+# Apply Gaussian smoothing to a 2D matrix
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+procedure(blur2d)
+
+   n = :windowdefinition()
+   :update()
+   showwindow(n)
+
+endproc(n)
+
+
+###################################################
+# Window definition
+###################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Gaussian Blur", -1, -1, 253, 96)
+
+      # Define all controls with basic parameters
+       windowvar(wv_yscale,wv_xscale,wv_mat,wv_type,wv_txt)
+       button(1, 186, 66, 50, 22, "Exit",
+          closewindow(0);)
+       slider(2, 16, 26, 179, 20, "horizontal",
+            :process();)
+       button(3, 68, 66, 50, 22, "Update",
+          :update();)
+       button(4, 127, 66, 50, 22, "Help",
+          :show_help();)
+       statictext(5, 206, 28, "left", "75")
+       groupbox(6, "Amount of blur", 5, 4, 227, 53)
+       button(10, 9, 66, 50, 22, "Reset",
+          :restore();)
+       getmessage(11,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,2,"type","float",
+                   "range",[1,100])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","blur2d.htm")
+endproc()
+
+###################################################
+# Apply the blur
+###################################################
+
+procedure(process)
+
+   (w,h) = size(wv_mat)
+   s = getpar(0,2,"value")
+   b = (101-s)
+
+   windowvar(mc)
+   mc = wv_mat
+
+   curplot("2d")
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+
+   :ifft2d()
+   :filter(b)
+   :fft2d()
+
+   draw2d("false")
+      if(wv_type == "matrix2d")         
+        image(real(mc),wv_xscale,wv_yscale)
+      else
+        image(mc,wv_xscale,wv_yscale)
+      endif
+   
+      setpar(0,5,"text",s)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+
+endproc()
+
+
+###################################################
+# Inverse 2D transform
+###################################################
+
+procedure(ifft2d)
+
+   (w,h) = size(mc)
+  
+   # Row transforms
+   for (y = 0 to h-1)
+     mc[~,y] = ftshift(ift(mc[~,y]))
+   next(y)
+   
+   # Column transforms
+   for (x = 0 to w-1)
+      mc[x,~] = ftshift(ift(mc[x,~]))
+   next(x)
+
+endproc()
+
+###################################################
+# Forward 2D transform
+###################################################
+
+procedure(fft2d)
+
+   (w,h) = size(mc)
+
+   # Row transforms
+   for (y = 0 to h-1)
+     mc[~,y] = ft(ftshift(mc[~,y]))
+   next(y)
+ 
+   # Column transforms
+   for (x = 0 to w-1)
+      mc[x,~] = ft(ftshift(mc[x,~]))
+   next(x)
+
+endproc()
+
+###################################################
+# Apply the gaussian filter
+###################################################
+
+procedure(filter,d)
+
+   (w,h) = size(mc)
+   x = [0:1:w-1]
+   y = [0:1:h-1]
+   bx = d/100*w
+   by = d/100*h
+   fx = exp(-(x-w/2)^2/bx^2)
+   fy = (exp(-(y-h/2)^2/by^2))' 
+
+   # Row filter
+   for (y = 0 to h-1)
+     mc[~,y] = mc[~,y].*fx
+   next(y)
+
+   # Column filter
+   for (x = 0 to w-1)
+      mc[x,~] = mc[x,~].*fy
+   next(x)
+
+endproc()
+
+###################################################
+# Restore the original image
+###################################################
+
+procedure(restore)
+
+   draw2d("false")
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   if(wv_type == "matrix2d")
+      image(real(wv_mat),wv_xscale,wv_yscale)
+   else
+      image(wv_mat,wv_xscale,wv_yscale)
+   endif
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   title(wv_txt)
+   draw2d("true")
+
+endproc
+
+###################################################
+# A new image has been loaded
+###################################################
+
+procedure(update)
+
+   (wv_mat,wv_xscale,wv_yscale) = getplotdata("2d")
+   wv_txt = title("getargs")
+   wv_type = vartype(wv_mat)
+   if(wv_type == "matrix2d")
+     wv_mat = wv_mat + 0i
+   endif 
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,11,"text")
+
+   if(src == "2D Plot" & (cmd == "LoadImage" | cmd == "SelectImage"))
+      :update()
+   endif
+
+endproc()

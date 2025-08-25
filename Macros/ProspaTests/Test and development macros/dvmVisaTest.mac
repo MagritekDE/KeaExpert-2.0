@@ -1,0 +1,32 @@
+      DVM = visagetdevicename("GPIB0::16::INSTR")
+      for(k = 0 to 15)
+      visawrite(DVM, ":ROUTE:OPEN:ALL")      
+      visawrite(DVM, ":ROUTE:CLOSE (#$101+k$)")
+      visawrite(DVM, ":SENS:FUNC 'VOLT:DC';:SENS:VOLT:DC:RANG:AUTO ON")
+      valueStr = visaquery(DVM, ":FETCH?")
+      result = scanstr(valueStr,"%1VDC*")
+      pr result
+      next(k)
+
+
+
+#procedure(selectDVMChannel,channel)
+#
+#   channelIndex = [101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120]
+#   self.dmm1.write(":ROUTE:OPEN:ALL")
+#   if(len(channel)==1)
+#      self.dmm1.write(":ROUTE:CLOS (@%s)" % channelIndex[channel[0]-1])
+#      print self.dmm1.ask(":ROUTE:CLOS?")
+#   else
+#      x = 1
+#      channels = str(channelIndex[channel[0]-1])
+#      while (x<len(channel)):
+#          channels += ","+ str(channelIndex[channel[x]-1])
+#          x = x+1
+#      self.dmm1.write(":ROUT:MULT:CLOS (@%s,125)" % (channels))
+#      print self.dmm1.ask(":ROUTe:MULTiple:CLOSe?")
+#   endif
+#      
+#   pause(0.3)
+#
+#endproc()

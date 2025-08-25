@@ -1,0 +1,24 @@
+###################################################################################
+#######################################################
+
+procedure(txoff, channel)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      if(channel == "other")
+         channel = 1
+      endif
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 0.5
+      if(nrArgs == 1)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txoff,$channel$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txoff"]
+      endif
+
+   endif
+
+endproc()
+

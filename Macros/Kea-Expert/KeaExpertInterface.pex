@@ -1,0 +1,365 @@
+#################################################################
+# An alternate sample based interface for the Magritek
+# Kea spectrometer. Allows batch processing and scripting.
+# 
+# uiMode ............... Start Expert in normal or viewer mode
+# startMacroFullPath ... Optional macro to run on startup.
+#
+# V2.00.x
+#################################################################
+
+procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
+
+# Make sure timer is reset
+   time(0,"double")
+
+# Import the class macros
+   :cacheProcs1()
+   t1 = time()
+
+# Make some classes globally accessible
+   assign("gView",   class("seView:init"),     "global")
+   assign("gDebug",  class("seDebug:init"),    "global")
+   assign("gData",   class("seData:init"),     "global")
+   assign("gSample", class("seSample:init"),   "global")
+   assign("gMenus",  class("seMenus:init"),    "global")
+   assign("gParam",  class("seParam:init"),    "global")
+   assign("gPlot",   class("sePlot:init"),     "global")
+   assign("gProc",   class("seProc:init"),     "global")
+   assign("gExpt",   class("seExpt:init"),     "global")
+   assign("gSeq",    class("seSequence:init"), "global")
+   assign("gBatch",  class("seBatch:init"),    "global")
+   assign("gImport", class("seImport:init"),   "global")
+   assign("gFX3",    class("seFX3:init"),      "global")
+   assign("gDSP",    class("seDSP:init"),      "global")
+   assign("gFFT" ,   class("seFFT:init"),      "global")
+
+# Set the uiMode
+   gView->uiMode = uiMode
+
+# Display the splash screen (in normal mode only)
+   ssw = gView->makeSplashScreen(getmacropath(), 1000, 635, uiMode)
+
+# Check for a USB connection to a Kea and load the spectrometer
+# and common parameters. Save in gData->specParameters and gData->commonPar
+   if(uiMode == "normal")
+      uiTitle = SelectKea:backdoor()
+   elseif(uiMode[0:3] == "view")
+      uiTitle = ""
+      r = parse(uiMode,",")
+      gData->procType = ""
+      gData->specID = r[1]
+      gData->connected = 0
+      gData->loadFactoryDefaults()
+      uiMode = "viewer"
+   endif
+
+# Load the user preferences and save in gData->preferences
+   gData->getPreferences()
+
+# Initialise various data structures REVISIT
+   gData->initialiser()
+
+# Make the main user interface
+   gPlot->loadPlotPref()
+   n = gView->makeUI(uiTitle)
+
+# Check if we are running from the pex file rather than Prospa
+# If so make new window 'n' the main window
+   if(getwindowpar(ssw,"mainwindow") == "true")
+      setwindowpar(n,"mainWindow","true")
+   endif
+
+# Load in the window layout parameters and last experiment
+   lastExpt = gView->loadPar()
+
+# Define window variables REVISIT
+   :defineWindowVar()
+
+# Load the last data set
+   if(gView->loadHistoryList())
+      lst = gView->history->list()
+      if(lst != null)
+         idx = getlistindex(lst,lastExpt)
+         if(idx >= 0)
+            gView->history->zindex(idx)
+            gExpt->loadExistingDataSet()
+         endif
+      endif
+   endif
+
+# Make sure we an access class procedures from editor
+   :defineClassAssociations()
+
+# Close the splash screen
+   closewindow(ssw)
+
+# Display the main window
+   if(uiMode == "normal")
+      showwindow(gView->wn,gView->IsMaximised)
+   elseif(uiMode == "viewer")
+      gView->runButton->enable("false")
+      gView->fixCtrl->enable("false")
+      showwindow(gView->wn,gView->IsMaximised)
+   endif
+
+   pr ("\n   Startup time = $time(),1.2f$ s\n")
+
+# Import other files
+   :cacheProcs2()
+
+# Check for duplicates
+   gExpt->checkForDuplicates()
+
+# Check for start macro
+   if(startMacroFullPath != null)
+      path = getbasepath(startMacroFullPath)
+      macro = getbasedir(startMacroFullPath)
+      cd(path)
+      proc = rmext(macro)
+      proc()
+   endif
+
+endproc()
+
+# Reads all the used macro into the global cache for fast access
+
+procedure(cacheProcs1)
+
+# Import the class macros
+   import("KeaExpertInterface.pex",getmacropath(),"global")
+   classDir = "$getmacropath()$\classes"
+   import("seView.mac",classDir,"global")
+   import("seData.mac",classDir,"global")
+   import("seDebug.mac",classDir,"global")
+   import("seSample.mac",classDir,"global")
+   import("seMenus.mac",classDir,"global")
+   import("seParam.mac",classDir,"global")
+   import("sePlot.mac",classDir,"global")
+   import("seProc.mac",classDir,"global")
+   import("seExpt.mac",classDir,"global")
+   import("seSequence.mac",classDir,"global")
+   import("seBatch.mac",classDir,"global")
+   import("seImport.mac",classDir,"global")
+   import("seFX3.mac",classDir,"global")
+   import("seDSP.mac",classDir,"global")
+   import("KeaParameterUpdater.mac","$appdir$\\Macros\\UCS-Update","global")
+   import("SelectKea.mac","$appdir$\\Macros\\Kea-Expert\\Other Macros","global")
+
+endproc()
+
+procedure(cacheProcs2)
+
+# Import pulse sequence blocks
+   dir = "$appdir$\\Macros\\Kea-Expert\\Pulse Program Blocks"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# These need to be in the window cache because that's where they are updated
+# in the p.p. compiler.
+   dir = "$appdir$\\Macros\\ucsCore"
+   import("ucsFiles.mac",dir,"global")
+   import("ucsCtrl.mac",dir,"global")
+   import("ucsPlot.mac",dir,"global")
+   import("ucsRun.mac",dir,"global")
+   import("ucsUtilities.mac",dir,"global")
+   import("fft.mac","$appdir$\\Macros\\coreMacros","global")
+   import("fft_local.mac","$appdir$\\Macros\\coreMacros","global")
+   import("filters.mac","$appdir$\\Macros\\1D_Macros","global")
+
+
+# Import Expert setup macros
+   dir = "$appdir$\\Macros\\Kea-Expert\\Setup Macros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# Import core macros like findf0, power shim etc
+
+   dir = "$appdir$\\Macros\\Setup\\Findf0-H"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Setup\\PowerShim"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Setup\\QuickShim"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Setup\\StandbyShim"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Setup\\TestShims"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Setup\\UpdateShims"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# Other macros
+   dir = "$appdir$\\Macros\\Kea-Expert\\Other Macros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      if(lst[k] != "SelectKea.mac")
+         import(lst[k],dir,"global")
+      endif
+   next(k)
+
+# Script macros
+   dir = "$appdir$\\Macros\\Kea-Expert\\Script Macros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# Import post processing macros
+   dir = "$appdir$\\Macros\\Kea-Expert\\Processing Macros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# Import post processing 1D macros
+   dir = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1D"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+   dir = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1D\\CoreMacros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# Import pulse program blocks
+   dir = "$appdir$\\Macros\\Kea-Expert\\Pulse Program Blocks"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# FX3 macros
+   dir = "$appdir$\\Macros\\UCS-Core\\FX3 Macros"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+# FX3 pulse program macros
+#   dir = "$appdir$\\Macros\\UCS-Core\\FX3 Macros\\ppCommands"
+#   lst = getfilelist(dir)
+#   for(k = 0 to size(lst)-1)
+#      import(lst[k],dir,"global")
+#   next(k)
+
+# DSP pp commands
+#   dir = "$appdir$\\Macros\\UCS-Core\\UCSCommandInfo"
+#   files = getfilelist(dir) 
+#   for(k = 0 to size(files)-1)
+#      import(files[k],dir,"global")
+#   next(k)
+
+# Other macros
+   dir = "$appdir$\\Macros\\1D_Macros"
+   import("autoPhase1D.mac",dir,"global")
+
+   dir = "$appdir$\\Macros\\coreMacros"
+   import("selectItemFromList.mac",dir,"global")
+
+endproc()
+
+##############################################
+# These are required to interface to older
+# code such as pulse programs and experiment
+# folders. With time should be removed.
+##############################################
+
+procedure(defineWindowVar)
+
+   windowvar(wvSpecType,wvUsingExpertGUI,wvDisplayMode,
+             wvExpStatus,wvExpStatus2,wvUpdateProgressCtrl,
+             wvCurDim,
+             wvSavePictureFiles,wvSaveDataFiles,wvSaveTextFiles,
+             experimentLabelCtrl,wvPort,wvFX3Info,
+             progressCtrl,curScanCtrl,timeLabel,expTimeCtrl,remTimeCtrl, # Progress
+             ppStatus,rxOverflow,lockStatus,tempStatus) # status
+
+   wvSpecType = "Kea"
+   wvUsingExpertGUI = "true"
+   wvExpStatus = "idle" 
+   wvExpStatus2 = "batchContinue"
+   wvUpdateProgressCtrl = 1
+   wvSavePictureFiles = "no"
+   wvSaveDataFiles = "no"
+   wvSaveTextFiles = "no"
+   wvDisplayMode = "normal"
+   wvCurDim = 1
+   wv_lock_exp = "false"
+   wvPort = dspsetport()
+   wvFX3Info = struct()
+   wvFX3Info->useLockShims = null
+
+endproc()
+
+##############################################
+# Define the association between class names
+# and the source file so we can quickly
+# jump to class procedures in the editor.
+##############################################
+
+procedure(defineClassAssociations)
+
+   assoc = ["gView   = seView",
+            "gBatch  = seBatch",
+            "gExpt   = seExpt",
+            "gParam  = seParam",
+            "gPlot   = sePlot",
+            "gProc   = seProc",
+            "gData   = seData",
+            "gDebug  = seDebug",
+            "gSample = seSample",
+            "gMenus  = seMenus",
+            "gSeq    = seSequence",
+            "gImport = seImport",
+            "gFX3    = seFX3",
+            "gDSP    = seDSP",
+            "gFFT    = seFFT",
+            "quick   = parabolic",
+            "power   = simplex"]
+
+   classinfo(assoc)
+
+endproc()
+
+##############################################
+# Recache all the impotant macro procedures
+##############################################
+
+procedure(recacheMacros)
+
+   :cacheProcs1()
+   :cacheProcs2()
+
+endproc()
+
+

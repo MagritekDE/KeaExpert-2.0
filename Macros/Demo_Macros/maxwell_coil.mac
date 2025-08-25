@@ -1,0 +1,77 @@
+procedure(maxwell_coil)
+
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+
+   N = 1
+   dtheta = pi/16
+   st = round(N*((2*pi)/dtheta));
+   R = 1
+   D = sqrt(3)/2
+   zstep = D/st
+   len = 2
+
+# Calculate end coordinates of segments ******
+
+   wires = matrix(6,2*st)
+   z = -D
+   theta = 0
+   for(n = 0 to  st-1)
+      wires[0,n] = R*cos(theta); 
+      wires[1,n] = R*cos(theta+dtheta);
+      wires[2,n] = -R*sin(theta);
+      wires[3,n] = -R*sin(theta+dtheta);
+      wires[4,n] = z;
+      wires[5,n] = z; 
+      theta = theta + dtheta;
+      if(theta >= 2*pi)
+         theta = 0
+      endif
+   next(n)
+
+   z = D
+   theta = 0
+   for(n = st to  2*st-1)
+      wires[0,n] = R*cos(theta); 
+      wires[1,n] = R*cos(theta+dtheta);
+      wires[2,n] = R*sin(theta);
+      wires[3,n] = R*sin(theta+dtheta);
+      wires[4,n] = z;
+      wires[5,n] = z; 
+      theta = theta + dtheta;
+      if(theta >= 2*pi)
+         theta = 0
+      endif
+   next(n)
+
+   draw3d("false")
+   clear3d()
+   color3d([0,1,1])
+   linewidth3d(5)
+   segments3d(wires)
+   linewidth3d(1)
+
+   (Bx,By,Bz) = fieldcalc(wires,[-2:0.1:2],[-2:0.1:2],[-3:0.1:3])
+  # (dBzdz) = gradcalc(wires,[-2:0.1:2],[-2:0.1:2],[-3:0.1:3])
+
+   Bx = Bx*1e6
+   By = By*1e6
+   Bz = Bz*1e6
+
+   isosurf(Bz,0.05,[0.2,0.8,0,0.7],[-2,2,-2,2,-3,3])
+   isosurf(Bz,-0.05,[0.8,0.2,0,0.5],[-2,2,-2,2,-3,3])
+   axispar3d(0.1,0.2,0.2,0.4)
+   color3d([1,1,0])
+   viewdistance(20)
+   axis3d("x",[-3,3],0,0,[-3,3],"X","positive_end")
+   axis3d("y",[-3,3],0,0,[-3,3],"Y","positive_end")
+   axis3d("z",[-4,4],0,0,[-4,4],"Z","positive_end")
+   rotate3d(-12,325,0)
+   shift3d(0,0,0)
+   draw3d("true")
+
+   datarange3d(-2,2,-2,2,-3,3)
+
+endproc()

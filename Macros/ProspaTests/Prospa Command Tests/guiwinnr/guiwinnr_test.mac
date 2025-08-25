@@ -1,0 +1,82 @@
+procedure(guiwin_test1,verbose,delay)
+ 
+   n1 = window("guiwinnr test", 100, 100, 100, 70)
+             button(1,10,10,60,22,"button 1")
+ 
+   n2 = window("guiwinnr test", 100, 200, 100, 70)
+             button(1,10,10,60,22,"button 2")
+
+   showwindow(n1)
+   showwindow(n2)
+
+   guiwinnr(n1)
+   if(getpar(0,1,"label") != "button 1")
+     return(0, "Invalid result for: guiwinnr_test1() #1")
+   endif
+   guiwinnr(n2)
+   if(getpar(0,1,"label") != "button 2")
+     return(0, "Invalid result for: guiwinnr_test1() #2")
+   endif
+
+   pause(delay)
+
+   closewindow(n1)
+   closewindow(n2)
+
+endproc(1,"")
+
+
+procedure(boxtitle,n)
+
+   for (m = 10 to 0 step -1)
+      setpar(n,1,"label","$m$");
+      drawwin(n)
+      pause(0.5)
+   next (m)
+
+endproc()
+
+procedure(movebox,n)
+
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      drawwin(n)
+      pause(0.005)
+   next (theta)
+
+endproc()
+
+procedure(growbox,n)
+
+   setpar(n,1,"x",75);
+   setpar(n,1,"y",50);
+
+   for (w = 50 to 100)
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 100 to 50 step -1)
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 50 to 100)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 100 to 50 step -1)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(0.005)
+  next (w)
+endproc()
+
+ 

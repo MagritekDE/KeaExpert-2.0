@@ -1,0 +1,255 @@
+procedure(SpinsolveImporter)
+
+   n = :windowdefinition()
+   windowvar(wvPar,wvDataImported)
+   wvDataImported = 0
+   :loadPar()
+   plotviewversion(2)
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   setwindowpar(n,"menu",1)
+   setwindowpar(n,"statusbox",30)
+
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Spinsolve to SpinsolveExpert data conversion", -1, -1, 540, 600, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(wvPar,wvDataImported,exportFolderCtrl,nucleusCtrl,importFolderCtrl,pltCtrl)
+      plot1d(1, 10, 120, "ww-20", "wh-150")
+      statictext(2, 182, 23, "right", "Spinsolve data set to import")
+      textbox(3, 190, 21, "ww-322")
+      button(4, "ww-123", 21, 19, 20, "...",
+         :selectImportFolder();)
+      statictext(7, 182, 55, "right", "Nucleus")
+      textmenu(8, 190, 50, 51, 200)
+      statictext(9, 182, 82, "right", "Folder to contain converted data")
+      textbox(10, 190, 80, "ww-322")
+      button(11, "ww-123", 80, 19, 20, "...",
+         :selectExportFolder();)
+      button(12, "ww-74", 20, 51, 23, "Convert",
+         :importData();)
+      button(13, "ww-74", 49, 51, 23, "Help",
+         :showHelp();)
+      button(14, "ww-74", 79, 51, 23, "Close",
+         :savePar();
+         closewindow(0);)
+      menu(20, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+                "Reduce vertical\tShift+down", func1d("reduce vertical"),
+                "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+                "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+      menu(21, "Move", "Move up\tCtrl+up", func1d("move down"),
+                "Move down\tCtrl+down", func1d("move up"),
+                "Move right\tCtrl+right", func1d("move right"),
+                "Move left\tCtrl+left", func1d("move left"))
+      menu(22, "&File","Select Spinsolve import folder\tCtrl+I",:selectImportFolder(),
+                "Select SpinsolveExpert export folder\tCtrl+E",:selectExportFolder(),
+                "Convert Spinsolve folder\tCtrl+K", :importData(),
+                "Separator", ,
+                "Exit\tCtrl+Q", closewindow(0))
+      menu(23, "&View", "Show &data under cursor\tCtrl+D", func1d("display data"),
+                "&Select a rectangular region\tCtrl+R", func1d("select region"),
+                "&Move plot\tCtrl+M", func1d("drag plot"),
+                "Separator", ,
+                "&Select and zoom a region\tCtrl+Drag", ,
+                "&Zoom a region\tCtrl+Z", func1d("zoom region"),
+                "Show &last region\tCtrl+L", func1d("last region"),
+                "Display &all data\tCtrl+A", func1d("full region"),
+                "Separator", ,
+                "Display &real part\tCtrl+Shift+R", func1d("toggle real"),
+                "Display &imaginary part\tCtrl+Shift+I", func1d("toggle imaginary"),
+                "Separator", ,
+                "Pull_right", 20,
+                "Pull_right", 21)
+      statusbox(30,"ww/3","ww*0.6667","ww-45","-1")
+
+     # Set other control parameters
+      setpar(n,1,"objID","pltCtrl",
+                  "menubar",[22,23])
+      setpar(n,3,"objID","importFolderCtrl",
+                  "valueID","importFolder")
+      setpar(n,8,"objID","nucleusCtrl",
+                  "valueID","nucleus",
+                  "menu",["1H","13C","19F","31P"])
+      setpar(n,10,"objID","exportFolderCtrl",
+                  "valueID","exportFolder")
+
+     # Set other window parameters
+      setwindowpar(n,"showmenu","false")
+
+endproc(n)
+
+procedure(selectImportFolder)
+
+   dir = importFolderCtrl->text()
+   dir = getfolder(dir,"Select Spinsolve data folder for import")
+   if(dir == "cancel")
+      return
+   endif
+   importFolderCtrl->text(dir)
+
+endproc()
+
+
+procedure(selectExportFolder)
+
+   dir = exportFolderCtrl->text()
+   dir = getfolder(dir,"Select folder where exported data folder will be stored")
+   if(dir == "cancel")
+      return
+   endif
+   exportFolderCtrl->text(dir)
+
+endproc()
+
+
+procedure(showHelp)
+
+
+endproc()
+
+procedure(importData)
+
+   importDir = importFolderCtrl->text
+   exportDir = exportFolderCtrl->text
+   nucleus = nucleusCtrl->text
+
+   if(not(isdir(importDir)))
+      message("Error","Import directory does not exist - please check","error")
+      return
+   endif
+
+   if(not(isdir(exportDir)))
+      message("Error","Export directory does not exist - please check","error")
+      return
+   endif
+
+#   if(name == "")
+#       message("Error","Please enter a valid data folder name","error")
+#      return
+#   endif  
+
+   if(nucleus != "1H" & nucleus != "13C" & nucleus != "19F" & nucleus != "31P")
+      message("Error","Please select a valid nucleus","error")
+      return
+   endif 
+
+   cd(importDir)
+
+   if(not(isfile("data.1d")))
+       message("Error","There is no 'data.1d' file in the import folder","error")
+      return
+   endif  
+   if(not(isfile("spectrum.1d")))
+       message("Error","There is no spectrum.1d' file in the import folder","error")
+      return
+   endif   
+   if(not(isfile("acqu.par")))
+       message("Error","There is no 'acqu.par' file in the import folder","error")
+      return
+   endif  
+   
+   wvPar = load("acqu.par","truedoubles")
+   assignlist(wvPar)
+
+   (tAxis,fid) = load("data.1d")
+   pltCtrl->multiplot(1,2)
+   pd = pltCtrl->subplot(1,1)
+   pd->draw("false")
+   pd->plot(tAxis*1000,fid)
+  # pd->title("FID for $Sample$")
+   pd->title("FID")
+   pd->xlabel("Time (ms)")
+   pd->ylabel("Amplitude")
+   pd->draw("true")
+
+   (fAxis,spectrum) = load("spectrum.1d")
+   rng = fAxis[-1]-fAxis[0] 
+   sz = size(fAxis)     
+   fAxis = linspace(-rng/2,rng/2,sz)
+   pd = pltCtrl->subplot(1,2)
+   pd->draw("false")
+   pd->plot(fAxis,spectrum)
+ #  pd->title("Spectrum for $Sample$")
+   pd->title("Spectrum")
+   pd->xlabel("Frequency (ppm)")
+   pd->axes->xdirection("reversed")
+   pd->ylabel("Amplitude")
+   pd->draw("true")  
+
+   wvDataImported = 1
+   :exportData()
+
+endproc()
+
+procedure(exportData)
+
+   importDir = importFolderCtrl->text
+   exportDir = exportFolderCtrl->text
+   nucleus = nucleusCtrl->text
+
+   if(wvDataImported == 0)
+      message("Error","Please import some data first","error")
+      return
+   endif
+
+   assignlist(wvPar)
+      
+   dataFolder = "$exportDir$\\1Pulse-$nucleus[-1]$"
+   mkdir(dataFolder)
+
+   cd(dataFolder)
+
+   pltCtrl->subplot(1,1)->save("fid.pt1")
+   pltCtrl->subplot(1,2)->save("spectrum.pt1")
+   
+   par = wvPar
+   par = rmfromlist(par,"b1Freq")
+   par = rmfromlist(par,"90Amplitude")
+   par = rmfromlist(par,"pulseLength")
+   par = par + ["b1Freq$nucleus$ = $b1Freq$",
+                    "90Amplitude$nucleus$ = $90Amplitude$",
+                    "pulseLength$nucleus$ = $pulseLength$",
+                    "rxPhase = 0",
+                    "filterType = \"none\"",
+                    "tdPhaseCorr = \"none\"",
+                    "dispRange = 0",
+                    "fdPhaseCorr = \"none\""]
+
+   save("acqu.par",sortlist(par),"truedoubles")
+   copyfile("acqu.par","acqu.par.bak")
+
+   pr("\n\n Data exported\n")
+  
+endproc()
+
+
+procedure(loadPar)
+
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   if(isfile("SpinsolveImporter.par"))
+      par = load("SpinsolveImporter.par")
+      setctrlvalues(0,par)
+   endif
+   cd(bak)
+
+endproc()
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   par = getctrlvalues(0)
+   save("SpinsolveImporter.par",par)
+   cd(bak)
+   
+endproc()

@@ -1,0 +1,161 @@
+############################################################################################
+# Return information about a control either by pressing the select button and then 
+# left-clicking on an enabled or disabled control or by ctrl-clicking on an enabled control
+############################################################################################
+
+procedure(controlInfo, win, ctrl)
+
+   n = :windowdefinition()
+   windowvar(wvWin,wvCtrl)
+   wvWin = null
+   wvCtrl = null
+   if(nrArgs == 2) 
+      :update(win, ctrl)
+   endif
+
+   infoWin->statusbox(14)
+   infoWin->name("ControlInfo")
+   infoWin->show("normal")
+
+endproc()
+
+procedure(windowdefinition)
+
+  # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   (n, infoWin) = window("Control Information", -1, -1, 356, 220)
+
+      # Define all controls with basic parameters
+       statictext(1, 114, 91, "right", "Data type:")
+       statictext(2, 114, 112, "right", "Maximum value:")
+       statictext(3, 114, 132, "right", "Minimum value:")
+       dataTypeCtrl = statictext(4, 121, 91, "left", "float")
+       maxValueCtrl = statictext(5, 121, 112, "left", "0")
+       minValueCtrl = statictext(6, 121, 132, "left", "0")
+       button(7, 285, 143, 50, 30, "Close",closewindow(0);)
+       statictext(8, 114, 51, "right", "Control id:")
+       ctrlNameCtrl = statictext(9, 121, 71, "left", "")
+       groupbox(10, "", 9, 4, 262, 180)
+       statictext(11, 114, 31, "right", "Control type:")
+       ctrlIdCtrl = statictext(12, 121, 51, "left", "text box")
+       button(13, 285, 23, 50, 30, "Select",
+          :selectObj();)
+       statusCtrl = statusbox(14)
+       getmessage(15,:process_message();)
+       statictext(16, 114, 71, "right", "Parameter name:")
+       button(17, 285, 63, 50, 30, "Details",
+          :printToCli();)
+       ctrlTypeCtrl = statictext(18, 121, 31, "left", "text box")
+       statictext(19, 114, 153, "right", "Options:")
+       optionsCtrl = textbox(20, 121, 150, 90)
+       button(21, 285, 103, 50, 30, "Copy",
+          :copyName();)
+ 
+     # Set other control parameters
+       dataTypeCtrl->valueID("dataType")
+       maxValueCtrl->valueID("maxValue")
+       minValueCtrl->valueID("minValue")
+       ctrlNameCtrl->valueID("ctrlName")
+       setpar(n,13,"tooltip","Select a new control")
+       setpar(n,17,"tooltip","Print parameter details to the CLI")
+       setpar(n,21,"tooltip","Copy the parameter name to the clipboard")
+       ctrlIdCtrl->valueID("ctrlid")
+       ctrlTypeCtrl->valueID("ctrlType")
+       optionsCtrl->set("valueID","options",
+                        "readonly","true")
+
+endproc(n)
+
+procedure(printToCli)
+
+   if(wvWin == null)
+      return
+   endif   
+
+   pr getobj(wvWin,wvCtrl)
+
+endproc()
+
+procedure(update, win, ctrl)
+
+   if(ctrl == -1)
+      return
+   endif
+
+   wvWin = win
+   wvCtrl = ctrl
+
+   n = getwindowpar(0,"winNr")
+   setwindowpar(n,"title","Control Information for ($win$,$ctrl$)")
+   src = getobj(win,ctrl)
+
+   name = src->name
+   datatype = src->datatype
+   ctrltype = src->ctrltype
+   ctrlid = src->ctrlid
+   range = src->range
+
+   ctrlNameCtrl->text(name)
+   maxValueCtrl->text(range[1])
+   minValueCtrl->text(range[0])
+   dataTypeCtrl->text(datatype)
+   ctrlTypeCtrl->text(ctrltype)
+   ctrlIdCtrl->text(ctrlid)
+   optionsCtrl->text("-")
+
+   if(ctrltype == "check box")
+      options = src->options
+   elseif(ctrltype == "radio button")
+      options = src->option_list
+   elseif(ctrltype == "tab")
+      options = src->tablist
+   elseif(ctrltype == "text menu")
+      options = src->menu
+   elseif(ctrltype == "list box")
+      options = src->list
+   endif
+
+   try
+      str = "$options$"
+      str = scanstr(str,"[%1]")
+      optionsCtrl->text(str)
+   catch
+   endtry
+
+  # infoWin->hide("")
+  # infoWin->show("")
+   infoWin->focus("")
+  # setfocus(n)
+
+endproc()
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,15,"text")
+
+   if(src == "ControlInfo")
+      winNr = eval("$cmd$ - $cmd$%1000")/1000
+      objNr = eval("$cmd$%1000")
+      :update(winNr,objNr)
+   endif
+
+endproc()
+
+procedure(selectObj)
+
+   statusCtrl->text("Select object")
+   (winNr, objNr) = selectobj()
+   if(winNr >= 0)
+      :update(winNr, objNr)
+   endif
+   statusCtrl->text("")
+endproc()
+
+# Copy the parameter name to the clipboard
+procedure(copyName)
+
+   name = ctrlNameCtrl->text()
+   copytoclipboard(name)
+
+endproc()
+  

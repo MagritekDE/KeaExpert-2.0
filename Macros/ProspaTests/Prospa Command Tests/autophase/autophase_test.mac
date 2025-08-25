@@ -1,0 +1,40 @@
+procedure(autophase_test1,verbose,delay)
+
+   # Generate spectrum with single peak at 100 Hz
+   # peak has a phase shift of -60 degrees
+   t = [0:1:1023]/1023
+   pshift = -60
+   w = 2*pi*100
+   p0 = pshift/180*pi
+   T2 = 0.01
+   sigt = 100*exp(i*(w*t-p0) - t/T2)
+   
+   # Fourier tranform and generate frequency axis
+   sigf = ft(sigt)# + t*5000
+   f = ([0:1:1023])/1023*(1/t[1])
+   
+   # Plot data
+   plot(f,sigf)
+   
+   # Pause 1 second
+   pause delay
+   
+   # Calculate p0 phase correction between 50 and 150Hz
+   (l,r) = findindex(f,200,600)
+   p0 = autophase(sigf,l,r,"maximise")
+   sigfp = sigf*exp(-i*p0/180*pi)
+   
+   # Replot corrected data
+   plot(f,sigfp)
+   
+   if(p0 != -pshift)
+      return(0,"Invalid result for: autophase_test1")
+   else
+      if(verbose)
+          pr "      Valid test: autophase 60 degree shift\n"  
+      endif
+   endif
+   
+   pause(delay)
+
+endproc(1,"")

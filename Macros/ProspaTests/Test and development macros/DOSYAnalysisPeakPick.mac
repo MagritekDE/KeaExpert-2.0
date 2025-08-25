@@ -1,0 +1,127 @@
+########################################################################
+# Does a single exponential fit to each column in a DOSY data set which
+# has an initial amplitude > 1/50 of the maximum.
+########################################################################
+
+procedure(DOSYAnalysis)
+
+#    cd("$appdir$\\Macros\Kea-Core")
+#    cachemacro("keaRun")
+#    cacheproc("true")
+
+    plotviewversion(2)
+    plt2 = curplot("2d")
+    (m,xr,yr) = plt2->getdata("current")
+    (w,h) = size(m)
+   
+    ppmAxis = linspace(xr[0],xr[-1],w)
+    plt1 = curplot("1d")
+    row0 = m[~,0]
+
+    p1 = 6
+    p0 = -8
+    wPPM = xr[-1]-xr[0]
+    for(k = 0 to h-1)
+       m[~,k] = exp(-i*(2*(ppmAxis-7.388)/wPPM*p1+p0)*pi/180).*m[~,k]
+    next(k)
+
+    row0 = real(m[~,0])
+    plt1->plot(ppmAxis,m[~,0])
+    plt1->axes->xdirection("reversed")
+
+    noiseThreshold = 0.05
+    prominence = 0.88 
+
+
+    (position,amplitude) = peakPick:peakPick(plt1, ppmAxis, row0, noiseThreshold, prominence)
+    position = position[1:-1]
+    amplitude = amplitude[1:-1]
+
+   delta = 0.0071
+   Delta = 0.05
+   G        = [0.0114708,
+               0.0280976,
+               0.0380443,
+               0.0458831,
+               0.0525657,
+               0.0584898,
+               0.0638666,
+               0.0688247,
+               0.0734489,
+               0.0777987,
+               0.0819178,
+               0.0858395,
+               0.0895897,
+               0.0931891,
+               0.0966546,
+               0.1]
+  
+   diffAxis = -(gamma*G*delta)^2*(Delta-delta/3)
+    
+   dOut = matrix(w)
+   c = matrix(w)
+   dErr = matrix(w)
+
+   for(p = 0 to size(position)-1)
+      idx = position[p]
+      a0 = row0[idx]
+
+      ampAxis = m[idx,~]'/a0
+     (D,err) = :fit(diffAxis,real(ampAxis))
+      dOut[p] = D
+      dErr[p] = err*D
+      pr "$position[p]$ $ppmAxis[position[p]]$ $a0$ $dOut[p]$ $dErr[p]$\n"
+   next(x)
+
+#
+#   a = real(m[~,0])
+#
+#   plt = curplot("1d")
+#   plt->hold("off")
+#   plt->plot(ppmAxis,dOut,"color",[255,0,0])
+#   plt->hold("on")
+#   plt->plot(ppmAxis,dErr,"color",[0,128,0])
+#   plt->axes->xdirection("reversed")
+
+
+   dOut = dOut*1e9
+   dErr = dErr*1e9
+   h = 100
+   diffAxis = linspace(0,3,h)
+   yr = [0,3]
+   lw = 2/42
+
+   dOut2D = matrix(w,h)
+
+   for(p = 0 to size(position)-1)
+      idx = position[p]
+      a0 = row0[idx]
+      ppm = ppmAxis[position[p]]
+
+      fy = exp(-(diffAxis-dOut[p])^2/(2*(dErr[p])^2))
+      fx = 1/(1+((ppmAxis-ppm)/(lw/2))^2)
+      m2 = fy'*fx
+
+      dOut2D = dOut2D + a0*fy'*fx
+
+   next(x)
+
+   plt = curplot("2d")
+   plt->draw("false")
+   plt->image(dOut2D,xr,yr*1e-9)
+   plt->axes->ydirection("reversed")
+   plt->title("DOSY spectrum")
+   plt->xlabel("Frequency (ppm)")
+   plt->ylabel("Diffusion coefficent m^(2)s^(-1)")
+   plt->draw("true")
+
+endproc()
+
+procedure(fit,xs,ys)
+
+   (fit,e0,t2,e0Err,t2Err) = t2fit(xs,ys)
+
+   d = -1/t2
+   err = t2Err/t2
+
+endproc(d,err)

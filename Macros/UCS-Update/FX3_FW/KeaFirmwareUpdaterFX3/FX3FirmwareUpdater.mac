@@ -1,0 +1,96 @@
+procedure(FX3FirmwareUpdater, fwFolder, fwName, statusCtrl)
+   
+   # This program will only work with the new FX3 Controller 
+   FX3memsize8 = 22000   # actual buffersize is 1024*22 = 22528
+   FX3memsize32 = floor(FX3memsize8/4)
+   USBTIMEOUT = 6000 #milliseconds
+   time(0)
+   w = guiwinnr()
+
+   fx3timeout(USBTIMEOUT)
+  # pr "USB timeout increased to $USBTIMEOUT/1000$ s.\n"
+
+   if(isdir(fwFolder) == 0)
+      pr "   Error: FX3 Firmware folder not found.\n"
+   endif
+   cd(fwFolder)
+ 
+   # Run Update 
+   if(isfile(fwName))
+      # reset address pointers for internal address increment
+      fx3write("u",0x100F,[1])
+      statusCtrl->text("Reading file ...")
+      import1dpar("ab","binary","xyrc","double","fls","long","machine","bigend")
+      fwData32 = import1d(fwName) 
+      fwSize32 = size(fwData32)
+     # pr("   Firmware size = $fwSize32$\n")
+     
+      for (k=0 to fwSize32-1 step 16)
+         if((fwSize32-k) > 15)
+            dataBlock = fwData32[k:(k+15)]
+            fx3write("u",0x1000,dataBlock)
+         else
+            dataBlock = fwData32[k:(fwSize32-1)]
+            fx3write("u",0x1000,dataBlock)
+         endif
+         if(k%16 == 0)
+          #  currentPage = fx3read("u",0x100e,1)
+          #  currentAddr = fx3read("u",0x100d,1)
+          #  pr "   $hex(currentPage)$,$hex(currentAddr)$\n"
+            statusCtrl->text("Updating firmware: $k/fwSize32*100,1.0f$ %")
+         endif
+         
+         #pr "$k/16$: $hex(fwData32[k])$\n"
+         #pr "Transfered firmware block number $k/16$ to flash memory.\n"
+         pause(0.005) # A delay is needed here
+      next(k)
+       #dataBlock = fwData32[0:15]       
+
+
+    #  pr hex(fwData32[fwSize32-1])
+
+   endif
+
+  ## fx3write("u",0x100f,[0]) #reset address pointers
+   fx3read("u",0x100f,1) #reset address pointers
+   retdouble1 = fx3read("u",0x1000,16,"double")
+#   for(k=0 to 3)
+#      pr hex(retdouble1[k])
+#   next(k)
+
+
+   fx3timeout(3000)
+   statusCtrl->text("Updating firmware complete")
+
+   pr "\n   FX3 firmware update complete!\n"
+    
+endproc()
+
+
+
+procedure(prepareFWblock, inputData, startAddr8, numWords, fwSize32)
+
+   lastAddr = fwSize32-1
+   # inputData word size is 32 bits, outputData word size is 32 bits
+   outputData = dmatrix(numWords)
+   
+   startAddr32 = floor(startAddr8/4)
+   #pr startAddr32
+   endAddr32 = startAddr32 + numWords - 1
+   
+   if (endAddr32 > lastAddr)
+      pr "Last block found. Setting endAddr to lastAddr.\n"
+      numWords = lastAddr - startAddr32 + 1
+      #pr lastAddr
+      #pr endAddr32
+      #pr numWords
+   endif
+   
+   if(numWords==1)
+      outputData = inputData[startAddr32]
+      pr "numWords=1\n"
+   else
+      outputData = inputData[startAddr32:(startAddr32+numWords-1)]
+   endif     
+
+endproc(outputData)

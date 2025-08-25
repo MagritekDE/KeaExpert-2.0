@@ -1,0 +1,336 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>acquire</title>
+
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+@font-face
+	{font-family:Times-Roman;
+	panose-1:0 0 0 0 0 0 0 0 0 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>Multi-dimensional experiments</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>Using the variable list in the pulse-program macro is the
+key to going from 1-D to multidimensional experiments.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>Extra for-loops need to be placed around the scan loop, and
+at the beginning of each loop those parameters within the pulse program which
+need to be changed should be updated. For example a three dimensonal experiment
+(p1,p2,time) could be organised in the following way:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Allocate
+memory for output</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>m = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>cmatrix</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(nrPnts,nrP1Steps,nrP2Steps)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:blue'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:blue'>for</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p2 =
+0 </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>to</span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:black'> nrP2Steps) </span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:#AA0000'># Loop over p2 parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+set p2 parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  ppList = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaRun:setPPxxx</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(ppList,varIndex[1],</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>func1</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p2))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>for</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p1 =
+0 </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>to</span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:black'> nrP1Steps)</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:#AA0000'> # Loop over p1 parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+set p1 parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     ppList = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaRun:setPPxxx</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(ppList,varIndex[0],</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>func2</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p1))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>for</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(scan
+= 0 </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>to</span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:black'> nrScans)</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:#AA0000'> # Loop over scans</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+set phase parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      
+(ppList,pAcq) = </span><span lang=EN-US style='font-size:9.0pt;font-family:
+"Courier New";color:teal'>keaRun:setPPPhase</span><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>(ppList,scans,pcList,pcIndex)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      ...</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Collect data (details omitted)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      d = data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>next</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(scan)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>next</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p2)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Save the data in the output matrix</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   m[~,p1,p2] = d</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:blue'>next</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(p1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>In this example func1 and func2
+are functions which convert the indicies p1 and p2 to numbers (e.g. RF
+amplitude or gradients) and the appropriate setPP routines are called to write
+these values into the parameter list ppList.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>The data collected from each
+scan is written to an output matrix (m) which may later be displayed or
+analysed.</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>Examples of multi-dimensional
+experiments can be found in the kea-NMR and kea-MRI menus.</p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:13.0pt;font-family:"Cambria","serif";
+color:#4F81BD'>Parameter conversion procedures</span></b></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The following parameter conversion
+procedures are provided in keaRun to convert from user units to spectrometer
+units:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPAmplitude</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies
+the amplitude of an RF pulse (ax).</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt;text-autospace:
+none'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>setPPDelay</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> .........
+modifies a short delay in a pulse program (dx).</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt;text-autospace:
+none'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>setPPGainHF(LF)
+</span></i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>....
+set the receiver amplifier gain for the high frequency or low frequency Kea
+(gx).</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPLongDelay</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies a
+long delay in a pulse program (wx).</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPFrequency</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies a
+transmit or receive frequency (fx).</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPNumber</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ........ modifies
+a simple integer value (nx).</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPPhase ......... </span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>set the transmit phase
+parameters (px).</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal>Note that when setting a receive frequency using <i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>setPPFrequency</span></i>
+you need to scale the frequency by the global variable <i>freqScaleFactor</i>. </p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>All setPP
+procedures are passed the following arguments:</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>1. The pulse
+program parameter list (ppList)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>2. The index of
+the parameter to modify (usually determined from varIndex)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>3. The new value for the parameter</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Note that if you wish to modify the nth
+(zero based) value in the variable list you pass the nth value of the varIndex
+array to the above procedures.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:92.15pt;text-indent:-92.15pt'><span
+lang=EN-GB>&nbsp;&nbsp;</span></p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'>&nbsp;</p>
+
+</div>
+
+<p class=MsoNormal><i>&nbsp;Correct for Prospa version 3.12,  1-August-2012</i></p>
+
+</div>
+
+</body>
+
+</html>

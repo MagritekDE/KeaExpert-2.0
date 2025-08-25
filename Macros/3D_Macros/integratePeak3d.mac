@@ -1,0 +1,230 @@
+####################################################
+#               integratePeak3d.mac
+#
+# Integrate each row in a manually selected vertical
+# strip in a 3D data set placing the resultant 
+# integratal into a 2D data set such that:
+#
+# mOut[y,z] = SUM(mIn[x,y,z]) where the summation is
+# performed over x between two limits selected by the 
+# user.
+#            
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+####################################################
+
+procedure(integratePeak3d)
+
+   n = :windowdefinition()
+   windowvar(wv_x1,wv_x2,wv_y1,wv_y2,reset)
+   reset = 1
+   :updateDialog()
+   :displayPlane()
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Integrate Peak (3D)", -1, -1, 338, 171)
+
+      # Define all controls with basic parameters
+       windowvar(reset,wv_y2,wv_y1,wv_x2,wv_x1)
+       statictext(1, 27, 22, "left", "3D matrix ")
+       button(2, 243, 139, 81, 25, "Exit",
+          closewindow(0);)
+       textmenu(3, 86, 26, 117, 200,
+          reset = 1;
+          :displayPlane();)
+       button(4, 243, 43, 82, 25, "Show raw data",
+          :displayPlane();)
+       button(5, 209, 27, 17, 20, "U",
+          reset = 1;
+          :updateDialog();)
+       button(6, 243, 107, 81, 25, "Help",
+          :showhelp();)
+       slider(7, 80, 75, 126, 20, "horizontal",
+            :displayPlane();)
+       statictext(8, 39, 72, "left", "Display")
+       statictext(9, 207, 77, "left", "6")
+       statictext(10, 22, 118, "left", "2D matrix to")
+       textmenu(11, 102, 122, 120, 200)
+       statictext(12, 12, 134, "left", "contain integrals")
+       groupbox(13, "", 6, 3, 229, 161)
+       statictext(14, 26, 36, "left", "to integate")
+       statictext(15, 43, 87, "left", "plane")
+       button(16, 243, 11, 81, 25, "Integrate",
+          :integrateData();)
+       button(18, 243, 75, 81, 25, "Show integral",
+          :displayIntegral();)
+
+     # Set other control parameters
+       setpar(n,3,"menu",[""])
+       setpar(n,11,"menu",[""])
+
+endproc(n)
+
+
+####################################################
+# Update the dialog 3D menu and slider
+####################################################
+
+procedure(updateDialog)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(0,3,"menu",menu3d)
+      setpar(0,3,"text",menu3d[0])
+      nameIn = getpar(0,3,"text")
+      mIn = alias(nameIn,"eval")
+      (w1,h1,d1) = size(mIn)
+      setpar(0,7,"range",[0,d1-1])
+   endif
+
+   menu2d = matrixlist(2)
+   if(size(menu2d) > 0)
+      setpar(0,11,"menu",menu2d)
+   endif
+   setpar(0,11,"text","mInt")
+
+endproc()
+ 
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\3D","integratepeak3d.htm")
+endproc()
+
+####################################################
+# Display the nth plane in the 3D data set
+####################################################
+
+procedure(displayPlane)
+
+# Get name and size of input matrix
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "" | isvar(nameIn) == 0)
+      return
+   endif
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+
+# Get plane
+   plane = getpar(0,7,"value")
+
+# Display plane
+   draw2d("false")
+
+      if(reset == 0)
+         (txt,lx,ly,nc,mode,wv_x1,wv_x2,wv_y1,wv_y2) = 2dpar:get()
+      endif
+
+      image(mIn[~,~,plane])
+
+      if(reset == 0)
+         2dpar:set(txt,lx,ly,nc,mode,wv_x1,wv_x2,wv_y1,wv_y2)
+      endif
+   
+      title("$nameIn$ plane $plane$")
+      setpar(0,9,"text",plane)
+      reset = 0
+   draw2d("true")
+
+endproc()
+
+
+####################################################
+# Allow the user select horizontal region for
+# integration and then do it.
+####################################################
+
+procedure(integrateData)
+
+# Record the current region coordinates
+   (wv_x1,wv_x2,wv_y1,wv_y2) = zoom2d("getargs")
+
+# Get name and size of input matrix
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   mIn = alias(nameIn,"eval")
+   if(vartype(mIn) != "matrix3d" & vartype(mIn) != "cmatrix3d")
+      message("Data to be integrated must be 3D")
+      return
+   endif
+   (w,h,d) = size(mIn)
+   x = [0:1:w-1]
+
+# Make output matrix
+   nameOut = getpar(0,11,"text")
+   mOut = matrix(h,d)
+
+# Get peak extent ###################
+   title("Select one side of peak")
+   x1 = getxy("vert")
+   title("Select other side of peak")
+   x2 = getxy("vert")
+   title("")
+
+# Swap if chosen in wrong order
+   if(x1 > x2)
+      swapvar(x1,x2)
+   endif
+
+# Integrate the data
+   if(vartype(mIn) = "cmatrix3d")
+      for(z = 0 to d-1)
+         title("Integrating plane $z$")
+         for(y = 0 to h-1)
+            mOut[y,z] = integvector(x,real(mIn[~,y,z]),x1,x2)
+         next(y)
+      next(z)
+   else
+      for(z = 0 to d-1)
+         title("Integrating plane $z$")
+         for(y = 0 to h-1)
+            mOut[y,z] = integvector(x,mIn[~,y,z],x1,x2)
+         next(y)
+      next(z)
+   endif
+
+# Display integrated data
+   image(mOut)  
+   title(nameOut)
+   reset = 1
+
+# Save output matrix
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+####################################################
+# Display the resultant integral data.
+####################################################
+
+procedure(displayIntegral)
+
+# Make output matrix
+   nameOut = getpar(0,11,"text")
+   if(isvar(nameOut))
+     # Display integrated data
+      mOut = eval(nameOut)
+      image(mOut)  
+      title(nameOut)
+      reset = 1  
+   else
+      message("Error","Can't find matrix '$nameOut$'","error")
+   endif
+endproc()
+

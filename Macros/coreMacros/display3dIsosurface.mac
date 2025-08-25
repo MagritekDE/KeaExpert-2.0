@@ -1,0 +1,567 @@
+####################################################################
+# Macro to display a 3D isosurface
+####################################################################
+
+
+procedure(display3dIsosurface,name)
+
+   n = :windowdefinition()
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(n,8,"menu",menu3d)
+      if(nrArgs > 0)
+         setpar(n,8,"text",name)
+         :updateDialog(name)
+      else
+         setpar(n,8,"text",menu3d[0])
+         :updateDialog(menu3d[0])
+      endif
+   endif
+   menu1d = matrixlist(1)
+   if(size(menu1d) > 0)
+      setpar(n,20,"menu",menu1d)
+      setpar(n,20,"text",menu1d[0])
+      setpar(n,47,"menu",menu1d)
+      setpar(n,47,"text",menu1d[0])
+      setpar(n,29,"menu",menu1d)
+      setpar(n,29,"text",menu1d[0])
+   endif
+   lst = :load_parameters()
+   setctrlvalues(n,lst)
+   showwindow(n)
+   :axes_mode_changing()
+ 
+endproc()
+
+####################################################################
+# Define the window
+####################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Display 3D Isosurface", -1, -1, 417, 260)
+
+      # Define all controls with basic parameters
+       windowvar(axCol,bbCol,axLen)
+       statictext(1, 15, 68, "left", "Maximum value:")
+       statictext(2, 18, 92, "left", "Minimum value:")
+       statictext(3, 18, 152, "left", "Surface")
+       statictext(4, 98, 68, "left", "4.71e+004")
+       statictext(5, 98, 92, "left", "-5.32e+003")
+       textbox(6, 66, 154, 83)
+       statictext(7, 24, 31, "left", "Name")
+       textmenu(8, 66, 28, 83, 200,
+          :updateDialog();)
+       button(9, 351, 134, 41, 27, "Plot",
+          :apply();)
+       button(10, 351, 174, 41, 27, "Help",
+          :showHelp();)
+       textbox(11, 288, 164, 32)
+       statictext(12, 40, 219, "left", "Surface")
+       statictext(13, 38, 192, "left", "Surface color")
+       groupbox(14, "Matrix", 6, 4, 157, 122)
+       statictext(15, 284, 168, "right", "->")
+       statictext(16, 284, 193, "right", "->")
+       statictext(17, 284, 218, "right", "->")
+       statictext(18, 31, 232, "left", "transparency")
+       textmenu(19, 101, 223, 37, 200)
+       textmenu(20, 195, 164, 36, 200,
+          name = getpar(0,20,"text");
+          v = eval(name);
+          setpar(0,21,"text",v[0]);
+          setpar(0,11,"text",v[1]);)
+       textbox(21, 240, 164, 32)
+       statictext(22, 188, 167, "right", "x")
+       statictext(23, 189, 191, "right", "y")
+       textbox(24, 240, 189, 32)
+       textbox(25, 288, 189, 32)
+       textbox(26, 288, 214, 32)
+       textbox(27, 240, 214, 32)
+       statictext(28, 188, 218, "right", "z")
+       textmenu(29, 195, 215, 36, 200,
+          name = getpar(0,29,"text");
+          v = eval(name);
+          setpar(0,27,"text",v[0]);
+          setpar(0,26,"text",v[1]);)
+       button(30, 351, 214, 41, 27, "Exit",
+          closewindow(0);)
+       statictext(31, 25, 165, "left", "level")
+       groupbox(32, "Axes", 174, 4, 157, 122)
+       groupbox(33, "Control", 338, 4, 66, 250)
+       radiobuttons(34, 306, 24, 16, "vertical", "None,Simple,Scale,Fitted", "Simple",
+            :axes_mode_changing();)
+       statictext(35, 242, 162, "right", "Axes length")
+       statictext(36, 244, 39, "left", "Simple axes")
+       statictext(37, 349, 49, "left", "Clear plot")
+       checkbox(38, 364, 68, "no,yes", "no")
+       groupbox(39, "Isosurface details", 6, 131, 158, 123)
+       groupbox(40, "Axes label range", 174, 131, 158, 123)
+       colorbox(41, 110, 188, 22, 22, [255,128,0],
+          :select_isocolor();)
+       statictext(42, 221, 55, "left", "Axes with scales")
+       colorbox(43, 293, 95, 22, 22, [255,255,0],
+          :select_axes_color();)
+       statictext(44, 281, 93, "right", "Axes")
+       statictext(45, 261, 23, "left", "No axes")
+       textbox(46, 264, 159, 40)
+       textmenu(47, 195, 189, 36, 200,
+          name = getpar(0,47,"text");
+          v = eval(name);
+          setpar(0,24,"text",v[0]);
+          setpar(0,25,"text",v[1]);)
+       statictext(48, 193, 71, "left", "Fitted axes with scales")
+       checkbox(49, 219, 100, "no,yes", "no")
+       statictext(50, 209, 106, "right", "Box")
+       statictext(51, 212, 93, "right", "Draw")
+       statictext(52, 284, 106, "right", "Colour")
+
+     # Set other control parameters
+       setpar(n,6,"name","level",
+                   "tab_number",2)
+       setpar(n,8,"tab_number",1)
+       setpar(n,9,"tab_number",16)
+       setpar(n,10,"tab_number",17)
+       setpar(n,11,"tab_number",9)
+       setpar(n,19,"tab_number",4,
+                   "name","transparency",
+                   "menu",["0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,21,"tab_number",8)
+       setpar(n,24,"tab_number",10)
+       setpar(n,25,"tab_number",11)
+       setpar(n,26,"tab_number",13)
+       setpar(n,27,"tab_number",12)
+       setpar(n,34,"name","axes_mode",
+                   "tab_number",18)
+       setpar(n,38,"name","clear_plot",
+                   "tab_number",15)
+       setpar(n,41,"name","surface_color")
+       setpar(n,43,"name","axes_color")
+       setpar(n,46,"name","axes_length",
+                   "tab_number",14)
+       setpar(n,49,"name","show_box")
+
+endproc(n)
+
+procedure(set_level,autoscale,name)
+
+  if(autoscale)
+
+     maxv = max(eval(name))
+     minv = min(eval(name))
+     level = 0.5*(maxv-minv)+minv
+     setpar(0,6,"text",level)
+
+  endif
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+   help("Macros\Core","display3DIsosurface.htm")
+endproc()
+
+####################################################################
+# Update all the values in the window
+####################################################################
+
+procedure(updateDialog,name)
+
+   if(nrArgs == 0)
+      name = getpar(0,8,"text")
+   endif
+   m3d = alias(name,"eval")  
+   maxVal = max(m3d)
+   minVal = min(m3d)
+   (w,h,d) = size(m3d)
+   setpar(0,6,"text",0.8*(maxVal-minVal) + minVal); 
+   setpar(0,4,"text","$maxVal,2.3g$"); 
+   setpar(0,5,"text","$minVal,2.3g$"); 
+   setpar(0,19,"text","1"); 
+   setpar(0,21,"text",0); 
+   setpar(0,11,"text",w); 
+   setpar(0,24,"text",0); 
+   setpar(0,25,"text",h);
+   setpar(0,27,"text",0); 
+   setpar(0,26,"text",d);
+
+endproc()
+
+procedure(apply)
+
+  :save_parameters()
+  :plotIsosurface()
+
+endproc()
+
+####################################################################
+# Extract parameters and plot isosurface
+####################################################################
+
+procedure(plotIsosurface)
+
+   name = getpar(0,8,"text")
+   try
+      m3d = alias(name,"eval")
+   catch
+      message("Error","No 3D data","error")
+      return
+   endtry
+  
+ #  level = getpar(0,6,"value")
+
+# Load plot parameters
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   axCol = axes_color/255
+   isoCol = join(surface_color/255,[getpar(0,19,"value")])
+
+   x1 = getpar(0,21,"value")
+   x2 = getpar(0,11,"value") 
+   y1 = getpar(0,24,"value") 
+   y2 = getpar(0,25,"value")
+   z1 = getpar(0,27,"value") 
+   z2 = getpar(0,26,"value")
+
+   (w,h,d) = size(m3d)
+
+   draw3d("false")
+
+      if(getpar(0,38,"text") == "yes")
+         clear3d()
+      endif
+
+      clip3dstatus("on")
+      (xmin,xmax,ymin,ymax,zmin,zmax) = isosurf(m3d,level,isoCol,[0,w,0,h,0,d])
+      clip3dstatus("off")
+
+       cx = (xmax+xmin)/2
+       cy = (ymax+ymin)/2
+       cz = (zmax+zmin)/2
+       dw = (xmax-xmin)
+       dh = (ymax-ymin)
+       dd = (zmax-zmin)
+       dx = dw/2
+       dy = dh/2
+       dz = dd/2
+
+      shift3d(-cx,-cy,-cz)
+      rotate3d(-8,320,0)
+      showcmap3d("false")
+
+      if(axes_mode == "Simple")
+
+         maxd = sqrt(dw^2+dh^2+dd^2)
+         axLen = getpar(0,46,"value")
+         axispar3d(axLen/10,axLen/10,axLen/10,axLen/8)
+         axes3d([0,0,0],axLen,axCol)
+
+      elseif(axes_mode == "Scale")
+
+         color3d(axCol)
+         maxd = sqrt(w^2+h^2+d^2)
+         depthcuerange(-maxd,2*maxd) 
+         axispar3d(maxd/80,maxd/40,maxd/40,maxd/20)
+
+         if(getpar(0,49,"text") == "yes")
+            axis3d("x",[0,w],0,d,[x1,x2],"x")
+            axis3d("y",[0,h],d,0,[y1,y2],"y")
+            axis3d("z",[0,d],w,0,[z1,z2],"z")
+           box3d(0,w,0,h,0,d)
+         else
+            axis3d("x",[0,w],0,0,[x1,x2],"x")
+            axis3d("y",[0,h],0,0,[y1,y2],"y")
+            axis3d("z",[0,d],0,0,[z1,z2],"z")
+         endif
+
+         viewdistance(maxd*2)
+     
+      elseif(axes_mode == "Fitted")
+
+         color3d(axCol)
+         maxd = sqrt(w^2+h^2+d^2)
+         depthcuerange(-maxd,2*maxd) 
+         
+         xmn = round(xmin - (xmax-xmin)*0.1)
+         xmx = round(xmax + (xmax-xmin)*0.1)
+         ymn = round(ymin - (ymax-ymin)*0.1)
+         ymx = round(ymax + (ymax-ymin)*0.1)
+         zmn = round(zmin - (zmax-zmin)*0.1)
+         zmx = round(zmax + (zmax-zmin)*0.1)
+         axispar3d(maxd/80,maxd/40,maxd/40,maxd/20)
+
+
+         if(getpar(0,49,"text") == "yes")
+            axis3d("x",[xmn,xmx],ymn,zmx,[x1,x2],"x")
+            axis3d("y",[ymn,ymx],zmx,xmn,[y1,y2],"y")
+            axis3d("z",[zmn,zmx],xmx,ymn,[z1,z2],"z")
+           box3d(xmn,xmx,ymn,ymx,zmn,zmx)
+         else
+            axis3d("x",[xmn,xmx],ymn,zmn,[x1,x2],"x")
+            axis3d("y",[ymn,ymx],zmn,xmn,[y1,y2],"y")
+            axis3d("z",[zmn,zmx],xmn,ymn,[z1,z2],"z")
+         endif
+
+         viewdistance(maxd*2)
+      else
+
+         color3d(axCol)
+         if(getpar(0,49,"text") == "yes")
+              box3d(0,w,0,h,0,d)
+         endif
+
+      endif
+
+
+
+   draw3d("true")  
+
+   datarange3d(0,w,0,h,0,d)
+  
+endproc()
+
+############################################
+# Select the color for the iso-surface
+############################################
+
+procedure(select_isocolor)
+
+   col = getcolor(getpar(0,41,"color"))
+   if(col[0] != -1)
+      setpar(0,41,"color",col)
+   endif
+
+endproc()
+
+############################################
+# Select the color for the iso-surface
+############################################
+
+procedure(select_axes_color)
+
+   col = getcolor(getpar(0,43,"color"))
+   if(col[0] != -1)
+       setpar(0,43,"color",col)
+   endif
+
+endproc()
+
+procedure(axes_mode_changing)
+
+   mode = getpar(0,34,"text")
+
+   if(mode == "Scale" | mode == "Fitted")
+     visRange = "true"
+     visLength = "false"
+     visBox = "true"
+   elseif(mode == "Simple")
+     visRange = "false"
+     visLength = "true"
+     visBox = "false"
+   else
+     visRange = "false"
+     visLength = "false"
+     visBox = "true"
+   endif
+
+   setpar(0,21,"visible",visRange)
+   setpar(0,11,"visible",visRange)
+   setpar(0,24,"visible",visRange)
+   setpar(0,25,"visible",visRange)
+   setpar(0,27,"visible",visRange)
+   setpar(0,26,"visible",visRange)
+   setpar(0,22,"visible",visRange)
+   setpar(0,23,"visible",visRange)
+   setpar(0,28,"visible",visRange)
+   setpar(0,15,"visible",visRange)
+   setpar(0,16,"visible",visRange)
+   setpar(0,17,"visible",visRange)
+   setpar(0,20,"visible",visRange)
+   setpar(0,47,"visible",visRange)
+   setpar(0,29,"visible",visRange)
+   setpar(0,46,"visible",visLength)
+   setpar(0,35,"visible",visLength)
+   setpar(0,49,"enable",visBox)
+
+
+
+endproc()
+
+procedure(toggle_autorange)
+
+  if(getpar(0,20,"text") == "yes")
+      setpar(0,21,"enable","false")
+      setpar(0,11,"enable","false")
+      setpar(0,24,"enable","false")
+      setpar(0,25,"enable","false")
+      setpar(0,27,"enable","false")
+      setpar(0,26,"enable","false")
+  else
+      setpar(0,21,"enable","true")
+      setpar(0,11,"enable","true")
+      setpar(0,24,"enable","true")
+      setpar(0,25,"enable","true")
+      setpar(0,27,"enable","true")
+      setpar(0,26,"enable","true")
+   endif
+
+endproc()
+
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   save("surf3d.par",lst)
+   cd(dir)
+
+endproc()
+
+procedure(load_parameters)
+
+   surface_color = [255,128,0]
+   axes_color = [255,255,0]
+   axes_length = 10
+   axes_mode = "Scale"
+   clear_plot = "yes"
+   transparency = 1
+   show_box = "yes"
+
+   lst = mkparlist()
+   lst = rmfromlist(lst,"nrArgs")
+
+   dir = getcwd()
+   cd(prefdir)
+   cd("Core Macros")
+   if(isfile("surf3d.par"))
+      lst = load("surf3d.par")
+   endif
+   cd(dir)
+
+endproc(lst)
+
+
+####################################################################
+# Extract parameters and plot isosurface
+####################################################################
+
+procedure(plot_data,name)
+
+# Load parameters from file
+   lst = :load_parameters()
+
+   assignlist(lst)
+   m3d = alias(name,"eval")
+
+   maxv = max(m3d)
+   minv = min(m3d)
+   (w,h,d) = size(m3d)
+   level = 0.5*(maxv-minv)+minv
+
+   axCol = axes_color/255
+   isoCol = join(surface_color/255,[transparency])
+
+   x1 = 0
+   x2 = w-1 
+   y1 = 0 
+   y2 = h-1
+   z1 = 0 
+   z2 = d-1
+
+
+   draw3d("false")
+
+      clear3d()
+
+      clip3dstatus("on")
+      (xmin,xmax,ymin,ymax,zmin,zmax) = isosurf(m3d,level,isoCol,[0,w,0,h,0,d])
+      clip3dstatus("off")
+
+       cx = (xmax+xmin)/2
+       cy = (ymax+ymin)/2
+       cz = (zmax+zmin)/2
+       dw = (xmax-xmin)
+       dh = (ymax-ymin)
+       dd = (zmax-zmin)
+       dx = dw/2
+       dy = dh/2
+       dz = dd/2
+
+      shift3d(-cx,-cy,-cz)
+      rotate3d(-8,320,0)
+      showcmap3d("false")
+
+      if(axes_mode == "Simple")
+
+         maxd = sqrt(dw^2+dh^2+dd^2)
+         axLen = getpar(0,46,"value")
+         axispar3d(axLen/10,axLen/10,axLen/10,axLen/8)
+         axes3d([0,0,0],axLen,axCol)
+
+      elseif(axes_mode == "Scale")
+
+         color3d(axCol)
+         maxd = sqrt(w^2+h^2+d^2)
+         depthcuerange(-maxd,2*maxd) 
+         axispar3d(maxd/80,maxd/40,maxd/40,maxd/20)
+
+         axis3d("x",[0,w],0,d,[x1,x2],"x")
+         axis3d("y",[0,h],d,0,[y1,y2],"y")
+         axis3d("z",[0,d],w,0,[z1,z2],"z")
+         if(show_box == "yes")
+            box3d(0,w,0,h,0,d)
+         endif
+    
+         viewdistance(maxd*2)
+     
+      elseif(axes_mode == "Fitted")
+
+         color3d(axCol)
+         maxd = sqrt(w^2+h^2+d^2)
+         depthcuerange(-maxd,2*maxd) 
+         
+         xmn = round(xmin - (xmax-xmin)*0.1)
+         xmx = round(xmax + (xmax-xmin)*0.1)
+         ymn = round(ymin - (ymax-ymin)*0.1)
+         ymx = round(ymax + (ymax-ymin)*0.1)
+         zmn = round(zmin - (zmax-zmin)*0.1)
+         zmx = round(zmax + (zmax-zmin)*0.1)
+         axispar3d(maxd/80,maxd/40,maxd/40,maxd/20)
+
+
+#         if(getpar(0,49,"text") == "yes")
+            axis3d("x",[xmn,xmx],ymn,zmx,[x1,x2],"x")
+            axis3d("y",[ymn,ymx],zmx,xmn,[y1,y2],"y")
+            axis3d("z",[zmn,zmx],xmx,ymn,[z1,z2],"z")
+           box3d(xmn,xmx,ymn,ymx,zmn,zmx)
+#         else
+#            axis3d("x",[xmn,xmx],ymn,zmn,[x1,x2],"x")
+#            axis3d("y",[ymn,ymx],zmn,xmn,[y1,y2],"y")
+#            axis3d("z",[zmn,zmx],xmn,ymn,[z1,z2],"z")
+#         endif
+
+         viewdistance(maxd*2)
+      else
+
+         color3d(axCol)
+         if(getpar(0,49,"text") == "yes")
+              box3d(0,w,0,h,0,d)
+         endif
+
+      endif
+
+
+
+   draw3d("true")  
+
+   datarange3d(0,w,0,h,0,d)
+  
+endproc()

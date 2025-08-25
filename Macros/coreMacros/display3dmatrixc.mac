@@ -1,0 +1,244 @@
+####################################################################
+# Macro to display a 3D isosurface
+####################################################################
+
+procedure(display3dmatrix,name)
+
+   n = :windowdefinition()
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(n,8,"menu",menu3d)
+      setpar(n,8,"text",name)
+      :updateDialog(name)
+   endif
+   showobjects(n)
+   axLen = 10
+   axCol = [1,1,0]
+   bbCol = [1,0,0]
+
+endproc()
+
+####################################################################
+# Define the window
+####################################################################
+
+procedure(windowdefinition)
+
+   n = window("Display 3D Isosurface", -1, -1, 501, 274)
+       setwindowpar(n,"show_menu","false")
+      # Define all controls with basic parameters
+       windowvar(axCol,bbCol,axLen)
+       statictext(1, 306, 25, "left", "Maximum value:")
+       statictext(2, 309, 49, "left", "Minimum value:")
+       statictext(3, 298, 80, "left", "Isosurface to plot:")
+       statictext(4, 386, 25, "left", "6.42088e+007")
+       statictext(5, 386, 49, "left", "151.488")
+       textbox(6, 386, 77, 83)
+       statictext(7, 22, 21, "left", "Matrix to display")
+       textmenu(8, 16, 43, 86, 200,
+          :updateDialog();)
+       button(9, 25, 157, 57, 30, "Plot",
+          :plotIsosurface();)
+       button(10, 25, 197, 57, 30, "Cancel",
+          closewindow(0);)
+       textbox(11, 416, 151, 40)
+       textmenu(12, 154, 158, 40, 200)
+       statictext(13, 161, 141, "left", "Red")
+       statictext(14, 211, 141, "left", "Green")
+       textmenu(15, 154, 204, 40, 200)
+       textmenu(16, 208, 158, 40, 200)
+       statictext(17, 162, 186, "left", "Blue")
+       statictext(18, 214, 186, "left", "Alpha")
+       textmenu(19, 208, 204, 40, 200)
+       groupbox(20, "Isosurface Colour", 121, 115, 158, 127)
+       textbox(21, 364, 151, 40)
+       statictext(22, 324, 155, "left", "xrange")
+       statictext(23, 324, 184, "left", "yrange")
+       textbox(24, 364, 180, 40)
+       textbox(25, 416, 180, 40)
+       textbox(26, 415, 209, 40)
+       textbox(27, 364, 209, 40)
+       statictext(28, 323, 213, "left", "zrange")
+       statictext(29, 362, 134, "left", "Minimum")
+       statictext(30, 413, 134, "left", "Maximum")
+       groupbox(31, "Matrix dimensions", 287, 115, 200, 127)
+       statictext(32, 150, 29, "left", "Bounding box")
+       checkbox(33, 219, 30, "no,yes", "no")
+       checkbox(34, 219, 55, "no,yes", "no")
+       statictext(35, 192, 54, "left", "Axes")
+       button(36, 168, 78, 66, 19, "Colour/size",
+          (axCol,bbCol,axLen) = :selectcolour(getpar(0,33,"text"),getpar(0,34,"text"));)
+       statictext(37, 16, 88, "left", "Clear plot first")
+       checkbox(38, 86, 89, "no,yes", "no")
+       groupbox(39, "Matrix range", 287, 3, 200, 108)
+       groupbox(40, "Bounding box/Axes", 121, 3, 158, 108)
+
+     # Set other control parameters
+       setpar(n,6,"tab_number",9)
+       setpar(n,8,"tab_number",1)
+       setpar(n,9,"tab_number",2)
+       setpar(n,10,"tab_number",3)
+       setpar(n,11,"tab_number",11)
+       setpar(n,12,"tab_number",5,
+                   "menu",["0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,15,"tab_number",7,
+                   "menu",["0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,16,"tab_number",6,
+                   "menu",["0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,19,"tab_number",8,
+                   "menu",["0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,21,"tab_number",10)
+       setpar(n,24,"tab_number",12)
+       setpar(n,25,"tab_number",13)
+       setpar(n,26,"tab_number",15)
+       setpar(n,27,"tab_number",14)
+       setpar(n,36,"tab_number",4)
+
+endproc(n)
+
+
+####################################################################
+# Update all the values in the window
+####################################################################
+
+procedure(updateDialog,name)
+
+   if(nrArgs == 0)
+      name = getpar(0,8,"text")
+   endif
+   m3d = alias(name,"eval")  
+   maxVal = max(m3d)
+   minVal = min(m3d)
+   (w,h,d) = size(m3d)
+   setpar(0,6,"text",0.9*(maxVal-minVal) + minVal); 
+   r = setpar(0,12,"text","0.8")
+   g = setpar(0,16,"text","0.2")
+   b = setpar(0,15,"text","0.0")
+   a = setpar(0,19,"text","1.0")
+   setpar(0,4,"text",maxVal); 
+   setpar(0,5,"text",minVal); 
+   setpar(0,21,"text",0); 
+   setpar(0,11,"text",w); 
+   setpar(0,24,"text",0); 
+   setpar(0,25,"text",h);
+   setpar(0,27,"text",0); 
+   setpar(0,26,"text",d);
+
+endproc()
+
+####################################################################
+# Extract parameters and plot isosurface
+####################################################################
+
+procedure(plotIsosurface)
+
+   name = getpar(0,8,"text")
+   m3d = alias(name,"eval")  
+   level = getpar(0,6,"value")
+   r = getpar(0,12,"value")
+   g = getpar(0,16,"value")
+   b = getpar(0,15,"value")
+   a = getpar(0,19,"value")
+   box = getpar(0,33,"text")
+   (w,h,d) = size(m3d)
+
+   axes = getpar(0,34,"text")
+
+   draw3d("false")
+      if(getpar(0,38,"text") == "yes")
+         clear3d()
+      endif
+
+
+      (xmin,xmax,ymin,ymax,zmin,zmax) = isosurf(m3d,level,[r,g,b,a])
+       cx = (xmax+xmin)/2
+       cy=  (ymax+ymin)/2
+       cz = (zmax+zmin)/2
+       dw = (xmax-xmin)
+       dh = (ymax-ymin)
+       dd = (zmax-zmin)
+       dx = dw/2
+       dy = dh/2
+       dz = dd/2
+      maxd = sqrt(dw^2+dh^2+dd^2)
+
+      if(axes == "yes")
+         axes3d(axLen,[cx,cy,cz],axCol)
+      endif
+
+      shift3d(-cx,-cy,-cz)
+      rotate3d(0,0,0)
+      fogrange(0,2*maxd) 
+      if(box == "yes")
+         labelsize3d(maxd/60,maxd/30,maxd/30)
+         color3d([0,1,0])
+         axis3d("x",[xmin,xmax],ymin,zmax,[xmin,xmax])
+         axis3d("y",[ymin,ymax],zmax,xmin,[ymin,ymax])
+         axis3d("z",[zmin,zmax],xmax,ymin,[zmin,zmax])
+         box3d(xmin,xmax,ymin,ymax,zmin,zmax)
+      endif
+   draw3d("true")  
+  
+endproc()
+
+####################################################################
+# Select bounding box colour, axes color and length
+####################################################################
+
+procedure(selectcolour,bboxSel,axesSel)
+
+   loc_axCol = axCol
+   loc_bbCol = bbCol
+   loc_axLen = axLen
+
+   nOld = guiwinnr("getargs")
+   n = :colourpopupdef(loc_axCol,loc_bbCol,loc_axLen)
+#   if(bboxSel == "no")
+#      enablecontrol(n,2,"false")
+#      enablecontrol(n,1,"false")
+#   endif
+#   if(axesSel== "no")
+#      enablecontrol(n,3,"false")
+#      enablecontrol(n,4,"false")
+#      enablecontrol(n,7,"false")
+#      enablecontrol(n,8,"false")
+#   endif
+
+   setpar(n,4,"text","$loc_axCol$")
+ #  setpar(n,1,"text","$loc_bbCol$")
+   setpar(n,8,"text",loc_axLen)
+   (loc_axCol,loc_bbCol,loc_axLen) = showdialog(n)
+   guiwinnr(nOld)
+   if(loc_axCol == [-1,-1,-1])
+      loc_axCol = axCol
+      loc_bbCol = bbCol
+      loc_axLen = axLen
+   endif
+
+endproc(loc_axCol,loc_bbCol,loc_axLen)
+
+####################################################################
+# Colour/size dialog definition
+####################################################################
+
+procedure(colourpopupdef,loc_axCol,loc_bbCol,loc_axLen)
+
+   n = window("Select colours", 465, 534, 289, 120)
+       setwindowpar(n,"type","dialog")
+ #      edittext(1, 129, 19, 70)
+ #      statictext(2, 20, 23, "left", "Bounding box colour")
+       statictext(3, 21, 26, "left", "Axes colour")
+       button(5, 38, 60, 57, 24, "OK",
+              axesColor = getpar(0,4,"value");
+ #             bboxColor = getpar(0,1,"value");
+              bboxColor = [1,1,0];
+              axesLength = getpar(0,8,"value");
+              closedialog(axesColor,bboxColor,axesLength););
+       button(6, 123, 60, 57, 24, "Cancel",closedialog([-1,-1,-1],[-1,-1,-1],0);)
+       statictext(7, 165, 26, "left", "Axes length")
+       edittext(8, 230, 22, 36)
+       edittext(4, 84, 22, 70)
+
+endproc(n)
+
+

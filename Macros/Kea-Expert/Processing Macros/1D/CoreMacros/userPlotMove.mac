@@ -1,0 +1,29 @@
+procedure(userPlotMove, xc, yc, xlast, ylast)
+
+   pt = curplot("1d")
+   tc = pt->curtrace()
+
+# Get the data
+   (x,y) = pt->getdata("all")
+   if(x == null)
+     message("Error","No 1D plot data","error")
+     return()
+   endif
+
+# Work out index
+   xc = findindex(x,xc)
+   xl = findindex(x,xlast)
+
+# Rotate the data
+   delx = xl - xc
+   if(abs(delx) >= 1)
+
+      yn = rotate(y,-delx,0)
+      pt->parent->draw("false")
+      pt->autorange("off")
+      tc->setdata(struct(x,yn))
+      pt->parent->draw("true")
+
+    endif
+
+endproc()

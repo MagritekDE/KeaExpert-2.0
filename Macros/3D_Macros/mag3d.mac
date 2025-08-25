@@ -1,0 +1,139 @@
+####################################################
+#                    mag3d.mac
+#
+# Take the magnitude of each row in a complex 3D matrix
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+####################################################
+
+
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(mag3d)
+
+   n = :windowdefinition()
+   :updatelist()
+   :update_output_name()
+   showwindow(n)
+
+endproc()
+
+
+#############################################################
+# Update the menu list
+#############################################################
+
+procedure(updatelist)
+   menu3d = matrixlist(4)
+      if(size(menu3d) > 0)
+      setpar(0,3,"menu",menu3d)
+      setpar(0,3,"index",1)
+   endif
+endproc()
+
+#############################################################
+# Update the output name using the input name as a template
+#############################################################
+
+procedure(update_output_name)
+
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   setpar(0,4,"text",nameIn + "_mag")
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("3D Magnitude Calculation", -1, -1, 232, 127)
+
+      # Define all controls with basic parameters
+       statictext(1, 22, 27, "left", "Input")
+       statictext(2, 14, 59, "left", "Output")
+       textmenu(3, 51, 24, 128, 200,
+          :update_output_name();)
+       textmenu(4, 52, 56, 150, 200)
+       button(5, 14, 95, 55, 23, "OK",
+          :takemag();)
+       button(6, 152, 95, 55, 23, "Exit",
+          closewindow(0);)
+       button(8, 83, 95, 55, 23, "Help",
+          :showhelp();)
+       groupbox(9, "Matrices", 6, 4, 208, 82)
+       button(10, 184, 25, 17, 20, "U",
+          :updatelist();
+          :update_output_name();)
+
+     # Set other control parameters
+       setpar(n,3,"menu",[""])
+       setpar(n,4,"menu",[""])
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\3D","mag3d.htm")
+endproc()
+
+####################################################
+# Take the magnitude of each row in the data set
+####################################################
+
+procedure(takemag)
+
+# Get name of input matrix
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+   if(vartype(mIn) == "matrix3d")
+      message("Error","Data is already real","error")
+      return
+   endif
+
+# Get name of output matrix  
+   nameOut = getpar(0,4,"text")
+
+# Make output matrix
+   mOut = matrix(w1,h1,d1) 
+
+# Take magnitude of each row
+   for(z = 0 to d1-1)
+      for(y = 0 to h1-1)
+         mOut[~,y,z] = mag(mIn[~,y,z])
+      next(y)
+   next(z)   
+   message("Information","Magnitude calculation finished")
+
+# Copy output matrix to a global  
+   if(nameOut == nameIn)
+      a = query("Warning","Do you want to overwrite the input matrix \"$nameIn$\"?")
+      if(a == "yes")
+         rmvar("mIn")
+         assign(nameOut,mOut,"global")
+      endif
+   else
+      assign(nameOut,mOut,"global")
+   endif
+
+endproc()
+

@@ -1,0 +1,128 @@
+####################################################
+#                     polyfit.mac
+#
+# Fits a polynomial to the current 1D data set
+# The user specifies the maximum fit order and
+# may select from several other options:
+#
+# calc. sd. If this option is checked (the default)
+# the routine determines the noise level in the plot
+# and returns it as a parameter. If not then the value
+# entered into the data sd text field is used.
+#
+# plot fit. If this option is checked (the default)
+# the result is displayed as a line of best fit 
+# overlaying the plot data.
+#
+# find best fit. If this option is checked the fitting
+# routine tries all models from order 0 to the maximum
+# order specified and returns the fit with the smallest 
+# chi-squared value.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+####################################################
+
+
+procedure(polyfit)
+
+   n = :windowdefinition()
+   setpar(n,2,"menu",[0,1,2,3,4,5,6,7,8,9,10,11,12])
+   setpar(n,2,"text","1")
+   setpar(n,3,"enable","false")
+   setpar(n,4,"enable","false")
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the window and all controls
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Polyfit", -1, -1, 186, 153)
+
+      # Define all controls with basic parameters
+       statictext(1, 15, 21, "left", "max. order")
+       textmenu(2, 73, 18, 40, 200)
+       statictext(3, 29, 47, "left", "data sd")
+       textbox(4, 72, 45, 40)
+       checkbox(5, 74, 77, "no,yes", "yes",
+            calc = getpar(0,5,"text");
+            if(calc = "yes");
+            setpar(0,3,"enable","false");
+            setpar(0,4,"enable","false");
+            else;
+            setpar(0,3,"enable","true");
+            setpar(0,4,"enable","true");
+            endif;)
+       statictext(6, 27, 76, "left", "calc. sd")
+       button(7, 129, 22, 44, 29, "Fit",
+          :fit();)
+       button(8, 129, 107, 44, 29, "Exit",
+          closewindow(0);)
+       statictext(9, 36, 99, "left", "plot fit")
+       checkbox(10, 74, 100, "no,yes", "yes")
+       checkbox(11, 74, 122, "no,yes", "no")
+       statictext(12, 13, 121, "left", "find best fit")
+       button(13, 129, 64, 44, 29, "Help",
+          :showhelp();)
+       groupbox(14, "", 4, -1, 118, 150)
+
+     # Set other control parameters
+       setpar(n,2,"menu",["0","1","2","3","4","5","6","7","8","9","10","11","12"])
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","polyfit.htm")
+endproc()
+
+####################################################
+# Determine the best fit
+####################################################
+
+procedure(fit)
+
+   calc    = getpar(0,5,"text")
+   order   = getpar(0,2,"value")
+   bestfit = getpar(0,11,"text")
+   plotfit = getpar(0,10,"text")
+
+   if(bestfit = "yes") 
+      order = -order
+   endif
+
+   (x,y) = getplotdata("1d")
+
+   if(x != null)
+      if(calc == "yes")
+         (f) = polyfit(x,y,order,1)
+      else
+         sd = getpar(0,4,"value")
+         (f) = polyfit(x,y,order,1,sd)
+      endif
+      if(plotfit == "yes")
+         status = hold("getargs")
+         drawplot("false")
+         id = plot(x,y,"tracetype","none",
+                  "symbolshape","opensquare",
+                  "symbolsize",2,
+                  "symbolcolor",[255,0,0])
+         hold("on")
+         plot(x,f,"tracetype","lines","symbolshape","none")
+         drawplot("true")
+         curtrace(id)
+         hold(status )
+      endif
+   endif
+
+endproc()

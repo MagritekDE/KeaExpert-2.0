@@ -1,0 +1,69 @@
+############################################################
+#  
+# Generates a pulse with a ramped shaped amplitude and a
+# phase which jumps in the middle by 180 degrees
+# using an interleaved table and the shapedrf command.
+#
+# For demonstration purposes only
+#
+# pulse - delay - shapedpulse - delay acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
+               "b1Freq",          "Pulse frequency",              "tb",  "float";
+               "txMaxdB",         "Pulse max amplitude (dB)",     "tb",  "float";
+               "nAmpSteps",       "Amplitude steps",              "tb",  "integer";
+               "stepDur",         "Table step length (us)",       "tb",  "pulselength";
+               "repTime",         "Repetition time (ms)",         "tb",  "reptime"]
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts     = nrPnts",
+                    "b1Freq1H      = b1Freq",
+                    "a1            = 0",
+                    "aMax          = gFX3->convertAmplitude(txMaxdB)",
+                    "ampSweep1     = linspace(0,aMax,nAmpSteps/2)",
+                    "ampSweep2     = linspace(aMax,0,nAmpSteps/2)",
+                    "phSweep1      = matrix(nAmpSteps/2)",
+                    "phSweep2      = matrix(nAmpSteps/2)+32768",
+                    "ampSweep      = join(ampSweep2,ampSweep1)",
+                    "phSweep       = join(phSweep1,phSweep2)",
+                    "tAmpPhase     = gFX3->interleaveTables(ampSweep,phSweep)",
+                    "nTabSz        = size(tAmpPhase)/2",
+                    "dTabStep      = stepDur",
+                    "totPnts       = nrPnts",
+                    "totTime       = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)      
+   pulse(1,a1,p1,10)                         # Generate a pulse for scope triggering with constant phase            
+   delay(10)
+   shapedrf2(1,tAmpPhase,p2,nTabSz,dTabStep) # Shaped amplitude/phase pulse
+   delay(10)                                 # Pulse - acquire delay
+   acquire("overwrite",nDataPnts)            # Acquire FID
+
+   parList = endpp()                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,0,0,0;   # p1 : Trigger phase
+                 0,1,2,3;   # p2 : Shaped phase
+                 0,0,0,0]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+

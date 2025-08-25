@@ -1,0 +1,48 @@
+###########################################################
+# Redraw all of a stacked plot after a zoom
+###########################################################
+
+procedure(showAllStackedPlot)
+
+# Convert the stacked plot traces into a 2D matrix
+   p = curplot("1d")
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   tl = p->tracelist()
+   h = size(tl)
+   (x,y) = p->trace(0)->getdata()
+   w = size(x)
+   m = cmatrix(w,h)
+   for(k = 0 to h-1)
+     (x,y) = p->trace(k)->getdata()
+      m[~,k] = y
+   next(k)
+
+# Find the standard deviation for the 2D matrix
+# Use this to set the y range for each trace
+   xRange = (x[-1]-x[0])
+   yRange = real(sd(m))*5*h
+
+# Work out the original yaxis mapping
+   mapping = p->axes->ymapping()
+   minY = p->axes->origminaxisvalue()
+   if(mapping == "log")
+      range = (log10(p->axes->maxaxisvalue())-log10(p->axes->minaxisvalue()))
+      axisRange = [minY,10^range]
+   else
+     range = (p->axes->maxaxisvalue()-p->axes->minaxisvalue())
+     axisRange = [minY,range]
+   endif
+
+# Set the axes range
+   p->axes->minaxisvalue(axisRange[0])
+   p->axes->maxaxisvalue(axisRange[-1])
+
+# Zoom the plot
+   p->zoom(x[0],x[-1],0,yRange)
+
+endproc(m)
+

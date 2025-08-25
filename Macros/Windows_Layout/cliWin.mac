@@ -1,0 +1,194 @@
+##################################################
+# Generate a CLI window
+#
+# 3 modes:
+#
+#  0 arguments - full is self contained window
+#  1 argument - full window but constrained
+#  2 arguments - cli object is part of another window
+#
+#  n is the window number
+#  m is the initial object number
+#
+###################################################
+
+
+procedure(cliWin, n, m)
+
+   if(nrArgs == 0) # Stand alone window
+      (x,y,w,h) = :loadpar()
+      n = window("CLI", x,y,w,h,"resizable")
+      setwindowpar(n,"title","CLI ($n$)")
+      setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"titleupdate","true")
+      m = 1
+      cli(m,0,0,"ww","wh")
+   elseif(nrArgs == 1) # Constrained window
+      mode = n
+      n = window("CLI", "0","0","ww","wh","resizable")
+      setwindowpar(n,"title","CLI ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      if(mode == 1)
+         setwindowpar(n,"constrained","true")
+      elseif(mode == 2)
+         setwindowpar(n,"constrained","true")
+         setwindowpar(n,"permanent","true")
+      endif
+      m = 1
+      cli(m,5,5,"ww-10","wh-10")
+   else # Part of another window
+      cli(m,5,5,"rw-10","rh-10")
+      setwindowpar(n,"titleupdate","false")
+   endif
+
+   statusbox(m+1,"ww-50","ww","-1")
+
+
+   menu(m+2,"&Edit","Undo\tCtrl+Z",funcCLI("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcCLI("cut"),
+                "Copy\tCtrl+C",funcCLI("copy"),
+                "Paste\tCtrl+V",funcCLI("paste"),
+                "Separator", , 
+                "Clear CLI\tCtrl+K",clear("cli"))
+
+   menu(m+3,"&View","Query macro procedures ...\tCtrl+M",:showProcs(),
+                "Separator", ,
+                "Show next window\tCtrl+Tab", shownextwindow(0),
+                "Show last window\tCtrl+Shift+Tab", showlastwindow(0),
+                "Hide window\tCtrl+W",hidewindow(0))
+
+   menu(m+4, "&Help", "Command help\tF1",funcCLI("command help"),
+              "Window &help\tCtrl+H", help("User Interface\CLI","Introduction.htm"))
+ 
+
+   setpar(n,1,"menubar",[m+2:m+4])
+   setpar(n,1,"toolbar",-1) 
+   setpar(n,1,"statusbox",m+1)
+   setpar(n,m+1,"syntaxWindow","")
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"menubar",[m+2:m+4])
+      showwindow(n,"recalc")
+      setwindowpar(n,"title","CLI ($n$)")
+      setwindowpar(n,"keepInFront","true")
+   else
+      setwindowpar(n,"keepInFront","false")
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+   pr ""
+ 
+endproc(n)
+
+procedure(hide)
+
+   (x,y,w,h) = :loadpar()
+   n = window("CLI", x,y,w,h,"resizable")
+   setwindowpar(n,"dimensions",[x,y,w,h])
+   m = 1
+   cli(m,0,0,"ww","wh")
+ 
+
+   statusbox(m+1,"ww-50","ww","-1")
+
+
+   menu(m+2,"Edit","Undo\tCtrl+Z",funcCLI("undo"),
+                "Separator", , 
+                "Cut\tCtrl+X",funcCLI("cut"),
+                "Copy\tCtrl+C",funcCLI("copy"),
+                "Paste\tCtrl+V",funcCLI("paste"),
+                "Separator", , 
+                "Clear CLI\tCtrl+K",clear("cli"))
+
+   menu(m+3,"View","Command help\tF1",funcCLI("command help"),
+                "Separator", , 
+                "Query macro procedures ...\tCtrl+M",:showProcs(),
+                "Separator", , 
+                "Hide window\tCtrl+W",hidewindow(0))
+
+   menu(m+4, "&Help", "Window &help", help("User Interface\CLI","Introduction.htm"))
+
+   setpar(n,1,"menubar",[m+2:m+4])
+   setpar(n,1,"toolbar",-1) 
+   setpar(n,1,"statusbox",m+1)
+   setpar(n,m+1,"syntaxWindow","")
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"menubar",[m+2:m+4])
+   #   showwindow(n,"recalc")
+      setwindowpar(n,"title","CLI ($n$)")
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"keepInFront","false")
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+   pr ""
+ 
+endproc(n)
+
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("cli.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 1000
+      h = 800
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   lst = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   save("cli.par",lst)
+   cd(bak)
+
+   hidewindow(0)
+
+endproc()
+
+# List all the procedures in a class or a macro
+procedure(showProcs)
+
+   cc = curcli()
+   name = cc->getmacroname()
+   if(name != null)
+      (path,macroName) = findmacro(name)
+      if(path != null)
+         procs = getprocnames(path,macroName)
+         procs = sortlist(procs)
+         item = selectItemFromList(procs,"Select procedure from list")
+         if(item != null)
+            cc->inserttext(item+"()")
+            cc->insertoffset(-2)
+            cc->showsyntax("")
+            cc->insertoffset(1)
+            setfocus(cc->winNr,cc->objNr)
+         endif
+      else
+         print("\n  Macro/Class '$name$' not found\n")
+      endif
+   endif
+
+endproc()

@@ -1,0 +1,46 @@
+procedure(step_test1,verbose,delay)
+
+   m = matrix(101)
+   for(k = 0 to 100 step 1)
+      m[k] = k
+   next(k)
+   if(m != [0:1:100])
+      return(0, "Invalid result for: step_test1 #1")
+   endif 
+
+   for(k = 0 to 200 step 2)
+      m[k/2] = k
+   next(k)
+   if(m != [0:2:200])
+      return(0, "Invalid result for: step_test1 #2")
+   endif 
+
+   for(k = 0 to 50 step 0.5)
+      m[k*2] = k
+   next(k)
+   if(m != [0:0.5:50])
+      return(0, "Invalid result for: step_test1 #3")
+   endif 
+
+   for(k = 100 to 0 step -1)
+      m[100-k] = k
+   next(k)
+   if(m != [100:-1:0])
+      return(0, "Invalid result for: step_test1 #4")
+   endif 
+
+   for(k = 200 to 0 step -2)
+      m[(200-k)/2] = k
+   next(k)
+   if(m != [200:-2:0])
+      return(0, "Invalid result for: step_test1 #5")
+   endif 
+
+   for(k = 50 to 0 step -0.5)
+      m[(50-k)*2] = k
+   next(k)
+   if(m != [50:-0.5:0])
+      return(0, "Invalid result for: step_test1 #6")
+   endif 
+
+endproc(1,"")

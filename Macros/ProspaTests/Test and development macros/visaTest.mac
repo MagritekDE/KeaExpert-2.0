@@ -1,0 +1,92 @@
+# NI-Visa test macro
+
+#SA = visagetdevicename("?*CN03227386::INSTR")
+#FG = visagetdevicename("?*MY53301073::INSTR")
+try
+   SCOPE = visagetdevicename("?*C100042::INSTR")
+catch
+   SCOPE = visagetdevicename("?*C022533::INSTR")
+endtry
+
+#visawrite(SA, ":FREQ:START 2e6")
+#visawrite(SA, ":FREQ:STOP 30e6")
+
+visawrite(SCOPE, ":DATA:SOURCE CH1")
+pause(1)
+pr visaquery(SCOPE, ":DATA:SOURCE?")
+
+plt = curplot("1d")
+
+plt->autorange("off")
+
+
+while(1)
+
+time(0)
+
+    # Read the horizontal scale
+   xscale = visaquery(SCOPE, ":HORizontal:MAIn:SCALE?")
+
+   xscale = eval(xscale[0:-2]) # Remove \n
+   
+   # Read the vertical scale
+   yscale =  visaquery(SCOPE, ":CH1:SCAle?")
+   yscale = eval(yscale[0:-2]) # Remove \n
+
+   # Read the x offset
+   xoffset =  visaquery(SCOPE, ":HORizontal:MAIn:POSition?")
+   xoffset = eval(xoffset[0:-2]) # Remove \n
+#pr xoffset
+   # Read the y offset
+   yoffset = visaquery(SCOPE, ":CH1:POSition?")
+   yoffset = eval(yoffset[0:-2]) # Remove \n
+
+   # Get the number of points to transfer
+   length = visaquery(SCOPE,":WFMPre:NR_Pt?")
+   length = eval(length[0:-2]) # Remove \n
+
+   #pr visaquery(SCOPE,":DATA:WIDTH?")
+   # Read the data allowing for a block header
+   data = visaquery(SCOPE,":CURVE?",length+10,"array8")
+
+   # Extract size of block header and length of data set
+   digits = eval(asciitostr(data[1]))
+   length = eval(asciitostr(data[2:digits+1]))
+   
+   # Extract trace data
+   data = data[digits+2:]
+
+   # Set up x-axis units
+   if(xscale >= 500e-6)
+      xUnitsScale = 1e3
+      xUnits = "ms"
+   else
+      xUnitsScale = 1e6
+      xUnits = "\G(m)s"
+   endif
+
+   # Make axes
+   xaxis = (linspace(0,10*xscale,size(data)) - 5*xscale)*xUnitsScale
+   fact = 4*yscale/100
+
+   # Plot it
+   plt->draw("false")
+   plt->plot(xaxis,fact*data-yoffset*yscale)
+   plt->axes->xrange([xaxis[0],xaxis[-1]])
+   plt->axes->yrange([-4*yscale-yoffset*yscale,4*yscale-yoffset*yscale])
+   plt->axes->xtickspacing(xscale*xUnitsScale/5)
+   plt->axes->xticksperlabel(5)
+   plt->axes->ytickspacing(yscale/5)
+   plt->axes->yticksperlabel(5)
+   plt->grid->xgrid("on")
+   plt->grid->ygrid("on")
+   plt->xlabel("Time ($xUnits$)")
+   plt->ylabel("Volts")
+   plt->title("Scope Data")
+   plt->draw("true")
+
+endwhile()
+
+
+
+

@@ -1,0 +1,45 @@
+###################################################################################
+# Set the transmit frequency from a scalar
+#
+#   settxfreq(channel, freq)
+#
+#   channel : 1/2
+#   freq    : freqency in MHz
+#
+#   Duration 2 us
+#
+##################################################################################
+
+procedure(settxfreq, channel, freq)
+
+   if(nrArgs != 2)
+      throw("Expecting two arguments to settxfreq command")
+   endif
+
+   if(wvFX3Info->mode == "run")
+   
+      (hiWord, loWord) = gFX3->convertFrequency(freq)
+
+      if(channel == 1)
+         ps =  [15d,     0x118E, 0, 
+                15d,     0x118E, 0,
+                15d,     0x118E, hiWord,
+                200-45d, 0x118E, loWord]
+      else
+         ps =  [15d,     0x128E, 0, 
+                15d,     0x128E, 0,
+                15d,     0x128E, hiWord,
+                200-45d, 0x128E, loWord]
+      endif
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+       
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(freq)
+
+   endif
+
+endproc()
+

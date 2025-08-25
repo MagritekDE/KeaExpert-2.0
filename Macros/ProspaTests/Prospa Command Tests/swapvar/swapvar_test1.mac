@@ -1,0 +1,83 @@
+procedure(swapvar_test1,verbose,delay)
+
+# Swap reals
+   x = 12
+   y = 34.5
+   swapvar(x,y)
+   if(x != 34.5 | y != 12)
+      return(0, "Invalid result for: swapvar_test1 #1")
+   endif 
+
+# Swap strings
+   x = "Hi there"
+   y = "Some random string"
+   swapvar(x,y)
+   if(x != "Some random string" | y != "Hi there")
+      return(0, "Invalid result for: swapvar_test1 #2")
+   endif
+
+# Swap lists
+   x = ["1","2","3","4","5"]
+   y = ["a","b","c","d","e"]
+   swapvar(x,y)
+   if(x != ["a","b","c","d","e"] | y != ["1","2","3","4","5"])
+      return(0, "Invalid result for: swapvar_test1 #3")
+   endif  
+
+# Swap vectors
+   x = [0:1:100]
+   y = [0:0.5:50]
+   swapvar(x,y)
+   if(x != [0:0.5:50] | y != [0:1:100])
+      return(0, "Invalid result for: swapvar_test1 #4")
+   endif 
+
+# Swap cvectors
+   x = {0:1:100}
+   y = {0:0.5:50}
+   swapvar(x,y)
+   if(x != {0:0.5:50} | y != {0:1:100})
+      return(0, "Invalid result for: swapvar_test1 #5")
+   endif 
+
+# Swap matrices
+   x = noise(100,20)
+   y = noise(100,20)
+   ox = x
+   oy = y
+   swapvar(x,y)
+   if(x != oy | y != ox)
+      return(0, "Invalid result for: swapvar_test1 #6")
+   endif 
+
+# Swap cmatrices
+   x = noise(100,20)+i*noise(100,20)
+   y = noise(100,20)+i*noise(100,20)
+   ox = x
+   oy = y
+   swapvar(x,y)
+   if(x != oy | y != ox)
+      return(0, "Invalid result for: swapvar_test1 #7")
+   endif 
+
+# Swap 3D matrices
+   x = noise(30,20,50)
+   y = noise(30,20,50)
+   ox = x
+   oy = y
+   swapvar(x,y)
+   if(x != oy | y != ox)
+      return(0, "Invalid result for: swapvar_test1 #8")
+   endif 
+
+# Swap 3D cmatrices
+   x = noise(30,20,50)+i*noise(30,20,50)
+   y = noise(30,20,50)+i*noise(30,20,50)
+   ox = x
+   oy = y
+   swapvar(x,y)
+   if(x != oy | y != ox)
+      return(0, "Invalid result for: swapvar_test1 #9")
+   endif 
+
+endproc(1,"")

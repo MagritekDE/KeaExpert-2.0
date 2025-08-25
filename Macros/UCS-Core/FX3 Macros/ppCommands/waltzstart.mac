@@ -1,0 +1,55 @@
+####################################################
+# Setup the profile for a ramped pulse and turn on 
+# the rf gates to prevent glitches during the 
+# decoupling step.
+#
+# waltzstart(channel)
+#
+#   channel: 1/2
+#
+#   Duration is 5 us
+####################################################
+
+procedure(waltzstart, channel, duration=0)
+
+   if(wvFX3Info->mode == "run")
+
+      if(channel == 1)
+         gateTTL       = 0x04000
+         gateAndRFTTL  = 0x04008
+         FPGA_DDS_Pro0 = 0x118E
+         FPGA_DDS_CFR1 = 0x1180
+      else
+         gateTTL       = 0x00100
+         gateAndRFTTL  = 0x00102
+         FPGA_DDS_Pro0 = 0x128E
+         FPGA_DDS_CFR1 = 0x1280
+      endif
+      FPGA_DDS_CR = 0x1081
+      FPGA_TTL    = 0x00
+ 
+      ps = [20d,      FPGA_TTL,        wvFX3Info->currentTTL | gateTTL,      # Switch on RF gate
+            20d,      FPGA_DDS_Pro0,   0x0000000,         # Set up start and end address to write the whole data to RAM
+            20d,      FPGA_DDS_Pro0,   0x0002003,         # Step rate 32 (128ns), endAddr 15
+            20d,      FPGA_DDS_Pro0,   0x000C000,         # Start addr 0
+            180d,     FPGA_DDS_Pro0,   0x0000001,         # Ramp mode
+            20d,      FPGA_DDS_CR,     0x0000000,         # Disable Auto IOU 
+            20d,      FPGA_TTL,        wvFX3Info->currentTTL | gateAndRFTTL, # Wait for pgo and switch TRex output gate
+            20d,      FPGA_DDS_CFR1,   0x000C045,         # CFR1 32-16  RAM enabled, RAM destination = AMP, Internal Profile Control Mode (Pro0-Pro2 then halt), Cosine        
+            180d,     FPGA_DDS_CFR1,   0x0000000]         # CFR1 15-0
+         
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 5
+      gSeq->psInfo->command = gSeq->psInfo->command + ["waltzstart,$channel$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+    #  addPSParameters()
+
+   endif
+
+endproc()

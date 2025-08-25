@@ -1,0 +1,119 @@
+###################################################
+#                 addErrorBars.mac
+#
+# Add error bars to the current real 1D data set.
+#
+# Error bars are defined by two vectors. These
+# vectors have the same length as the data set.
+# The first vector defines the size of top half
+# of the error bar and the second the bottom half.
+# These vectors can be selected from the menus
+# or a vector expression can be entered directly 
+# into the text menu field.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005-2022
+###################################################
+
+
+procedure(addErrorBars)
+
+   n = :windowdefinition()
+   :populate_window()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Add Error Bars", -1, -1, 287, 144)
+
+      # Define all controls with basic parameters
+       textmenu(1, 76, 38, 100, 200)
+       statictext(2, 68, 42, "right", "Top bar")
+       statictext(3, 68, 73, "right", "Bottom bar")
+       textmenu(4, 76, 69, 100, 200)
+       groupbox(5, "Error bar arrays", 5, 8, 190, 130)
+       button(6, 212, 17, 54, 26, "Apply",
+          :apply();)
+       button(7, 212, 103, 54, 26, "Exit",
+          closewindow(0);)
+       colorbox(8, 116, 102, 21, 22, [255,0,0],
+          :update_color();)
+       statictext(9, 105, 106, "right", "Error bar colour")
+       button(10, 212, 60, 54, 26, "Help",
+          :show_help();)
+
+     # Set other control parameters
+       setpar(n,1,"menu",[""])
+       setpar(n,4,"menu",[""])
+       setpar(n,6,"mode","default")
+
+endproc(n)
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(show_help)
+   help("Macros\\1D","addErrorBars.htm")
+endproc()
+
+#####################################################################
+# Update the gui interface
+#####################################################################
+
+procedure(populate_window)
+
+   menu1d = matrixlist(1)
+   if(menu1d != null)
+      menu1d = sortlist(menu1d)
+      setpar(0,1,"menu",menu1d)
+      setpar(0,1,"text",menu1d[0])
+      setpar(0,4,"menu",menu1d)
+      setpar(0,4,"text",menu1d[0])
+   endif
+
+endproc()
+
+#####################################################################
+# Add the error bars
+#####################################################################
+
+procedure(apply)
+
+   col = getpar(0,8,"color")
+   (x,y) = getplotdata("1d")
+   if(x != null)
+      bars = matrix(size(x),2)
+      bars[~,0] = getpar(0,1,"value")
+      bars[~,1] = getpar(0,4,"value")
+      draw1d("no")
+        (txt,lx,ly,x1v,x2v) = 1dpar:get()
+         plot(x,y,"ebar_array",bars,"ebar_color",col)
+         1dpar:set(txt,lx,ly,x1v,x2v)
+      draw1d("yes")
+   else
+      message("Error","No 1D plot data present","error")
+   endif
+
+
+endproc()
+
+#####################################################################
+# Select the error-bar colour
+#####################################################################
+
+procedure(update_color)
+
+   col = getcolor(getpar(0,8,"color"))
+   setpar(0,8,"color",col)
+
+endproc()

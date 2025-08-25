@@ -1,0 +1,89 @@
+############################################################
+#  
+# A pulse sequence suitable for performing a
+# single scan 1H nutation curve
+#
+# (pulse - delay - acq)n
+#
+# Initial version
+#
+# Bulat Gizatullin
+# May 2025
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["b1FreqCh1",       "B1 frequency (MHz)",        "tb",  "freq";
+               "90Amplitude",     "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLength",     "Pulse length (us)",         "tb",  "pulselength";
+               "nrEchoes",        "Number of pulses",         "tb",  "integer,[1,100000]";
+               "autoPhase",       "autoPhase",                 "cb",  "no,yes";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime";
+               "dispRange",       "Display range (kHz)",       "tb",  "float,[0,1000]"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Progress","Acquisition"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts  = nrPnts",
+                    "a90Amp     = 90Amplitude",
+                    "d90Dur     = pulseLength",
+                    "nEcho      = nrEchoes",
+                    "dAcqDelay  = 10",
+                    "dAcq       = dwellTime*(nrPnts+20)",
+                    "totPnts    = nEcho",
+                    "totTime    = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)                      # Define compile directory and clear parameter list
+
+   cleardata(nEcho) 
+
+   loop(l1,nEcho)
+   
+      pulse(mode,a90Amp,p1,d90Dur)        # RF pulse on channel 1 with phase p1
+      delay(dAcqDelay)                 # Pulse - acquire delay
+      acquire("integrate",nrPnts,dAcq)
+
+   endloop(l1)
+
+
+   parList = endpp(0)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,1,2,3;   # p1 : Pulse phase
+                 0,1,2,3]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["90Amplitude   = $pulseAmplitudeCh1$",
+          "b1FreqCh1     = $frequencyCh1$"]
+
+endproc(par)
+

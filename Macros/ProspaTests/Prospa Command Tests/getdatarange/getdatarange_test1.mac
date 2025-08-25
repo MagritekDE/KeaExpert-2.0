@@ -1,0 +1,35 @@
+procedure(getdatarange_test1,verbose,delay)
+
+# Make an image
+   m = matrix(100,100)
+   m = rectangle(m,50,50,50,50,10)
+   m = rectangle(m,50,50,20,20,50)
+   m = rectangle(m,50,50,5,5,20)
+   image(m)
+
+# Zoom
+   zoom2d(40,60,40,60)
+
+# Get data range for currently viewed data set
+   (minv,maxv) = getdatarange("current")
+
+  if(minv != 20 | maxv != 50)
+      return(0, "Invalid result for: getdatarange_test1() #1")
+   endif
+
+# Get data range for full data set
+   (min,max) = getdatarange("full")
+   if(min != 10 | max != 50)
+      return(0, "Invalid result for: getdatarange_test1() #2")
+   endif
+
+# Get data range for full data set
+   autorange("off")
+   imagerange(30,80)
+   (min,max) = getdatarange("displayed")
+   if(min != 30 | max != 80)
+      return(0, "Invalid result for: getdatarange_test1() #3")
+   endif 
+
+
+endproc(1,"")

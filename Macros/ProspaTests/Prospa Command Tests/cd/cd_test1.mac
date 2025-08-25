@@ -1,0 +1,29 @@
+
+procedure(cd_test1,verbose,delay)
+
+   dir = getcwd()
+   mkdir("temp")
+   cd ("temp")
+   mkdir("temp1")
+   cd ("temp1")
+   mkdir("temp2")
+   cd ("..\\..")
+   cd ("temp")
+   cd ("..")
+   cd ("temp\\temp1")
+   cd ("..\\..")
+   cd ("temp\\temp1\\temp2")
+   cd ("..\\..\\..")
+   cd ("temp\\temp1\\temp2\\..\\..\\..")
+   if(getcwd() == dir)
+      if(verbose)
+         pr "      Valid test: cd_test1\n"  
+      endif
+   else
+      return(0, "Invalid result for: $tests[n]$")
+   endif
+   rmdir("temp\\temp1\\temp2")
+   rmdir("temp\\temp1\\")
+   rmdir("temp")
+
+endproc(1,"")

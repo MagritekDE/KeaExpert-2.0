@@ -1,0 +1,77 @@
+#####################################################################
+# This example script sets pin 3 (AD1) on the TTL trigger box
+# to high and then returns. 
+# It could be used to trigger a batch process.
+#####################################################################
+
+procedure(TriggerOut, parameters=null) 
+ 
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else # Add the experiment with interface
+      if(parameters == null)
+         parameters = ["pinNr=2","pulseLength=1000"] 
+      endif
+      gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Allow the WaitForTrigger command to be added to
+# the batch list
+###########################################################
+
+procedure(addCommand)
+   
+endproc("TriggerOut|")
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["pinNr",       "Pin to set high",    "tb", "integer",  "[2,8]",
+                 "pulseLength", "Pulse length (ms)",  "tb", "float",  "[0.1,10000]"]
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+
+###########################################################
+# Run the experiment
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignlist(parameters)
+
+# Convert pin number to bit number
+   bitNr = 2^(pinNr-1)
+
+# Initialise the FTDI (TTL) port for trigger
+   ftdiopen("FTDIMagritek001",0xFE) # Bit 0 is input others are output
+
+# Send a pulse to output pin
+   ftdiwrite(bitNr)
+   pause(pulseLength/1000)
+   ftdiwrite(0x00)
+
+# Close the connection to the TTL controller
+   ftdiclose()
+
+endproc()
+
+########################################################
+# Just cycle the progress bar once each 5 seconds
+# since we don't know when the trigger will come
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   d = pulseLength/1000
+
+endproc(d)

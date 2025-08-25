@@ -1,0 +1,93 @@
+procedure(XYZ, x0, y0, z0, x1, y1, z1, duration, dStab)
+
+   shim16(1,x0)     # x spoiler gradient
+   shim16(2,y0)     # y spoiler gradient
+   shim16(0,z0)     # z spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(1,x1)     # x spoiler gradient off
+   shim16(2,y1)     # y spoiler gradient off
+   shim16(0,z1)     # z spoiler gradient off
+   delay(dStab)
+
+endproc()
+
+
+procedure(XYZramp, x0, y0, z0, x1, y1, z1, duration, dStab)
+
+   shimramp16(1,x1,x0,50,2)     # x spoiler gradient
+   shimramp16(2,y1,y0,50,2)     # y spoiler gradient
+   shimramp16(0,z1,z0,50,2)     # z spoiler gradient
+   delay(duration)  # spoiler duration
+   shimramp16(1,x0,x1,50,2)     # x spoiler gradient off
+   shimramp16(2,y0,y1,50,2)     # y spoiler gradient off
+   shimramp16(0,z0,z1,50,2)     # z spoiler gradient off
+   delay(dStab)
+
+endproc()
+
+procedure(XY, x0, y0, x1, y1, duration, dStab)
+
+   shim16(1,x0)     # x spoiler gradient
+   shim16(2,y0)     # y spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(1,x1)     # x spoiler gradient off
+   shim16(2,y1)     # y spoiler gradient off
+   delay(dStab)
+
+endproc()
+
+procedure(YZ, y0, z0, y1, z1, duration, dStab)
+
+   shim16(2,y0)     # y spoiler gradient
+   shim16(0,z0)     # z spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(2,y1)     # y spoiler gradient off
+   shim16(0,z1)     # z spoiler gradient off
+   delay(dStab)
+
+endproc()
+
+procedure(X, x0, x1, duration, dStab)
+
+   shim16(1,x0)     # x spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(1,x1)     # x spoiler gradient off
+   if(nrArgs == 4)
+      delay(dStab)
+   endif
+
+endproc()
+
+procedure(Y, y0, y1, duration, dStab)
+
+   shim16(2,y0)     # y spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(2,y1)     # y spoiler gradient off
+   if(nrArgs == 4)
+      delay(dStab)
+   endif
+
+endproc()
+
+procedure(Z, z0, z1, duration, dStab)
+
+   shim16(0,z0)     # z spoiler gradient
+   delay(duration)  # spoiler duration
+   shim16(0,z1)     # z spoiler gradient off
+   if(nrArgs == 4)
+      delay(dStab)
+   endif
+
+endproc()
+
+procedure(gradPulse,g1,duration,nramp,dramp,dStab)
+
+   gradramp(0,g1,nramp,dramp) #gradient
+   delay(duration)             # grad duration
+   gradramp(g1,0,nramp,dramp) #gradient
+
+   if(nrArgs == 5)
+      delay(dStab)
+   endif
+  
+endproc()

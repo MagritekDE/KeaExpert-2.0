@@ -1,0 +1,108 @@
+#####################################################################
+# Collect a Proton spectrum and use the SNR to determine how many
+# scans we need to reach a certain SNR.
+#####################################################################
+
+procedure(snrTarget, parameters=null) 
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else
+      if(parameters == null)
+         parameters = ["desiredSNR=10000","pulseLength=1"]
+      endif
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+########################################################
+# Specifies the user interface 
+########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["desiredSNR",      "Desired SNR",          "tb", "float",  "",
+                 "pulseLength",     "Pulse length (us)",    "tb", "float",  ""]
+   plotLayout = ["pt1";"pt2"]
+
+   procLayout =   struct(buttonLabel = "SNR",     plotName = "pt1", macroToRun = "snrSpectrum()";
+                         buttonLabel = "FT",      plotName = "pt1", macroToRun = "apodizeNTransform(\"pt1\",\"pt2\")";
+                         buttonLabel = "Phase",   plotName = "pt2", macroToRun = "manualPhase1DSpecial()";
+                         buttonLabel = "Apodize", plotName = "pt2", macroToRun = "apodizeFreq()";
+                         buttonLabel = "SNR",     plotName = "pt2", macroToRun = "snrSpectrum()";
+                         buttonLabel = "ppm/Hz",  plotName = "pt2", macroToRun = "togglePPM_Hz(1)";
+                         buttonLabel = "Calib.",  plotName = "pt2", macroToRun = "calibrateXAxis()";
+                         buttonLabel = "MNova",   plotName = "pt1", macroToRun = "exportMNova(\"pt1\")";
+                         buttonLabel = "MNova",   plotName = "pt2", macroToRun = "exportMNova(\"pt1\")";
+                         buttonLabel = "Integ.",  plotName = "pt2", macroToRun = "PeakIntegration(\"pt2\")")
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list. 
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+
+###########################################################
+# This simpy defines the plot layout for each experiment 
+# and then runs it giving an experiment number as an
+# additional parameter so they appear in different subfolders
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   UseDelays(start=1,end=1)
+
+   InitPlot(["pt1";"pt2"])
+   print("\n   Noise scan in progress ...")
+   result = RunExpt("Proton",["90Amplitude1H = -85", "nrScans = 1", "saveData = \"false\""])
+   noiseLevel = sd(real(result->fData))
+   print("\n   Spectral noise level = $noiseLevel$")
+   print("\n   Single Proton scan in progress ...")
+   result = RunExpt("Proton",["pulseLength1H = $pulseLength$", "nrScans = 1", "saveData = \"false\""])
+   peakLevel = max(real(result->fData))
+   singleSNR = peakLevel/(2*noiseLevel)
+   nrScans = round((desiredSNR/singleSNR)^2)
+   print("\n   SNR for 1 scan = $singleSNR$")
+   print("\n   Need $nrScans$ scans for an SNR >= $desiredSNR$")
+   print("\n   $nrScans$ Proton scans in progress ...")
+   result = RunExpt("Proton",["pulseLength1H = $pulseLength$", "nrScans = $nrScans$", "saveData = \"true\""],parameters)
+   print("\n   Finished\n")
+
+endproc()
+
+
+########################################################
+# Return expected experiment duration in seconds. The
+# negative number here means it will take 5 seconds
+# to cover the bar but will repeat indefinitely since
+# we don't know how long the experiment will take.
+########################################################
+
+procedure(expectedDuration, guipar)
+
+
+endproc(-5)

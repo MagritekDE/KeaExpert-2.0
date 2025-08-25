@@ -1,0 +1,1193 @@
+###################################################################################
+#
+# ucsCtrl.mac
+#
+# Procedures related to generating the pulse program (p.p.) interface.
+#
+# beep .................... make a warning sound.
+# checkVersion ............ check that the p.p. version is up-to-date.
+# disableAllButtons ....... make sure the repetition time is correct
+# disableButtons .......... disable Spinsolve UI control buttons.
+# dragNDrop ............... drop a parameter file on a UI.
+# enableButtons ........... enable Spinsolve UI control buttons.
+# enableControls .......... enable/disable a range of controls.
+# enableNDisableControls .. enable/disable certain controls from a checkbox in UI
+# enableWindow ............ enable/disbale all controls in a window.
+# exitProcedure ........... come here when a UI is to be exited.
+# experimentRunning ....... check to see if an experiment is running.
+# getDSPParameters ........ get DSP parameter block from Spinsolve.
+# getFilterCoef ........... get filter parameters based on dwell time.
+# initCache ............... cache important files.
+# initialisePP ............ initialise the pulse program parameter list.
+# finishPP ................ tidy up the UI when the p.p. is finished.
+# restoreKeaState ......... opposite of saveKeaState.
+# runPP ................... run the pulse program in the background.
+# runExperiment ........... calls execpp for the current experiment.
+# runBDPP ................. calls execpp if running from the back-door.
+# saveKeaState ............ saves the kea state before running another experiment.
+# setDwellTimeMenu ........ update DW menu based on filters.
+# showPreferences ......... show the kea preferences window.
+# titleReset .............. reset the UI window title.
+# toggleWindowSize ........ toggle the UI window size.
+# updateAcqTime ........... update the UI acqusition time based other parameters.
+# updateFilters ........... read filter info and update UI.
+# updateProgress .......... update progress bars and timing remaining
+#
+#
+# Last modified  29 March 2021 by C Eccles
+#
+# Copyright (c) Magritek Ltd 2021
+#
+##################################################################################
+ 
+
+###########################################################
+# Make a warning sound
+###########################################################
+
+procedure(beep)
+
+#   sps = 8192
+#   t = linvec(0,sps-1,sps/8)/sps
+#   f = 3000
+#   ys = 30000*sin(2*pi*f*t/8).*exp(-t*10)
+#   y = matrix(sps/8,2)
+#   y[~,0] = ys
+#   y[~,1] = ys
+#   sound(y,sps/2,"fixed")
+
+endproc()
+
+###########################################################
+# Calculate some filter parameters 
+###########################################################
+
+procedure(calcBmax,N,M,Dec)
+
+   Bmax = ceil(N*log2(Dec*M)+16)
+   truncDec = Bmax - 36
+   if( truncDec < 0)
+      truncDec = 0
+   endif
+
+endproc(truncDec, Bmax)
+
+###########################################################
+# Make sure the user is running the pulse program
+# with the correct version of Prospa and the Kea DLL
+###########################################################
+
+procedure(checkVersion,dllVersion,macroVersion)
+
+   minProspaVersion = 3.65 # Minimum Prospa version number
+   minDLLVersion = 2.14    # Minimum Spinsolve DLL version 
+   minMacroVersion = 1.1   # Minimum helper macro version number
+
+   if(nrArgs == 1)
+      macroVersion = 1.0
+   endif
+
+ # Check Prospa version
+   if(version() < minProspaVersion)
+      message("Error","Prospa version number needs to be at least\r$minProspaVersion$ to run this macro\r\rContact Magritek for the latest version.","error")
+      abort("")
+   endif
+
+ # Check Kea DLL version number
+   if(dllVersion < minDLLVersion)
+      message("Error","The DLL version number should be at least $minDLLVersion$ to run this macro.\r\rPlease recompile by running MakePulseProgram.","error")
+      abort("")
+   endif
+
+ # Check macro version number
+   if(macroVersion < minMacroVersion)
+      message("Error","The ucs*.mac version number should be at least $minMacroVersion$ to run this macro.\r\rTry recompiling the macro. If that doesn't work\rcontact Magritek for the latest version.","error")
+      abort("")
+   endif
+
+endproc()
+
+
+####################################################
+# Disable control buttons
+####################################################
+
+procedure(disableAllButtons)
+
+   start = findobj(0,"name","run")
+   end   = findobj(0,"name","close")
+   if(start > 0 & end > 0)
+      for(k = start to end)
+         setpar(0,k,"enable","false")
+      next(k)
+   endif
+
+endproc()
+
+
+####################################################
+# Disable Kea UI control buttons
+####################################################
+
+procedure(disableButtons)
+
+   start = findobj(0,"name","run")
+   end   = findobj(0,"name","close")
+   for(k = start to end)
+      name = getpar(0,k,"name")
+      if(name != "stop" & name != "finish" & name != "size" & name != "help")
+         setpar(0,k,"enable","false")
+      else
+         setpar(0,k,"enable","true")
+      endif
+   next(k)
+
+endproc()
+
+
+####################################################
+# If a parameter file is dropped onto the GUI then
+# load the parameters
+####################################################
+
+procedure(dragNDrop,path,file,ext)
+
+   bak = getcwd()
+   if(ext == "par")
+      cd(path)
+      guipar = load(file)
+      expLocal = caseset(wvMacroName,"lower")
+      expPar = caseset(getlistvalue(guipar,"experiment"),"lower")
+      if(expLocal == expPar)
+         setctrlvalues(0,guipar)
+      else
+         message("Error","Not a parameter file for this experiment","error")
+      endif
+   endif
+   cd(bak)
+ 
+endproc()
+
+####################################################
+# Enable Kea UI control buttons
+####################################################
+
+procedure(enableButtons)
+
+   if(isvar("wvWinNr"))
+      start = findobj(wvWinNr,"name","run")
+      end   = findobj(wvWinNr,"name","close")
+   
+      if(start != -1 & end != -1)
+         for(k = start to end)
+            name = getpar(wvWinNr,k,"name")
+            if(name != "stop" & name != "finish")
+               setpar(wvWinNr,k,"enable","true")
+            else
+               setpar(wvWinNr,k,"enable","false")
+            endif
+         next(k)
+      endif
+
+   endif
+
+endproc()
+
+#########################################################
+# 
+# Enable controls from 'start' to 'end' 
+# based on value of control 'check' (if present)
+# Controls tagged with disable are ignored
+#
+#########################################################
+
+procedure(enableControls,start,end,check,rb)
+
+   if(nrArgs == 4) # Radio button enable
+      if(getpar(0,check,"value") == rb)
+         for(k = start to end)
+            if(getpar(0,k,"tag") != "disable")
+               setpar(0,k,"enable","true")
+            endif
+         next(k)
+      else
+         for(k = start to end)
+            setpar(0,k,"enable","false")
+         next(k)
+      endif
+   elseif(nrArgs == 3) # Check box enable
+      if(getpar(0,check,"text") == "yes")
+         for(k = start to end)
+            if(getpar(0,k,"tag") != "disable")
+               setpar(0,k,"enable","true")
+            endif
+         next(k)
+      else
+         for(k = start to end)
+            if(getpar(0,k,"tag") != "disable")
+               setpar(0,k,"enable","false")
+            endif
+         next(k)
+      endif
+   else # Just enable then
+      for(k = start to end)
+         if(getpar(0,k,"tag") != "disable")
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+   endif
+
+endproc()
+
+#######################################################################
+# If control check has text = value then controls
+# start1-end1 are enabled
+# start2-end2 are disabled
+# If control check has text != value then controls
+# start1-end1 are disabled
+# start2-end2 are enabled
+#######################################################################
+
+procedure(enableNDisableControls,start1,end1,start2,end2,check,value)
+
+   if(getpar(0,check,"text") == value)
+      for(k = start1 to end1)
+         if(getpar(0,k,"tag") != "disable")
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+      for(k = start2 to end2)
+         setpar(0,k,"enable","false")
+      next(k)
+   else
+      for(k = start2 to end2)
+         if(getpar(0,k,"tag") != "disable")
+            setpar(0,k,"enable","true")
+         endif
+      next(k)
+      for(k = start1 to end1)
+         setpar(0,k,"enable","false")
+      next(k)
+   endif
+  
+endproc()
+
+##############################################################
+# Enable or disable controls in window 'nr' based on the value
+# of state (true/false)
+##############################################################
+
+procedure(enableWindow,nr,state)
+
+   w = getobj(nr)
+   lst = w->ctrlList
+
+   for(k = 0 to size(lst)-1)
+      m = lst[k]
+      ctrl = getobj(nr,m)
+
+      if(ctrl->active == "true")
+         name = getpar(nr,m,"name")
+         if(name == "stop" | name == "finish")
+            if(state == "true")
+               setpar(nr,m,"enable","false")
+            else
+               setpar(nr,m,"enable","true")
+            endif
+         endif
+      else
+         if(ctrl->tag == "disable")
+            setpar(nr,m,"enable","false")
+         else
+            setpar(nr,m,"enable",state)
+         endif
+      endif
+   next(k)
+
+endproc()
+
+##############################################################
+# Where to come when exiting a macro
+##############################################################
+
+procedure(exitProcedure)
+
+   if(isvar("gUCSInfo"))
+      if(gUCSInfo->running == 1)
+         if(gUCSInfo->win->winnr == getobj(0)->winnr)
+            thread(":beep")
+            pr ("\n\n A macro is running - abort first\n\n");
+            return("cancel")
+         endif
+      endif 
+   endif
+
+endproc("ok")
+
+
+##############################################################
+# Check to see if a Spinsolve experiment is running
+##############################################################
+
+procedure(experimentRunning,port)
+
+   if(isvar("gUCSInfo"))
+      if(gUCSInfo->running == 1 & gUCSInfo->port == port)
+         return(1)
+      endif
+   endif
+
+endproc(0)
+
+
+###################################################################
+#
+# Read the parameters from the spectrometer DSP
+#
+###################################################################
+
+procedure(getDSPParameters, port, guipar)
+
+   if(nrArgs == 2)
+      if(ispar(guipar,"wv_lock_exp"))
+         wv_lock_exp = getlistvalue(guipar,"wv_lock_exp")
+      endif
+   endif
+
+   try
+      par = dspread("p",0xD3FF00,138,port)
+   catch
+      pr "\n   Can't connect to device on port $port$\n"
+      return(null,null)
+   endtry
+
+   for(k = 0 to size(par)-1)
+      par[k] = par[k]&0x0000FF
+   next(k)
+
+   parVersion = round(par[0]*100+par[1]*10+par[2])
+
+   specName = "Spinsolve" # Default name
+
+   if(parVersion == 123) # Initial version
+      specType = par[3]
+      fwVersion = par[4]
+      hwVersion = par[5]
+      keaVersion = par[6]
+      nrChannels = par[7]
+      jitter1 = par[8]
+      jitter2 = par[9]
+      serialNr = -1
+   elseif(parVersion == 124) # Serial number
+      specType = par[3]
+      fwVersion = par[4]
+      hwVersion = par[5]
+      serialNr = par[6]
+      keaVersion = par[7]
+      nrChannels = par[8]
+      jitter1 = par[9]
+      jitter2 = par[10]
+   elseif(parVersion == 125) # Extra byte for serial number
+      specType = par[3]
+      fwVersion = par[4]
+      hwVersion = par[5]
+      serialNr = par[6]*2^8+par[7]
+      keaVersion = par[8]
+      nrChannels = par[9]
+      jitter1 = par[10]
+      jitter2 = par[11]
+   elseif(parVersion == 126) # Spectrometer name
+      specType = par[3]
+      fwVersion = par[4]
+      hwVersion = par[5]
+      serialNr = par[6]*2^8+par[7]
+      keaVersion = par[8]
+      nrChannels = par[9]
+      jitter1 = par[10]
+      jitter2 = par[11]
+      specName = asciitostr(par[12:27])
+   elseif(parVersion == 200) # Spinsolve block (partial)
+      specType = 3
+      fwVersion = 0x25
+      hwVersion = 43
+      serialNr = 0
+      keaVersion = 2
+      nrChannels = 1
+      jitter1 = par[52] # Proton
+      jitter2 = par[53] # X
+      if(isvar("wv_lock_exp")) # Window or guipar variable
+         if(wv_lock_exp == "true")
+#pr "Is lock expt\n"
+           jitter1 = par[51] # Lock
+           jitter2 = 0
+         endif
+      endif
+      specName = asciitostr(par[19:34])
+      for(k = size(specName)-1 to 0 step -1)
+         if(specName[k] != " ")
+            specName = specName[0:k]
+            exitfor
+         endif
+      next(k)
+   else
+      message("Error","Unsupported DSP parameter version $parVersion$.\rPlease update software or downgrade DSP parameter version to 126.","error")
+      specType = -1
+      fwVersion = -1
+      hwVersion = -1
+      serialNr = -1
+      keaVersion = -1
+      nrChannels = -1
+      jitter1 = -1
+      jitter2 = -1
+   endif
+
+   rmvar("par")
+   lst = mkparlist()
+   assignlist(lst)
+   par = struct("local")
+
+endproc(par,lst)
+
+
+##############################################################
+# Determine the digital receiver filter coefficients and
+# decimation rates for each dwell time "dw". 
+# Parameter "flat" is either "yes" or "no" and specifies
+# whether a flat filter or a peaked filter is to be used.
+##############################################################
+
+procedure(getFilterCoef,dw,flat)
+
+   if(flat == "yes" | flat == "true")
+
+      fcList = [50*dw,1,2,1e8,6,20]
+   
+      if(dw == 0.5)
+         v = [0,0,0,0,0,0,0,0,0,0,1881,-8476,25176,-61088,131071,
+              0,0,0,0,0,0,0,0,0,0,645,-3138,8252,-13895,4065] 
+      else
+         v = [0,0,0,0,0,0,0,0,0,0,961,-5931,21199,-57572,131071,
+              0,0,0,0,0,0,0,0,0,0,352,-2221,7089,-13683,5731] 
+      endif
+
+      fcList = join(fcList,v)
+
+   else
+
+      fcList = [100*dw,1,1,100e6,6,1,1]
+
+   endif
+
+endproc(fcList)
+
+###########################################################
+# Setup procedure cache for this macro and the calling one
+# This speeds up access to procedure calls in pulse program
+# macro and to utilities in ucs*.mac
+###########################################################
+
+procedure(initCache,path,macro)
+
+   try
+      cd(path)
+      cachemacro(macro)
+      cd(rmext(macro))
+      cachemacro("$rmext(macro)$_pp.mac")
+      cacheproc("true")
+      cd(getmacropath())
+      cachemacro("ucsCtrl.mac")
+      cachemacro("ucsFiles.mac")
+      cachemacro("ucsPlot.mac")
+      cachemacro("ucsRun.mac")
+      cachemacro("ucsUtilities.mac")      
+      cd("$appdir$\\Macros\\1D_Macros")
+      cachemacro("autoPhase1D.mac")
+   catch
+   endtry
+
+endproc()
+
+
+#################################################
+# When the pp is finished tidy up the interface
+# Reset global flag to allow other macros to run
+# Enable plot windows
+# Enable relevant GUI buttons and controls
+# Reset title
+# Signal thread finished (for background option)
+#################################################
+
+procedure(finishPP)
+
+   if(isvar("ppStatus"))
+      ppStatus->color([255,255,255,255])
+   endif
+
+   if(isvar("gUCSInfo"))
+      gUCSInfo->running = 0
+   endif
+   onerror("")
+
+# Enable windows at end of experiment
+# unless the wvEnableMode == disable
+   enable = 1
+   if(isvar("wvEnableMode"))
+      if(wvEnableMode == "disable")
+         enable = 0
+      endif
+   endif
+
+   if(enable)
+      if(isvar("wvPP"))
+         :enableWindow(wvPP->winNr,"true")
+      endif
+      if(isvar("wvPP2"))
+         :enableWindow(wvPP2->winNr,"true")
+      endif
+      :enableButtons()
+      if(isvar("wvWinNr"))
+         :enableWindow(wvWinNr,"true")
+      endif
+   endif
+  
+   :titleReset()
+   wvThreadID = -1
+
+endproc()
+
+
+########################################################
+# A message has been sent to the GUI window.
+# Messages:
+#
+# Running ... disable buttons if this is not the 
+#             window starting the experiment.
+#
+# Finishing . tidy up when finished
+#
+# Abort/Escape ... tidy up, call exit proc, save data
+#
+# KeaHPALocation ... update GUI title
+#
+# KeaFreqRange ... LF/HF change
+#
+# updateB1Frequency ... B1 frequency has changed
+########################################################
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(wvWinNr,0,"text")
+
+# Calling window is the source of the message
+# Parent window is the currently active GUI
+# wvWinNr is the window which asked to process the message
+   callingwin = getpar(wvWinNr,0,"source")
+   parentwin = guiwinnr()
+
+ # Disable all controls in macros with same USB port
+   if(src == "keaMacro" & cmd == "Running" & wvWinNr != callingwin)
+      keepfocus("true") # Prevents wrong window 
+      guiwinnr(callingwin)
+      if(isvar("wvPort"))
+         wvPortCalling = wvPort
+         guiwinnr(parentwin)
+         if(wvPortCalling == wvPort)
+           :disableAllButtons()
+         endif
+      endif
+      keepfocus("false")
+   endif
+
+ # Abort or finish the current experiment with same USB port 
+   if(src == "keaMacro" & cmd == "Finished")
+      keepfocus("true") # Prevents wrong window 
+      curWinNr = wvWinNr # coming to front
+      guiwinnr(callingwin)
+      if(isvar("wvPort"))
+         wvPortCalling = wvPort
+         guiwinnr(curWinNr)
+         if(wvPortCalling == wvPort)
+            assignlock("wvExpStatus","stop","window")
+            :finishPP()
+         endif
+      endif
+      guiwinnr(parentwin)
+      keepfocus("false")
+   endif
+
+# Abort all macros regardless of USB port (escape key)
+   if(src == "Macro" & (cmd == "Escape" | cmd == "Abort"))
+
+      keepfocus("true") 
+   # Run an exit procedure
+      macro = getwindowpar(parentwin,"macroname")
+      path = getwindowpar(parentwin,"macropath")
+      proc = macro+":exitProc" 
+      guipar = getctrlvalues(0)
+      cd(path)
+      try
+         proc(guipar)   
+      catch
+      endtry
+      assignlock("wvExpStatus","stop","window")
+      if(isvar("wvEnableMode"))
+         wvEnableMode = "enable"
+      endif
+      :finishPP()
+      keepfocus("false")
+      pr "\n   Escape pressed: experiment aborted\n"
+
+# Set the HPA location and Spectrometer name
+   elseif(((src == "KeaHPALocation") | (src == "USBChanged")) & isvar("wvShortTitle") & isvar("wvPort"))
+
+     if(src == "KeaHPALocation")
+        wvHPALocation = cmd
+     endif
+     :setTitle()
+
+# Set the Kea freq range
+   elseif(src == "KeaFreqRange")
+      m = findobj(0,"name","rxGain")
+      if(m != -1)
+         value = getpar(0,m,"text")
+         if(cmd == "LF")
+            setpar(0,m,"range",[0,60])
+            setpar(0,m,"menu",[0:5:60])
+         else
+            setpar(0,m,"range",[-20,70])
+            setpar(0,m,"menu",[-20:3:70])
+         endif
+         setpar(0,m,"text",value)
+      endif
+
+# Update the B1 frequency
+   elseif(src == "updateB1Frequency")
+      n = findobj(0,"name","b1Freq")
+      if(n != -1)
+        setpar(0,n,"text",cmd)
+      endif
+   endif
+
+endproc()
+
+######################################################################
+#
+# Make sure the DSP timer is reset
+#
+######################################################################
+
+procedure(resetDSPTimer,ppList)
+
+   dspwrite("x",ppList[3],[1])
+
+endproc()
+
+######################################################################
+#
+# Restore the current state of the window variables and DSP memory
+#
+######################################################################
+
+procedure(restoreKeaState,winVariables,parameters,filterCoef,pulseProg,tables,guipar)
+
+   assignlist(guipar)
+   dspwrite("x",wvDSPAdrs[0,0],parameters)
+   dspwrite("y",wvDSPAdrs[1,0],filterCoef)
+   dspwrite("p",wvDSPAdrs[2,0],pulseProg)
+   dspwrite("y",wvDSPAdrs[3,0],tables)
+   assignstruct(winVariables,"winvar")
+
+endproc()
+
+############################################################
+# Run a pulse program as a background process
+############################################################
+
+procedure(runPP,macroPath,macroName)
+
+  cacheproc("true")
+
+# Get the current plot windows
+   try
+      wvPP = curplot("1d")->parent
+      wvPP2 = curplot("2d")->parent
+   catch
+      pr lasterror()
+   endtry
+   
+# Intialise the pulse program parameters
+   :updateFilters() # Make sure the spectral width is correct
+   :updateAcqTime() # Make sure the acqiusition time is correct
+   (guipar,ppList,pcList,pcIndex,varList) = :initialisePP(macroPath,macroName)
+   if(guipar == null)
+      return
+   endif
+   :disableButtons()
+
+# Disable the buttons of all other Kea macros
+   sendmessage("keaMacro","Running")
+
+# Get the abort button number so mode can be set
+   objNr = findobj(0,"name","stop")
+
+# Get full name of pulse program procedure 
+   proc = rmext(macroName)+":execpp" 
+
+# Set a global flag to show that a kea macro is running
+   gUCSInfo = struct()
+   gUCSInfo->running = 1
+   gUCSInfo->port = wvPort
+   gUCSInfo->win = getobj(0)
+
+   assign("gUCSInfo",gUCSInfo,"global")
+   varstatus("gUCSInfo","hidden")
+
+# Disable the GUI and 1D windows while running so we can't mess
+# anything up
+   :enableWindow(0,"false")
+   if(isvar("wvPP"))
+      :enableWindow(wvPP->winNr,"false")
+   endif
+   if(isvar("wvPP2"))
+      :enableWindow(wvPP2->winNr,"false")
+   endif
+
+# Reset overflow light
+   if(isvar("rxOverflow"))
+      rxOverflow->color([255,255,255,255])
+   endif
+
+# Run pulse program in background
+   if(objNr != -1)
+     setpar(0,objNr,"active","true")
+     if(wvDSPCtrlRepTime)
+        setpar(0,objNr,"mode","abort")
+     endif
+   endif
+   assignlock("wvExpStatus","running","window")
+
+   wvThreadID = thread(":runExperiment",proc,guipar,ppList,pcList,pcIndex,varList)
+  # :runExperiment(proc,guipar,ppList,pcList,pcIndex,varList)
+
+endproc()
+
+############################################################
+# Run the experiment resetting the macro and global
+# variable when finishing and when errors are found
+# Messages are picked up by processMessage procedure
+############################################################
+
+procedure(runExperiment,proc,guipar,ppList,pcList,pcIndex,varList)
+
+# In the event of an error make sure all Kea windows are reset
+   onerror("sendmessage(\"keaMacro\",\"Finished\")")
+
+# Run execPP 
+   r = proc(guipar,ppList,pcList,pcIndex,varList)
+
+# Ensure that that all Kea windows are reset
+   sendmessage("keaMacro","Finished")
+
+endproc(r)
+
+
+############################################################
+# Run the experiment when called from the backdoor proedure
+############################################################
+
+procedure(runBDPP,guipar,ppList,pcList,pcIndex,varList)
+
+   if(guipar == null)
+      return(null)
+   endif
+
+   assignlist(guipar)
+
+# Disable the buttons of all other UCS macros
+# (V3 legacy mode only)
+   if(isvar("wvUsingExpertGUI") == 0)
+      sendmessage("keaMacro","Running")
+   endif
+
+# Get full name of pulse program procedure 
+   proc = rmext(wv_pp_name) +":execpp" 
+
+# In the event of an error make sure all Kea windows are reset
+# (V3 legacy mode only)
+   if(isvar("wvUsingExpertGUI") == 0)
+      if(isvar("errorProcDef") == 0)
+         onerror("sendmessage(\"keaMacro\",\"Finished\")")
+      endif
+   endif
+
+   assignlock("wvExpStatus","running","window")
+
+# Run execPP 
+   r = proc(guipar,ppList,pcList,pcIndex,varList)
+
+# Tidy up
+   :finishPP()
+
+endproc(r)
+
+################################################################
+# 
+# Save the current state of the window variables and DSP memory
+#
+################################################################
+
+procedure(saveKeaState,guipar)
+
+   assignlist(guipar)
+
+   winVariables = struct("winvar")
+   parameters  = dspread("x",wvDSPAdrs[0,0],wvDSPAdrs[0,1])
+   filterCoef  = dspread("y",wvDSPAdrs[1,0],wvDSPAdrs[1,1])
+   pulseProg   = dspread("p",wvDSPAdrs[2,0],wvDSPAdrs[2,1])
+   tables      = dspread("y",wvDSPAdrs[3,0],wvDSPAdrs[3,1])
+
+endproc(winVariables,parameters,filterCoef,pulseProg,tables)
+
+
+##############################################################
+# Populate the dwellTime menu from the filter folder
+##############################################################
+
+procedure(setDwellTimeMenu)
+
+   dwNr = findobj(wvWinNr,"name","dwellTime")
+   ffNr = findobj(wvWinNr,"name","flatFilter")
+
+   useFlatFilter = getpar(wvWinNr,ffNr,"text")
+   dwellTime = getpar(wvWinNr,dwNr,"text")
+
+   if(useFlatFilter == "yes")
+      dwList = ["1.0","2.0","5.0","10.0","20.0","50.0","100.0",
+               "200.0","500.0","1000.0","2000.0","5000.0","10000.0"]
+   else
+      dwList = ["1.0","2.0","5.0","10.0","20.0","50.0","100.0",
+               "200.0","500.0","1000.0","2000.0"]
+   endif
+   
+# Set the menu
+   setpar(wvWinNr,dwNr,"menu",dwList)
+# Set the current dwell time
+   if(dwellTime == "")
+      setpar(wvWinNr,dwNr,"text","1.0")
+   else
+      dwellTime = "$eval(dwellTime),1.1f$" # Get into right format
+      if(getlistindex(dwList,dwellTime) >= 0)
+         setpar(wvWinNr,dwNr,"text",dwellTime)
+      else
+         setpar(wvWinNr,dwNr,"text",dwList[0])
+      endif
+   endif
+
+endproc()
+
+###########################################################
+# Set the window title based on whether a powered Spinsolve 
+# is connected or not.
+###########################################################
+
+procedure(setTitle,dspPar)
+
+   lst = ucsFiles:loadPref()
+   assignlist(lst)
+
+   if(nrArgs == 0)
+      dspPar = :getDSPParameters(wvPort)
+   endif
+
+   if(showSpecName == "yes" & dspPar != null)
+      if(wvHPALocation == "int")
+         wvFullTitle = wvShortTitle +"     (Device: $dspPar->specName$    RF Amp: Internal)"
+      elseif(wvHPALocation == "ext")
+         wvFullTitle = wvShortTitle +"     (Device: $dspPar->specName$    RF Amp: External)"
+      else
+         wvFullTitle = wvShortTitle +"     (Device: $dspPar->specName$    RF Amp: Other)"
+      endif
+
+   elseif(showSpecName == "no" & dspPar != null)
+
+      if(wvHPALocation == "int")
+         wvFullTitle = wvShortTitle +"     (RF Amp: Internal)"
+      elseif(wvHPALocation == "ext")
+         wvFullTitle = wvShortTitle +"     (RF Amp: External)"
+      else
+         wvFullTitle = wvShortTitle +"     (RF Amp: Other)"
+      endif
+
+   else
+      wvFullTitle = wvShortTitle +"     (No spectrometer connected)"   
+   endif
+   setwindowpar(0,"title",wvFullTitle)
+
+endproc()
+
+##############################################################
+# Pass the pp name and Rf amplitude, phase and duration
+# locations to the simulator.
+##############################################################
+
+procedure(setUpSimulator,rel,var,pp_list,pp_name,phase_list)
+ 
+   name = caseset(rmext(pp_name),"lower")  
+   name2 = scanstr(name,"%1-*") # Remove nucleus suffix if present
+   if(name2 != null)
+      name = name2
+   endif
+
+   if(name == "proton")
+      setupps("proton",[28,29,30,31])
+   elseif(name == "1pulse")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "1pulseamplitudesweep")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "1pulsedurationsweep")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "findf0")
+      setupps("1pulse",[28,29,30,31])
+   elseif(name == "t1")
+      setupps("t1",[28,33,30,35,38,39,30,31])
+   elseif(name == "t1ir")
+      setupps("t1ir",[28,33,30,35,38,39,30,31])
+   elseif(name == "t1irsp")
+      setupps("t1ir",[28,33,30,35,38,39,30,31])
+   elseif(name == "monitornoise")
+      setupps("monitornoise",[0,0,0,0])
+   else
+      print("\n   --------------------------------\n")
+      print("   Simulator supported experiments:\n")
+      print("   Proton - Proton:\n")
+      print("   Proton - T1:\n")
+      print("   Proton - MonitorNoise:\n")
+      print("   ProtonLegacy - 1Pulse:\n")
+      print("   ProtonLegacy - 1PulseAmplitudeSweep:\n")
+      print("   ProtonLegacy - 1PulseDurationSweep:\n")
+      print("   ProtonLegacy - findf0:\n")
+      print("   ProtonLegacy - T1IR:\n")
+      print("   ProtonLegacy - T1IRSP:\n")
+      print("   ProtonLegacy - MonitorNoise:\n")
+      print("   --------------------------------\n")
+      message("Error","The simulator does not support the experiment '$rmext(pp_name)$'.\r\rSee CLI for list of supported experiment.","error")
+
+      abort("")
+   endif
+
+endproc()
+
+##############################################################
+# Display one instance of the Kea preferences window
+##############################################################
+
+procedure(showPreferences)
+
+   nr = findwin("title","Spinsolve Preferences")
+
+   if(nr == -1)
+      cd(getmacropath())
+      ucsPreferences(0,guiwinnr())
+   else
+      hidewindow(nr)
+      showwindow(nr)
+   endif
+
+endproc()
+
+#########################################################
+# 
+# Reset the window title 
+#
+#########################################################
+
+procedure(titleReset)
+
+   if(isvar("wvFullTitle"))
+       setwindowpar(0,"title",wvFullTitle)
+   endif
+
+endproc()
+
+#############################################################
+# Organise the controls in the gui interface
+# small or large (collapsed or expanded)
+# ??? What is mv for?
+#############################################################
+
+procedure(toggleWindowSize,mv)
+
+   cc = wv_other[0] # Collapse/expand control number
+   h1 = wv_other[1] # Height of window in collapsed mode
+   h2 = wv_other[2] # Height of window in expanded mode
+
+   if(wv_dispMode == "small") # Collapsed mode (tabs)
+
+   # Hide and tabify all controls
+      for(m = 0 to size(wv_ctrls)-3 step 2)
+         for(k = wv_ctrls[m] to wv_ctrls[m+1])
+            setpar(0,k,"visible","false", 
+                      "tabparent",[1,m/2])
+         next(k)
+      next(q)
+
+   # Move controls to collapsed position
+      for(m = 0 to size(wv_ctrls)-1 step 2)
+         for(k = wv_ctrls[m] to wv_ctrls[m+1])
+            y = getpar(0,k,"y")
+            setpar(0,k,"y",y-wv_shift[m/2]+3)
+         next(k)
+      next(m)
+
+   # Clear group box labels
+      for(m = 0 to size(wv_ctrls)-3 step 2)
+         k = wv_ctrls[m]
+         setpar(0,k,"label","")
+         setpar(0,k,"label","")
+         setpar(0,k,"x",getpar(0,k,"x")+4)
+         setpar(0,k,"y",getpar(0,k,"y")+4)
+         setpar(0,k,"width",getpar(0,k,"width")-6)
+         setpar(0,k,"height",getpar(0,k,"height")-4)
+      next(m)
+
+   # Capitalise first tab
+      setpar(0,1,"visible","false") # Tab
+      tabNames = wv_tabs
+      for(m = 0 to size(wv_tabs)-1)
+         tabNames[m] = caseset(wv_tabs[m],"first")
+      next(m)
+      setpar(0,1,"inittabs",tabNames)
+      setpar(0,1,"visible","true") # Tab
+
+   # Set window height and expand button label
+      bordersize = getwindowpar(0,"bordersize")
+      setwindowpar(0,"height",h1+bordersize)
+      setpar(0,cc,"label","Expand")
+      wv_dispMode = "large"
+
+   # Set to tab 0 and display
+     setpar(0,1,"currentpage",0)
+
+   else # Expanded Mode
+
+   # Hide and set all controls to tab page 1
+      setpar(0,1,"visible","false") # Tab
+      for(m = 0 to size(wv_ctrls)-3 step 2)
+         for(k = wv_ctrls[m] to wv_ctrls[m+1])
+            setpar(0,k,"visible","false",
+                      "tabparent",[1,0])
+         next(k)
+      next(q)
+
+   # Set group box labels and size
+      for(m = 0 to size(wv_ctrls)-3 step 2)
+         k = wv_ctrls[m]
+         setpar(0,k,"label",caseset(wv_tabs[m/2],"upper"))
+         setpar(0,k,"x",getpar(0,k,"x")-4)
+         setpar(0,k,"y",getpar(0,k,"y")-4)
+         setpar(0,k,"width",getpar(0,k,"width")+6)
+         setpar(0,k,"height",getpar(0,k,"height")+4)
+      next(k)
+
+      if(mv == 1) # Expanded mode
+
+      # Move controls to expanded positions
+        for(m = 0 to size(wv_ctrls)-1 step 2)
+            for(k = wv_ctrls[m] to wv_ctrls[m+1])
+               y = getpar(0,k,"y")
+               setpar(0,k,"y",y+wv_shift[m/2]-3)
+            next(k)
+         next(q)
+
+      endif
+
+   # Set window height and collapse button label
+      bordersize = getwindowpar(0,"bordersize")
+      setwindowpar(0,"height",h2+bordersize)
+      setpar(0,cc,"label","Collapse")
+
+   # Show controls
+     setpar(0,1,"currentpage",0)
+
+      wv_dispMode = "small"
+   endif
+
+endproc()
+
+
+##############################################################
+# The number of point collected has changed to update the
+# acquisition time GUI text 
+##############################################################
+
+procedure(updateAcqTime)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   try # one parameter may not be defined yet
+      acqTime  = nrPnts/(bandwidth*1000)
+      n = findobj(0,"name","acqTime")
+      setpar(0,n,"text","$acqTime*1000,2.3g$")
+   catch
+   endtry
+
+endproc()
+
+
+##############################################################
+# Filter needs changing so read the filter info and update
+# the GUI
+##############################################################
+
+procedure(updateFilters)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+# Work out bandwidth and acquisition time
+   n = findobj(0,"name","dwellTime")
+   dw = getpar(0,n,"text")
+   if(dw == "")
+     dw = 1.0
+   else
+     dw = eval(dw)
+   endif
+   n = findobj(0,"name","flatFilter")
+   ff = getpar(0,n,"text")
+
+   fcList = :getFilterCoef(dw,ff)
+
+   dec1 =  fcList[0]
+   dec2 =  fcList[1]
+   dec3 =  fcList[2]
+   clk  =  fcList[3]
+
+   bandwidth = clk/(dec1*dec2*dec3)
+   n = findobj(0,"name","bandwidth")
+   setpar(0,n,"text","$bandwidth/1000,2.3g$")
+   acqTime  = nrPnts/bandwidth
+   n = findobj(0,"name","acqTime")
+   setpar(0,n,"text","$acqTime*1000,2.3g$")
+
+endproc()
+
+##############################################################
+# Update progress bars and timing remaining
+##############################################################
+
+procedure(updateProgress,scan,progress,totTime,expTime,remTime)
+
+   progressCtrl->value(progress)
+   minExpTime = trunc(expTime/60)
+   secExpTime = trunc(expTime-trunc(expTime/60)*60)
+   msecExpTime = trunc((expTime - trunc(expTime))*100)
+   minRemTime = trunc(remTime/60)
+   secRemTime = trunc(remTime-trunc(remTime/60)*60)
+   msecRemTime = trunc((remTime - trunc(remTime))*100)
+   curScanCtrl->text("$scan$")
+ #  expTimeCtrl->text("$minExpTime,02d$:$secExpTime,02d$:$msecExpTime,02d$")
+ #  remTimeCtrl->text("$minRemTime,02d$:$secRemTime,02d$:$msecRemTime,02d$")
+   expTimeCtrl->text("$minExpTime,02d$:$secExpTime,02d$")
+   remTimeCtrl->text("$minRemTime,02d$:$secRemTime,02d$")
+
+endproc()

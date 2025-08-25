@@ -1,0 +1,21 @@
+dir =  "C:\Users\CraigEccles\Projects\USB-Parallel-FTDI\CSolution\Win32\Release"
+cd(dir)
+mode = "1"
+bits = "0x00"
+
+# Wait for a grounded input on AD0
+#execandwait("SpinsolveTTL.exe",["FTDIMagritek001","input","0x00"]) # 0xFE")
+#print("Triggered\n")
+
+
+# Blink all LEDs mounted on AD0-AD7 (note output only here)
+for(k = 0 to 63000)
+ 
+  n = k%8
+  b = 2^n
+  execandwait("SpinsolveTTL.exe","FTDIMagritek001 output $hex(b)$ 0xFF")
+
+next(k)
+
+# Zero outputs
+execandwait("SpinsolveTTL.exe","FTDIMagritek001 output 0 0xFF")

@@ -1,0 +1,495 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>acquire</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>Pulse program argument syntax</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>This section
+defines the syntax of the pulse program commands argument. Note you will need
+to add the Prospa DLL “kea2PPRun.dll” to the Prospa DLLs folder before the kea
+commands will be recognised. It will also need to be the correct version (2.16
+is the latest version at the time this manual was written).</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>To find the
+individual command syntax please refer to the help page for that command.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Like all Prospa
+commands, each pulse-sequence command takes several arguments. However most of
+these arguments are <i>not the parameter values but rather the parameter names</i>.
+Previous versions of the pulse programmer required that these be quoted
+strings, however from V1.09 of the DLL onwards this is no longer necessary. You
+can now also enter constants for a number of the parameters. If they are
+variables then the parameter values are sent to these commands via the pulse
+program parameter list.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Example for the T1-IR-Add macro (before
+V1.09)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:#AA0000'># Pulse sequence</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>initpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(dir)
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Reset internal parameter list</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>cleardata</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;n2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;a2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;p1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>wait</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;w1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 - 90 delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;a1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;p2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 90 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d3&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 90 - 180 delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>loop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;l1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;n1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># CPMG loop</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;a2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;p3&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d4&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 - acq delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>acquire</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;sum&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;n2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;d5&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Acquire echo and wait</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>endloop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;l1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; lst = </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>endpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>() </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'>#
+Return parameter list</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>New syntax from V1.09</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:#AA0000'># Pulse sequence</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>initpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(dir)
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Reset internal parameter list</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>cleardata</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>n2</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>a2</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>p1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>wait</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>w1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 - 90 delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>a1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>p2</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 90 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d3</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 90 - 180 delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>loop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>l1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>n1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># CPMG loop</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>a2</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>p3</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d4</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># 180 - acq delay</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>acquire</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>sum&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>n2</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>d5</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)
+&nbsp;</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Acquire echo and wait</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>endloop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>l1</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; lst = </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>endpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>() </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'>#
+Return parameter list</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>If you use the
+second form for parameter entry then be careful not to define a variable with
+any of the above names. (They are only interpreted as parameter names because
+there are no existing variables defined with these names).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>Command variables</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>There are several types of parameter or
+variable used by the Kea commands. These variables are listed below – in all
+cases they consist of a single letter followed by any valid string. In the
+standard macros this has been an integer greater than zero (e.g. n2, a12, b65).
+In the following text “externally” refers to how the variable appears to the end
+user while “internally” is how the variable is stored on the spectrometer
+processor. From version V1.09 it is also possible, in many cases, to pass a
+constant instead of a parameter.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>ax …   an RF amplitude – externally represented by a decibel value
+ranging from -85 dB (= 3.2 pW) to 0 dB (= 1 mW). Internally the amplitude is
+represented by a 14 bit number. If you pass this as a constant it has a range
+from 0 to 16383.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>bx …   a byte value use to set the TTL output. Externally
+represented by an 8 bit number (0-255). Internally it is the top 8 bits of a 16
+bit number. The lower 8 bits control internal TTL lines. If you pass this as a
+constant then the allowed values are hex integers in the range 0x01 … 0x80.
+(1-128 decimal).</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>dx …   a delay in </span><span lang=EN-GB style='font-size:11.0pt;
+font-family:Symbol'>m</span><span lang=EN-GB>s. Externally this can range from
+2 to 327670 </span><span lang=EN-GB style='font-family:Symbol'>m</span><span
+lang=EN-GB>s. Internally it is stored as a 24 bit number which is used to
+control a hardware timer. Constant values can be from 0.25 to 327670 </span><span
+lang=EN-GB style='font-family:Symbol'>m</span><span lang=EN-GB>s.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>fx …    a frequency in MHz. Externally this is a floating point
+number ranging from 0 to 400 MHz. Internally it is represented by two 24 bit
+numbers (i.e. a 48 bit word).</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>gx …   the receiver amplifier gain setting. Externally represented
+by a decibel value ranging from -20 to 70 dB in 3 dB steps. Internally it is
+two 8 bit number each controlling the gain of one RF stage. (For the low
+frequency Kea the numbers range from 0 to 60 dB externally and internally by a
+16 bit number.)</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>lx …    a loop index – this string is used explicitly to label DSP
+code loops – it is not an external parameter.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>nx …   an integer. Internally this is stored as a signed 24 bit
+number however the valid external values will depend on the particular command.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>px …   an RF phase shift relative to the receiver phase. Externally
+this can take values 0, 1, 2, 3 corresponding to 0, 90, 180, 270 degrees.
+Internally the phase is represented by a 16 bit number. If you pass this as a
+constant it has a range from 0 to 65535.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>tx ....    a row vector containing a table of values, e.g.
+linvec(-1,1,100). The range of values will depend on the output being
+controlling.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>wx …  a long delay in </span><span lang=EN-GB style='font-size:11.0pt;
+font-family:Symbol'>m</span><span lang=EN-GB>s. Externally and as a passed
+constant this can range from 2 </span><span lang=EN-GB style='font-size:11.0pt;
+font-family:Symbol'>m</span><span lang=EN-GB>s to 167 s. Internally it is
+stored as three 24 bit numbers. </span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>A frequently
+asked question is why we don’t allow arbitrary variable names as in the rest of
+Prospa. The answer is that there is usually a conversion factor between
+external and internal units and the first letter identifies the data type,
+thereby allowing this conversion to be applied automatically. It also makes the
+type of variable immediately identifiable to the reader. However as noted above
+there is no reason why the rest of the variable name can’t be more descriptive
+than a number – this has been done for historical reasons. The exceptions to
+this are the phase parameters which should have numeric suffixes so their
+position in the phase table can be determined.</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:92.15pt;text-indent:-92.15pt'><span
+lang=EN-GB>&nbsp;&nbsp;&nbsp;</span></p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'>&nbsp;</p>
+
+</div>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-indent:-36.0pt'><i>&nbsp;Correct
+for Prospa version 3.12,  1-August-2012</i></p>
+
+</div>
+
+</body>
+
+</html>

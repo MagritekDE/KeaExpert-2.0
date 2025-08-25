@@ -1,0 +1,280 @@
+#############################################################
+#                generalLinearFit.mac
+#
+# Fits a linear model function to the current 1D plot data
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(general_linear_fit)
+
+   n = :windowdefinition()
+   :load_parameters()
+   :set_up_window()
+   showwindow(n)
+
+endproc()
+
+#############################################################
+# Build the user interface
+#############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("General Linear Fit - 1D", -1, -1, 243, 62)
+
+      # Define all controls with basic parameters
+       windowvar(nr_terms,maxTerms)
+       statictext(0, 55, 10, "center", "Number of linearly")
+       statictext(0, 55, 24, "center", "dependent terms in")
+       statictext(0, 55, 38, "center", "model equation")
+       textmenu(1, 110, 17, 40, 200,
+          :set_up_window();)
+       button(2, 177, 34, 48, 24, "Help",
+          :show_help();)
+       button(3, 177, 5, 48, 24, "Fit",
+          :calculate_fit();)
+       statictext(9, 50, 92, "right", "y = ")
+       groupbox(10, "Model: y = a0.f0(x) + a1.f1(x) + ... ", 8, 60, 220, 200)
+       statictext(11, 74, 92, "right", "a0 .")
+       textbox(12, 80, 88, 100)
+       statictext(13, 200, 92, "right", "+")
+       statictext(14, 74, 122, "right", "a1 .")
+       textbox(15, 80, 118, 100)
+       statictext(16, 200, 122, "right", "+")
+       statictext(17, 74, 152, "right", "a2 .")
+       textbox(18, 80, 148, 100)
+       statictext(19, 200, 152, "right", "+")
+       statictext(20, 74, 182, "right", "a3 .")
+       textbox(21, 80, 178, 100)
+       statictext(22, 200, 182, "right", "+")
+       statictext(23, 74, 212, "right", "a4 .")
+       textbox(24, 80, 208, 100)
+       statictext(25, 200, 212, "right", "+")
+       statictext(26, 74, 242, "right", "a5 .")
+       textbox(27, 80, 238, 100)
+       statictext(28, 200, 242, "right", "+")
+       statictext(29, 74, 272, "right", "a6 .")
+       textbox(30, 80, 268, 100)
+       statictext(31, 200, 272, "right", "+")
+       statictext(32, 74, 302, "right", "a7 .")
+       textbox(33, 80, 298, 100)
+       statictext(34, 200, 302, "right", "+")
+       statictext(35, 74, 332, "right", "a8 .")
+       textbox(36, 80, 328, 100)
+       statictext(37, 200, 332, "right", "+")
+       statictext(38, 74, 362, "right", "a9 .")
+       textbox(39, 80, 358, 100)
+       statictext(40, 200, 362, "right", "+")
+       statictext(41, 74, 392, "right", "a10 .")
+       textbox(42, 80, 388, 100)
+       statictext(43, 200, 392, "right", "+")
+
+     # Set other control parameters
+       setpar(n,1,"name","nrTerms",
+                   "menu",["1","2","3","4","5","6","7","8","9","10"])
+       setpar(n,12,"name","term0")
+       setpar(n,15,"name","term1")
+       setpar(n,18,"name","term2")
+       setpar(n,21,"name","term3")
+       setpar(n,24,"name","term4")
+       setpar(n,27,"name","term5")
+       setpar(n,30,"name","term6")
+       setpar(n,33,"name","term7")
+       setpar(n,36,"name","term8")
+       setpar(n,39,"name","term9")
+       setpar(n,42,"name","term10")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\1D","generalLinearFit.htm")
+endproc()
+
+#############################################################
+# Generate a number of textboxes for term entries
+#############################################################
+
+procedure(set_up_window)
+
+   maxTerms = 10
+   if(getpar(0,1,"text") == "")
+      return
+   endif
+   nrTerms = getpar(0,1,"value")
+   setwindowpar(0,"height",104+nrTerms*30)
+   for(k = 0 to nrTerms-1)
+      setpar(0,k*3+11,"visible","true")
+      setpar(0,k*3+12,"visible","true")
+      setpar(0,k*3+13,"visible","true")
+   next(k)
+   for(k = nrTerms to maxTerms)
+      setpar(0,k*3+11,"visible","false")
+      setpar(0,k*3+12,"visible","false")
+      setpar(0,k*3+13,"visible","false")
+   next(k)
+   setpar(0,nrTerms*3+10,"visible","false")
+   setpar(0,10,"height",32+nrTerms*30)
+
+endproc()
+
+#############################################################
+# Determine the best fit of the model function to the data
+# using singular value decomposition
+#############################################################
+
+procedure(calculate_fit)
+
+   if(getpar(0,1,"text") == "")
+       return
+    endif
+
+   :save_parameters();
+
+   nrTerms = getpar(0,1,"value")
+   (x,y) = getplotdata("1d")
+   xsize = size(x)
+   ysize = size(y)
+
+   if(xsize != ysize)
+      message("x and y vectors must have same size")
+      return()
+   endif
+
+   ones = matrix(xsize) + 1
+
+# Build the design matrix
+   A = matrix(nrTerms,xsize)
+   for(k = 0 to nrTerms-1)
+      c = k*3+12
+      func =  getpar(0,c,"text")
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      A[k,~] = v'     
+   next(k)
+
+# Work out the inverse of the matrix
+   (U,V,S) = svd(A)
+   for(k = 0 to nrTerms-1)
+      if(S[k,k] != 0)
+        S[k,k] = 1/S[k,k]
+      endif
+   next(k)
+   inA = (V*S*U')
+   par =  (inA*y')'
+
+# Calculate the covariance matrix
+   covar = V*S^2*V'
+
+# Build model fit
+   ymodel = matrix(xsize)
+   pr("\n\n")
+   for(k = 0 to nrTerms-1)
+      c = k*3+12
+      func =  getpar(0,c,"text")
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      ymodel = ymodel + par[k]*v   
+   next(k)
+   draw1d("false")
+   plot(x,ymodel,"tracetype","lines",
+                 "tracecolor",[0,255,0],
+                 "symbolshape","none")
+
+   hold("on")
+   plot(x,y,"tracetype","none",
+                 "symbolcolor",[255,0,0],
+                 "symbolshape","circle")
+   hold("off")
+   draw1d("true")
+
+# Calculate out the chisquare
+  # var = sum((ymodel - y)^2)/(xsize-nrTerms)
+  # chisq = sum((ymodel - y)^2)
+  
+# Print out the fit parameters
+   pr "        Linear Fit\n"
+   pr "   --------------------"
+   pr "\n\n   Model function: "
+ 
+   for(k = 0 to nrTerms-1)
+      c = k*3+12
+      func =  getpar(0,c,"text")
+      if(func == "1")
+         pr "a0"
+      else
+         pr "a$k$*$func$"
+      endif
+      if(k < nrTerms-1)
+         pr " + "
+      endif
+   next(k)
+   pr "\n\n"
+  
+   pr "   Number of points: $xsize$\n"
+ #  pr "   Chi squared: $chisq$\n"
+ #  pr "   Estimated standard deviation in data: $sqrt(var)$\n\n"
+
+   for(k = 0 to nrTerms-1)
+      c = k*3+12
+      func =  getpar(0,c,"text")
+      if(func == "1")
+         func = ones
+      else
+         v = eval(func)
+      endif
+      ymodel = ymodel + par[k]*v 
+     # result = errorstr(par[k],sqrt(covar[k,k]*var),1,3)
+     # pr "   a$k$ = $result$\n" 
+      pr "   a$k$ = $par[k]$\n" 
+       
+   next(k)
+
+endproc()
+
+#############################################################
+# Save current parameters
+#############################################################
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   save("genlinfit.par",lst)
+   cd(dir)
+
+endproc()
+
+#############################################################
+# Load any previously defined parameters
+#############################################################
+
+procedure(load_parameters)
+
+   nrTerms = 2
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("genlinfit.par"))
+      lst = load("genlinfit.par")
+      setctrlvalues(0,lst)
+      assignlist(lst)
+   endif
+   nr_terms = nrTerms
+
+endproc()

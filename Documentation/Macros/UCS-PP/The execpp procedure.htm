@@ -1,0 +1,1934 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>acquire</title>
+
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+@font-face
+	{font-family:Courier;
+	panose-1:2 7 4 9 2 2 5 2 4 4;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+@font-face
+	{font-family:Times-Roman;
+	panose-1:0 0 0 0 0 0 0 0 0 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>The execpp procedure</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>All pulse
+programs execution macros require a procedure called <i>execpp</i> </span>(<i>exec</i>ute
+<i>p</i>ulse <i>p</i>rogram).<span lang=EN-GB> This code runs the pulse
+program, collects, accumulates, displays and saves the data. For a simple 1D
+experiment this procedure has the following structure:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='color:#993300'>procedure(execpp,
+guipar, ppList, pcList, pcIndex, varIndex</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='color:#993300'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Assign checked window parameters to local variables</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Do some pulse sequence parameter error checking</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Generate time and frequency vectors for display.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Generate a time domain filter for apodization.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Loop over the number of scans to acquire.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Set the phase of the RF pulses based on the current phase
+cycle step.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Send pulse parameters &amp; new phases to the
+spectrometer processor.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Run the pulse sequence and wait for returned data.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Filter the returned time domain data.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Accumulate the time domain data.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Calculate the spectral data.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Display the time and frequency domain data.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;&nbsp; Wait until the repetition time is completed.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>End of scan loop.</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:9.0pt'><span lang=EN-GB style='color:
+#993300'>Save the accumulated data.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='color:#993300'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='color:#993300'>endproc()</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The arguments passed to the execpp
+procedure are as follows:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>guipar ..... a
+list of all user-interface parameters</span></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>ppList .....
+the pulse-program parameter list</span></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>pcList .....
+the phase-cycle list</span></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>pcIndex ....
+indices of phase parameters in ppList</span></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#993300'>varIndex ...
+indices of variable parameters in ppList</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The
+pulse-program parameter list <i>must</i> be sent to the spectrometer processor
+before the pulse program is started, by using the </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>dspwrite<span
+style='color:#780078'> </span></span><span lang=EN-GB>command (usually after
+updating the phase parameters – see below).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The phase-cycle
+list is a two dimensional array of phase values. The nth row corresponds to the
+phase parameter with number ‘n’ (eg. p5 would correspond to the fifth row- the
+index is 1 based). The last row controls the acquisition phase. The mth column
+corresponds to the mth step in the phase cycle. This value is determined by the
+current scan number (the first scan will look at the first column, the second
+scan the second column and so on. When all columns have been considered the
+software resets to the first column).</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The pcIndex
+parameter is an array of numbers which specify where the phase parameters are
+stored in the full parameter list. Once the phase entries have been undated
+based on the scan number, the </span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New"'>dspwrite<span style='color:#780078'>&nbsp;</span></span><span
+lang=EN-GB>command is called to update the parameter list. If phase cycling is
+deselected in the macro window then all phases&nbsp;will be +x (zero degrees).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The varIndex
+list contains the location in the pulse-program parameter list in which
+variable parameters are stored. These are the parameters which were defined in
+the “variables” array in the pulse program definition macro (*_pp.mac). We use
+this information to ensure that the correct parameters are modified when
+performing experiments which step one or more parameters. Again </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>dspwrite<span
+style='color:#780078'> </span></span><span lang=EN-GB>must be called to update
+any modified parameters <i>before</i> the pulse program is executed.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The standard processing and display tab
+gives you options to:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal><span lang=EN-GB>Display the time domain data or not.</span></li>
+ <li class=MsoNormal><span lang=EN-GB>Apodize the time domain data.</span></li>
+ <li class=MsoNormal><span lang=EN-GB>Display the time domain data in
+     magnitude, autophased complex or fixed complex format.</span></li>
+ <li class=MsoNormal><span lang=EN-GB>Display the frequency domain data or not.</span></li>
+ <li class=MsoNormal><span lang=EN-GB>Display the frequency domain data in
+     magnitude, autophased complex or fixed complex format.</span></li>
+ <li class=MsoNormal><span lang=EN-GB>Select a range of frequencies to display.</span></li>
+</ul>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><img width=554 height=235 id="Picture 2"
+src="The%20execpp%20procedure_files/image001.jpg"></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-indent:36.0pt'><i><span
+lang=EN-GB style='font-size:11.0pt'>The standard processing and display tab</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The bulk of the
+code used by the execpp procedure is found in the macros kea*.mac which are
+located in the directory:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&lt;Prospa&gt;\Macros\Kea-Core\</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>These macros
+have a large number of procedures which can be used to simplify the collection,
+processing and display of Kea data.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The most
+important procedures are summarised below:</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>In <b><i>keaRun.mac</i></b></span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-align:justify;text-indent:
+-127.6pt'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>setPPPhase</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ........  updates
+the phase parameters in the pulse program parameters list (i.e. This implements
+phase cycling based on the scan number).</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-align:justify;text-indent:
+-127.6pt'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>accumulate</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ........  adds
+successive scans together taking into account the acquire phase – this is
+determined by the scan number.</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-align:justify;text-indent:
+-127.6pt'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>getData</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ............
+runs the experiment and collects the data.</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-align:justify;text-indent:
+-127.6pt'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>processData</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ........ Fourier
+transforms the data and applies automatic phase correction if requested.</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-align:justify;text-indent:
+-127.6pt'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>checkTimeAndAbort</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> .. makes sure
+that the repetition time between scans is correct and also checks for abort or
+finish button events.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>In <b><i>keaPlot.mac</i></b></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt'><i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>graphTimeAndFreq</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ...  plots the
+time and frequency domain data</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt'><i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>graphTime</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..........  plots
+the time domain data only</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt'><i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>graphFreq</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..........  plots
+the frequency domain data only</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal>In <b><i>keaFiles.mac</i></b></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt'><i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>save1DData</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> .........  saves
+time and amplitude data in a standard format.</span></p>
+
+<p class=MsoNormal style='margin-left:126.0pt;text-indent:-126.0pt'><i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>save2DData</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ......... saves
+2D matrix data in a standard format.</span></p>
+
+<p class=MsoNormal style='margin-left:126.0pt;text-indent:-126.0pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Detailed descriptions of these procedures
+can be found in the relevant files.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB> </span></p>
+
+<p class=MsoNormal><span lang=EN-GB>In addition, macros which modify a pulse
+program parameter between scans will also need to call a conversion routine
+which changes the amplitude, phase, delay etc. into the appropriate format for
+the spectrometer. These procedures are in keaRun.mac and are listed below</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-family:"Times-Roman","serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>In <b><i>keaRun.mac</i></b></span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-family:"Times-Roman","serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPAmplitude</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies
+the amplitude of an RF pulse.</span></p>
+
+<p class=MsoNormal style='margin-left:127.6pt;text-indent:-127.6pt;text-autospace:
+none'><i><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>setPPDelay</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> .........
+modifies a short delay in a pulse program.</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPLongDelay</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies a
+long delay in a pulse program.</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPFrequency</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ..... modifies a
+transmit or receive frequency.</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><i><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>setPPNumber</span></i><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'> ........
+modifies a simple integer value.</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New"'>setPPGain</span></i><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New"'> .......... modifies the receiver gain.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>All setPP
+procedures are passed the following arguments:</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>1. The pulse
+program parameter list (ppList)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB>2. The index of
+the parameter to modify (usually determined from varIndex)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>3. The new value for the parameter</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Note that if you
+wish to modify the nth (zero based) value in the variable list you pass the nth
+value of the varIndex array to the above procedures.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>e.g. if the variables array is </span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>variables = [</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;a1&quot;</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;a2&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;w1&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>and you want to
+modify the </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>w1</span><span
+lang=EN-GB> parameter then you will pass </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>varIndex[2]</span><span
+lang=EN-GB> to the </span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New"'>setPPLongDelay</span><span lang=EN-GB> procedure. Have a look at
+some of the more complex pulse program macros supplied with the Kea to see how
+this is done.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>&nbsp;</span></p>
+
+<h1 style='page-break-after:avoid;background:transparent'><a
+name="_Toc315512116"></a><a name="_Toc315518715"></a><a name="_Toc317500292"><span
+lang=EN-US style='font-size:18.0pt;font-family:"Calibri","sans-serif";
+color:#4F81BD'>The 1Pulse execpp procedure dissected</span></a></h1>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The most basic execpp procedure, that used
+in the 1Pulse experiment, will now be discussed in more detail. This
+corresponds to the procedure used in several of the simpler pulse program
+macros.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>procedure</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(execpp,guipar,ppList,pcList,pcIndex,varIndex)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Make all gui parameters available</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:green'>assignlist</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Check RF duty cycle</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>if</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:teal'>keaRun:highDutyCycle</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(d90Dur,repTime*1000,guipar))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:green'>return</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Allocate space for output data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   sumData = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:green'>cmatrix</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(totPnts)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Calculate suitable time and
+frequency axes</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   tAxis =
+([0:1:totPnts-1]/totPnts)*totTime*1000</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   fAxis =
+([0:1:totPnts-1]-totPnts/2)/totTime</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Time domain filter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>if</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>(filter == </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;yes&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      flt = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>filters:get_filter</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(filterType,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;FTFid&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,totPnts)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>else</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      flt = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:green'>matrix</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(totPnts)+1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Get plot regions</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   (prt,prf) = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaPlot:getPlotRegions</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(guipar,2,wvPP)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Reset the timer</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:green'>time</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Accumulate scans</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>for</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>(scan = 0 </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>to</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'> nrScans-1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      t1 = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:green'>time</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Set phases for this scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      (ppList,pAcq) = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaRun:setPPPhase</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(ppList,scan,pcList,pcIndex)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Send phase parameters to DSP</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:#780078'>dspwrite</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;x&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,0x00,ppList,wvPort)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>  </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Run the pulse program and collect
+the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      (status,data) = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaRun:getData</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(totPnts,guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># See if stop button/escape key
+pressed</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>if</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(status != </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;ok&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>         </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:green'>return</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Filter the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      data = data .* flt</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Accumlate the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      sumData = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaRun:accumulate</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(accumulate,pAcq,sumData,data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Process data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      (phasedTimeData,spectrum) = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaRun:transformData</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(sumData,fAxis,guipar,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;fid&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>    </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Plot the data </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:teal'>keaPlot:graphTimeAndFreq</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(prt,prf,tAxis,phasedTimeData,fAxis,spectrum,scan,guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Check timing</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      check = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:teal'>keaRun:checkTimeAndAbort</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(guipar,t1,scan,pcList,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;ignoreLastScan&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>if</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(check == </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;abort&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>         </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:green'>return</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>elseif</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(check == </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;finish&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>         scan = scan+1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>         </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>exitfor</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>next</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>(scan)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Save the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:teal'>keaFiles:save1DData</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(guipar,tAxis,sumData/scan)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:teal'>keaFiles:incrementExperiment</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Pack the data into a structure</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   result = </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:green'>struct</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   result-&gt;tx = tAxis</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   result-&gt;ty = sumData/scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   result-&gt;fx = fAxis</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   result-&gt;fy = spectrum/scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Return result</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:green'>return</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(result)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:8.0pt;font-family:"Courier New";
+color:blue'>endproc</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>(</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;execpp&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>) </span><span style='font-size:8.0pt;font-family:
+"Courier New";color:#AA0000'># Don't remove argument</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The first part of the procedure is the procedure
+call</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:blue'>procedure</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(execpp,guipar,ppList,pcList,pcIndex,varIndex)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>The first
+argument of any procedure in Prospa is the name of the procedure; execpp in
+this case. Following this are 5 arguments which contain all the information you
+need to interact with the spectrometer. These arguments are detailed below</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt;text-autospace:
+none'><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># guipar ..... all parameters from the user interface plus some
+other important values</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt;text-autospace:
+none'><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># ppList ..... the pulse program parameter list</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt;text-autospace:
+none'><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># pcList ..... phase-cycle list</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt;text-autospace:
+none'><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># pcIndex .... indices of phase parameters in ppList</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'>#
+varIndex ... indices of variable parameters in ppList</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal>guipar is a string list with a format like this:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>  sortlist(guipar) = {</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       90Amplitude = -12</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       a1 = 90Amplitude</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       accumulate =
+&quot;yes&quot;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       ...</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       zcal = 34133.3</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       zshim = 0</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   }</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>(add <span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pr</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'> </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:green'>sortlist</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(guipar)</span>
+as the first line of execpp to see this).</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><b><i>guipar</i></b> contains all
+the visible parameters in the graphical user interface (GUI) for controlling
+the pulse program along with a few extra parameters which are also required.
+For 1Pulse there are something like 50 entries in this list. String lists are a
+standard way in Prospa of passing around groups of parameters between
+procedures. (You can also use structures). Once in a procedure the list can be
+converted into variables using the <i>assignlist</i> command.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><b><i>ppList</i></b> is actually
+an array of numbers which represent the values which will be written to the
+parameter block on the spectrometer processor (DSP) before the pulse program is
+started. These contain things like the pulse frequencies, amplitudes and
+lengths, delays between the pulses and number of points to collect. You don't
+need to know the details of this list as the location of critical parameters
+(such as pulse phases) is stored in the other arguments passed to execpp.
+However this list is required by execpp as it will be modifying it and sending
+it to the DSP. For those interested, the list for the 1Pulse experiment is
+shown below</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'>; Generic parameters</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>RXG1            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 00
+- Receiver gain block 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>RXG2            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 01
+- Receiver gain block 2</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DEC1            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 02
+- Decimation for CIC1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DEC5            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 03
+- Decimation for CIC5</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DECFIR          </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 04
+- Decimation for FIR</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>ATT1            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 05
+- Attenuation for CIC1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DELAYFIR        </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 06
+- Delay for CIC5</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>ATTFIR          </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 07
+- Attenuation for FIR</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>Ntaps           </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 08
+- Taps for FIR</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>TXF00           </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 09
+- Tx Frequency word 0</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>TXF01           </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 10
+- Tx Frequency word 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 11
+- Tx Frequency word 2</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 12
+- Tx Frequency word 3</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>RXF00           </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 13
+- Rx Frequency word 0</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>RXF01           </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 14
+- Rx Frequency word 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 15
+- Rx Frequency word 2</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 16
+- Rx Frequency word 3</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>RXP0            </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 17
+- Rx Phase word 0</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>NRSCANS         </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 18
+- Number of scans to perform</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>EXPDELAY        </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 19
+- Delay between experiments</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>PGO             </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 20
+- Pulse gate overhead delay</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>GRADRESET       </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 21
+- 1 if gradients are to be reset</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>LFRXAMP         </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 22
+- 1 if low frequency Kea</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>SKIPPNTS        </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 23
+- Points to skip at start of acquisition</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>JITTER_CH1      </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 24
+- DDS channel 1 antiphase jitter parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>JITTER_CH2      </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 25
+- DDS channel 2 antiphase jitter parameter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>SoftVersion     </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 26
+- FPGA software version return</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>HardVersion     </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 27
+- FPGA hardware version return</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; Pulse program
+info</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>NRxShim          </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 28
+- Number xShim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>NRyshim          </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 29
+- Number yshim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>NRzShim          </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 30
+- Number zShim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>TXA90Amp         </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 31
+- Tx amplitude 90Amp</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>TXP1             </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 32
+- Tx phase 1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DELAY90Dur       </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 33
+- Delay 90Dur</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>DELAYAcqDelay    </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 34
+- Delay AcqDelay</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>NRDataPnts       </span><span
+lang=EN-US style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'>; 35
+- Number DataPnts</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>This has been taken – with some simplifications
+– from the .asm file for the 1pulse experiment. The first 27 parameters are
+generic to all Kea pulse programs and define things like the receiver amplifier
+gain, digital receiver gain, bandwidth and filter types and the transmit and
+receive frequencies. The parameters at the bottom are specific to the 1Pulse
+experiment and their order is exactly the same as they appear in the 1Pulse
+pulse program description:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#780078'>gradon</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,nxShim)                
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Set x shim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#780078'>gradon</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(y,nyshim)                
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Set y shim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#780078'>gradon</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(z,nzShim)                
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Set z shim </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(mode,a90Amp,p1,d90Dur)    
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># RF pulse</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>(dAcqDelay)                
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Pulse - acquire delay</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   </span><span lang=EN-US style='font-size:10.0pt;font-family:
+"Courier New";color:#780078'>acquire</span><span lang=EN-US style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(</span><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;overwrite&quot;</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>,nDataPnts)  
+</span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Acquire echo and wait</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>This example illustrates the use
+of pulse program variable names more complex than just numbers. However notice
+that the first letter of each name defines the data type. In the .asm file
+these single letters have been expanded to be more readable (<span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>n-&gt;NR,
+a-&gt;TX, d-&gt;DELAY</span>).</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><b><i>pcList</i></b> is an array
+of numbers which represent the phase table used to perform phase cycling. This
+is the array which is defined at the end of the pulse program macro.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>  phaseList  =
+[0,1,2,3;   </span><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Pulse phase</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>                0,1,2,3]   </span><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Acquire
+phase</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal>If you print this out (<span lang=EN-US style='font-size:
+10.0pt;font-family:"Courier New";color:green'>pr</span><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'> pcList) </span>what
+you actually see is</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   pcList = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>       0   16384   32768  
+49152</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New"'>      
+0   16384   32768   49152</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>These number have been converted
+from the simple 0,1,2,3 (0,90,180,270) representation to an unsigned 16 bit
+number suitable for the digital transceiver. Similar conversions have already
+been applied to all the other parameters which are stored in ppList.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>The first row of the phase list
+corresponds to the phases which will be used in the RF pulse on the first 4
+scans. After this the cycle repeats itself. The second and last row defines the
+detection phase. This is described later in this section.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><b><i>pcIndex</i></b> is an array of numbers which defines
+the location in ppList of the various phases. In the case of 1Pulse this has a
+single entry</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   pcIndex = </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   32</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>If you look in the ppList example
+above you will see that this corresponds to the variable TXP1, the phase of the
+first (and only) RF pulse.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'><b><i>varIndex</i></b> is an
+array of numbers which defines the location in ppList of other parameters you
+may wish to vary in the experiment. These are defined in the pulse program
+variable list. In this example there are none. More details are given in the help
+file <a href="Multi-dimensional%20experiments.htm">Multi-dimensional
+experiments</a>.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The first command in the execpp procedure is:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Make all gui
+parameters available</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>assignlist</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(guipar)</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:8.0pt;font-family:"Courier New";
+color:blue'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:8.0pt;font-family:"Courier New";
+color:blue'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>As mentioned above the first
+command makes the list of GUI parameter available to the execpp procedure by
+converting the list into a series of local variables. If you type the command <span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:green'>pr</span><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>
+local</span> after the assignlist command you will see this:</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>###### Local Variables
+######</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   90Amplitude = -12</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   a1 = -12</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   accumulate =
+&quot;yes&quot;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   ...</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   zcal = 34133.3</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>   zshim = 0</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New"'>###### End local variables
+######</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The next command</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Check RF duty
+cycle</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>if</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaRun:highDutyCycle</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(d90dur,repTime*1000,guipar))</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>return</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:black'>   </span><span lang=EN-US style='font-size:9.0pt;font-family:
+"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:8.0pt;font-family:"Courier New";
+color:blue'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'>checks to see if the RF duty
+cycle is higher than the limit defined in the Kea preferences dialog. d90dur is
+the pulse length (in us) and repTime is the repetition time (in ms – hence the
+factor of 1000). It takes the ratio of these values and ensures it is less than
+the maximum duty cycle.  You can view the contents of standard kea procedures
+by left double clicking on the procedure name (keaRun:highDutyCycle) while the
+control key is held down. F5 will return you to the calling macro.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>The next command allocates space
+for the collected complex data. Note that totPnts is defined in the pulse
+program macro and is the total number of data points collected by the
+spectrometer.</p>
+
+<p class=MsoNormal><span style='font-size:13.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Allocate
+space for output data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   sumData = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>cmatrix</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(totPnts)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>&nbsp;The
+following commands define time and frequency domain axis bases on the total
+acquisition time – defined by the variable totTime (also defined in the pulse
+program macro).</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Calculate
+suitable time and frequency axes</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   tAxis =
+([0:1:totPnts-1]/totPnts)*totTime*1000 </span><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Units are us</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   fAxis =
+([0:1:totPnts-1]-totPnts/2)/totTime    </span><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Units are kHz</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>Note that due to the nature of the Fourier transform used,
+zero frequency offset occurs in the centre of the frequency domain.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>An apodization filter is defined
+in the next block of code. <i>filter</i> and <i>filterType </i>are GUI
+variables defined in the processing+display tab. If no filter is selected a
+vector filled with ones is returned.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Time domain
+filter</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>if</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(filter
+== </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:gray'>&quot;yes&quot;</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      flt = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>filters:get_filter</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(filterType,</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:gray'>&quot;FTFid&quot;</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>,totPnts)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>else</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      flt = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>matrix</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(totPnts)+1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:blue'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Different
+experiments require different numbers of plot regions for displaying their
+resultant data. In the case of 1Pulse there are two possible regions – one for the
+time domain (prt) and one for the frequency domain (prf). The next command
+obtains these plot region objects which will then be used later in the plot
+procedures. </p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Get plot
+regions</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   (prt,prf) = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaPlot:getPlotRegions</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(guipar,2,wvPP)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>If a plot region is not present the parameters will take the
+value “null”.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify'>The core of the pulse program
+control is inside the accumulate for-next loop. The timer is reset before scans
+begin. The parameter nrScans (number of scans) is defined in the GUI while
+scans ranges from to 0 to nrScans-1.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Reset the
+timer</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>time</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(0)  </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Accumulate
+scans</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>for</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(scan
+= 0 </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>to</span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:black'> nrScans-1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>...</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>next</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(scan)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The scan loop contents follow a very standard structure:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>First the current time is noted to ensure that repetition
+time will be correct.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Note the time at scan start</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      t1 = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>time</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>() </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Next, based
+on the current scan number, the RF pulse phase in the pulse program parameter
+list ppList is updated. Note that it is important that you assign the result of
+this (and other setPPxxx produces) to the ppList variable otherwise it will not
+be modified. This command also returns the correct acquisition phase pAcq.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Set phases for this scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     
+(ppList,pAcq) = </span><span lang=EN-US style='font-size:9.0pt;font-family:
+"Courier New";color:teal'>keaRun:setPPPhase</span><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>(ppList,scan,pcList,pcIndex)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Once the
+pulse program list has been updated it is sent to the spectrometer processor
+(DSP). The arguments to this DLL command are the memory type (x in this case),
+the start address (0) and the parameter list. You can use the corresponding
+command <i>dspread</i> to extract these commands if you wish.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Send phase parameters to DSP</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#780078'>dspwrite</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:gray'>&quot;x&quot;</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>,0x00,ppList)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>  </span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Now we are
+ready to run the pulse program. The <i>getData</i> command runs the pulse
+program and waits for data to be returned. This data set is also scaled so it
+will be in the units you have defined in the Kea preferences dialog. <span
+style='font-size:11.0pt;font-family:Symbol'>m</span>V are typical. data is a
+complex floating point vector. A status flag is also set to indicate whether
+the command was successful or if the user aborted the command somehow.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Run the pulse program and collect the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     
+(status,data) = </span><span lang=EN-US style='font-size:9.0pt;font-family:
+"Courier New";color:teal'>keaRun:getData</span><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>(totPnts,guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+See if abort button/escape key pressed</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>if</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(status
+!= </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:gray'>&quot;ok&quot;</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>         </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>return</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The collected data set is now apodized using the filter
+vector defined at the start of the procedure. Note the use of the .* operator
+which performs the dot product.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>    # Filter
+the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      data = data
+.* flt</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>Next the apodizied data set is accumulated.
+Effectively is performs the operation </p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-indent:36.0pt;text-autospace:none'>sumData =
+sumData + data</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>except that it also takes into
+account the acquisition phase cycle parameter.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Accumlate the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>      sumData = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaRun:accumulate</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(accumulate,pAcq,sumData,data)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Next the data
+set is optionally transformed to provide spectral information. The
+&quot;fid&quot; string at the end of the argument list specifies the type of
+data to be collected. &quot;echo&quot; is the other option. Basically this
+tells the procedure where time = 0 is located – either at the start of the data
+set (&quot;fid&quot;) or in the middle (&quot;echo&quot;). </p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>    </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Process data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     
+(phTmData,spectrum) = </span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:teal'>keaRun:transformData</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(sumData,fAxis,guipar,</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:gray'>&quot;fid&quot;</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'>If the autophase or magnitude
+option has been selected then a phased time/frequency domain set is also
+returned for display.</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>The plot
+command displays the time and or frequency domain data sets. The arguments list
+requires the plot region objects, time x and y variables and frequency x and y
+variables. In addition the number of scans collected is passed to provide
+sensible scaling of the accumulated data.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Plot the data
+</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaPlot:graphTimeAndFreq</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(prt,prf,tAxis,phTmData,fAxis,spectrum,scan,guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Finally a
+procedure is called which checks to see if we need to wait for the requisite
+repetition time. If the data collection and processing take longer, then a
+message is sent to the title bar of the GUI window. The procedure also checks
+for <i>abort</i> or <i>finish</i> button presses which signal that we should
+finish the experiment.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Check timing</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  check = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaRun:checkTimeAndAbort</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(guipar,t1,scan,pcList,</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:gray'>&quot;ignoreLastScan&quot;</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>  </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>if</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(check
+== </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:gray'>&quot;abort&quot;</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>return</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>elseif</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(check
+== </span><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:gray'>&quot;finish&quot;</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>     scan = scan+1</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>exitfor</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'> </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:blue'>endif</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>The optional <i>ignoreLastScan</i>
+string means that the program will not wait the full repetition time on the
+last scan. If it is not present then all scans are treated the same.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify;text-autospace:none'>Once the
+experiment has completed – either by accumulating the required number of scans
+or by being prematurely finished, the data can be saved. The standard 1D data-set
+save routine is called with the time x and y data sets. Note that the y axis
+must be scaled by the number of scans completed. incrementExperiment increments
+the experiment number should this option be selected in the GUI.</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Save the data</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaFiles:save1DData</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(guipar,tAxis,sumData/scan)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:teal'>keaFiles:incrementExperiment</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(guipar)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>After the save command we
+generate a structure which stores the time domain data in the member variables
+tx and ty. To this we add the frequency domain  data in fx and fy. This is then
+returned to the calling procedure. This parameter is not used when we interact
+with the pulse program via the normal graphical interface but is often of use
+if we run the pulse program via the back-door procedure.</p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Pack the data
+into a structure</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   result = </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>struct</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>()</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   result-&gt;tx
+= tAxis</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   result-&gt;ty
+= sumData/scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   result-&gt;fx
+= fAxis</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   result-&gt;fy
+= spectrum/scan</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'># Return result</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:9.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:green'>return</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>(result)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-US
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'>The last command ends the execpp
+procedure. </p>
+
+<p class=MsoNormal style='text-autospace:none'>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>endproc</span><span lang=EN-US style='font-size:9.0pt;font-family:
+"Courier New";color:black'>(</span><span lang=EN-US style='font-size:9.0pt;
+font-family:"Courier New";color:gray'>&quot;execpp&quot;</span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:black'>) </span><span
+lang=EN-US style='font-size:9.0pt;font-family:"Courier New";color:#AA0000'>#
+Don't remove argument</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal>Multidimensional experiment execpp procedures will be
+discussed in the next section.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:92.15pt;text-indent:-92.15pt'>&nbsp;</p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'>&nbsp;</p>
+
+</div>
+
+<p class=MsoNormal style='text-align:justify'><i>&nbsp;Correct for Prospa
+version 3.12,  1-August-2012</i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

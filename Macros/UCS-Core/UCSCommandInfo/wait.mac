@@ -1,0 +1,15 @@
+###################################################################################
+#######################################################
+
+procedure(wait, duration)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+      gSeq->psInfo->command = gSeq->psInfo->command + ["wait,$duration$,$args[0]$"]
+
+   endif
+
+endproc()

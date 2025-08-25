@@ -1,0 +1,55 @@
+####################################################
+# Perform the waltzdecoupling sequence
+#
+# waltzdec2(channel, loops, ampDec, d90, tPhase)
+#
+#   channel: 1/2
+#   loops: number of loops to perform
+#   ampDec: decoupling amplitude in dB
+#   d90 : decoupling pulse length
+#   tPhase: pulse phases
+#
+#   Duration = ((96*((d90 + 2 + 3) + 2))*loops + 11 
+#
+####################################################
+
+procedure(waltzdec2, channel, loops, ampDec, d90, tPhase)
+
+   if(wvFX3Info->mode == "run")
+
+      waltzstart(channel)
+      setindex(tPhase,0)
+      loop("lpwd1", loops)
+         loop("lpwd2", 96)
+            delay(11)
+             waltzdecpulse(channel, ampDec, tPhase, d90)
+             incindex(tPhase)
+         endloop("lpwd2")
+      endloop("lpwd1")
+      waltzend(channel)
+           
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      tm = ((24*d90 + (5 + 1)*9)*4 + 1)*loops + 11
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + tm
+      gSeq->psInfo->command = gSeq->psInfo->command + ["waltzdec, $channel$, $loops$, $ampDec$, $d90$, $tPhase$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(loops, ampDec, d90, tPhase)
+
+   endif
+
+endproc()
+
+####################################################
+#  Return the inner loop duration
+####################################################
+
+procedure(getDuration, d90)
+
+   duration = 96*(d90 + 2 + 3 + 2) 
+
+endproc(duration)
+

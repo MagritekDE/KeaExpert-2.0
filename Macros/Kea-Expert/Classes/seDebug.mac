@@ -1,0 +1,50 @@
+##############################################
+# The debug class for SpinsolveExpert
+#
+# V2.xx.xx
+##############################################
+
+##############################################
+# Initialiser for the class
+##############################################
+
+procedure(init, self)
+
+   self->pr = "seDebug:printTxt"
+   self->destination    = "CLI"
+   self->showLevel      = 0
+   self->showUpdateList = 0
+   self->showDuration   = 0
+   self->showPSTimes    = 0
+
+endproc()
+
+##############################################
+# Print some data
+##############################################
+
+procedure(printTxt, self, data, output=null, level=1)
+
+   if(self->destination == "CLI")
+      if(output != null)
+         if(self->showLevel >= level)
+            print("   $time(),1.3f$s $data$\n")
+            if(vartype(output) == "string")
+               print("   $time(),1.3f$s $output$\n")
+            else
+               print(output)
+               print("\n")s
+            endif
+         endif
+      else
+         if(self->showLevel >= level)  
+            if(vartype(data) == "string")
+               print("   $time(),1.3f$s $data$\n")
+            else
+               print(data)
+            endif
+         endif
+      endif
+   endif
+
+endproc()

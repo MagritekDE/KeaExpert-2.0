@@ -1,0 +1,444 @@
+##############################################################################
+# Core routines for 1D, 2D and 3D Fourier transforms
+#
+# Syntax:
+#
+# 1D fft:1d(mIn,mOut,w,fx,typex,magnitude)
+#
+# 2D fft:2d(mIn,mOut,w,h,fx,fy,typex,typey,magnitude)
+#
+# 3D fft:3d(mIn,mOut,w,h,d,fx,fy,fz,typex,typey,typez,magnitude,status)
+#
+# 1D fft:1dDig(mIn,mOut,w,fx,typex,magnitude,rot)
+#
+# 2D fft:2dDig(mIn,mOut,w,h,fx,fy,typex,typey,magnitude,rot)
+#
+# 3D fft:3dDig(mIn,mOut,w,h,d,fx,fy,fz,typex,typey,typez,magnitude,rot,status)
+#
+#-----------------------------------------------------------------------------
+#
+# mIn ... name of global matrix to be transformed
+# mOut .. name of transformed matrix (will be global too)
+# w ..... width of transformed matrix
+# h ..... height of transformed matrix
+# d ..... depth of transformed matrix
+# typex . type of x transform "none"/"FTFid"/"FTEcho"
+# typey . type of y transform "none"/"FTFid"/"FTEcho"
+# typez . type of z transform "none"/"FTFid"/"FTEcho"
+# rot ... amount by which digital data should be rotated
+# status  status control number for intermediate updates
+#
+# Note: the input matrix is not modified by these procedures
+#
+##############################################################################
+
+
+
+###########################################################
+# 1d fft routine
+# The filter fxs are applied in the x
+# direction during the transform
+###########################################################
+
+procedure(1d,nameIn,nameOut,w2,fxs,FTtypeX,Magn)
+
+   mIn = alias(nameIn,"eval")
+   w1 = size(mIn)
+   mOut = cmatrix(w2)
+
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+
+   if(FTtypeX == "none")
+      mOut = mIn
+   elseif(FTtypeX == "FTFid")
+      mOut = ft(zerofill(Flt.*mIn,w2,"end"))
+   elseif(FTtypeX == "FTEcho")
+      mOut = ft(ftshift(zerofill(Flt.*mIn,w2,"sides")))
+   endif
+
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc(mOut)
+
+###########################################################
+# 2d fft routine
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(2d,nameIn,nameOut,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn)
+
+   mIn = alias(nameIn,"eval")
+   (w1,h1) = size(mIn)
+   rowFt  = cmatrix(w2,h1)
+   mOut = cmatrix(w2,h2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         rowFt[~,y] = ft(zerofill(Flt.*mIn[~,y],w2,"end"))
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+	 rowFt[~,y] = ft(ftshift(zerofill(Flt.*mIn[~,y],w2,"sides")))
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+
+   if(FTtypeY == "none")
+      mOut = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         mOut[x,~] = ft(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   mOut[x,~] = ft(ftshift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+###########################################################
+# 3d fft routine
+# The filter fxs, fys and fys are applied in the x, y and z
+# direction during the transform
+###########################################################
+
+procedure(3d,nameIn,nameOut,w2,h2,d2,fxs,fys,fzs,FTtypeX,FTtypeY,FTtypeZ,Magn,status)
+
+   showStatus = (nrArgs == 13)
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+   rowFt  = cmatrix(w2,h1,d1)
+   colFt  = cmatrix(w2,h2,d1)
+   mOut   = cmatrix(w2,h2,d2)
+
+# Row transforms
+   Flt = filters:get_filter(fxs,FTtypeX,w1)
+
+   tot = h1 + 2*w2
+   cnt = 0
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            rowFt[~,y,z] = ft(zerofill(Flt.*mIn[~,y,z],w2,"end"))
+         next(z)
+         cnt = cnt+1
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            rowFt[~,y,z] = ft(ftshift(zerofill(Flt.*mIn[~,y,z],w2,"sides")))
+         next(z)
+         cnt = cnt+1
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+   if(FTtypeY == "none")
+      colFt = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(zerofill(Flt.*rowFt[x,~,z],h2,"end"))
+         next(z)
+         cnt = cnt+1
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(ftshift(zerofill((Flt.*rowFt[x,~,z]),h2,"sides")))
+         next(z)
+         cnt = cnt+1
+      next(x)
+   endif
+
+# Tier transforms
+   Flt = filters:get_filter(fzs,FTtypeZ,d1)
+   if(FTtypeZ == "none")
+      mOut = colFt
+   elseif(FTtypeZ == "FTFid")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(zerofill(Flt.*colFt[x,y,~],d2,"end"))
+         next(y)
+         cnt = cnt+1
+      next(x)
+   elseif(FTtypeZ == "FTEcho")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(ftshift(zerofill((Flt.*colFt[x,y,~]),d2,"sides")))
+         next(y)
+         cnt = cnt+1
+      next(x)
+   endif
+   if(showStatus)
+      setpar(0,status,"text","100.0%")
+   endif
+
+   if(Magn == "yes")
+      if(showStatus)
+         setpar(0,status,"text","Magnitude ...")
+      endif
+      tempOut = mOut
+      mOut = matrix(w2,h2,d2)
+      for (z = 0 to d2-1)
+         mOut[~,~,z] = mag(tempOut[~,~,z])
+      next(z)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+###########################################################
+# 1d fft routine for digitally acquired data
+# The filter fxs are applied in the x
+# direction during the transform
+###########################################################
+
+procedure(1dDig,nameIn,nameOut,w2,fxs,FTtypeX,Magn,rot)
+
+   mIn = alias(nameIn,"eval")
+   w1 = size(mIn)
+   mOut = cmatrix(w2)
+
+   flt = filters:get_filter(fxs,FTtypeX,w2)
+   fltrot = rotate(flt,rot,0)
+
+   if(FTtypeX == "none")
+      mOut = mIn
+   elseif(FTtypeX == "FTFid")
+      mOut = zerofill(mIn,w2,"end")
+      mOut = rotate(mOut,rot,0)
+      mOut = ft(mOut.*fltrot)
+   elseif(FTtypeX == "FTEcho")
+      mOut = zerofill(mIn,w2,"sides")
+      mOut = rotate(mOut,rot,0)
+      mOut = ft(ftshift(mOut.*fltrot))
+   endif
+
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc(mOut)
+
+###########################################################
+# 2d fft routine with digital shift
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(2dDig,nameIn,nameOut,w2,h2,fxs,fys,FTtypeX,FTtypeY,Magn,rot)
+
+   mIn = alias(nameIn,"eval")
+   (w1,h1) = size(mIn)
+   rowFt  = cmatrix(w2,h1)
+   mOut = cmatrix(w2,h2)
+
+# Row transforms
+   flt = filters:get_filter(fxs,FTtypeX,w2)
+   fltrot = rotate(flt,rot,0)
+
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         v = mIn[~,y]
+         v = zerofill(v,w2,"end")
+         v = rotate(v,rot,0)
+         rowFt[~,y] = ft(fltrot.*v)
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+         v = mIn[~,y]
+         v = zerofill(v,w2,"sides")
+         v = rotate(v,rot,0)
+         rowFt[~,y] = ft(ftshift(fltrot.*v))
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+   if(FTtypeY == "none")
+      mOut = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         mOut[x,~] = ft(zerofill(Flt.*rowFt[x,~],h2,"end"))
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+	   mOut[x,~] = ft(ftshift(zerofill((Flt.*rowFt[x,~]),h2,"sides")))
+      next(x)
+   endif
+
+   if(Magn == "yes")
+      mOut = mag(mOut)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+endproc()
+
+###########################################################
+# 3d fft routine with digital shift
+# The filter fxs and fys are applied in the x and y
+# direction during the transform
+###########################################################
+
+procedure(3dDig,nameIn,nameOut,w2,h2,d2,fxs,fys,fzs,FTtypeX,FTtypeY,FTtypeZ,Magn,rot,status)
+
+   showStatus = (nrArgs == 14)
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+   rowFt  = cmatrix(w2,h1,d1)
+   colFt  = cmatrix(w2,h2,d1)
+   mOut   = cmatrix(w2,h2,d2)
+
+# Row transforms
+   flt = filters:get_filter(fxs,FTtypeX,w1)
+   fltrot = rotate(flt,rot,0)
+   tot = h1 + 2*w2
+   cnt = 0
+
+   if(FTtypeX == "none")
+      rowFt = mIn
+   elseif(FTtypeX == "FTFid")
+      for (y = 0 to h1-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            v = mIn[~,y,z]
+            v = zerofill(v,w2,"end")
+            v = rotate(v,rot,0)
+            rowFt[~,y,z] = ft(fltrot.*v)
+         next(z)
+         cnt = cnt+1
+      next(y)
+   elseif(FTtypeX == "FTEcho")
+      for (y = 0 to h1-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            v = mIn[~,y,z]
+            v = zerofill(v,w2,"sides")
+            v = rotate(v,rot,0)
+            rowFt[~,y,z] = ft(ftshift(fltrot.*v))
+         next(z)
+         cnt = cnt+1
+      next(y)
+   endif
+
+# Column transforms
+   Flt = filters:get_filter(fys,FTtypeY,h1)'
+   if(FTtypeY == "none")
+      colFt = rowFt
+   elseif(FTtypeY == "FTFid")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(zerofill(Flt.*rowFt[x,~,z],h2,"end"))
+         next(z)
+         cnt = cnt+1
+      next(x)
+   elseif(FTtypeY == "FTEcho")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (z = 0 to d1-1)
+            colFt[x,~,z] = ft(ftshift(zerofill((Flt.*rowFt[x,~,z]),h2,"sides")))
+         next(z)
+         cnt = cnt+1
+      next(x)
+   endif
+
+# Tier transforms
+   Flt = filters:get_filter(fzs,FTtypeZ,d1)
+   if(FTtypeZ == "none")
+      mOut = colFt
+   elseif(FTtypeZ == "FTFid")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(zerofill(Flt.*colFt[x,y,~],d2,"end"))
+         next(y)
+         cnt = cnt+1
+      next(x)
+   elseif(FTtypeZ == "FTEcho")
+      for (x = 0 to w2-1)
+         if(showStatus & cnt%100 == 0) 
+            setpar(0,status,"text","$100*cnt/tot,1.1f$%")
+         endif
+         for (y = 0 to h2-1)
+            mOut[x,y,~] = ft(ftshift(zerofill((Flt.*colFt[x,y,~]),d2,"sides")))
+         next(y)
+         cnt = cnt+1
+      next(x)
+   endif
+   if(showStatus)
+      setpar(0,status,"text","100.0%")
+   endif
+
+   if(Magn == "yes")
+      if(showStatus)
+         setpar(0,status,"text","Magnitude ...")
+      endif
+      tempOut = mOut
+      mOut = matrix(w2,h2,d2)
+      for (z = 0 to d2-1)
+         mOut[~,~,z] = mag(tempOut[~,~,z])
+      next(z)
+   endif
+
+   assign(nameOut,mOut,"global")
+
+
+endproc()
+

@@ -1,0 +1,39 @@
+procedure(exportMnovaData2D, fidPlt, protocolName=null, subFolder=null)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Get the MNova path
+   res = getregistryinfo("HKEY_CLASSES_ROOT","Applications\\MestReNova.exe\\Shell\\open\\command")
+   if(res == null)
+      message("Error","MNova application not found","error")
+      return
+   endif
+   mNova = scanstr(res,"\"%1\" \"%2\"")
+
+ # Get the script path (pulse program folder)
+   scriptPath = "$gData->curExpt->ppPath$\\MNova\\"
+
+# Get the data path
+   fidPath = gData->curExpt->dataPath
+   if(subFolder != null)
+      fidPath = "$fidPath$\\$subFolder$"
+      scriptPath = "$gData->curExpt->ppPath$\\MNova\\$subFolder$\\"
+   endif
+
+   scriptPath = replacestr(scriptPath,"\\","/")
+   fidPath = replacestr(fidPath,"\\","/")
+   if(protocolName == null)
+      exptName = gData->curExpt->protocol
+   else
+      exptName = protocolName
+   endif
+
+# Open MNova using the script
+   args = "\"$scriptPath$$exptName$.qs\" -sf process,\"$scriptPath$\",\"$fidPath$\",\"$exptName$\",\"0\",\"c:/projects/reports/\""
+   exec(mNova, args)
+
+endproc()
+ 

@@ -1,0 +1,146 @@
+####################################################
+#                  integrate1d.mac
+#
+# Integrate a 1D plot region defined by:
+#
+# 1. the currently visible region
+# 2. by a user defined rectangle
+# 3. by manually entered limits
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(integrate1dregion)
+
+   n = :windowdefinition()
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Integrate 1D region", -1, -1, 274, 131)
+
+      # Define all controls with basic parameters
+       button(1, 12, 77, 55, 23, "Integrate",
+          :integrate();)
+       button(3, 79, 77, 55, 23, "Update",
+          :initialise();)
+       button(6, 205, 77, 47, 23, "Exit",
+          closewindow(0);)
+       button(7, 146, 77, 47, 23, "Help",
+          :showhelp();)
+       statusbox(8)
+       statictext(9, 136, 36, "left", "Width")
+       statictext(10, 39, 36, "left", "Left")
+       textbox(11, 65, 31, 52)
+       textbox(12, 171, 31, 52)
+       groupbox(13, "Integration region", 13, 5, 245, 64)
+       getmessage(14,:process_message();)
+
+       setwindowpar(n,"statusbox",8)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","integrate1d.htm")
+endproc()
+
+
+####################################################
+# Initialise the GUI boxes based on current rect.
+####################################################
+
+procedure(initialise)
+
+# Extract the data from the plot
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+
+# See if there is a rectangle drawn
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      setpar(0,11,"text",x1)
+      setpar(0,12,"text",x2-x1)
+   else
+      (x1,x2) = zoom1d("getargs")
+      setpar(0,11,"text",x1)
+      setpar(0,12,"text",x2-x1)
+   endif
+
+   setwindowpar(0,"statusbox",8)
+
+endproc()
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("1DMacros","integrate1d")
+endproc()
+
+
+####################################################
+# Integrate the data
+####################################################
+
+procedure(integrate)
+
+# Extract the 1D data from the plot (must be real)
+  curplot("1d")
+  name = title("getargs")
+  (x,y) = getplotdata("1d")
+
+# Make sure the data is appropriate
+  if(x == null)
+      message("Can't complete operation","No 1d data currently plotted")
+      return
+   endif
+
+# Get the range
+   x1 = getpar(0,11,"value")
+   w = getpar(0,12,"value")
+   x2 = x1+w
+
+# Perform the integration
+   s = integvector(x,real(y),x1,x2)
+   result = "Region ($x1,1.0f$,$w,1.0f$)   Real Integral = $s,g$"
+   pr ("\n   $result $\n")
+   setpar(0,8,"text",result )
+
+endproc()
+
+
+
+####################################################
+# User has modified the 1D plot so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,14,"text")
+
+   if(src == "1D Plot")
+      :initialise()
+   endif
+
+endproc()

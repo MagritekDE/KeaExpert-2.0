@@ -1,0 +1,39 @@
+##############################################
+# Return the SNR of an FID type experiment 
+# by dividing the peak value in the real part
+# by the standard deviation of the second 
+# half of the noise in the imaginary data.
+#
+# If the data is real then use the last
+# quarter of the real data as the noise level.
+#
+# Designed to work with 1Pulse and CPMGInt
+################################################
+
+procedure(GetSNR)
+
+   (x,y) = getplotdata("1d")
+   if(y == null)
+      message("Error","No data present in current 1D plot.","error")
+      return
+   endif
+   
+   if(vartype(y) == "cmatrix1d")
+      sig = max(real(y))
+      iy = imag(y)
+      sz = size(y)
+      ns = iy[trunc(sz/2):]
+      sd = stats1d:getsd(ns)
+  
+      pr "SNR = peakSignal/sdOfImaginary = $sig/sd,1.1f$\n"
+
+   else
+      sig = max(y)
+      sz = size(y)
+      ns = y[trunc(3*sz/4):]
+      sd = stats1d:getsd(ns)
+      pr "SNR = peakSignal/sdOfLastPoints = $sig/sd,1.1f$\n"
+
+   endif
+
+endproc()

@@ -1,0 +1,1339 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>acquire</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, div.MsoListParagraphCxSpFirst
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, div.MsoListParagraphCxSpMiddle
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, div.MsoListParagraphCxSpLast
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>The pulse program definition macro</h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The first step when writing a new pulse sequence is to
+generate the pulse program definition macro. As mentioned in previous help
+files, this is done by using another pulse program as a template. </p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>The pulse program definition macro is divided into several
+parts:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoListParagraphCxSpFirst style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>A graphical user interface (GUI) description ... defines the
+pulse program tab.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>Tab list ... define the other tabs.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>Relationships table ... define a relationship between visible tab
+parameters and pulse program parameters.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>Variable table ... a list of pulse program variables to vary
+during the experiment.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>Pulse program code ... the actual pulse program itself.</p>
+
+<p class=MsoListParagraphCxSpLast style='text-indent:-18.0pt'><span
+style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span>Phase cycle table ... how the RF pulse and acqusition phases
+should vary from scan to scan.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>An example for the <i>T1-IR-Add </i>pulse sequence is shown
+below:</p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>########################################################</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>#</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># T1 inversion recovery pulse sequence
+with additional</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># CPMG pulse sequence in which the
+echoes are coadded </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># to improve the signal to noise
+ratio.</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>#</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># 180 - delay - 90 - delay - {180 -
+delay - acq}</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>#</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># The peak amplitude is plotted as a
+function of</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># the first delay. The phase should be
+adjusted so that</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># the first displayed echo is
+negative.</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>#</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'>########################################################</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>procedure</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(pulse_program,dir,mode)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Interface description (name, label,
+x, y, ctrlType, varType)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>  interface = [</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;b1Freq&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,       </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;B1 Frequency
+(MHz)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,   </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tbw&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,    </span><span style='font-size:8.0pt;font-family:
+"Courier New";color:gray'>&quot;freq&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;repTime&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,      </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Inter-expt
+time (ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tbw&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,    </span><span style='font-size:8.0pt;font-family:
+"Courier New";color:gray'>&quot;reptime&quot;</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;90Amplitude&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;90 amplitude
+(dB)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,    </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulseamp&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;180Amplitude&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>, </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;180
+amplitude (dB)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,   </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulseamp&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;pulseLength&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Pulse length
+(us)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,    </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulselength&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;minDelay&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Min. delay
+(ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;ldelayms&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;maxDelay&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Max. delay
+(ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;ldelayms&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;nrSteps&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,      </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Number of
+steps&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;integer&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;echoTime&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Echo-time
+(us)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,       </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;sdelay&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n1&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,           </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Number of
+echoes&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;integer&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,          </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Log.
+spacing&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,         </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;cb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;no,yes&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>  tabs = [</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:gray'>&quot;Pulse_sequence&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Acquisition&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Processing_Display_AP&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;File_Settings&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Relationships to determine remaining
+variable values</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   relationships = [</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n2 =
+xcal*xshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># x shim value</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n3 =
+ycal*yshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># y shim value</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n4 =
+zcal*zshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># z shim value</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a1 =
+90Amplitude&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a2 =
+180Amplitude&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d1 =
+pulseLength&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d3 =
+echoTime/2-d1-pgo&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d4 =
+echoTime/2-acqTime*500-d1/2+rxLat&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d5 =
+echoTime-d1-pgo-d4&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;w1 =
+minDelay*1000-d1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n2 =
+nrPnts&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;nrEchoes =
+n1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;totPnts =
+nrPnts&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>                    </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;totTime =
+acqTime&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># These parameters will be changed
+between experiments</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   variables = [</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a1&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a2&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;w1&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># x and y spacing between controls</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   dim = [145,26]</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Pulse sequence</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>initpp</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(dir) </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Reset
+internal parameter list</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>gradon</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(x,n2)             </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Set x shim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>gradon</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(y,n3)             </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Set y shim</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>gradon</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(z,n4)             </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Set z shim </span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>cleardata</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(n2)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>pulse</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(mode,a2,p1,d1)     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>wait</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(w1)                 </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 180 - 90
+delay</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>pulse</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(mode,a1,p2,d1)     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 90 RF pulse</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>delay</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(d3)                </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 90 - 180
+delay</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>loop</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(l1,n1)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:#780078'>pulse</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(mode,a2,p3,d1)  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 180 RF pulse</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(d4)             </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># 180 - acq
+delay</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:#780078'>acquire</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;sum&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,n2,d5)  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Acquire echo
+and wait</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:8.0pt;
+font-family:"Courier New";color:#780078'>endloop</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:gray'>&quot;l1&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>   lst = </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:#780078'>endpp</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>() </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Return
+parameter list</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:#AA0000'># Phase cycle</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>  phaseList = [0,0,0,0; </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># +x,+x,+x,+x :
+180 phase</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               2,0,2,0; </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># -x,+x,-x,+x :
+90 phase</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               3,1,1,3; </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># -y,+y,+y,-y :
+180 phase</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>               2,0,2,0] </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># -x,+x,-x,+x :
+Acquire phase</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:8.0pt;
+font-family:"Courier New";color:blue'>endproc</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>(lst,tabs,interface,relationships,variables,dim,phaseList)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal>A detailed description of the components is give below:</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=1 type=1>
+ <li class=MsoNormal>A title comment – this will appear in the title of the
+     final GUI macro (in this case T1 inversion recovery pulse sequence ...
+     negative.)</li>
+</ol>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=2 type=1>
+ <li class=MsoNormal>A procedure declaration</li>
+</ol>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:78.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:blue'>procedure</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(pulse_program,dir,mode)</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>The first
+argument should always be </span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>pulse_program </span>– this is the name
+of the procedure.</p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>dir</span><span
+lang=EN-GB> is a variable containing the directory path where the output files
+(.asm, .p) will be stored. This is required by the pulse sequence command <i>initpp</i>().</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>mode</span><span
+lang=EN-GB> is a variable which specifies the location of the RF amplifier.
+Possibilities are ‘i’ for internal, ‘e’ for external, ‘1’ for channel one and
+‘2’ for channel 2 (used with a dual transmit channel Kea).</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=3 type=1>
+ <li class=MsoNormal>A user interface definition. This is a list which contains
+     6 strings for each GUI control.</li>
+</ol>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=1 type=1>
+ <ul style='margin-top:0cm' type=disc>
+  <li class=MsoNormal>The control name (eg. b1Freq)</li>
+  <li class=MsoNormal>The control label (eg. B1 Frequency (MHz))</li>
+  <li class=MsoNormal>The x and y position of the control (xpos,ypos) based on
+      a grid spacing defined below. These positions can floating point numbers
+      e.g. 1.6 but you would normally start with simple zero based integer
+      spacing and then adjust them later if necessary.</li>
+  <li class=MsoNormal>The type of control. See control syntax section for more
+      details.</li>
+  <li class=MsoNormal>The data type and range expected for the control. See
+      control syntax section for more details. </li>
+ </ul>
+</ol>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:2.0cm'><span lang=EN-GB>A common mistake
+is to miss commas or elements from this list – check it carefully if you get an
+error message.</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:2.0cm'>An example is shown below for the
+T1-IR-Add macro:</p>
+
+<p class=MsoNormal style='margin-left:78.0pt'>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:21.8pt'><span lang=EN-GB
+style='font-size:8.0pt;font-family:"Courier New";color:#AA0000'># Interface
+description (name, label, x, y, ctrlType, varType)</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+lang=EN-GB style='font-size:7.0pt;font-family:"Courier New";color:black'> </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'> interface = [</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;b1Freq&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,       </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;B1 Frequency
+(MHz)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,   </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tbw&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:gray'>&quot;freq&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;repTime&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,      </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Inter-expt
+time (ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tbw&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:gray'>&quot;reptime&quot;</span><span style='font-size:
+8.0pt;font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;90Amplitude&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;90 amplitude
+(dB)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,    </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulseamp&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;180Amplitude&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>, </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;180
+amplitude (dB)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,   </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulseamp&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;pulseLength&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,  </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Pulse length
+(us)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,    </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;pulselength&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;minDelay&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Min. delay
+(ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;ldelayms&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;maxDelay&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Max. delay
+(ms)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;ldelayms&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;nrSteps&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,      </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Number of
+steps&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,      </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;integer&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;echoTime&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,     </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Echo-time
+(us)&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,       </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;0&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;sdelay&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:14.7pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>               </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n1&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,           </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Number of
+echoes&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,     </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;tb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;integer&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:59.7pt'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>      </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,          </span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Log.
+spacing&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,          </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;3&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;2&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;cb&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:gray'>&quot;no,yes&quot;</span><span style='font-size:8.0pt;font-family:
+"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt'>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:35.45pt'>This generates the following
+interface</p>
+
+<p class=MsoNormal style='margin-left:78.0pt'>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><img width=554
+height=205 id="Picture 3" src="Pulse%20program%20macro_files/image001.jpg"></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>Note that the
+size of the enclosing window will expand to match the largest tab.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=4 type=1>
+ <li class=MsoNormal style='text-align:justify'>The relationships between the
+     pulse program variables and the GUI variables. This is just a parameter
+     list. An example from the T1-IR-Add macro:</li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>   relationships
+= [</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n2
+= xcal*xshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># x shim value</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n3
+= ycal*yshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># y shim value</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n4
+= zcal*zshim/1000&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>, </span><span style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'># z shim value</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a1
+= 90Amplitude&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a2
+= 180Amplitude&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d1
+= pulseLength&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d3
+= echoTime/2-d1-pgo&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d4
+= echoTime/2-acqTime*500-d1/2+rxLat&quot;</span><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;d5
+= echoTime-d1-pgo-d4&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;w1
+= minDelay*1000-d1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;n2
+= nrPnts&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;nrEchoes
+= n1&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>                   
+</span><span style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;totPnts
+= nrPnts&quot;</span><span style='font-size:8.0pt;font-family:"Courier New";
+color:black'>,</span></p>
+
+<p class=MsoNormal style='margin-left:126.0pt'><span style='font-size:8.0pt;
+font-family:"Courier New";color:black'>          </span><span style='font-size:
+8.0pt;font-family:"Courier New";color:gray'>&quot;totTime = acqTime&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='margin-left:78.0pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>This list of
+strings includes some variables which are defined elsewhere (pgo and rxlat –
+pulse-gate-overhead and receiver latency) and others which are used in the main
+experiment procedure (totPnts and totTime). The latter two variables should
+always be defined in the relationships list, since in some cases, such as the
+CPMG sequence, the above equalities do not hold. Some of the variables (e.g.
+90Amplitude, 180Amplitude and pulseLength) are common and can be shared between
+different experiments. The order of the variables is important – those coming
+first will be defined before those coming later. If you define them in the
+wrong order, or refer to variables which are undefined, you will get an error
+message when you come to run the macro. Relationships can also include
+procedure calls. However each string in the list must return a parameter – even
+if it is only a dummy variable.</p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=5 type=1>
+ <li class=MsoNormal style='text-align:justify'>The tabs which will appear in
+     the GUI window. This is a list of tab names in the order they will appear.
+     The standard list is used here:</li>
+</ol>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt;text-autospace:none'><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>       tabs = [</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Pulse_sequence&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Acquisition&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;Processing_Display_AP&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;File_Settings&quot;</span><span
+style='font-size:8.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>Apart from the Pulse sequence tab which is defined above, the other
+tabs are defined as separate window definition files which may be found in the
+folder:</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt'><span lang=EN-GB>&lt;prospa&gt;\Macros\Kea-PP\Tabs</span></p>
+
+<p class=MsoNormal style='text-align:justify'>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>In some cases
+you may wish to define your own tabs – see the section “Kea Tabs”, to see how
+to do this.</p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=6 type=1>
+ <li class=MsoNormal style='text-align:justify'>In some experiments you may
+     wish to vary parameters between each set of scans (e.g. in a T<sub>1</sub>
+     experiment you would vary a delay). The next section of code specifies the
+     names of those variables. An example from the T1-IR-Add macro:</li>
+</ol>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:78.0pt'><span lang=EN-GB
+style='font-size:8.0pt;font-family:"Courier New";color:black'>variables = [</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a1&quot;</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;a2&quot;</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:black'>,</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:gray'>&quot;w1&quot;</span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'>This tells
+the compiler to make a note of these variables (the 180/90 pulse amplitude and
+the delay between them). The pulse parameter addresses corresponding to these
+parameters will be passed to the main experiment procedure of the GUI macro and
+can be used to modify the parameter values as required. (See section  “The
+processing procedure” for details).</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<ol style='margin-top:0cm' start=7 type=1>
+ <li class=MsoNormal>Two numbers which define the spacing of the GUI controls
+     and thereby the dimension of the pulse sequence tab.</li>
+</ol>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='margin-left:2.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";color:black'>dim =
+[140,26]</span></p>
+
+<p class=MsoNormal style='margin-left:72.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>In this case
+controls will be placed at the following position: </span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='position:relative;top:5.0pt'><img width=236 height=23
+src="Pulse%20program%20macro_files/image002.png"></span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>where <i>xoff</i> and <i>yoff</i> are determined automatically by
+the pulse program compiler and <i>x</i> and <i>y</i> are the numbers you placed
+in the interface description. </span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=8 type=1>
+ <li class=MsoNormal style='text-align:justify'><span lang=EN-GB>The pulse
+     sequence is constructed by a series of commands which are defined in the
+     kea2PPRun DLL (this resides in the &lt;appdir&gt;\DLL folder). Each
+     command generates a block of assembly code which is tied together to form
+     a complete pulse sequence. The program which calls the pulse sequence
+     macro will compile this assembler code to produce a 56300 DSP readable
+     file. </span></li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>The pulse
+sequence definition must be bounded by the following commands</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>initpp</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(dir)
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Reset internal parameter list</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'>...
+# user defined code</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; lst
+= </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>endpp</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>() </span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:#AA0000'># Return parameter list</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>The first command defines the directory where the assembler output
+will be stored and it also initialises the various buffers used to generate the
+assembler code.</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>The last statement joins together all the bits of assembly code
+defined by the user and also tacks on, at the beginning and end, some standard
+bits of code which are always required. The list returned by the endpp command
+is the parameter list in the order found at the start of the assembler code.
+This list will be used to initialise the pulse program parameters.</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:32.2pt;text-align:justify;text-indent:
+-18.0pt'><span lang=EN-GB>9.</span><span lang=EN-GB style='font-size:7.0pt'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB>The final section defines the phase cycle to be used
+during the experiment.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:70.9pt'><span lang=EN-GB
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp; phaseList
+= [0,0,0,0; </span><span lang=EN-GB style='font-size:9.0pt;font-family:"Courier New";
+color:#AA0000'># +x,+x,+x,+x : 180 phase</span></p>
+
+<p class=MsoNormal style='margin-left:70.9pt'><span lang=EN-GB
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2,0,2,0; </span><span lang=EN-GB style='font-size:9.0pt;font-family:"Courier New";
+color:#AA0000'># -x,+x,-x,+x : 90 phase</span></p>
+
+<p class=MsoNormal style='margin-left:70.9pt'><span lang=EN-GB
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3,1,1,3;
+</span><span lang=EN-GB style='font-size:9.0pt;font-family:"Courier New";
+color:#AA0000'># -y,+y,+y,-y : 180 phase</span></p>
+
+<p class=MsoNormal style='margin-left:70.9pt'><span lang=EN-GB
+style='font-size:9.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2,0,2,0] </span><span lang=EN-GB style='font-size:9.0pt;font-family:"Courier New";
+color:#AA0000'># -x,+x,-x,+x : Acquire phase</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>The rows of the
+phaseList matrix correspond to RF pulse phases (p1 for the first row, p2 for
+the second etc). The last row refers to the acquire phase. The columns refer to
+different scans and in this case will be repeated after the 4<sup>th</sup>
+scan. (i.e. this is a 4 step phase cycle). The phase values available are: 0:
++x, 1: +y, 2: -x, 3: -y.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:8.0pt;font-family:"Courier New";
+color:#AA0000'>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=10 type=1>
+ <li class=MsoNormal style='text-align:justify'><span lang=EN-GB>The last statement
+     in the pulse program macro returns important information back to the
+     compiler macro. This line will always be the same:</span></li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:3.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:blue'>endproc</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(lst,tabs,interface,relationships,</span></p>
+
+<p class=MsoNormal style='margin-left:3.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:blue'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>variables,dim,phaseList)</span></p>
+
+<p class=MsoNormal style='margin-left:2.0cm'><span lang=EN-GB style='font-size:
+10.0pt;font-family:"Courier New";color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>It returns the parameter list (in the order listed in the asm file),
+the tab list, the interface, relationships and variables lists, the dim vector
+for positioning the GUI controls and finally the phase list defining the phase
+cycle to be used.</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt;text-align:justify'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal>&nbsp;<span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:92.15pt;text-indent:-92.15pt'><span
+lang=EN-GB>&nbsp;&nbsp;&nbsp;</span></p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'>&nbsp;</p>
+
+</div>
+
+<p class=MsoNormal style='text-align:justify'><i>&nbsp;Correct for Prospa
+version 3.12,  1-August-2012</i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

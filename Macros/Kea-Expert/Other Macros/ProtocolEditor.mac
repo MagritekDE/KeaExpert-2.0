@@ -1,0 +1,903 @@
+#############################################################
+# Allows the editing of SpinsolveExpert protocol scripts
+#
+# V1.0
+#
+###############################################################
+
+procedure(ProtocolEditor, parentWinNr, protocolPath, protocolName)
+
+   if(gData->permissions->canEditScripts == "no")
+      return
+   endif
+
+# If a compiler window already exists use it
+# if path and file are provided.
+   n1 = findwin("partialTitle","Protocol Editor    $protocolName$.mac")
+   if(n1 >= 0)
+      hidewindow(n1)
+      showwindow(n1)
+      return
+   endif
+   n2 = findwin("partialTitle","Protocol Editor    $protocolName$Default.mac")
+   if(n2 >= 0)
+      hidewindow(n2)
+      showwindow(n2)
+      return
+   endif
+   n3 = findwin("partialTitle","Protocol Editor    $protocolName$_Interface.mac")
+   if(n3 >= 0)
+      hidewindow(n3)
+      showwindow(n3)
+      return
+   endif
+
+   n = :windowdefinition()
+   windowvar(wvParWinNr,wvThisWinNr,wvExptDirList)
+
+   assignctrls(n)
+
+   wvParWinNr = parentWinNr
+   wvThisWinNr = n
+   outputFolderCtrl->text(protocolPath)
+   baseNameCtrl->text(protocolName)
+
+   setwindowpar(n,"sizelimits",[621,-1,600,-1])
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","true")
+   setwindowpar(n,"mergetitle","true")
+   setwindowpar(n,"statusbox",30)
+   setwindowpar(n,"exit_procedure",":exitWindow")
+   setwindowpar(n,"menubar",[100:104])
+   setwindowpar(n,"menu",11)
+   setwindowpar(n,"focus",11)
+   :loadFiles()
+   showwindow(n)
+   procEditor->current("true")
+
+endproc()
+
+procedure(addFileNameToTitle)
+
+   name =  editTabs->tabName()
+   if(name[-1] == "*")
+      name = name[0:-2]
+   endif
+
+   if(name == "Protocol control")
+      file = procEditor->filename()
+      path = procEditor->pathname()
+      modified = procEditor->modified()
+      procEditor->current("true")
+
+   elseif(name == "User interface")
+      file = uiEditor->filename()
+      path = uiEditor->pathname()
+      modified = uiEditor->modified()
+      uiEditor->current("true")
+
+   endif
+
+   updateedittitle()
+
+endproc()
+
+##################################################
+# Check for modified files - save if required
+##################################################
+
+procedure(checkBeforeCompile)
+
+   if(procEditor->modified == "true" |
+     uiEditor->modified   == "true")
+     response = query("File not saved","Files have been modified - do you want to save them?","yes","yes/no/cancel")
+     if(response == "yes")
+        :savePulseProgram()
+        return(0)
+     elseif(response == "no")
+        :loadFiles()
+        return(0)
+     elseif(response == "cancel")
+        return(1)
+     endif
+   endif
+
+endproc(0)
+
+##################################################
+# Check for modified files - save if required
+##################################################
+
+procedure(checkForModifiedText)
+
+   if(nrArgs == 0)
+     prompt = "Files have been modified - do you want to save them?"
+   endif
+   if(prefEditor->modified   == "true" |
+     procEditor->modified == "true" |
+     uiEditor->modified   == "true")
+     response = query("File not saved","Files have been modified - do you want to save them?","yes","yes/no/cancel")
+     if(response == "yes")
+        :savePulseProgram()
+        return(0)
+     elseif(response == "no")
+        return(0)
+     elseif(response == "cancel")
+        return(1)
+     endif
+   endif
+
+endproc(0)
+
+procedure(compileAllCallback)
+
+   if(compileAllCtrl->text == "yes")
+      baseNameCtrl->enable("false")
+      baseNameSelectCtrl->enable("false")
+     # guiTitleCtrl->enable("false")
+      fullNameSelectCtrl->enable("false")
+   else
+      baseNameCtrl->enable("true")
+      baseNameSelectCtrl->enable("true")
+    #  guiTitleCtrl->enable("true")
+      fullNameSelectCtrl->enable("true")
+   endif
+
+endproc()
+
+##################################################
+# Use an existing pulse program as a template
+# Basically copy it and change basename and if
+# necessary the pathname
+##################################################
+
+procedure(copyPulseProgram)
+
+  guiwinnr(wvThisWinNr)
+# Initial paths and pulse program names
+   outputFolder = outputFolderCtrl->text
+   baseName = baseNameCtrl->text
+   path = "$outputFolder$\\$baseName$" 
+
+# Make sure we have saved everything
+   if(:checkBeforeCompile())
+      return
+   endif 
+
+# Get the existing template
+   if(path == "")
+      path = "$appdir$\\Macros"
+   endif
+   templatePath = getfolder(path,"Select template pulse program folder")
+   if(templatePath == "cancel")
+      return
+   endif
+   templateName = getbasedir(templatePath)
+
+# Get the new pulse program name
+   idx = getlistindex(wvExptDirList,outputFolder)
+   (newFolder,newName) = GetFileInfo("Select location and name for new pulse program",wvExptDirList,idx,templateName+"Copy")
+   if(newName == templateName)
+      message("Error","Template and new pulse program name must be different","error")
+      return
+   endif
+   if(newName == "cancel")
+      return
+   endif
+   if(isdir("$newFolder$\\$newName$"))
+      message("Error","New pulse program name '$newName$' already exists in folder '$newFolder$'","error")
+      return
+   endif
+
+# Define names for src and dst files
+   exptMacroSrc = "$templateName$.mac"
+   parFileSrc   = "$templateName$Default.par"
+   itfcFileSrc  = "$templateName$_interface.mac"
+   protFileSrc  = "$templateName$.pro"
+
+   exptMacroDst = "$newName$.mac"
+   parFileDst   = "$newName$Default.par"
+   itfcFileDst  = "$newName$_interface.mac"
+   protFileDst  = "$newName$.pro"
+
+# Check for template files
+   cd(templatePath)
+   if(isfile(parFileSrc) == 0)
+      message("Error","No parameter file in template folder","error")
+      return
+   endif
+   if(isfile(exptMacroSrc) == 0 & isfile("..\\$exptMacroSrc$") == 0)
+      message("Error","No experiment macro in template folder","error")
+      return
+   endif
+
+# Read the template files
+   cd(templatePath)
+   escapechar("false")
+   parText = load(parFileSrc)
+   itfcText = load(itfcFileSrc)
+   exptTxt = load(exptMacroSrc)
+   proTxt = load(protFileSrc)
+
+# Update the names in the files
+#   exptTxt = replacestr(exptTxt,"# $templateName$","# $newName$")
+#   exptTxt = replacestr(exptTxt,"pp_name = \"$templateName$.p\"","pp_name = \"$newName$.p\"")
+#   exptTxt = replacestr(exptTxt,"procedure($templateName$, guipar)","procedure($newName$, guipar)") # V3
+#   exptTxt = replacestr(exptTxt,"n,\"$templateName$\"","n,\"$newName$\"") # V3
+#   parText = setlistvalue(parText,"expName","\"$newName$\"")
+
+# Save copies in new location and with new names
+   mkdir(newFolder)
+   cd(newFolder)
+   mkdir(newName)
+   cd(newName)
+   save(exptMacroDst,exptTxt)
+   save(parFileDst,parText)
+   save(itfcFileDst,itfcText)
+   save(protFileDst,proTxt)
+   escapechar("true")
+
+# Reload the pulse program showing the new name
+   outputFolderCtrl->text(newFolder)
+   baseNameCtrl->text(newName)
+
+# Add new folder to the macro search path if necessary
+  seWinNr = wvThisWinNr
+  winnamespace(wvParWinNr)
+  expert:addToPPSearchPath(newFolder)
+  winnamespace(seWinNr)
+
+# Load the data files
+   :loadFiles() 
+
+endproc()
+
+#########################################################
+# Edit the output gui macro
+#########################################################
+
+procedure(editControlMacro)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   if(isdir(outputFolder) == 0)
+      message("Error","Output directory does not exist.","error")
+      return
+   endif 
+
+   cd(outputFolder)
+   file = baseName+".mac"
+   if(not(isfile(file)))
+     cd(baseName)
+     if(not(isfile(file)))
+        message("Error","The control and processing macro does not exist.","error")
+        return
+     endif
+   endif
+   escapechar("false")
+   txt = load(file) 
+   readOnly = fileinfo(file,"readonly") 
+   escapechar("true")
+   procEditor->syntaxcoloringstyle("macro")
+   procEditor->text(txt)
+   if(readOnly)
+      procEditor->readonlytext("true")
+   else
+      procEditor->readonlytext("false")
+   endif
+   procEditor->filename(file)
+   procEditor->pathname(getcwd())
+   procEditor->modified("false")
+   editTabs->currentpage(2)
+
+endproc()
+
+#########################################################
+# Edit the default preferences file
+#########################################################
+
+procedure(editDefaultPreferences)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   dir = "$outputFolder$\\$baseName$"
+   prefFile = baseName+"Default.par"
+
+   if(baseName == "")
+      message("Error","Please enter a pulse program base-name.","error")
+      return(1)
+   endif
+
+# If no pp file than make one and also make
+# default parameter file and pulse program output folder
+   if(isdir(dir) == 0)
+      message("Information","This pulse program does not exist.\rYou will need to use another as a template.","info")
+      return(1)
+   endif
+
+   cd(dir)
+   if(isfile(prefFile))
+      try;
+         escapechar("false")
+         txt = load(prefFile,"text")
+         readOnly = fileinfo(prefFile,"readonly") 
+         prefEditor->syntaxcoloringstyle("par")
+         prefEditor->text(txt)
+         if(readOnly)
+            prefEditor->readonlytext("true")
+         else
+            prefEditor->readonlytext("false")
+         endif
+         prefEditor->filename(prefFile)
+         prefEditor->pathname(dir)
+         prefEditor->modified("false")
+         editTabs->currentpage(1)
+         escapechar("true")
+      catch;
+         pr lasterror()
+      endtry;
+   else
+      message("Error","Can't find file '$prefFile$'\rin folder '$dir$'","error")
+   endif
+
+
+endproc(0)
+
+
+procedure(editUserInterface)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   if(isdir(outputFolder) == 0)
+      message("Error","Output directory does not exist.","error")
+      return
+   endif 
+   cd("$outputFolder$\\$baseName$")
+   file = baseName+"_interface.mac"
+   if(isfile(file) != 0)  
+     escapechar("false")  
+     txt = load(file) 
+     readOnly = fileinfo(file,"readonly") 
+     uiEditor->syntaxcoloringstyle("macro")
+     uiEditor->filename(file)
+     uiEditor->pathname(getcwd())
+     uiEditor->text(txt)
+      if(readOnly)
+         uiEditor->readonlytext("true")
+      else
+         uiEditor->readonlytext("false")
+      endif
+     uiEditor->modified("false")
+     editTabs->currentpage(3)
+     escapechar("true")  
+   else
+     uiEditor->filename("")
+     uiEditor->pathname("")
+     uiEditor->text("")
+     uiEditor->modified("false")
+   endif 
+
+
+endproc()
+
+#########################################################
+# Exit window and save parameters to preferences file
+#########################################################
+
+procedure(exitWindow)
+
+   :save_parameters() 
+   if(:checkForModifiedText())
+      return
+   endif 
+   closewindow(0)
+
+endproc()
+
+
+#########################################################
+# Load window parameters from preferences file
+#########################################################
+
+procedure(load_parameters, path, file)
+
+   if(nrArgs == 2)
+      outputFolder = path
+      baseName = file
+      lst = mkparlist()
+      setctrlvalues(0,lst)
+      cd(outputFolder)
+    #  :setTitle(baseName+".mac")
+      return
+   endif
+
+
+   cd(prefdir)
+   mkdir("SpinsolveParameters")   
+   cd("SpinsolveParameters")
+   if(isfile("makePP.par"))
+      lst = load("makePP.par")
+      setctrlvalues(0,lst)
+      assignlist(lst)
+   endif
+
+endproc()
+
+procedure(loadFiles, which)
+
+   if(baseNameCtrl->text == "")
+      return
+   endif
+
+   winNr = getobj(0)->nr
+
+   setfocus(winNr,11)
+   :editControlMacro()
+
+   setfocus(winNr,22)
+   :editUserInterface()
+
+   setfocus(winNr,28)
+   :editDefaultPreferences()
+
+   editTabs->currentpage(0)
+
+  # :addFileNameToTitle()
+
+endproc()
+
+
+##################################################
+# Open the pulse program folder
+##################################################
+
+procedure(openPPFiles)
+
+   outputFolder = outputFolderCtrl->text
+   baseName = baseNameCtrl->text
+   path = "$outputFolder$\\$baseName$"
+   if(isdir(path))
+     exec("explorer",path)
+   endif
+
+endproc()
+
+##################################################
+# Open an existing pulse program
+##################################################
+
+procedure(openPulseProgram)
+
+   if(:checkBeforeCompile())
+      return
+   endif 
+
+# Get the pulse program folder
+   dir = "$outputFolderCtrl->text$"
+   if(dir == "")
+      dir = "$appdir$\\Macros\\Proton"
+   endif
+   dir = getfolder(dir,"Select pulse program folder")
+   if(dir == "cancel")
+      return
+   endif
+
+# Check that there is a pulse program macro in this folder
+   cd(dir)
+
+   baseName = getbasedir(dir)
+   dir = getbasepath(dir)
+   if(isfile("$baseName$_pp.mac") == 0)
+      message("Error","No pulse program macro in this folder","error")
+      return
+   endif
+
+# Check that there is an experiment macro
+   v4Found = isfile("$baseName$.mac")
+   cd("..")
+   v3Found = isfile("$baseName$.mac")
+
+   if(not(v3Found) & not(v4Found))
+      message("Error","No control/processing macro in or above this folder","error")
+      return
+   endif
+
+   outputFolderCtrl->text(dir)
+   baseNameCtrl->text(baseName)
+
+   :loadFiles()
+
+endproc()
+
+
+#################################################################
+# Process any messages
+#################################################################
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,1,"text")
+
+endproc()
+
+##################################################
+# Rename the current pulse program by modifying
+# the basename as it appears in various files.
+# Converts both version 3 and version 4 files.
+##################################################
+
+procedure(renamePulseProgram)
+
+# Initial paths and pulse program names
+   outputFolder = outputFolderCtrl->text
+   baseName = baseNameCtrl->text
+   path = "$outputFolder$\\$baseName$" 
+
+# Check for their existance
+   if(isdir(outputFolder) == 0)
+      message("Error","Can't find output directory","error")
+      return
+   endif
+   cd(outputFolder)
+   if(isdir(baseName) == 0)
+      message("Error","Can't find pulse program directory $baseName$","error")
+      return
+   endif
+
+# Get the new pulse program name
+   newName = GetText("Select new name for pulse program","$baseName$",20)
+
+   if(newName == baseName)
+      message("Error","Name has not changed","error")
+      return
+   endif
+   if(newName == "cancel")
+      return
+   endif
+
+# Check for unique name
+   if(isdir("$outputFolder$\\$newName$"))
+      message("Error","New pulse program name '$newName$' already exists","error")
+      return
+   endif
+
+# Change the pulse program folder name
+   result = movefile("$baseName$","$newName$")
+   if(result == "error") 
+      message("Error","Can't rename pulse program.\rIs a file open in this folder?","error")
+      return
+   endif
+
+# Move into this folder and change file names and contents where necessary
+   path = "$outputFolder$\\$newName$" 
+   cd(path)
+
+   if(isfile("$baseName$_interface.mac"))
+      movefile("$baseName$_interface.mac","$newName$_interface.mac")
+   endif
+
+   if(isfile("$baseName$Default.par"))
+      escapechar("false")
+      par = load("$baseName$Default.par")
+      par = setlistvalue(par,"expName","\"$newName$\"")
+      save("$newName$Default.par",par)
+      escapechar("true")
+      rmfile("$baseName$Default.par")        
+   endif 
+
+   if(isfile("$baseName$.mac"))
+      movefile("$baseName$.mac","$newName$.mac")
+   endif
+#   if(isfile("$baseName$.mac"))
+#      escapechar("false")
+#      txt = load("$baseName$.mac")
+#      txt = replacestr(txt,"# $baseName$","# $newName$")
+#      txt = replacestr(txt,"pp_name = \"$baseName$.p\"","pp_name = \"$newName$.p\"")
+#      txt = replacestr(txt,"procedure($baseName$, guipar)","procedure($newName$, guipar)") # V3 only
+#      txt = replacestr(txt,"n,\"$baseName$\"","n,\"$newName$\"") # V3 only
+#      save("$newName$.mac",txt)
+#      escapechar("true")
+#      rmfile("$baseName$.mac")
+#   endif
+
+# Reload the pulse program showing the new name
+   baseNameCtrl->text(newName)
+   :loadFiles()       
+
+endproc()
+
+#########################################################
+# Save window parameters to preferences file
+#########################################################
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   save("makePP.par",lst)
+   cd(dir)  
+
+endproc()
+
+##################################################
+# Save the contents of txtEditor using its current
+# folder and filename
+##################################################
+
+procedure(saveEditorText, txtEditor)
+
+   if(txtEditor->modified == "true")
+
+      bak = getcwd()
+      txt = txtEditor->text()
+      path = txtEditor->pathname()
+      name = txtEditor->filename()
+      if(isdir(path))
+         cd(path)
+         escapechar("false")
+         save(name,txt)
+         escapechar("true")
+      endif
+      txtEditor->modified("false")
+      txtEditor->current("true")
+   # Cache if macro
+      if(getext(name) == "mac")
+         import(name,path,"global")
+      endif
+      cd(bak)
+
+   endif
+
+endproc()
+
+##################################################
+# Save all pulse program files and update tabs
+##################################################
+
+procedure(savePulseProgram)
+
+# Save the text in each tab if changed
+   :saveEditorText(procEditor)
+   :saveEditorText(uiEditor)
+   :saveEditorText(prefEditor)
+   keepfocus("false")
+
+endproc()
+
+#########################################################
+# Select a pulse program basename
+#########################################################
+
+procedure(selectBaseName)
+
+   dir = outputFolderCtrl->text
+   cd(dir)
+
+   name = getfilename("open","Select gui macro (will also set output directory)","Macro files","mac")
+   if(name == "cancel")
+      return
+   endif
+
+   dir = getcwd()
+   outputFolderCtrl->text(dir)
+
+   dir = "$dir$\\$rmext(name)$"
+
+   if(isdir(dir))
+      baseNameCtrl->text(getbasedir(dir))
+   else
+      message("Error","Invalid GUI macro selected as folder\r'$dir$' does not exist.","error")
+   endif
+
+   :loadFiles();
+
+endproc()
+
+#########################################################
+# Select a pulse program basename
+#########################################################
+
+procedure(selectBaseNameOnly)
+
+   dir = outputFolderCtrl->text
+   cd(dir)
+
+   name = getfilename("open","Select gui macro (will not change output directory)","Macro files","mac")
+   if(name == "cancel")
+      return
+   endif
+
+   dir = getcwd()
+   dir = "$dir$\\$rmext(name)$"
+
+   if(isdir(dir))
+      baseNameCtrl->text(getbasedir(dir))
+   else
+      message("Error","Invalid GUI macro selected as folder\r'$dir$' does not exist.","error")
+   endif
+
+   :loadFiles();
+
+endproc()
+
+#########################################################
+# Select an output folder
+#########################################################
+
+procedure(selectFolder)
+
+   dir = outputFolderCtrl->text
+   dir = getfolder(dir,"Select the folder which will, or does, contain\rthe pulse program macro and associated folder.")
+   if(dir != "cancel")
+      outputFolderCtrl->text(dir)
+   endif
+
+endproc()
+
+# List all the procedures in a class or a macro
+procedure(showProcs)
+
+   ce = cureditor()
+   name = ce->getmacroname()
+   if(name != null)
+      (path,macroName) = findmacro(name)
+      if(path != null)
+         lst = getprocnames(path,macroName)
+         procs = sortlist(lst)
+         item = selectItemFromList(procs,"Select procedure from list")
+         if(item != null)
+            ce = cureditor()
+            ce->inserttext(item+"()")
+            ce->insertoffset(-2)
+            ce->showsyntax("")
+            ce->insertoffset(1)
+            setfocus(ce->winNr,ce->objNr)
+         endif
+      else
+         print("\n  Macro/Class '$name$' not found\n")
+      endif
+   endif
+
+endproc()
+
+##################################################
+# Once a pulse program has been compile use this
+# procedure to display the parameter list and
+# enter default parameter
+##################################################
+
+procedure(updateDefaultParameters)
+
+# Initial paths and pulse program names
+   outputFolder = outputFolderCtrl->text
+   baseName = baseNameCtrl->text
+   itfcMacro = "$baseName$_interface.mac"
+   path = "$outputFolder$\\$baseName$" 
+
+   if(isdir(path))
+      cd(path)
+      if(isfile(itfcMacro))
+         UpdateParameterList(path,itfcMacro)
+         return
+      endif
+   endif
+
+   message("Error","Can't find parameter interface file.\rMake sure the experiment been compiled.","error")
+  
+endproc()
+
+###############################################################
+# Defines the uers interface
+###############################################################
+
+procedure(windowdefinition)
+
+   n = window("Protocol Editor", -1, -1, 636, 614, "resizable")
+
+      # Define all controls with basic parameters
+      getmessage(1,
+        :processMessage();)
+
+      button(3, "ww-71", 49, 63, 28, "Close",
+         :exitWindow();)
+      textbox(4, 103, 74, "ww-300")
+      statictext(5, 59, 48, "center", "directory")
+      statictext(6, 59, 71, "center", "Protocol")
+      statictext(7, 59, 86, "center", "base name")
+      tab(8, 11, 125, "ww-20", "wh-153",
+         :addFileNameToTitle();)
+
+      editor(11, 20, 154, "ww-41", "wh-193")
+
+      groupbox(13, "File Information", 10, 9, "ww-90", 102)
+      textbox(14, 103, 36, "ww-193")
+
+      statictext(16, 59, 36, "center", "Output")
+
+      button(20, "ww-71", 15, 63, 28, "Help",
+         help("Macros\Spinsolve-Expert","ProtocolEditor.htm");)
+      editor(22, 20, 154, "ww-41", "wh-193")
+
+      editor(28, 20, 154, "ww-41", "wh-193")
+      statusbox(30,"ww-50","ww","-1")
+      menu(100, "File", "Open protocol\tCtrl+O", :openPulseProgram(),
+                "Save protocol\tCtrl+S", :savePulseProgram(),
+                "Separator", ,
+                "New protocol from existing file\tCtrl+E", :copyPulseProgram(),
+                "Separator", ,
+                "Rename current protocol\tCtrl+R", :renamePulseProgram(),
+                "Separator", ,
+                "Open folder containing protocol files", :openPPFiles(),
+                "Separator", ,
+                "Exit\tCtrl+Q", :exitWindow())
+      menu(101, "Edit", "Undo\tCtrl+Z", funcEdit("undo"),
+                "Separator", ,
+                "Cut\tCtrl+X", funcEdit("cut"),
+                "Copy\tCtrl+C", funcEdit("copy"),
+                "Paste\tCtrl+V", funcEdit("paste"),
+                "Select all\tCtrl+A", funcEdit("select all"),
+                "Separator", ,
+                "Indent\tTab", funcEdit("indent text"),
+                "Unindent\tShift+Tab", funcEdit("unindent text"),
+                "Separator", ,
+                "Block comment\tCtrl+K", funcEdit("block comment"),
+                "Block uncomment\tCtrl+U", funcEdit("block uncomment"),
+                "Separator", , 
+                "Sort selection\tCtrl+Shift+S",funcedit("sort selection"),
+                "Sort procedures\tCtrl+Alt+S",funcedit("sort procedures"),
+                "Separator", ,
+                "Find down\tF3", funcEdit("find down"),
+                "Find up\tShift+F3", funcEdit("find up"),
+                "Find and replace\tCtrl+F", funcEdit("find and replace"))
+      menu(102, "View", "Go to line number ...\tCtrl+G", funcEdit("go to line"),
+                "Separator", ,
+                "Go to procedure\tCtrl+Double-click", funcEdit("go to procedure"),
+                "Go back\tF5", funcEdit("go back"),
+                "Go forward\tF6", funcEdit("go forward"),
+                "Separator", ,
+                "Show procedure syntax\tCtrl+click","",
+                "Show macro procedures ...\tCtrl+M",:showProcs(),
+                "Separator", ,
+                "Increment font size\tCtrl+I", funcEdit("increment font size"),
+                "Decrement font size\tCtrl+Shift+I", funcEdit("decrement font size"),
+                "Separator", ,
+                "Show fault line\tCtrl+Shift+F", funcEdit("show fault"),
+                "Separator", ,
+                "Command help\tF1", funcEdit("command help"))
+
+      menu(103, "Procedures", "procedure menu", "procedures")
+      menu(104, "Help", "Help for editor",
+                help("Macros\Spinsolve-Expert","ProtocolEditor.htm");)
+
+     # Set other control parameters
+      setpar(n,4,"objID","baseNameCtrl",
+                 "readonly","true",
+                  "valueID","baseName")
+      setpar(n,8,"objID","editTabs",
+                  "inittabs",["Protocol control","Default parameters","User interface"])
+
+      setpar(n,11,"objID","procEditor",
+                  "tabparent",[8,0],
+                  "statusbox",30,
+                  "menubar",[100:104])
+
+      setpar(n,14,"objID","outputFolderCtrl",
+                  "readonly","true",
+                  "valueID","outputFolder")
+
+      setpar(n,22,"objID","uiEditor",
+                  "statusbox",30,
+                  "tabparent",[8,2],
+                  "menubar",[100:104])
+
+      setpar(n,28,"objID","prefEditor",
+                  "statusbox",30,
+                  "tabparent",[8,1],
+                  "menubar",[100:104])
+      setpar(n,30,"objID","statusCtrl",
+                  "syntaxWindow","add")
+
+endproc(n)

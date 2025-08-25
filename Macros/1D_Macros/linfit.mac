@@ -1,0 +1,116 @@
+###########################################
+#           linfit.mac
+#
+# Extract data from current 1D plot
+# and fit a linear function to it.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek Jan 2010
+###################################################
+
+procedure(linfit)
+
+   (xa,ya)= getplotdata("1d")
+   if(xa != null)
+      if(vartype(ya) == "matrix1d")
+          (txt,lx,ly,x1,x2,y1,y2) = 1dPar:get()
+         (m,c,mErr,cErr) = linfit:fit(xa,ya)
+         linfit:display(xa,ya,m,c,mErr,cErr)
+         1dPar:set(txt,lx,ly,x1,x2,y1,y2)
+      else
+         message("Error","Data must be real")
+      endif
+   else
+      message("Error","No 1D plot data")
+   endif
+
+endproc()
+
+###########################################
+#
+# Perform a least squares best fit
+# on linear data supplied in arrays x and y
+#
+###########################################
+
+procedure(fit,xs,ys)
+
+    x = double(xs)
+    y = double(ys)
+
+# Calculate various sums
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+     N = size(x)
+
+# Work out slope and intercept
+   delta = sxx*N - sx*sx
+   c = (sxx*sy - sx*sxy)/delta;
+   m = (sxy*N - sx*sy)/delta;
+
+# Work out standard error in slope and intercept
+# start by estimating variance in original data
+   if(N>2)
+      vdat = (syy - 2*m*sxy - 2*c*sy
+              + 2*m*c*sx +m*m*sxx + N*c*c)/(N-2)
+      mErr = (N*vdat/delta)^0.5
+      cErr = (sxx*vdat/delta)^0.5
+   else
+      mErr = 0
+      cErr = 0
+   endif
+
+   m = single(m)
+   c = single(c)
+   mErr = single(mErr)
+   cErr = single(cErr)
+
+endproc(m,c,mErr,cErr)
+
+
+###########################################
+#
+# Display the original data and the best fit
+#
+###########################################
+
+procedure(display,x,y,m,c,mErr,cErr)
+
+# Plot best fit
+   N = size(x)
+   mn = min(x)
+   mx = max(x)
+   xp = [mn: (mx-mn)/(N-1): mx]
+   yp = xp*m + c
+   status = hold("getargs")
+
+   drawplot("false")
+      plot(x,y,"tracetype","none",
+               "symbolshape","opensquare",
+               "symbolsize",2,
+               "symbolcolor",[255,0,0])
+      hold("on")
+      plot(xp,yp,"tracetype","lines",
+                 "symbolshape","none",
+                 "symbolsize",2,
+                 "symbolcolor",[255,0,0])
+      hold("off")
+      mStr = errorstr(m,mErr,1,3)
+      cStr = errorstr(c,cErr,1,3)
+      title("Slope = $mStr$    Intercept = $cStr$")
+      title("size",12)
+   drawplot("true")
+
+   hold(status )
+
+# Print out results
+   pr("\n\n   slope ...... $mStr$")
+   pr("\n   intercept .. $cStr$\n")
+
+
+endproc()
+

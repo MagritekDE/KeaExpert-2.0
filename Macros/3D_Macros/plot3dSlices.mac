@@ -1,0 +1,447 @@
+###########################################
+#             plot3dslices.mac
+#
+#
+# This window provides an interface to
+# display a 3D data set 2D slices taken
+# orhtogonal to the x, y or z axis
+#
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+###########################################
+
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(plot3dslices,name)
+
+   n = :windowdefinition()
+   :update_window(n)
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Plot 3D-slices and tiers", -1, -1, 298, 314)
+
+      # Define all controls with basic parameters
+       windowvar(planeDir,menu3d,d,h,w,reset)
+       statictext(1, 45, 27, "right", "name:")
+       textmenu(2, 52, 25, 135, 200,
+          :select_matrix();)
+       radiobuttons(3, 45, 249, 20, "vertical", "xy,yz,xz", "xy",
+            :set_plane(0);
+            :display("true");)
+       statictext(4, 40, 247, "right", "xy")
+       statictext(5, 40, 267, "right", "yz")
+       statictext(6, 40, 287, "right", "xz")
+       slider(7, 65, 262, 150, 30, "horizontal",
+            :display("true");)
+       button(8, 194, 25, 20, 21, "U",
+          :update_window(0);)
+       statictext(9, 45, 79, "right", "min:")
+       statictext(10, 140, 79, "right", "max:")
+       statictext(11, 105, 79, "right", "0.000318")
+       statictext(12, 200, 79, "right", "3.54")
+       textmenu(13, 41, 161, 53, 200,
+          :update_axis_range(13,28,21);)
+       textmenu(14, 41, 188, 53, 200,
+          :update_axis_range(14,26,24);)
+       statictext(15, 164, 139, "right", "to")
+       button(16, 233, 257, 52, 33, "Exit",
+          closewindow(0);)
+       textbox(17, 172, 135, 37)
+       groupbox(18, "Matrix", 5, 5, 220, 50)
+       groupbox(19, "Data range", 5, 57, 220, 48)
+       groupbox(20, "Scan planes", 5, 230, 220, 80)
+       textbox(21, 172, 162, 37)
+       statictext(22, 115, 247, "left", "scan planes")
+       button(23, 233, 25, 52, 33, "Display tiers",
+          trackcursor("2d","cross",":display_tier");)
+       textbox(24, 172, 189, 37)
+       statictext(25, 29, 193, "right", "Z")
+       textbox(26, 114, 189, 37)
+       statictext(27, 29, 166, "right", "Y")
+       textbox(28, 114, 162, 37)
+       textbox(29, 114, 135, 37)
+       statictext(30, 29, 139, "right", "X")
+       groupbox(31, "Axes label range", 5, 110, 220, 115)
+       textmenu(32, 41, 135, 53, 200,
+          :update_axis_range(32,29,17);)
+       statictext(33, 165, 139, "right", "to")
+       statictext(34, 165, 166, "right", "to")
+       statictext(35, 165, 193, "right", "to")
+       button(36, 233, 199, 52, 33, "Help",
+          :showhelp();)
+       button(37, 233, 83, 52, 33, "Horiz. slice",
+          :horiz_slice();)
+       button(38, 233, 141, 52, 33, "Vertical slice",
+          :vert_slice();)
+
+     # Set other control parameters
+       setpar(n,2,"menu",[""])
+       setpar(n,13,"menu",[""])
+       setpar(n,14,"menu",[""])
+       setpar(n,32,"menu",[""])
+
+endproc(n)
+
+procedure(update_window,n)
+
+  menu3d = matrixlist(4)
+   planeDir = "xy"
+   if(size(menu3d) > 0)
+      menu3d = sortlist(menu3d)
+      setpar(n,2,"menu",menu3d)
+      if(nrArgs > 0)
+         setpar(n,2,"text",menu3d[0])
+         :update_ranges(menu3d[0])
+      else
+         setpar(n,2,"text",menu3d[0])
+         :update_ranges(menu3d[0])
+      endif
+      :set_plane(0)
+      :display("true")
+   endif
+   menu1d = matrixlist(1)
+   planeDir = "xy"
+   if(size(menu1d) > 0)
+      menu1d = sortlist(menu1d)
+      setpar(n,32,"menu",menu1d)
+      setpar(n,32,"text",menu1d[0])
+      setpar(n,13,"menu",menu1d)
+      setpar(n,13,"text",menu1d[0])
+      setpar(n,14,"menu",menu1d)
+      setpar(n,14,"text",menu1d[0])
+   endif
+   setpar(n,7,"arrowstep",1)
+   autorange("on")
+
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\3D","plot3dslices.htm")
+endproc()
+
+####################################################
+# Select a new matrix from the text menu
+####################################################
+
+procedure(select_matrix)
+
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval")
+   :update_ranges(name)
+   :set_plane(0)
+   :display("true")
+
+endproc()
+
+####################################################
+# The update button has been pressed
+####################################################
+
+procedure(update_menu)
+
+   menu1d = matrixlist(1)
+   if(size(menu1d) > 0)
+      menu1d = sortlist(menu1d)
+      setpar(0,32,"menu",menu1d)
+      setpar(0,32,"text",menu1d[0])
+      setpar(0,13,"menu",menu1d)
+      setpar(0,13,"text",menu1d[0])
+      setpar(0,14,"menu",menu1d)
+      setpar(0,14,"text",menu1d[0])
+   endif
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      menu3d = sortlist(menu3d)
+      setpar(0,2,"menu",menu3d)
+      setpar(0,2,"index",1)
+      if(size(menu3d) > 0)
+         :set_plane(0)
+         :display("true")
+      endif
+   endif
+
+endproc()
+
+####################################################
+# A different range vector has been selected
+####################################################
+
+procedure(update_axis_range,textNr,minVal,maxVal)
+
+   name = getpar(0,textNr,"text")
+   if(name == "")
+      return
+   endif
+   v = eval(name)
+   setpar(0,minVal,"text",v[0])
+   setpar(0,maxVal,"text",v[1])
+   :display("true")
+
+endproc()
+
+####################################################
+# Display the slice
+####################################################
+
+procedure(display,draw)
+
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval") 
+   plane = getpar(0,7,"value")
+   dir = getpar(0,3,"text")
+ 
+   xrange = [getpar(0,29,"value"),getpar(0,17,"value")]
+   yrange = [getpar(0,28,"value"),getpar(0,21,"value")]
+   zrange = [getpar(0,26,"value"),getpar(0,24,"value")]
+
+   (w,h,d) = size(mat)
+
+   draw2d("false")
+      (nl,mode) = contour("getargs")
+      (left,right,bottom,top) = zoom2d("getargs")
+      if(dir = "xy")
+          image(mat[~,~,plane],xrange,yrange)
+       elseif(dir = "yz")
+          image(mat[plane,~,~],yrange,zrange)
+       elseif(dir = "xz")
+          image(mat[~,plane,~],xrange,zrange)
+       endif
+      contour(nl,mode)
+       title("$name$ ($planeDir$ plane : $plane$)")
+       if(reset == 0)
+          zoom2d(left,right,bottom,top)
+       endif
+    draw2d(draw)
+
+    (minVal,maxVal) = getdatarange("current");
+     setpar(0,11,"text","$minVal,2.3g$")
+     setpar(0,12,"text","$maxVal,2.3g$")
+
+   reset = 0
+
+endproc()
+
+####################################################
+# Currently not used
+####################################################
+
+procedure(message)
+
+   changed = getpar(0,22,"text")
+   if(changed == "colormap")
+      setpar(0,17,"text",cmap("getargs"))
+   endif
+
+endproc()
+
+####################################################
+# Set the plane direction, plot labels and slider  
+# limits for the current data set
+####################################################
+
+procedure(set_plane, plane)
+
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval")
+   (w,h,d) = size(mat)
+
+   planeDir = getpar(0,3,"text")
+
+   if(planeDir = "xy")
+      setpar(0,7,"range",[0,d-1])
+      setpar(0,7,"tickstep",d/10)
+      xlabel("x")
+      ylabel("y")
+   elseif(planeDir = "yz")
+      setpar(0,7,"range",[0,w-1])
+      setpar(0,7,"tickstep",w/10)
+      xlabel("y")
+      ylabel("z")
+   elseif(planeDir = "xz")
+      setpar(0,7,"range",[0,h-1])
+      setpar(0,7,"tickstep",h/10)
+      xlabel("x")
+      ylabel("z")
+   endif
+   setpar(0,7,"value",plane)
+   reset = 1
+
+endproc()
+
+####################################################
+# Display the default range for the current 
+# data set
+####################################################
+
+procedure(update_ranges,name)
+
+   mat = alias(name,"eval") 
+   (w,h,d) = size(mat)
+
+   setpar(0,29,"text",0)
+   setpar(0,17,"text",w)
+   setpar(0,28,"text",0)
+   setpar(0,21,"text",h)
+   setpar(0,26,"text",0)
+   setpar(0,24,"text",d)
+
+endproc()
+        
+
+#################################################################
+# As the cursor is moved display the corresponding tier 
+# in the 1D plot.
+#################################################################
+
+procedure(display_tier,x,y)
+
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   plane = getpar(0,7,"value")
+   dir = getpar(0,3,"text")
+   
+   mat = alias(name,"eval")
+
+   draw1d("false")
+      if(dir = "xy")
+          plot(mat[x,y,~])
+          title("z tier (x,y) = ($x$,$y$)")
+       elseif(dir = "yz")
+          plot(mat[~,x,y])
+          title("x tier (y,z) = ($x$,$y$)")
+       elseif(dir = "xz")
+          plot(mat[x,~,y]')
+          title("y tier (x,z) = ($x$,$y$)")
+       endif
+    draw1d("true")
+
+endproc()
+
+#################################################################
+# Allow the user to select a horizontal slice
+#################################################################
+
+procedure(horiz_slice)
+
+   y = getxy("horiz")
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   plane = getpar(0,7,"value")
+   dir = getpar(0,3,"text")
+   
+   mat = alias(name,"eval")
+
+  (x1,x2,y1,y2) = zoom2d("getargs")
+
+# Figure out new plane direction
+   if(dir == "xy")
+      dirn = "xz"
+   elseif(dir == "xz")
+      dirn = "xy"
+   elseif(dir == "yz")
+      y1 = x1
+      y2 = x2
+      dirn = "xy"
+   endif
+
+# Set the display parameters
+   setpar(0,3,"text",dirn)
+   setpar(0,7,"value",y)
+
+# Display this plane
+   draw2d("false")
+      :set_plane(y)
+      :display("false")
+      (x1a,x2a,y1a,y2a) = zoom2d("getargs")
+      if(dir == "xy")
+        zoom2d(x1,x2,y1a,y2a)
+      elseif(dir == "xz")
+        zoom2d(x1,x2,y1a,y2a)   
+      elseif(dir == "yz")
+        zoom2d(x1a,x2a,y1,y2)
+      endif
+   draw2d("true")
+
+endproc()
+
+#################################################################
+# Allow the user to select a vertical slice
+#################################################################
+
+procedure(vert_slice,x,y)
+
+   x = getxy("vert")
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   plane = getpar(0,7,"value")
+   dir = getpar(0,3,"text")
+   
+   mat = alias(name,"eval")
+
+  (x1,x2,y1,y2) = zoom2d("getargs")
+
+# Figure out new plane direction
+   if(dir == "xy")     
+      dirn = "yz"
+      x1 = y1
+      x2 = y2
+   elseif(dir == "xz")
+      dirn = "yz"
+   elseif(dir == "yz")
+      dirn = "xz"
+   endif
+
+# Set the display parameters
+   setpar(0,3,"text",dirn)
+   setpar(0,7,"value",x)
+
+# Display this plane
+   draw2d("false")
+      :set_plane(x)
+      :display("false")
+      (x1a,x2a,y1a,y2a) = zoom2d("getargs")
+      if(dir == "xy")
+        zoom2d(x1,x2,y1a,y2a)
+      elseif(dir == "xz")
+        zoom2d(x1a,x2a,y1,y2)   
+      elseif(dir == "yz")
+        zoom2d(x1a,x2a,y1,y2)
+      endif
+   draw2d("true")
+
+endproc()

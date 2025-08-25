@@ -1,0 +1,78 @@
+###################################################################################
+# Switches off the specified rf channel
+#
+#   txoff(channel)
+#
+#      channel    : 1/2/"1nb"/"2nb"/"w1"/"w2" (nb = no blanking pulse, w = wobble mode)
+#
+#      Duration = 1us
+#
+##################################################################################
+
+procedure(txoff, channel=1)
+
+   args = getargnames()
+
+   if(wvFX3Info->mode == "run")
+      
+      if(channel == "1" | channel == 1)
+         gateTTL = 0x04000
+         gateAndRFTTL = 0x04008
+         ddsAdrs = 0x118E
+      elseif(channel == "1nb" | channel == "n1")
+         gateTTL = 0x00000
+         gateAndRFTTL = 0x00008
+         ddsAdrs = 0x118E
+      elseif (channel == "w1")
+         gateTTL = 0x04000
+         gateAndRFTTL = 0x04008
+         ddsAdrs = 0x118E
+      elseif (channel == "2" | channel == 2)
+         gateTTL = 0x00100
+         gateAndRFTTL = 0x00102
+         ddsAdrs = 0x128E
+      elseif (channel == "2nb" | channel == "n2")
+         gateTTL = 0x00000
+         gateAndRFTTL = 0x00002
+         ddsAdrs = 0x128E
+      elseif (channel == "w2")
+         gateTTL = 0x00500
+         gateAndRFTTL = 0x00502
+         ddsAdrs = 0x128E
+      else
+         throw("Invalid RF pulse channel $channel$ (should be one of: '1'/'2'/1/2)")
+      endif
+
+      wvFX3Info->currentTTL = wvFX3Info->currentTTL & inv(gateAndRFTTL)
+
+      ps = [15d,      0x00000000, wvFX3Info->currentTTL,
+            15d,      ddsAdrs, 0,
+            15d,      ddsAdrs, 0,
+            100d-45d, 0x09000000,  0]
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps)       
+            
+
+   elseif(wvFX3Info->mode == "time")
+
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+         gSeq->psInfo->command = gSeq->psInfo->command + ["txoff,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+   #   elseif(nrArgs == 5) # Single pulse with frequency (ch, amp, phase, duration, freq)
+   #      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+   #      gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$,$a2$,$a3$,$a4$,$a5$,$args[1]$,$args[2]$,$args[3]$,$args[4]$"]
+   #   elseif(nrArgs == 9) # Dual pulse  (ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2, duration)
+   #      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.6
+   #      gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$, $a2$,$a3$,$a4$,$a5$,$a6$,$a7$,$a8$,$a9$,$args[1]$,$args[2]$,$args[3]$,$args[5]$,$args[6]$,$args[7]$,$args[8]$"]
+      endif
+
+   elseif(wvFX3Info->mode == "compile")
+
+
+   endif
+
+endproc()
+

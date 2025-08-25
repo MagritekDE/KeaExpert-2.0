@@ -1,0 +1,32 @@
+# Calculate the inverse of matrix A
+
+procedure(invSVD,A)
+
+# Work out the inverse of the matrix
+   (U,V,S) = svd(A)
+   (w,h) = size(A)
+  
+# Find maximum diagonal element
+   maxVal = 1e-39
+   for(k = 0 to w-1)
+      if(abs(S[k,k]) > maxVal)
+        maxVal = abs(S[k,k])
+      endif
+   next(k)
+
+# Invert the diagonal elements
+# Zero very small ones
+   for(k = 0 to w-1)
+      if(abs(S[k,k]) > maxVal*1e-6)
+        S[k,k] = 1/S[k,k]
+      else
+        S[k,k] = 0
+      endif
+   next(k)
+
+   inA = (V*S*U')
+
+
+endproc(inA,U,V,S)
+
+

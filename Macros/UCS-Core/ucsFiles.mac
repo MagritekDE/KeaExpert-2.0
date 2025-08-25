@@ -1,0 +1,1585 @@
+###################################################################################
+#
+# ucsFiles.mac
+#
+# Procedures related to loading and saving files on the Spinsolve spectrometer
+#
+# addWindowSpecifics . add window related parameters to acqu.par
+#
+# incrementExperiment  increment the experiment number in the UI (V3)
+# loadData ........... load data from the last saved data set.
+# loadCommonPar ...... load athe list of common parameters
+# loadPref ........... load the UCS preferences from user preferences folder
+# openDataFolder ..... display the current data folder in an explorer window
+# save1DData ......... save 1D data pair (V3)
+# save2DData ......... save 2D matrix matData (V3)
+# saveList ........... save a list of parameters to the data output directory
+# saveCommonPar ...... save the common parameter list.
+# saveParameters ..... save a experiment parameters to acqu.par
+# savePlot ........... save Plot data (V4)
+# saveImage .......... save Image data (V4)
+# setExpName ......... set the name of an NMR experiment (V3)
+# setExpNr ........... set the number of an NMR experiment (V3)
+# savePref ........... save the UCS preferences to user preferences folder
+# setWorkingDir ...... set the data working directory.
+#
+#
+# Last modified 20 Feb 2022 by C Eccles
+#
+# Copyright (c) Magritek Ltd 2015-2022
+#
+##################################################################################
+ 
+
+#############################################################
+# Add window position, size and name to parameter list
+#############################################################
+
+procedure(addWindowSpecifics,parList)
+
+   pos = getwindowpar(0,"position")
+   name = getwindowpar(0,"macroname")
+   experiment = rmext(name)
+   parList = parList + "position = $pos$" # Add window position
+   parList = parList + "experiment = \"$experiment$\"" # Add experiment name
+   if(wv_dispMode == "large")
+      parList = parList + "windowSize = \"small\"" # Add window size
+   else
+      parList = parList + "windowSize = \"large\"" # Add window size
+   endif
+
+endproc(parList)
+
+#################################################################
+# Make a subdirectory if exptNr or expNr is defined and
+# move into it
+#################################################################
+
+procedure(handleSubFolders, guipar)
+
+   assignlist(guipar)
+
+   # Make/move into a possible numbered subdirectory
+   subDirSet = 0
+   if(isvar("exptNr"))
+      if(exptNr != "")
+         mkdir("$exptNr$")
+         cd("$exptNr$")
+         subDirSet = 1
+      endif
+   endif
+   # For legacy experiments
+   if(isvar("expNr") & subDirSet == 0)
+      if(expNr != "")
+         mkdir("$expNr$")
+         cd("$expNr$")
+      endif
+   endif
+
+endproc()
+
+
+#################################################################
+# Allow the user to load the last saved data set (V3 of UI)
+#################################################################
+
+procedure(loadData)
+
+# Determine the data directory
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   n = findobj(0,"name","expNr")
+   expNr = getpar(0,n,"text")
+   if(expNr == "")
+      dir = dir + "\\" + name
+   else
+      dir = dir + "\\" + name + "\\" + expNr
+   endif
+   found = 0
+
+# Move to the data directory
+   if(isdir(dir))
+      cd(dir)
+
+  # Load any 1D plot files
+      lstpt1 = ls("*.pt1")
+      szpt1 = size(lstpt1)
+      lst1d = ls("*.1D")
+      sz1d = size(lst1d)
+
+      if(szpt1 == 1) # Load single plot file
+         load(lstpt1[0])
+         found = 1
+      elseif(szpt1 == 0 & sz1d == 1) # Load single data file
+         (x,y) = load(lst1d[0])
+         plot(x,y)
+         title(lst1d[0])
+         found = 1
+      elseif(szpt1 > 1 | sz1d > 1) # Choose from multiple files
+         name = getfilename("Open","Select 1D plot or data file","1D Plot file,1D data file","pt1,1d")
+         if(name != "cancel")
+            if(caseset(getext(name),"lower") == "pt1")
+               load(name)
+            else
+               (x,y) = load(name)
+               plot(x,y)
+               title(name)
+            endif
+            found = 1
+         else
+            return(0)
+         endif
+      endif
+
+   # Load any 2D plot files
+      lstpt2 = ls("*.pt2")
+      szpt2 = size(lstpt2)
+      lst2d = ls("*.2D")
+      sz2d = size(lst2d)
+
+      if(szpt2 == 1) # Load single plot file
+         load(lstpt2[0])
+         found = 1
+      elseif(szpt2 == 0 & sz2d == 1) # Load single data file
+         image(load(lst2d[0]))
+         found = 1
+      elseif(szpt2 > 1 | sz2d > 1) # Choose from multiple files
+         name = getfilename("Open","Select 2D plot or data file","2D Plot file,2D data file","pt2,2d")
+         if(name != "cancel")
+            if(getext(name) == "pt2")
+               load(name)
+            else
+               image(load(name))
+               title(name)
+            endif
+            found = 1
+         else
+            return(0)
+         endif
+      endif
+   else
+      message("Error","The following data directory does not exist:\r$dir$","error")
+      return(0)
+   endif
+
+# Nothing found
+   if(found == 0)
+      message("Information","No plot or image data found.","info")
+   endif
+
+endproc(0)
+
+#################################################################
+# Load the list of common parameters
+#################################################################
+
+procedure(loadCommonPar)
+
+   lst = list(0)
+   calibrated = 1
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("KeaParameters\\Common")
+   cd("KeaParameters\\Common")
+   if(isfile("$gData->specID$Common.par"))
+      lst = load("$gData->specID$Common.par")
+      assignlist(lst)
+      if(isvar("common") == 0)
+         common = ["b1FreqCh1",  
+                   "b1FreqCh2", 
+                   "pulseLengthCh1",  
+                   "pulseLengthCh2", 
+                   "90AmplitudeCh1",
+                   "90AmplitudeCh2",  
+                   "180AmplitudeCh1",
+                   "180AmplitudeCh2",
+                   "xShim",
+                   "yShim",
+                   "zShim",
+                   "oShim"]
+      endif
+      lst = getsublist(lst,common + ["calibrated"])
+      lst = lst + ["common = $common$"]
+   else
+      try
+         specPar = gData->specParameters
+         assignlist(specPar)
+         lst = ["b1FreqCh1       = $frequencyCh1$",
+                "b1FreqCh2       = $frequencyCh2$",
+                "pulseLengthCh1  = $pulseLengthCh1*2$",
+                "pulseLengthCh2  = $pulseLengthCh2*2$",
+                "90AmplitudeCh1  = $pulseAmplitudeCh1-6$",
+                "90AmplitudeCh2  = $pulseAmplitudeCh2-6$",
+                "180AmplitudeCh1 = $pulseAmplitudeCh1$",
+                "180AmplitudeCh2 = $pulseAmplitudeCh2$",
+                "xShim           = 0",
+                "yShim           = 0",
+                "zShim           = 0",
+                "oShim           = 0"]
+
+         common = ["b1FreqCh1",  
+                   "b1FreqCh2", 
+                   "pulseLengthCh1",  
+                   "pulseLengthCh2", 
+                   "90AmplitudeCh1",
+                   "90AmplitudeCh2",  
+                   "180AmplitudeCh1",
+                   "180AmplitudeCh2",
+                   "xShim",
+                   "yShim",
+                   "zShim",
+                   "oShim"]
+
+         lst = lst + ["common = $common$", "calibrated = 0"]
+         save("$gData->specID$Common.par",sortlist(lst))
+      catch
+         print("\n   Problems generating common parameter list from specParameters\n")
+      endtry
+   endif
+   cd(dir)
+
+endproc(lst,calibrated)
+
+###########################################################
+#
+# Load the parameters and data from a previous experiment
+#
+###########################################################
+
+procedure(loadParameters)
+
+   bak = getcwd()
+   cd(wvOutputDir)
+   file = getfilename("load","Select parameter file","Parameter files","par")
+   if(file != "cancel")
+
+    # Load the acqu.par file       
+      guipar = load(file,"truedoubles")
+
+   # From the new acqu.par location extract
+   # the working directory, experiment name and numer
+      dir = getcwd()
+      expNr = getbasedir(dir)
+      try # Check if its a number
+         nVar = eval(expNr)
+         type = vartype(nVar)
+         if(type != "float")
+            type = "string"
+         endif
+      catch
+         type = "string"
+      endtry
+      if(type == "string")
+         expName = expNr
+         expNr = ""
+         dataDirectory = getbasepath(dir)
+      else
+         dir = getbasepath(dir)
+         expName = getbasedir(dir)
+         dataDirectory = getbasepath(dir)
+      endif
+
+   # Update guipar with current file location
+      guipar = setlistvalue(guipar,"dataDirectory","\"$dataDirectory$\"")
+      guipar = setlistvalue(guipar,"expName","\"$expName$\"")
+      guipar = setlistvalue(guipar,"expNr","\"$expNr$\"")
+
+   # Update GUI
+      expLocal = caseset(wvMacroName,"lower")
+      expPar = caseset(getlistvalue(guipar,"experiment"),"lower")
+      if(expLocal == expPar)
+         setctrlvalues(0,guipar)
+      else
+         message("Error","Not a parameter file for this experiment","error")
+      endif
+   endif
+   cd(bak)
+       
+endproc()
+
+####################################################
+# Load UCS preferences and return as structure
+####################################################
+
+procedure(loadPreferences)
+
+   (pref,defaultsLoaded) = :loadPref()
+
+endproc(struct(pref),defaultsLoaded)
+
+####################################################
+# Load Kea preferences from user preferences folder
+# and return as a list
+####################################################
+
+procedure(loadPref)
+
+   lst1 = null
+   lst2 = null
+   defaultsLoaded = 0
+
+# Load the preferences list
+   lst1 = null
+   file1 = "$prefdir$\\KeaParameters\\Preferences\\preferences.par"
+
+   if(isfile(file1))
+      lst1 = load(file1)
+      assignlist(lst1)
+      if(isvar("version") == 0)       
+         lst1 = null
+      else
+         if(version != 1.2)
+            lst1 = null
+         endif
+      endif
+   endif
+
+# Load the default preferences
+   file2 = "$getmacropath()$\\ucsDefaultPreferences.par"
+   if(isfile(file2))
+      lst2 = load(file2) 
+   endif
+
+# Merge lists
+   if(lst1 != null)
+      lst = mergelists(lst1,lst2)  
+   elseif(lst2 != null)
+      defaultsLoaded = 1
+      lst = lst2
+   else
+      message("Error","No Kea NMR parameter list present!","error")
+      return()
+   endif
+
+# Save the result
+   cd("$prefdir$\\KeaParameters")
+   mkdir("Preferences")
+   cd("Preferences")
+   save(file1,lst)   
+   
+endproc(lst, defaultsLoaded)
+
+
+####################################################
+# Display the current data folder in an explorer 
+# window
+####################################################
+
+procedure(openDataFolder)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   n = findobj(0,"name","expNr")
+   expNr = getpar(0,n,"text")
+   if(expNr == "")
+      fullDir = dir + "\\" + name
+   else
+      fullDir = dir + "\\" + name + "\\" + expNr
+   endif
+
+   if(isdir(fullDir))
+      exec("explorer",fullDir)
+   else
+      exec("explorer",dir)
+   endif
+
+endproc()
+
+
+############################################################################
+# Save 1D data pair xData, yData (V3)
+#
+# Input:  guipar .......... GUI parameters
+#         xData ........... x axis array
+#         yData ........... y axis array
+#         name ............ base file name (opt - default is 'data')
+#         savePlot ........ if 0 then plot won't be saved (opt - default is 1)
+#                           specifying a name here will override the default. 
+#         subDir .......... a directory inside the normal data folder to save files (op - default is none)
+#
+# Saves:  name.1d ......... Prospa 1D floating point (x,y) data set
+#         name.csv ........ Comma delimited ascii (x,y) data set
+#         name.pt1 ........ Prospa 1D plot
+#         name.png ........ Prospa plot as PNG image.
+#
+############################################################################
+
+procedure(save1DData,guipar,xData,yData,name="data",savePlot=1,subDir=".")
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      subDirSet = 0
+      expStr = ""
+      if(isvar("exptNr"))
+         if(exptNr != "")
+            mkdir("$exptNr$")
+            cd("$exptNr$")
+            expStr = "$exptNr$\\"
+            subDirSet = 1
+         endif
+      endif
+   # For legacy experiments
+     if(isvar("expNr") & subDirSet == 0)
+         if(expNr != "")
+            mkdir("$expNr$")
+            cd("$expNr$")
+            expStr = "$expNr$\\"
+         endif
+      endif
+   
+   # Make a subdirectory
+      mkdir(subDir)
+      cd(subDir)
+
+   # Save the data
+      if(wvSaveDataFiles == "yes")
+         save("$name$.1d",xData,yData)   # Save fid in Prospa format
+      endif
+
+      if(savePlot != 0)
+         if(wvSavePictureFiles == "yes")   
+            showwindow(getmainwindow()) # Make sure Prospa is not minimised
+            wvPP->draw("true") # And plot is redisplayed
+            pause(0.1) # Pause gives it time to redraw
+            try
+               sf = plotscale()
+               plotscale(1) # Set scale factor to 1
+               if(savePlot == 1)
+                  wvPP->save("$name$.png","1d")    # Save plot as png image
+               else
+                 wvPP->save("$savePlot$.png","1d")    # Save plot as png image
+               endif
+               plotscale(sf) # Restore scale factor
+            catch
+               pr "\n   Image not saved - is the plot obscured?\n"
+            endtry
+         endif
+
+         if(savePlot == 1)
+            wvPP->save("$name$.pt1")       # Save plot with default name
+         else
+            wvPP->save("$savePlot$.pt1")   # Save plot with special name
+         endif
+      endif
+
+      if(wvSaveTextFiles == "yes")
+         if(vartype(yData) == "cmatrix1d")
+            m = matrix(3,size(yData))
+            m[0,~] = (xData)'
+            m[1,~] = real(yData)'
+            m[2,~] = imag(yData)'
+         else
+            m = matrix(2,size(yData))
+            m[0,~] = (xData)'
+            m[1,~] = (yData)'
+         endif   
+         export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+         export2d(m,"$name$.csv")     # Save fid as an excel file
+      endif
+ 
+   # Output information to the CLI
+      if(isvar("reportLevel"))
+         if(reportLevel == "none")
+            cd(bak)
+            return
+         elseif(reportLevel == "simple")
+            pr("\n   '$expName$' 1D data saved to folder:")
+            pr("\n     $dataDirectory$\\$expName$\n")
+            cd(bak)
+            return
+         endif
+      endif
+
+      if(wvSaveDataFiles == "yes")  
+         pr("\n   1D binary FID data saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.1d")
+      endif
+      if(wvSaveTextFiles == "yes")  
+         pr("\n   1D ascii FID data saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.csv")
+      endif
+      if(savePlot == 1)
+         pr("\n   1D plot save to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.pt1")
+         if(wvSavePictureFiles == "yes")
+            pr("\n   1D picture file saved to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.png")
+         endif
+      elseif(savePlot != 0)
+         pr("\n   1D plot save to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$savePlot$.pt1")
+         if(wvSavePictureFiles == "yes")
+            pr("\n   1D picture file saved to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$savePlot$.png")
+         endif
+      endif
+      pr("\n")
+   
+   # Restore cwd
+      cd(bak)
+
+   endif
+
+endproc()
+
+
+#######################################################
+# Save 2D matrix matData
+#
+# Input:  guipar .......... GUI parameters
+#         matData ......... matrix to save (if null just save plot)
+#         name ............ file name (opt - default is 'data')
+#         savePlot ........ if 0 then plot won't be saved (opt - default is 1)
+#                           specifying a name here will override the default. 
+#         subDir .......... a directory inside the data folder to save matData (op - default is none)
+#
+# Saves:  name.2d ......... Prospa 2D floating point (x,y) data set
+#         name.csv ........ Comma delimited ascii (x,y) data set
+#         name.pt2 ........ Prospa 2D plot (op)
+#         name.png ........ Prospa image as PNG image. (op)
+#
+#######################################################
+
+procedure(save2DData,guipar,matData,name,savePlot,subDir)
+
+   if(nrArgs < 3)
+      name = "data"
+      name2 = "data2" # To distinguish csv and png files from 1D save
+   else
+      name2 = name # User has provided unique name (hopefully)
+   endif
+
+# Only save the plot if asked to or if there is a plot window
+   if(isvar("wvPP2") == 0)
+      savePlot = 0
+   elseif(nrArgs < 4)
+      savePlot = 1
+   endif
+
+# Extract GUI parameters
+   assignlist(guipar)
+ 
+  if(saveData == "true")
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      subDirSet = 0
+      expStr = ""
+      if(isvar("exptNr"))
+         if(exptNr != "")
+            mkdir("$exptNr$")
+            cd("$exptNr$")
+            expStr = "$exptNr$\\"
+            subDirSet = 1
+         endif
+      endif
+   # For legacy experiments
+     if(isvar("expNr") & subDirSet == 0)
+         if(expNr != "")
+            mkdir("$expNr$")
+            cd("$expNr$")
+            expStr = "$expNr$\\"
+         endif
+      endif
+
+   # Make a subdirectory
+      if(nrArgs == 5)
+         mkdir(subDir)
+         cd(subDir)
+      endif
+
+   # Save the plot data if desired
+      if(savePlot != 0)
+         if(wvSavePictureFiles == "yes")   
+            showwindow(getmainwindow()) # Make sure Prospa is not minimised
+            wvPP2->draw("true") # And plot is redrawn
+            pause(0.1) # Pause gives it time to redraw
+            try
+               sf = plotscale()
+               plotscale(1) # Set scale factor to 1
+               if(savePlot == 1)
+                  wvPP2->save("$name2$.png","2d")    # Save plot as png image
+               else
+                  wvPP2->save("$savePlot$.png","2d")    # Save plot as png image
+               endif
+               plotscale(sf) # Restore scale factor
+            catch
+               pr "\n   Image not saved - is the plot obscured?\n"
+            endtry
+         endif
+         if(savePlot == 1)
+            wvPP2->save("$name$.pt2")       # Save plot with default name
+         else
+            wvPP2->save("$savePlot$.pt2")   # Save plot with special name
+         endif     
+      endif
+
+   # Save the matrix data
+      if(matData != null)
+         if(wvSaveTextFiles == "yes")  
+            if(vartype(matData) == "cmatrix2d")
+               export2dpar("ab","ascii","xyrc","complex","delimiter","comma")
+            else
+               export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+            endif
+            export2d(matData,"$name2$.csv")   # Save matrix as a 2D Excel file
+         endif
+         save("$name$.2d",matData) # Save matrix as 2D Prospa binary file
+      endif
+
+   # Output information to the CLI
+      if(isvar("reportLevel"))
+         if(reportLevel == "none")
+            cd(bak)
+            return
+         elseif(reportLevel == "simple")
+            pr("\n   '$expName$' 2D data saved to folder:")
+            pr("\n     $dataDirectory$\\$expName$\n")
+            cd(bak)
+            return
+         endif
+      endif
+
+   # Report actions to the CLI
+      if(matData != null)
+         pr("\n   2D data set saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.2d")
+         if(wvSaveTextFiles == "yes")  
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$name2$.csv")
+         endif
+      endif
+      if(savePlot == 1)
+         pr("\n   2D plot data saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.pt2")
+         if(wvSavePictureFiles == "yes")
+            pr("\n   2D picture file saved to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$name2$.png")   
+         endif
+      elseif(savePlot != 0)
+         pr("\n   2D plot data saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$savePlot$.pt2")
+         if(wvSavePictureFiles == "yes")
+            pr("\n   2D picture file saved to:")
+            pr("\n     $dataDirectory$\\$expName$\\$expStr$$savePlot$.png")   
+         endif
+      endif
+      pr("\n")
+   
+   # Restore cwd
+      cd(bak)
+   endif
+
+endproc()
+
+
+#######################################################
+# Save 3D matrix matData
+#
+# Input:  guipar .......... GUI parameters
+#         matData ......... matrix to save (if null just save plot)
+#         name ............ file name (opt - default is 'data')
+#         subDir .......... a directory inside the data folder to save matData (op - default is none)
+#
+# Saves:  name.3d ......... Prospa 2D floating point (x,y,z) data set
+#         name.csv ........ Comma delimited ascii (x,y,z) data set
+#
+#######################################################
+
+procedure(save3DData,guipar,matData,name,subDir)
+
+   if(nrArgs < 3)
+      name = "data"
+      name3 = "data3" # To distinguish csv and png files from 1D & 2D save
+   else
+      name3 = name # User has provided unique name (hopefully)
+   endif
+
+# Extract GUI parameters
+   assignlist(guipar)
+ 
+  if(saveData == "true")
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      subDirSet = 0
+      expStr = ""
+      if(isvar("exptNr"))
+         if(exptNr != "")
+            mkdir("$exptNr$")
+            cd("$exptNr$")
+            expStr = "$exptNr$\\"
+            subDirSet = 1
+         endif
+      endif
+   # For legacy experiments
+     if(isvar("expNr") & subDirSet == 0)
+         if(expNr != "")
+            mkdir("$expNr$")
+            cd("$expNr$")
+            expStr = "$expNr$\\"
+         endif
+      endif
+   
+   # Make a subdirectory
+      if(nrArgs == 4)
+         mkdir(subDir)
+         cd(subDir)
+      endif
+
+   # Save the matrix data
+      if(matData != null)
+         if(vartype(matData) == "cmatrix3d")
+            export3dpar("ab","ascii","xyrc","complex","delimiter","comma")
+         else
+            export3dpar("ab","ascii","xyrc","real","delimiter","comma")
+         endif
+         export3d(matData,"$name3$.csv")   # Save matrix as a 3D Excel file
+         save("$name$.3d",matData) # Save matrix as 3D Prospa file
+      endif
+
+   # Report actions to the CLI
+      if(matData != null)
+         pr("\n   3D data set saved to:")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name$.3d")
+         pr("\n     $dataDirectory$\\$expName$\\$expStr$$name3$.csv")
+      endif
+      pr("\n")
+   
+   # Restore cwd
+      cd(bak)
+   endif
+
+endproc()
+
+#################################################################
+# Save a list of parameters to the data output directory
+#################################################################
+
+procedure(saveList,guipar,lst,fileName)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+      if(expNr != "")
+         mkdir("$expNr$")
+         cd("$expNr$")
+         expStr = "$expNr$\\"
+      else
+         expStr = ""
+      endif
+
+   # Save the data
+      save(fileName,lst) 
+
+   # Report actions to the CLI
+      pr("\n   List saved to:")
+      pr("\n     $dataDirectory$\\$expName$\\$fileName$")
+        
+   # Restore cwd
+      cd(bak)
+
+   endif
+
+endproc()
+
+#################################################################
+# Save a list of common parameters
+# merging with any current list.
+#################################################################
+
+procedure(saveCommonPar,parList)
+
+   if(vartype(parList) == "structure")
+      parList = list(parList)
+   endif
+
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("KeaParameters\\Common")
+   cd("KeaParameters\\Common")
+
+   cp = list(0)
+   if(isfile("$gData->specID$Common.par"))
+      cp = load("$gData->specID$Common.par")
+      assignlist(cp)
+   endif
+
+   cd("$appdir$\\Macros\\UCS-Core")
+
+   if(isvar("common")) # Common par already defined
+      lst = getsublist(parList,common)
+      lst = mergelists(lst,cp)
+
+   else # Load default list of common par
+      if(isfile("ucsDefaultPreferences.par"))
+         lst = load("ucsDefaultPreferences.par")
+         commonFull = getsublist(lst,"commonPar_")
+         common = list(0)
+         for(k = 0 to size(commonFull)-1)
+            if(scanstr(commonFull[k],"commonPar_*\"%1\"") == "yes")
+               common = common + ["$commonFull[k]$"]
+            endif
+         next(k)
+         common = rmprefix(getlistnames(common),"commonPar_")
+
+         lst = getsublist(parList,"commonPar")
+         lst = mergelists(lst,cp)
+         lst = ["common = $common$"] + lst
+
+      else # This is missing so use this list
+         common = ["b1FreqCh1",  
+                   "b1FreqCh2", 
+                   "pulseLengthCh1",  
+                   "pulseLengthCh2", 
+                   "90AmplitudeCh1",
+                   "90AmplitudeCh2",  
+                   "180AmplitudeCh1",
+                   "180AmplitudeCh2"]
+
+         lst = getsublist(parList,"commonPar")
+         lst = mergelists(lst,cp)
+         lst = ["common = $common$"] + lst
+      endif
+
+   endif
+   cd(prefdir)
+   cd("KeaParameters")
+   cd("Common")
+   if(isvar("gData")) 
+      save("$gData->specID$Common.par",sortlist(lst))
+   endif
+   cd(dir)
+
+endproc(common)
+
+#############################################################
+# Save the acqusition parameters to the data folder
+#############################################################
+
+procedure(saveAcquPar, par)
+
+   assignlist(par)
+   bak = getcwd()
+
+   # Make a data directory with experiment name
+   dir = "$dataDirectory$\\$expName$"
+   mkdir(dir)
+   cd(dir)
+
+   # Make/move into a possible numbered subdirectory
+   :handleSubFolders(par)
+
+   # Save acqu.par
+   save("acqu.par",par,"truedoubles")
+   cd(bak)
+
+endproc()
+
+#############################################################
+# Save current parameters
+# forceSave ... if 1 then save acqu.par regardles of presence
+#               if 0 or not passed then don't save if 
+#               acq.par is present.
+#############################################################
+
+procedure(saveParameters, forceSave)
+
+# Whether to always save acqu.par
+   if(nrArgs == 0)
+      forceSave = 0
+   endif
+
+   dir = getcwd()
+   parList = getctrlvalues(0)
+
+# Check to see if there is a data directory
+   dataDirectory = getlistvalue(parList,"dataDirectory")
+# Remove trailing "\" or "/"
+   if(size(dataDirectory) > 1)
+      if(dataDirectory[-1] == "\\" | dataDirectory[-1] == "/")
+         dataDirectory = dataDirectory[0:-2]
+         parList = setlistvalue(parList,"dataDirectory","dataDirectory = \"$dataDirectory$\"")
+      endif
+   endif
+
+   if((forceSave == 1) & isdir(dataDirectory) == 0)
+      message("Warning","Data directory not defined or directory does not exist.\rPlease select new data directory.","info")
+      :setWorkingDir()
+      return
+   endif
+
+# Save the acquisition parameters
+   expName = getlistvalue(parList,"expName")
+   expNr = getlistvalue(parList,"expNr")
+   saveData = getlistvalue(parList,"saveData")
+   parList = :addWindowSpecifics(parList) # Add window position and size
+
+# Check for valid experiment name - it should not include subdirectories
+   if(issubstr(expName,"\\") | issubstr(expName,"/"))
+      message("Error","The experiment name should not include subdirectory.\rPlease enter a new name.","error")
+      abort("")
+   endif
+
+   if(expName != null & saveData == "true")
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+      if(expNr != "")
+         mkdir("$expNr$")
+         cd("$expNr$")
+      endif
+    # Only save acqu.par if forced to or if there is no file
+      isacqupar = isfile("acqu.par")
+      if((forceSave == 1) | (isacqupar == 0))
+         save("acqu.par",sortlist(parList),"truedoubles")
+      endif
+   endif
+
+# Save the parameter file in the Prospa preferences folder
+   name = getwindowpar(0,"macroname")
+   experiment = rmext(name)
+   dir = "$prefdir$\\SpinsolveParameters\\Experiments\\$getparentdir(wvExpDir)$\\$experiment$"
+   mkdir(dir)
+   cd(dir)
+   save("$wvMacroName$LastExp.par",sortlist(parList),"truedoubles")
+
+ # Save the common parameters to the Prospa preferences folder
+   :saveCommonPar(parList)
+
+endproc()
+
+##############################################################
+# Save the plot to "$name$.pt1"
+##############################################################
+
+procedure(savePlot,plt, name, guipar, reportLevel="noReport")
+
+   if(plt == null)
+      return
+   endif
+
+# Convert type if necessary
+   if(vartype(guipar) == "structure")
+      guipar = list(guipar)
+   endif
+ 
+# Remove the extension
+   if(getext(name) != "")
+      name = rmext(name)
+   endif
+
+# Save file information into the plot
+   par = struct()
+   par->file = name + ".pt1"
+   par->modified = 0
+   plt->parent->uservar(par)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+   if(not(isvar("saveData")))
+      saveData = "true"
+   endif
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory) 
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      :handleSubFolders(guipar)
+
+   # Save the plot     
+      pp = plt->parent
+      if(plt->autorange == "false")
+         plt->axes()->autorange("false")
+      endif
+      pp->save("$name$.pt1")   
+
+   # Optionally save in .png format
+      if(wvSavePictureFiles == "yes")
+         showwindow(getmainwindow()) # Make sure Prospa is not minimised
+         plt->draw("true") # And plot is redisplayed
+         pause(0.1) # Pause gives it time to redraw
+         try
+            sf = plotscale()
+            plotscale(1) # Set scale factor to 1
+            pp->save("$name$.png","1d")    # Save plot as png image
+            plotscale(sf) # Restore scale factor
+         catch
+            pr "\n   Image not saved - is the plot obscured?\n"
+         endtry
+      endif
+
+   # Optionally save in .1d format
+      if(wvSaveDataFiles == "yes")
+         (x,y) = plt->getdata()
+         save("$name$.1d",x,y)
+      endif
+     
+   # Optionally save in .csv format
+      if(wvSaveTextFiles == "yes")
+         (x,y) = plt->getdata()
+         if(vartype(y) == "cmatrix1d")
+            m = matrix(3,size(y))
+            m[0,~] = (x)'
+            m[1,~] = real(y)'
+            m[2,~] = imag(y)'
+         else
+            m = matrix(2,size(y))
+            m[0,~] = (x)'
+            m[1,~] = (y)'
+         endif   
+         export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+         export2d(m,"$name$.csv")     # Save fid as an excel file
+      endif   
+
+
+   # Output information to the CLI
+      if(isvar("reportLevel"))
+         if(reportLevel == "noReport")
+         elseif(reportLevel == "simpleReport")
+            pr("\n   '$expName$' data saved to folder:")
+            pr("\n     $getcwd()$\n")
+         endif
+      else
+         pr("\n   '$expName$' plot saved to folder:")
+         pr("\n     $getcwd()$\n")
+      endif
+   
+   # Restore cwd
+      cd(bak)
+
+   endif
+
+endproc()
+
+##############################################################
+# Save data in MNova suitable format
+# data may be a 1D or 2D plot or a complex 2D matrix
+# Note that the second argument is not used
+# This macro consists of adding some new parameters
+# to the acqu.par file which MNova recognises. It also adds 
+# a file called processing.script.
+#
+# Several Expert parameters names are recognised to allow the 
+# modifications to acqu.par. They are:
+#
+# 1D parameters ---
+#    b1Freq$nucleus$ => b1Freq
+#    bandwidthPPM => bandwidth (in Hz)
+#    ref1-bandwidth*1000/2+offFreq => lowestFrequency
+#
+#  Here ref1 and offFreq are taken from the Expert parameters:
+#  wvPPMOffset$nucleus$ and centerFreq$nucleus$/centerFreq/offFreq
+#  The various options here are to allow for different parameters
+#  which might be defined in the sequence.
+#
+# 2D parameters ---
+#    b1Freq$f1_nucleus$ => b1Freq2
+#    b1Freq$f2_nucleus$ => b1Freq
+#    bandwidthf1PPM => bandwidth2 (in Hz)
+#    bandwidthPPM => bandwidth (in Hz)
+#    ref2-bandwidth*1000/2+off2 => lowestFrequency
+#    ref1-bandwidth*1000/2+off1 => lowestFrequency2
+#
+#  Note that for historical reasons new variables on the
+#  left ending in 2 refer to f1 not f2 (very confusing!)
+#
+#  Here refx and offx are taken from the Expert parameters:
+#  refFreqfx/wvPPMOffset$fx_name$ and offFreqfx/offFreq$fx_name$/off
+#  The various options here are to allow for different parameters
+#  which might be defined in the sequence.
+#
+##############################################################
+
+procedure(saveMNovaData, data, notused, guipar, reportLevel="simpleReport", phase0=0)
+
+   if(data == null)
+      return
+   endif
+
+# Convert type if necessary
+   if(vartype(guipar) == "structure")
+      guipar = list(guipar)
+   endif
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+   if(not(isvar("saveData")))
+      saveData = "true"
+   endif
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      :handleSubFolders(guipar)
+
+      dataType = vartype(data)
+
+      # Save in .nd format
+      if(dataType == "plot")
+
+         if(data->dim == "1d")
+            (x,y) = data->getdata()
+            save("data.1d",x,y)
+         else
+            m = data->getdata()
+            save("data.2d",m)
+         endif
+
+      elseif(dataType == "cmatrix1d" | dataType == "matrix1d")
+         save("data.1d",data)
+
+      elseif(dataType == "cmatrix2d" | dataType == "matrix2d")
+         save("data.2d",data)
+
+      endif
+
+   # Update acqu.par file with 2D MNova parameters
+      par = load("acqu.par","truedoubles")
+      assignlist(par)
+      try # 2D
+         (n2,n1) = scanstr(nucleus,"%1-%2")
+         f1 = eval("b1Freq$n1$")
+         f2 = eval("b1Freq$n2$")
+
+      # Determine f1 reference frequencies based on passed parameters
+         if(isvar("refFreqf1"))
+            ref1 = refFreqf1*f1
+         else
+            ref1 = eval("wvPPMOffset$n1$")*f1
+         endif
+   
+      # Determine f2 reference frequencies based on passed parameters
+         if(isvar("refFreqf2"))
+            ref2 = refFreqf2*f2
+         else
+            ref2 = eval("wvPPMOffset$n2$")*f2
+         endif
+
+      # Determine f1 offset frequencies based on passed parameters
+         if(isvar("offFreqf1"))
+            off1 = offFreqf1
+         elseif(isvar("offFreq$n1$"))
+            off1 = eval("offFreq$n1$")
+         elseif(isvar("off"))
+            off1 = off
+         else
+            off1 = 0
+         endif
+
+      # Determine f2 offset frequencies based on passed parameters
+         if(isvar("offFreqf2"))
+            off2 = offFreqf2
+         elseif(isvar("offFreq$n2$"))
+            off2 = eval("offFreq$n2$")
+         elseif(isvar("off"))
+            off2 = off
+         else
+            off2 = 0
+         endif
+
+      # Add bandwidth for f2 and f1 based on passed parameters
+         if(isvar("bandwidthPPM")) # f2
+            bandwidth = bandwidthPPM*f1/1000
+            par = setlistvalue(par,"bandwidth","$bandwidth$")
+         endif
+         if(isvar("bandwidthf1PPM")) # f1
+            bandwidth2 = bandwidthf1PPM*f1/1000
+            par = setlistvalue(par,"bandwidth2","$bandwidth2$")
+         endif
+
+      # Add lowest offset frequencies in Hz using above ref and offset frequencies
+      # Also allow for special case if dwTrue is defined
+         if(isvar("dwTrue"))
+            bw = 1e3/dwTrue
+            par = setlistvalue(par,"lowestFrequency","$ref2-bw*1000/2+off2$")
+         else
+            par = setlistvalue(par,"lowestFrequency","$ref2-bandwidth*1000/2+off2$")
+         endif
+         par = setlistvalue(par,"lowestFrequency2","$ref1-bandwidth2*1000/2+off1$")
+
+      # Add B1 frequency parameters
+         par = setlistvalue(par,"b1Freq","$f2$")
+         par = setlistvalue(par,"b1FreqCh2","$f1$")
+
+      # Set receiver channel
+         par = setlistvalue(par,"rxChannel2","\"$n1$\"")
+         save("acqu.par",sortlist(par),"truedoubles")
+
+      # Save display range information for MNova
+         printtofile("processing.script")
+         if(isvar("dispRangeMinPPMf1") & isvar("dispRangeMaxPPMf1"))
+            print("Zoom2D($dispRangeMinPPM$,$dispRangeMaxPPM$,$dispRangeMinPPMf1$,$dispRangeMaxPPMf1$);\n")
+         else
+            print("Zoom2D($dispRangeMinPPM$,$dispRangeMaxPPM$,$dispRangeMinPPM$,$dispRangeMaxPPM$);\n")
+         endif
+         closeprint()
+
+      catch # 1D
+
+
+      # Determine the reference offset
+         if(isvar("b1Freq$nucleus$"))
+            f1 = eval("b1Freq$nucleus$")
+         elseif(isvar("b1FreqXN"))
+            f1 = b1FreqXN
+         endif
+         ref1 = eval("wvPPMOffset$nucleus$")*f1
+
+      # Add bandwidth in Hz if only defined in PPM
+         if(isvar("bandwidthPPM"))
+            bandwidth = bandwidthPPM*f1/1000
+            par = setlistvalue(par,"bandwidth","$bandwidth$")
+         endif
+
+      # Define final offset frequency based on passed parameters
+         if(isvar("centerFreq$nucleus$PPM"))
+            offFreq = eval("centerFreq$nucleus$PPM")*f1-ref1
+         elseif(isvar("centerFreqPPM"))
+            offFreq = eval("centerFreqPPM")*f1-ref1
+         elseif(isvar("offFreq") == 0)
+            offFreq = 0
+         endif
+
+      # Add lowest offset frequency in Hz using above ref and offset frequencies
+      # Also allow for special case if dwTrue is defined
+         if(isvar("dwTrue"))
+            bw = 1e3/dwTrue
+            par = setlistvalue(par,"bandwidth","$bw$")
+            par = setlistvalue(par,"lowestFrequency","$ref1-bw*1000/2+offFreq$")
+         else
+            par = setlistvalue(par,"lowestFrequency","$ref1-bandwidth*1000/2+offFreq$")
+         endif
+
+      # Add B1 frequency parameter
+         par = setlistvalue(par,"b1Freq","$f1$")
+         save("acqu.par",sortlist(par),"truedoubles")
+
+      # Save phase and display range information for MNova
+         printtofile("processing.script")
+            print("Phase($-phase0$,$0$);\n")
+            if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+               print("Zoom($dispRangeMinPPM$,$dispRangeMaxPPM$);\n")
+            elseif(isvar("dispRangePPM") & isvar("centerFreqPPM"))
+               if(vartype(dispRangePPM) == "float")
+                  print("Zoom($centerFreqPPM-dispRangePPM$,$centerFreqPPM+dispRangePPM$);\n")
+               elseif(vartype(dispRangePPM) == "string")
+                  dispRangePPM = eval(dispRangePPM)
+                  if(vartype(dispRangePPM) == "matrix1d")
+                     print("Zoom($dispRangePPM[0]$,$centerFreqPPM+dispRangePPM[1]$);\n")
+                  endif
+               endif
+            elseif(isvar("dispRangePPM") & isvar("centerFreq$nucleus$PPM"))
+               if(vartype(dispRangePPM) == "float")
+                  print("Zoom($centerFreq$nucleus$PPM-dispRangePPM$,$centerFreq$nucleus$PPM+dispRangePPM$);\n")
+               elseif(vartype(dispRangePPM) == "string")
+                  dispRangePPM = eval(dispRangePPM)
+                  if(vartype(dispRangePPM) == "matrix1d")
+                     print("Zoom($dispRangePPM[0]$,$centerFreq$nucleus$PPM+dispRangePPM[1]$);\n")
+                  endif
+               endif
+            endif
+         closeprint()
+
+      endtry
+  
+   # Output report info to the CLI
+      if(isvar("reportLevel"))
+         if(reportLevel == "noReport")
+         elseif(reportLevel == "simpleReport")
+            pr("\n   '$expName$' MNova compatible data saved to folder:")
+            pr("\n     $getcwd()$\n")
+
+         endif
+      endif
+
+   # Restore cwd
+      cd(bak)
+
+   endif
+
+endproc()
+
+####################################################
+# Save the plot data in 'plt'  to the specified
+# fileName using an ASCII format
+####################################################
+
+procedure(savePlotAsAscii, plt, fileName, guipar)
+
+   assignlist(guipar)
+
+   if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      mkdir(dataDirectory)
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+      (x,y) = plt->getdata()
+      export1dpar("ab","ascii","xyrc","xcomplex","delimiter","comma") # Add the code you want here
+      export1d(x,y,fileName)
+   endif
+
+endproc()
+
+##############################################################
+# Save the image to "$name$.pt2"
+##############################################################
+
+procedure(saveImage, plt, name, guipar, reportLevel)
+
+   if(plt == null)
+      return
+   endif
+
+# Convert type if necessary
+   if(vartype(guipar) == "structure")
+      guipar = list(guipar)
+   endif
+
+# Remove the extension
+   if(getext(name) != "")
+      name = rmext(name)
+   endif
+
+# Save file information into the plot
+   par = struct()
+   par->file = name + ".pt2"
+   par->modified = 0
+   plt->parent->uservar(par)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+   if(not(isvar("saveData")))
+      saveData = "true"
+   endif
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory)
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      :handleSubFolders(guipar)
+
+      pp = plt->parent
+      pp->save("$name$.pt2")   
+     
+   # Optionally save in .png format
+      if(wvSavePictureFiles == "yes")
+         showwindow(getmainwindow()) # Make sure Prospa is not minimised
+         plt->draw("true") # And plot is redisplayed
+         pause(0.1) # Pause gives it time to redraw
+         try
+            sf = plotscale()
+            plotscale(1) # Set scale factor to 1
+            pp->save("$name$.png","2d")    # Save plot as png image
+            plotscale(sf) # Restore scale factor
+         catch
+            pr "\n   Image not saved - is the plot obscured?\n"
+         endtry
+      endif
+
+   # Optionally save in .2d format
+      if(wvSaveDataFiles == "yes")
+         m = plt->getdata()
+         save("$name$.2d",m)
+      endif
+     
+   # Optionally save in .csv format
+      if(wvSaveTextFiles == "yes")
+         m = plt->getdata()
+         if(vartype(m) == "cmatrix2d")
+            export2dpar("ab","ascii","xyrc","complex","delimiter","comma")
+         else
+            export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+         endif   
+         export2d(m,"$name$.csv")     # Save matrix as an excel file
+      endif  
+
+   # Output information to the CLI
+      if(isvar("reportLevel"))
+         if(reportLevel == "noReport")
+         elseif(reportLevel == "simpleReport")
+            pr("\n   '$expName$' data saved to folder:")
+            pr("\n     $getcwd()$\n")
+         endif
+      else
+         pr("\n   '$expName$' image saved to folder:")
+         pr("\n     $getcwd()$\n")
+      endif
+   
+   # Restore cwd
+      cd(bak)
+
+   endif
+
+endproc()
+
+
+#################################################################
+# Allow the user to set the NMR data set name
+#################################################################
+
+procedure(setExpName)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   topDir = dir
+   dir = getfolder(dir+"\\"+name,"Select the data directory name.\rThis is the folder where specific output data will be stored.",topDir,"false")
+   if(dir != "cancel")
+      parentDir = scanstr(wvExpDir,"%1\\$getbasedir(wvExpDir)$")
+      setpar(0,n,"text",getbasedir(dir))
+      wvExpDir = parentDir + "\\" + getbasedir(dir)
+      return(1)
+   endif
+
+endproc(0)
+
+
+#################################################################
+# Allow the user to set the NMR data set number
+#################################################################
+
+procedure(setExpNr)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   n = findobj(0,"name","expNr")
+   expNr = getpar(0,n,"text")
+   topDir = dir+"\\"+name
+   dir = getfolder(dir+"\\"+name+"\\"+expNr,"Select the data directory number.\rThis is the folder where specific output data will be stored.",topDir,"false")
+   if(dir != "cancel")
+      dir = getbasedir(dir)
+      setpar(0,n,"text",dir)
+      return(1)
+   endif
+
+endproc(0)
+
+####################################################
+# Save structure to UCS preferences file
+####################################################
+
+procedure(savePreferences,s)
+
+   :savePref(list(s))
+
+endproc()
+
+####################################################
+# Save list to UCS preferences file
+####################################################
+
+procedure(savePref, lst)
+
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("KeaParameters\\Preferences")
+   file = "$prefdir$\\KeaParameters\\Preferences\\preferences.par"
+   save(file,sortlist(lst))
+   cd(dir)
+
+endproc()
+
+#################################################################
+# Allow the user to set the NMR working directory
+# (note: not to be confused with the current working directory!)
+#################################################################
+
+procedure(setWorkingDir)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   dir = getfolder(dir,"Select the Working Directory.\rThis is the folder where all output data will be stored.")
+   if(dir != "cancel")
+      assign("workdir",dir,"global")
+      wvOutputDir = dir
+      setpar(0,n,"text",dir)
+    # Save the working directory
+      bak = getcwd()
+      cd(prefdir)
+      cd("Startup")
+      txt = load("directories.mac")
+      wd_str = scanstr(txt,"*pathnames(\"workdir\",\"%1\")")
+      txt =  replacestr(txt,wd_str,"$workdir$")
+      save("directories.mac",txt)
+      cd(bak)
+      return(1)
+   endif
+
+endproc(0)
+
+
+####################################################
+# Increment the current experiment number
+####################################################
+
+procedure(incrementExperiment,guipar)
+
+   assignlist(guipar)
+
+   try
+      if(saveData == "true" & incExpNr == "yes" & expNr != "")
+         m = findobj(0,"name","expNr")
+         nr = getpar(0,m,"value")
+         setpar(0,m,"text",nr+1)
+      endif
+   catch
+   endtry
+   
+endproc()
+
+
+

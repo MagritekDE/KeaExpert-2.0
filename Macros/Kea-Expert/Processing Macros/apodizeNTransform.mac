@@ -1,0 +1,1374 @@
+####################################################
+#
+# Apply apodization, zerofilling, forward Fourier
+# transform, baseline correction and phasing 
+# to the FID in 1D plot inPlt and display result
+# in plot outPlt.
+#
+# Note plot data must have size equal to a power of 2.
+#
+# Author: C Eccles
+# Last modified 9.1.2025
+#
+# History
+# 1.0 initial version
+# 1.1 Addition of phasing controls
+# 1.2 Added deconvolution from CheckShim reference
+#     Fixed bug in PPM/Hz selection
+#     Added help
+#     Sorted procedures
+#
+# Copyright (c) Magritek 2016-2025
+#
+#####################################################
+
+procedure(ApodizeNTransform, inPlt, outPlt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Check for an existing window
+   if(findwin("title","Process 1D FID (V1.1)") >= 0)
+      return
+   endif
+
+   parentNr = guiwinnr()
+   if(nrArgs == 2)
+      fidPlt = gPlot->getPlotObject(inPlt)
+      freqPlt = gPlot->getPlotObject(outPlt)
+   endif
+
+   cd(getmacropath())
+   cachemacro(getmacroname())
+   cacheproc("true")
+
+   n = :windowdefinition()
+   setpar(n,23,"visible","false")
+   setpar(n,43,"enable","false")
+   assignctrls(n)
+   windowvar(wv_mIn,wv_mOut,wv_parent,wvPlotInName, wvPlotOutName,
+             wvFidPlt,wvFreqPlt,wvPhaseVis)
+   wvPlotInName = inPlt
+   wvPlotOutName = outPlt
+   if(nrArgs == 0)
+      wvFidPlt = curplot("1d")
+      wvFreqPlt = curplot("1d")
+   else
+     wvFidPlt = fidPlt
+     wvFreqPlt = freqPlt
+   endif
+   wvPhaseVis = 1
+   wv_parent = parentNr
+   :toggle_phase_controls()
+   :update_controls()
+   :update_filter_menu()
+   :loadPar()
+   :updatePhaseSliders(0)
+   :choosePhaseMethod()
+   :selectDeconvMethod()
+   :selectBaselineCorrectionMethod()
+   w_winNr = n
+   setwindowpar(n,"exit_procedure",":exit_proc()")
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   showwindow(n)
+
+endproc()
+
+
+procedure(choosePhaseMethod)
+
+   method = phaseMethodCtrl->text
+   if(method == "p0, p1 fixed phase")
+      setpar(0,33,"enable","true")
+      setpar(0,34,"enable","true")
+      setpar(0,35,"enable","true")
+      setpar(0,36,"enable","true")
+      setpar(0,37,"enable","true")
+      setpar(0,38,"enable","true")
+   elseif(method == "None" | method == "Magnitude")
+      setpar(0,33,"enable","false")
+      setpar(0,34,"enable","false")
+      setpar(0,35,"enable","false")
+      setpar(0,36,"enable","false")
+      setpar(0,37,"enable","false")
+      setpar(0,38,"enable","false")
+   else
+      setpar(0,33,"enable","false")
+      setpar(0,34,"enable","false")
+      setpar(0,35,"enable","true")
+      setpar(0,36,"enable","true")
+      setpar(0,37,"enable","true")
+      setpar(0,38,"enable","true")
+   endif
+
+endproc()
+
+
+#######################################################
+# Exit procedure
+#######################################################
+
+procedure(exit_proc)
+
+   try
+      wvFreqPlt->rmlines() # Remove phasing lines
+      wvFidPlt->rmtrace(1) # Remove apodization
+   catch
+   endtry
+   
+endproc()
+
+
+###########################################################
+# fft routine : transforms fid to spectrum
+# The apodization filter fxs is applied along with 
+# a zerofill to size w2
+###########################################################
+
+procedure(fft,fid,w2,fxs,ftOrigin,ftType,magn,tAxisSec)
+
+   (w1,h1) = size(fid)
+
+# Row transforms
+   if(ftOrigin == "Start")
+      filterType = "FTFid"
+   else
+      filterType = "FTEcho"
+   endif
+   filter = filters:get_filter(fxs,filterType,tAxisSec)
+   if(ftType == "none")
+	spectrum = zerofill(filter.*fid,w2,"sides")+i0
+   elseif(ftType == "Complex" & ftOrigin == "Start")
+      spectrum = ft(zerofill(filter.*fid,w2,"end"))
+   elseif(ftType == "Complex" & ftOrigin == "Center")
+      spectrum = ft(ftshift(zerofill(filter.*fid,w2,"sides")))
+   elseif(ftType == "Real" & ftOrigin == "Start")
+      spectrum = rft(zerofill(filter.*fid,w2,"end"))
+   elseif(ftType == "Real" & ftOrigin == "Center")
+      spectrum = rft(ftshift(zerofill(filter.*fid,w2,"sides")))
+   endif
+
+# Apply a magnitude calculation is desired
+   if(magn == "yes")
+      spectrum = mag(spectrum)
+   endif
+
+endproc(spectrum)
+
+
+####################################################
+# Get the default parameters
+####################################################
+
+procedure(getDefaultPar)
+
+   defaults = ["apodizationFunction = \"none\"",
+               "ftOrigin = \"Start\"",
+               "ftType = \"Complex\"",
+               "baseLineCorrectionMethod = \"none\"",
+               "baseLineNrSegments = 64",
+               "baseLineNoiseFactor = 3",
+               "phaseMethod = \"Auto: p0 max baseline points\"",
+               "p0Phase = 0",
+               "p1Phase = 0",
+               "p1Pivot = 0",
+               "p0Lim = 180",
+               "p1Lim = 180",
+               "p1PivotLim = 100",
+               "p1PivotPPM = 0",
+               "refDeconvApply = \"no\"",
+               "refDeconvFile = \"\"",
+               "refDeconvLineWidth = 0.4",
+               "refDeconvLineShape = \"Lorentzian\"",
+               "refDeconvMethod = \"None\"",
+               "displayInPPM = \"yes\"",
+              # "ppmOffset = 0",
+               "zeroFill = 1",
+               "halveFirstPoint = 1"]
+
+endproc(defaults)
+
+###########################################################
+# Perform a linear fit to the vector y
+# returning the slope and intercept
+###########################################################
+
+procedure(linfit,y)
+
+# Calculate various sums  
+     N = size(y)
+     x = [0:N-1]
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+
+# Work out slope and intercept
+   delta = sxx*N - sx*sx
+   c = (sxx*sy - sx*sxy)/delta
+   m = (sxy*N - sx*sy)/delta
+
+endproc(m,c)
+
+
+####################################################
+# Load old proc.par parameters
+####################################################
+
+procedure(loadPar)
+
+   bak = getcwd()
+
+   defaults = :getDefaultPar()
+
+   plt =  wvFidPlt
+   path = plt->parent->uservar->path
+
+   found = 0
+   if(isdir(path)) # Try using proc.par
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         procPar = load(file)
+         procPar = mergelists(procPar,defaults)
+         found = 1
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         procPar = load(file)
+         procPar = mergelists(procPar,defaults)
+         found = 1
+      endif
+   endif
+
+   if(found == 0) # Otherwise use global preferences
+      cd(prefdir)
+      mkdir("SpinsolveParameters\\Preferences")
+      cd("SpinsolveParameters\\Preferences")
+      file = "ucsPreferences.par" 
+      procPar = defaults
+      if(isfile(file))
+         proc = load(file)
+         procPar = setlistvalues(procPar,proc)
+      endif
+   endif
+
+# Convert p1PivotIndex to p1PivotPPM 
+   assignlist(procPar)
+   p1PivotPPM = :pivotIndexToPPM(p1Pivot)
+   procPar = setlistvalue(procPar,"p1PivotPPM","$p1PivotPPM$")
+
+   setctrlvalues(0,procPar)
+   cd(bak)
+
+endproc(procPar)
+
+####################################################
+# Load specific parameters from proc.par
+####################################################
+
+procedure(loadSomePar, keys)
+
+   plt =  wvFidPlt
+   path = plt->filepath
+
+   if(isdir(path)) # Try using proc.par
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         procPar = load(file)
+         procPar = getsublist(procPar,keys)
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         procPar = load(file)
+         procPar = getsublist(procPar,keys)
+      endif
+   endif
+
+endproc(procPar)
+
+###########################################################
+# Correct the baseline using a piecewise segmentation 
+# and then trig fit
+###########################################################
+
+procedure(offsetBaselineCorrection, fAxis, spectrum)
+
+   sz = size(spectrum)
+   fac = 32
+   left = real(spectrum[0:sz/fac])
+   right = real(spectrum[sz-sz/fac:-1])
+   offset = (avg(left)+avg(right))/2
+
+   bl = matrix(sz)+offset
+   bl[0:sz/fac] = left
+   bl[sz-sz/fac:-1] = right
+   blfit = matrix(sz)+offset
+
+endproc(spectrum,bl,blfit)
+
+
+
+# Callbacks for up-down phase controls
+procedure(p0CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p0 =  p0PhaseCtrl->value + offset
+   p0PhaseCtrl->text("$p0,1.1f$")
+
+endproc()
+
+
+procedure(p1CallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   p1 =  p1PhaseCtrl->value + offset
+   p1PhaseCtrl->text("$p1,1.1f$")
+
+endproc()
+
+
+procedure(phase1D, which)
+
+   assignlist(getctrlvalues(0))
+   pos = parentCtrl->value
+
+   if(which == "p0")
+      range = p0LimCtrl->value
+      p0PhaseCtrl->text(pos/100*range)
+   elseif(which == "p1")
+      range = p1LimCtrl->value
+      p1PhaseCtrl->text(pos/100*range)
+   elseif(which == "pivot")
+      range = pivLimCtrl->value
+      p1PivotPPMCtrl->text(ppmOffset-pos/100*range)
+   endif
+
+   :process()
+
+endproc()
+
+
+####################################################
+# Convert the pivot index to PPM
+####################################################
+
+procedure(pivotIndexToPPM,pivotIndex)
+
+   (x,y) = wvFreqPlt->trace(0)->getdata()
+   p1PivotPPM = x[pivotIndex]
+
+endproc(p1PivotPPM)
+
+
+procedure(pivotCallBack)
+
+   offset =  2*(parentCtrl->value)-1
+   if(iskeypressed("shift"))
+      offset = offset*10
+   elseif(iskeypressed("alt"))
+      offset = offset/10
+   endif
+   piv =  p1PivotPPMCtrl->value + offset
+   p1PivotPPMCtrl->text("$piv,1.1f$")
+
+endproc()
+
+
+###################################################
+# Apply all reprocessing steps (Transform callback)
+###################################################
+
+procedure(process)
+
+# Get the B1 frequency from the main interface
+   (b1Freq,par) = ucsUtilities:find1DFreqFromUI()
+   if(b1Freq == null)
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+   assignstruct(par)
+
+# Check to see if a 1D data set is present
+   (tAxis,fid) = wvFidPlt->trace(0)->getdata()
+   if(tAxis == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+   fidOrig = fid
+   (z1,z2,z3,z4) = wvFreqPlt->zoom()
+
+# Record the current frequency plot labels etc.
+   (fAxis,spectrum) = wvFreqPlt->trace(0)->getdata()
+   lbl = plotProc:getLabels(wvFreqPlt)
+   dir = wvFreqPlt->axes->xdirection
+   ppmScale = wvFreqPlt->axes->xppmscale()
+
+# Get the window parameters
+   guiPar = getctrlvalues(0)
+   assignlist(guiPar)
+
+# Work out zero-fill size
+   zeroFill = zeroFill*size(fid)
+   width = size(tAxis)
+   maxTime = (zeroFill-1)*(tAxis[1]-tAxis[0])
+
+# Get the zoomed frequency region indices for autophase
+   (leftIndex,rightIndex) = findIndex(fAxis,z1,z2)
+   if(leftIndex < 0)
+     leftIndex = 0
+   endif
+   if(rightIndex >= zeroFill)
+      rightIndex = zeroFill-1
+   endif
+
+   if(ftType == "Real")
+      leftIndex = leftIndex/2
+      rightIndex = rightIndex/2
+   endif
+
+# Apply reference deconvolution
+   if(refDeconvMethodCtrl->text == "From file")
+      file = refDeconvFileCtrl->text
+      if(isfile(file))
+         (tAxis,fid) = :referenceDeconvolution(file,tAxis,fid)
+         if(tAxis == null)
+            return
+         endif
+      else
+         message("Error","Reference deconvolution file 'file' not found","error")
+         return
+      endif
+   elseif(refDeconvMethodCtrl->text == "From shim")
+      file = refDeconvFileCtrl->text
+      if(gData->refFIDyAxis != null)
+         (tAxis,fid) = :referenceDeconvolution("From shim",tAxis,fid)
+         if(tAxis == null)
+            return
+         endif
+      else
+         message("Error","Reference from shimming not found","error")
+         return
+      endif
+   endif
+
+# Save the processed FID
+   var = wvFreqPlt->parent->uservar
+   if(var != null)
+      bak= getcwd()
+      cd(var->path)
+      save("processedFID.1d",tAxis,fid)
+      cd(bak)
+   endif
+
+# Determine the frequency axis
+#   if(isvar("offFreq"))
+#      userOffset = offFreq
+#   else
+      userOffset = 0
+#   endif
+pr local
+pr ppmOffset
+# Define hz and ppm axis
+   if(ftType == "Complex")
+      fAxisHz = ([0:1:zeroFill-1]-zeroFill/2)/maxTime*1000
+      fAxisPPM = (fAxisHz+userOffset)/b1Freq + ppmOffset
+   else
+      fAxisHz = ([0:1:zeroFill/2-1]-zeroFill/4)/maxTime*1000
+      fAxisPPM = (fAxisHz+userOffset)/b1Freq + ppmOffset
+   endif
+
+# Halve first point
+   if(halveFirstPoint == 1)
+      fid[0] = fid[0]/2
+   endif
+
+# Fourier transform fid
+   if(phaseMethod == "Magnitude")
+      spectrum = :fft(fid,zeroFill,apodizationFunction,ftOrigin,ftType,"yes",tAxis/1000)
+   else
+      spectrum = :fft(fid,zeroFill,apodizationFunction,ftOrigin,ftType,"no",tAxis/1000)
+   endif
+   df = (fAxisHz[-1]-fAxisHz[0])
+
+   spectrum = spectrum /df
+
+# Apply phase correction
+   if(phaseMethod != "Magnitude" & phaseMethod != "None")
+
+   # First order correction
+      sz = size(fAxisPPM)
+     # spectrum = spectrum.*exp(i*pi*p1FixedPhase/180*(([0:sz-1]-sz/2)/sz))
+
+   # First order correction
+      axisRange = fAxisPPM[-1]-fAxisPPM[0]
+      p1Pivot = (p1PivotPPM-fAxisPPM[0])/axisRange*sz
+      spectrum = spectrum.*exp(i*pi*p1Phase/180*(([0:sz-1]-p1Pivot)/sz))
+ 
+   # Zeroth order correction
+      if(phaseMethod == "Auto: p0 max real sum")
+         p0 = -autophase(spectrum,leftIndex,rightIndex,"maximise")
+      elseif(phaseMethod == "Auto: p0 max real amplitude")
+         p0 = ucsRun:autoPhase(spectrum,"maxreal")
+      elseif(phaseMethod == "Auto: p0 min real baseline")
+         p0 = -autophase(spectrum,leftIndex,rightIndex,"minimise")
+      elseif(phaseMethod == "Auto: p0 max baseline points")
+         p0 = autophase1D(spectrum,8)
+      elseif(phaseMethod == "p0, p1 fixed phase")
+         p0 = p0Phase
+      else
+         p0 = 0
+      endif
+      spectrum = spectrum*exp(i*p0/180*pi)
+
+#      pr "\n   Applied phase correction p0 = $p0$ degrees"
+#      pr "\n                            p1 = $p1Phase$ degrees"
+#      pr "\n                      p1 pivot = $p1PivotPPM$ ppm\n"
+   endif
+
+# Baseline correction
+   if(baseLineCorrectionMethod == "Segment")   
+      (spectrum,bl,blFit) = :segmentBaselineCorrection(fAxisPPM,spectrum)
+   elseif(baseLineCorrectionMethod == "Offset")   
+      (spectrum,bl,blFit) = :offsetBaselineCorrection(fAxisPPM,spectrum)
+   endif
+
+# Plot time domain data and apodization filter
+   if(ftOrigin == "Start")
+      filterType = "FTFid"
+   else
+      filterType = "FTEcho"
+   endif
+   filterData = filters:get_filter(apodizationFunction,filterType,tAxis/1000)
+   wvFidPlt->draw("false")
+      lblFid = plotProc:getLabels(wvFidPlt)
+      trc = wvFidPlt->plot(tAxis,fidOrig)
+      wvFidPlt->hold("on")
+      trc = wvFidPlt->plot(tAxis,filterData*max(real(fidOrig)),"color",[255,0,0])
+      wvFidPlt->trace(trc)->name("apodization")
+      wvFidPlt->hold("off")
+      plotProc:setLabels(lblFid,wvFidPlt)
+   wvFidPlt->draw("true")
+
+# Plot frequency domain data
+   wvFreqPlt->draw("false")
+
+      wvFreqPlt->rmlines()
+      wvFreqPlt->rmtext()
+
+      if(ppmCtrl->text == "yes") # Display with ppm axis
+         if(isvar("bl"))
+            if(blDebugCtrl->text == "yes")
+               if(ppmScale == "true") # Already ppm scale
+                  wvFreqPlt->plot(fAxisPPM,spectrum)
+                  wvFreqPlt->hold("on")
+                  wvFreqPlt->plot(fAxisPPM,bl,"color",[0,255,0])
+                  wvFreqPlt->plot(fAxisPPM,blFit,"color",[0,0,255])
+                  wvFreqPlt->zoom(z1,z2,z3,z4) 
+                  wvFreqPlt->hold("off")
+               else
+                  wvFreqPlt->plot(fAxisPPM,spectrum)
+                  wvFreqPlt->hold("on")
+                  wvFreqPlt->plot(fAxisPPM,bl,"color",[0,255,0])
+                  wvFreqPlt->plot(fAxisPPM,blFit,"color",[0,0,255])
+                  wvFreqPlt->zoom(z1/b1Freq,z2/b1Freq,z3,z4) 
+                  wvFreqPlt->hold("off")
+               endif
+            else  
+               if(ppmScale == "true") # Already ppm scale          
+                  wvFreqPlt->plot(fAxisPPM,spectrum-blFit)
+                  wvFreqPlt->zoom(z1,z2,z3,z4) 
+               else
+                  wvFreqPlt->plot(fAxisPPM,spectrum-blFit)
+                  wvFreqPlt->zoom(z1/b1Freq,z2/b1Freq,z3,z4) 
+               endif
+            endif
+         else
+            if(ppmScale == "true") # Already ppm scale
+               wvFreqPlt->plot(fAxisPPM,spectrum)
+               wvFreqPlt->zoom(z1,z2,z3,z4) 
+            else # Convert to Hz
+               wvFreqPlt->plot(fAxisPPM,spectrum)
+               wvFreqPlt->zoom(z1/b1Freq,z2/b1Freq,z3,z4) 
+            endif
+         endif
+         wvFreqPlt->axes->xppmscale("true")
+
+         plotProc:setLabels(lbl,wvFreqPlt)   
+         wvFreqPlt->title("Spectral data")
+         if(ftType != "none")
+            wvFreqPlt->xlabel("Frequency (ppm)")
+         endif
+
+         if(phaseMethod == "p0, p1 fixed phase")
+            wvFreqPlt->addline(p1PivotPPM,-inf,p1PivotPPM,inf,[0,128,0],2)
+         endif
+
+      else # Display with Hz axis
+
+         if(isvar("bl"))
+            if(blDebugCtrl->text == "yes")
+               if(ppmScale == "true") # Already ppm scale
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,spectrum)
+                  wvFreqPlt->hold("on")
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,bl,"color",[0,255,0])
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,blFit,"color",[0,0,255])
+                  wvFreqPlt->zoom(z1*b1Freq,z2*b1Freq,z3,z4) 
+                  wvFreqPlt->hold("off")
+               else
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,spectrum)
+                  wvFreqPlt->hold("on")
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,bl,"color",[0,255,0])
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,blFit,"color",[0,0,255])
+                  wvFreqPlt->zoom(z1,z2,z3,z4,z3,z4) 
+                  wvFreqPlt->hold("off")
+               endif
+            else  
+               if(ppmScale == "true") # Already ppm scale          
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,spectrum-blFit)
+                  wvFreqPlt->zoom(z1*b1Freq,z2*b1Freq,z3,z4) 
+               else
+                  wvFreqPlt->plot(fAxisPPM*b1Freq,spectrum-blFit)
+                  wvFreqPlt->zoom(z1,z2,z3,z4,z3,z4) 
+               endif
+            endif
+         else
+            if(ppmScale == "true") # Already ppm scale
+               wvFreqPlt->plot(fAxisPPM,spectrum)
+               wvFreqPlt->zoom(z1,z2,z3,z4) 
+            else # Convert to Hz
+               wvFreqPlt->plot(fAxisPPM,spectrum)
+               wvFreqPlt->zoom(z1/b1Freq,z2/b1Freq,z3,z4) 
+            endif
+         endif
+         wvFreqPlt->axes->xppmscale("false")
+
+         plotProc:setLabels(lbl,wvFreqPlt) 
+         if(ftType != "none")
+            wvFreqPlt->xlabel("Frequency (Hz)")
+         endif
+ 
+#         if(phaseMethod == "p0, p1 fixed phase")
+#            wvFreqPlt->addline(p1PivotHz,-inf,p1PivotPPM,inf,[0,128,0],2)
+#         endif
+
+      endif
+
+   wvFreqPlt->draw("true")
+
+# Flag the change in the data set
+   var = wvFreqPlt->parent->uservar
+   var->modified = 1
+   wvFreqPlt->parent->uservar(var)
+
+endproc()
+
+
+####################################################
+# Get updates from other macros
+####################################################
+
+procedure(processMessage)
+
+  (src,cmd) = getpar(0,0,"text")
+   callingwin = getpar(0,0,"source")
+   parentwin = guiwinnr()
+
+   if(src == "Macro" & callingwin != parentwin)
+
+      if(cmd == "offset update")
+         procPar = :loadSomePar(["ppmOffset"])
+      endif
+      if(cmd == "phase update")
+         procPar = :loadSomePar(["p0Phase","p1Phase","p1Pivot"])
+      # Convert p1PivotIndex to p1PivotPPM 
+         assignlist(procPar)
+         p1PivotPPM = :pivotIndexToPPM(p1Pivot)
+         procPar = setlistvalue(procPar,"p1PivotPPM","$p1PivotPPM$")
+      endif
+
+      setctrlvalues(0,procPar)
+
+   endif
+
+# Check if new data has been loaded
+   if(src == "mainWindow" & callingwin != parentwin)
+
+      if(cmd == "newExperimentSelected")
+         wvFidPlt = gPlot->getPlotObject(wvPlotInName)
+         wvFreqPlt = gPlot->getPlotObject(wvPlotOutName)
+         :loadPar()
+      endif
+
+   endif
+
+endproc()
+
+
+###########################################################
+# Deconvolve fid with data in file
+###########################################################
+
+procedure(referenceDeconvolution,file,fidX,fidY)
+
+   defaults = :getDefaultPar()
+   assignlist(defaults)
+   assignlist(getctrlvalues(0))
+
+# Load the reference fid
+   if(file == "From shim")
+      refX = gData->refFIDxAxis 
+      refY = gData->refFIDyAxis 
+   else
+     (refX,refY) = load(file)
+   endif
+
+# Check for zero first point (no p1 experiment)
+   if(refY[0] == 0+0i)
+     refPnt = 1
+   else
+     refPnt = 0
+   endif
+
+# Autophase reference fid based on the first data point
+   ph = phase(refY[refPnt])
+   refY = refY*exp(-i*ph)
+
+# Check its size
+   szRef = size(refX)
+   szFid = size(fidX)
+   if(szRef < szFid)
+      message("Error","The selected reference file should have at least as many points as the current data set","error")
+      return(fidX,fidY)
+   endif
+
+# Truncate reference to match FID
+   refX = refX[0:szFid-1]
+   refY = refY[0:szFid-1]
+
+# Check that the time axes match
+   if((refX[1]-refX[0]) != (fidX[1]-fidX[0]))
+      message("Error","The selected reference file should have the same dwell-time as the current data set","error")
+      return(fidX,fidY)
+   endif
+
+# Find the exact offset of the reference peak
+   tempSpec = ft(refY)
+   (m,idx) = max(mag(tempSpec))
+
+# Shift the peak to the origin and recover the FID
+   sz = size(tempSpec)
+   tempSpec = rotate(tempSpec,sz/2-idx)
+   refY = ift(tempSpec)
+
+# Normalise the reference FID
+   refY = refY/abs(refY[refPnt])
+
+# Smoothing
+   S = 21
+   start = refY[0:S-1]
+   refY = convolve(refY,matrix(S)+1)
+   refY[0:S-1] = start*S
+   refY = refY/S
+
+# Deconvolve and smooth
+   gb = refDeconvLineWidth
+   lb = refDeconvLineWidth
+   fac = pi^2/4/log2(2)*gb^2
+   if(refDeconvLineShape == "Lorentzian")
+      idealFID = exp(-fidX*pi*lb/1e3)
+   else
+      idealFID = exp(-fidX^2*fac/1e6)
+   endif
+   result = (fidY.*idealFID)/refY
+
+endproc(fidX,result)
+
+
+####################################################
+# Save current parameters to proc.par
+####################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   try
+   
+   # Save to default location
+      cd(prefdir)
+      mkdir("SpinsolveParameters")
+      cd("SpinsolveParameters")
+      guipar = getctrlvalues(0)
+      assignlist(guipar)
+      (x,y) = wvFreqPlt->trace(0)->getdata()
+      p1Pivot = findindex(x,p1PivotPPM)
+      guipar = rmfromlist(guipar,"p1PivotPPM")
+      guipar = setlistvalue(guipar,"p1Pivot","$p1Pivot$")
+   
+   # Save to data area in proc_temp.par or proc.par
+      plt =  wvFidPlt
+      path = plt->filepath
+      if(isdir(path))
+         cd(path)
+        # guipar = getctrlvalues(0)
+         if(isfile("proc_temp.par"))
+            procPar = load("proc_temp.par")
+         else
+            procPar = guipar
+         endif
+         procPar = mergelists(guipar,procPar)
+         save("proc_temp.par",sortlist(procPar))
+      endif
+   catch
+      pr lasterror()
+   endtry
+   cd(bak)
+
+endproc()
+
+
+###########################################################
+# Correct the baseline using a piecewise segmentation 
+# and then trig fit
+###########################################################
+
+procedure(segmentBaselineCorrection, fAxis, spectrum)
+
+   # Break the spectrum into segments and search
+      sz = size(spectrum)
+      bl = matrix(sz)
+      nSeg = baseLineNrSegmentsCtrl->value
+      segSz = sz/nSeg
+      noiseFactor = baseLineNoiseFactorCtrl->value
+      foundBl = 1
+
+      for(k = 0 to nSeg-1)
+       # Get a section of the data set (x,seg(
+         x = [k*segSz:(k+1)*segSz-1]
+         seg = real(spectrum[x])
+       # Fit to a straight line
+         (m,c) = :linfit(seg)
+         line = m*(x-x[0]) + c
+       # This is the flattened version
+         segFlat = seg-(m*x+c)
+       # And the noise level
+         segNoise = sd(segFlat)
+       # Record reference noise at edge
+         if(k == 0)
+            refNoise = segNoise*noiseFactor
+         endif
+       # If the noise is < reference noise
+       # then record this as part of baseline
+         if(segNoise <= refNoise)
+            if(foundBl == 0)
+               n = x[0]-lastx+1
+               xBreak = [lastx:x[0]]
+               yBreak = linspace(lasty,line[0],n)
+               bl[xBreak] = yBreak
+            endif
+            bl[x] = real(spectrum[x])
+            lastx = x[-1]
+            lasty = line[-1]
+            foundBl = 1
+         else        
+            foundBl = 0
+         endif
+            
+      next(k)
+
+  # Now do a trig fit to the baseline - should use an FT here it is much faster
+      blfit = :trigfit(bl,6) 
+
+endproc(spectrum,bl,blfit)
+
+
+####################################################
+# Display/enable different controls depending on 
+# selected baseline correction method
+####################################################
+
+procedure(selectBaselineCorrectionMethod)
+
+   method = baseLineCorrectionCtrl->text
+
+   if(method == "Offset")
+      setpar(0,56,"enable","false")
+      setpar(0,57,"enable","false")
+      setpar(0,58,"enable","false")
+      setpar(0,59,"enable","false")
+      setpar(0,44,"enable","true")
+      setpar(0,45,"enable","true")
+   elseif(method == "Segment")
+      setpar(0,56,"enable","true")
+      setpar(0,57,"enable","true")
+      setpar(0,58,"enable","true")
+      setpar(0,59,"enable","true")
+      setpar(0,44,"enable","true")
+      setpar(0,45,"enable","true")
+   else
+      setpar(0,56,"enable","false")
+      setpar(0,57,"enable","false")
+      setpar(0,58,"enable","false")
+      setpar(0,59,"enable","false")
+      setpar(0,44,"enable","false")
+      setpar(0,45,"enable","false")
+   endif
+
+endproc()
+
+####################################################
+# Display/enable different controls depending on 
+# selected deconvolution method
+####################################################
+
+procedure(selectDeconvMethod)
+
+   method = refDeconvMethodCtrl->text
+
+   if(method == "From file")
+      setpar(0,30,"enable","true")
+      setpar(0,21,"enable","true")
+      setpar(0,28,"enable","true")
+      setpar(0,31,"enable","true")
+      setpar(0,54,"enable","true")
+      setpar(0,61,"enable","true")
+      setpar(0,62,"enable","true")
+   elseif(method == "From shim")
+      setpar(0,30,"enable","false")
+      setpar(0,21,"enable","false")
+      setpar(0,28,"enable","true")
+      setpar(0,31,"enable","true")
+      setpar(0,54,"enable","true")
+      setpar(0,61,"enable","true")
+      setpar(0,62,"enable","true")
+   else
+      setpar(0,30,"enable","false")
+      setpar(0,21,"enable","false")
+      setpar(0,28,"enable","false")
+      setpar(0,31,"enable","false")
+      setpar(0,54,"enable","false")
+      setpar(0,61,"enable","false")
+      setpar(0,62,"enable","false")
+
+   endif
+
+endproc()
+
+###########################################################
+# Select the reference file name
+###########################################################
+
+procedure(selectReferenceFile)
+
+   if(refDeconvFileCtrl->text = "")
+      path = curplot()->filepath
+      file = "data.1d"
+   else
+      defaultFile = refDeconvFileCtrl->text
+      path = getbasepath(defaultFile)
+      file = getbasedir(defaultFile)
+   endif 
+   cd(path)
+   file = getfilename("load","Select reference FID","1D data","1d",file)
+   if(file == "cancel")
+      return
+   endif
+   
+   refDeconvFileCtrl->text("$getcwd()$\\$file$")
+
+endproc()
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+
+   help("Macros\\Post Processing","Processing 1D Data Sets.htm")
+
+endproc()
+
+
+########################################################
+# Toggle the visibility of the phase controls
+########################################################
+
+procedure(toggle_phase_controls)
+
+   if(wvPhaseVis == 1)
+      for(k = 63 to 72)
+         if(isobj(0,k))
+            getobj(0,k)->visible("false")
+         endif
+      next(k)
+      setwindowpar(0, "height", 335)
+      wvPhaseVis = 0
+   else
+      for(k = 63 to 72)
+         if(isobj(0,k))
+            getobj(0,k)->visible("true")
+         endif
+      next(k)
+     setwindowpar(0, "height", 456)
+      wvPhaseVis = 1
+   endif
+
+endproc()
+
+
+###########################################################
+# Perform a nTerm trig fit to the spectral baseline
+###########################################################
+
+procedure(trigfit, spectrum, nrTerms)
+
+# Build the design matrix
+   xsize = size(spectrum)
+   ones = matrix(xsize) + 1
+   A = matrix(nrTerms*2+1,xsize)
+   x = [0:xsize-1]
+   n = 0
+   for(k = 0 to nrTerms*2)
+      if(k > 0)
+        if(k%2 == 1)
+            func =  "sin(x*n*pi/$xsize$)"
+         else
+            func =  "cos(x*n*pi/$xsize$)"
+         endif
+      else
+         func = "1"
+      endif
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      if(k%2 == 0)
+         n = n + 1
+      endif
+      A[k,~] = v'     
+   next(k)
+
+# Work out the inverse of the matrix
+   (U,V,S) = svd(A)
+   for(k = 0 to nrTerms*2)
+      if(S[k,k] != 0)
+        S[k,k] = 1/S[k,k]
+      endif
+   next(k)
+   inA = (V*S*U')
+   par =  (inA*spectrum')'
+
+   ymodel = matrix(xsize)
+   n = 0
+   for(k = 0 to nrTerms*2)
+      if(k > 0)
+        if(k%2 == 1)
+            func =  "sin(x*n*pi/$xsize$)"
+         else
+            func =  "cos(x*n*pi/$xsize$)"
+         endif
+      else
+         func = "1"
+      endif
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      if(k%2 == 0)
+         n = n + 1
+      endif
+      ymodel = ymodel + par[k]*v   
+   next(k)
+
+endproc(ymodel)
+
+
+########################################################
+# Update all controls based on current 1D data set
+########################################################
+
+procedure(update_controls)
+
+   fid = wvFidPlt->trace(0)->getdata()
+   if(fid == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+
+# Update the filter menu
+   :update_filter_menu()
+
+   defaults = :getDefaultPar()
+
+   setctrlvalues(0,defaults)
+
+endproc()
+
+####################################################
+# Get the latest filter menu
+####################################################
+
+procedure(update_filter_menu)
+
+   filtermenu = filters:get_menu()
+   filtermenu = insertinlist(filtermenu,"exp:1",1)
+   setpar(0,12,"menu",filtermenu)
+   setpar(0,12,"text",filtermenu[0])
+
+endproc()
+
+ 
+
+procedure(updatePhaseSliders, process=1)
+
+    range = p0LimCtrl->value
+    value = p0PhaseCtrl->value()
+    p0SliderCtrl->value(100*value/range)
+
+    range = p1LimCtrl->value
+    value = p1PhaseCtrl->value()
+    p1SliderCtrl->value(100*value/range)
+
+    range = pivLimCtrl->value
+    value = p1PivotPPMCtrl->value()
+    pivSliderCtrl->value(100*value/range)
+
+   if(process)
+      :process()
+   endif
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Process 1D FID (V1.1)", -1, -1, 664, 325)
+
+      # Define all controls with basic parameters
+      getmessage(0,:processMessage())
+      button(1, 590, 223, 57, 31, "Close",
+        :savePar();
+        :exit_proc();
+         closewindow(0);)
+      statictext(2, 276, 197, "center", "PPM display")
+      checkbox(3, 282, 233, "no,yes", "no")
+      statictext(4, 213, 58, "right", "Method")
+      textmenu(5, 220, 54, 150, 200,
+         :choosePhaseMethod();:process();)
+      statictext(6, 128, 117, "center", "\215")
+      button(7, 590, 73, 57, 31, "Reset",
+         :update_controls();)
+      groupbox(8, "Processing Parameters", 10, 8, 571, 308)
+      statictext(9, 55, 88, "right", "Type")
+      textmenu(10, 60, 84, 71, 200)
+      statictext(11, 497, 197, "right", "Apodization")
+      textmenu(12, 405, 221, 131, 200)
+      statictext(13, 101, 197, "center", "Baseline correction")
+      statictext(14, 55, 58, "right", "Origin")
+      textmenu(15, 60, 54, 71, 200)
+      textmenu(16, 69, 220, 100, 200,:selectBaselineCorrectionMethod())
+      statictext(17, 55, 118, "right", "Zero-fill")
+      textmenu(18, 60, 114, 57, 200)
+      statictext(19, 64, 224, "right", "Method")
+      textmenu(20, 450, 55, 100, 200,:selectDeconvMethod())
+      button(21, 514, 85, 19, 19, "...",
+         :selectReferenceFile();)
+      button(22, 590, 26, 55, 31, "Transform",
+         :process();
+         :savePar();)
+      textbox(23, -1, -1, 57)
+      button(24, 590, 123, 57, 31, "Help",
+         :show_help();)
+      statictext(25, 93, 33, "center", "Fourier transform")
+      statictext(26, 265, 148, "left", "ppm")
+      statictext(27, 279, 33, "center", "Phasing")
+      textmenu(28, 450, 115, 47, 200)
+      statictext(29, 445, 59, "right", "Method")
+      statictext(30, 509, 88, "right", "Select reference FID")
+      statictext(31, 445, 118, "right", "Broadening")
+      statictext(32, 480, 33, "center", "Deconvolution")
+      statictext(33, 213, 87, "right", "p0 phase")
+      textbox(34, 220, 84, 41, :updatePhaseSliders())
+      statictext(35, 213, 117, "right", "p1 phase")
+      textbox(36, 220, 114, 41, :updatePhaseSliders())
+      statictext(37, 213, 148, "right", "p1 pivot")
+      textbox(38, 220, 144, 41, :updatePhaseSliders())
+      statictext(39, 394, 226, "right", "Function")
+      button(40, 545, 222, 19, 19, "...",
+         filters();)
+      updown(41, 295, 82, 20, 26, "vert",:p0CallBack();:updatePhaseSliders())
+      statictext(42, 265, 87, "left", "deg")
+      textbox(43, 282, 263, 47)
+      checkbox(44, 175, 270, "no,yes", "no")
+      statictext(45, 196, 253, "right", "Debug")
+      divider(46, 15, 180, 560, 3, "horizontal")
+      divider(47, 154, 20, 3, 157, "vertical")
+      divider(48, 383, 20, 3, 157, "vertical")
+      divider(49, 210, 189, 3, 122, "vertical")
+      divider(50, 339, 189, 3, 122, "vertical")
+      updown(51, 295, 112, 20, 26, "vert",:p1CallBack();:updatePhaseSliders())
+      statictext(52, 265, 117, "left", "deg")
+      updown(53, 295, 142, 20, 26, "vert",:pivotCallBack();:updatePhaseSliders())
+
+      statictext(54, 502, 118, "left", "Hz")
+      textmenu(56, 90, 250, 57, 200)
+      statictext(57, 85, 254, "right", "Nr. segments")
+      textmenu(58, 90, 280, 57, 200)
+      statictext(59, 85, 284, "right", "Noise factor")
+      statictext(60, 277, 266, "right", "PPM offset")
+      statictext(60, 277, 232, "right", "Apply")
+
+      statictext(61, 445, 147, "right", "Lineshape")
+      textmenu(62, 450, 144, 100, 200)
+
+      groupbox(63, "Real-time Phasing", 10, 330, 571, 106)
+
+      statictext(64, 50, 350, "right", "p0")
+      slider(65, 55, 350, 200, 20,"horizontal",:phase1D("p0"))
+      textbox(66 ,260, 348, 40,:updatePhaseSliders())
+      setpar(0,65,"objID","p0SliderCtrl","type","float","range",[-100,100])
+      setpar(0,66,"objID","p0LimCtrl","valueID","p0Lim")
+
+      statictext(67, 50, 380, "right", "p1")
+      slider(68, 55, 380, 200, 20,"horizontal",:phase1D("p1"))
+      textbox(69 ,260, 378, 40,:updatePhaseSliders())
+      setpar(0,68,"objID","p1SliderCtrl","type","float","range",[-100,100])
+      setpar(0,69,"objID","p1LimCtrl","valueID","p1Lim")
+
+      statictext(70, 50, 410, "right", "Pivot")
+      slider(71, 55, 410, 200, 20,"horizontal",:phase1D("pivot"))
+      textbox(72 ,260, 408, 40,:updatePhaseSliders())
+      setpar(0,71,"objID","pivSliderCtrl","type","float","range",[-100,100])
+      setpar(0,72,"objID","pivLimCtrl","valueID","p1PivotLim")
+
+      button(73, 590, 174, 57, 31, "Phase",
+         :toggle_phase_controls();)
+
+      statictext(74, 100, 145, "right", "Halve first point")
+      checkbox(75, 105, 145, "0,1", "0")
+
+
+     # Set other control parameters
+      setpar(n,1,"tab_number",18)
+      setpar(n,2,"fgcolor",[0,128,0])
+      setpar(n,3,"objID","ppmCtrl",
+                  "valueID","displayInPPM",
+                  "tab_number",12)
+      setpar(n,5,"objID","phaseMethodCtrl",
+                  "valueID","phaseMethod",
+                  "tab_number",4,
+                  "menu",["None","p0, p1 fixed phase",
+                          "Magnitude",
+                          "Auto: p0 max real sum",
+                          "Auto: p0 max real amplitude",
+                          "Auto: p0 min real baseline",
+                          "Auto: p0 max baseline points"])
+      setpar(n,7,"tab_number",16)
+      setpar(n,10,"objID","ftTypeCtrl",
+                  "valueID","ftType",
+                  "tab_number",2,
+                  "menu",["Complex","Real"])
+      setpar(n,11,"fgcolor",[0,128,0])
+      setpar(n,12,"objID","filterCtrl",
+                  "valueID","apodizationFunction",
+                  "tab_number",13,
+                  "menu",["none","exp:1","exponential","cosinebell","cosinebellsquared","sinebell","sinebellsquared","gaussian","vee","shsinebellsquared","vee2","shgaussian"])
+      setpar(n,13,"fgcolor",[0,128,0])
+      setpar(n,15,"objID","ftOriginCtrl",
+                  "valueID","ftOrigin",
+                  "tab_number",1,
+                  "menu",["Start","Center"])
+      setpar(n,16,"objID","baseLineCorrectionCtrl",
+                  "valueID","baseLineCorrectionMethod",
+                  "tab_number",11,
+                  "menu",["None","Offset","Segment"])
+      setpar(n,18,"objID","zeroFillCtrl",
+                  "valueID","zeroFill",
+                  "tab_number",3,
+                  "menu",["1","2","4","8","16"])
+      setpar(n,20,"objID","refDeconvMethodCtrl",
+                  "valueID","refDeconvMethod",
+                  "tab_number",11,
+                  "menu",["None","From file","From shim"])
+      setpar(n,21,"tab_number",9)
+      setpar(n,22,"tab_number",15)
+      setpar(n,23,"objID","refDeconvFileCtrl",
+                  "valueID","refDeconvFile")
+      setpar(n,24,"tab_number",17)
+      setpar(n,25,"fgcolor",[0,128,0])
+      setpar(n,27,"fgcolor",[0,128,0])
+      setpar(n,28,"objID","refDeconvLineWidthCtrl",
+                  "valueID","refDeconvLineWidth",
+                  "tab_number",10,
+                  "menu",["0.1","0.2","0.3","0.4","0.5"])
+      setpar(n,32,"fgcolor",[0,128,0])
+      setpar(n,34,"objID","p0PhaseCtrl",
+                  "valueID","p0Phase",
+                  "tab_number",5)
+      setpar(n,36,"objID","p1PhaseCtrl",
+                  "valueID","p1Phase",
+                  "tab_number",6)
+      setpar(n,38,"objID","p1PivotPPMCtrl",
+                  "valueID","p1PivotPPM",
+                  "tab_number",7)
+      setpar(n,40,"tab_number",14)
+      setpar(n,41,"base",0,
+                  "stepsize",1,
+                  "nrSteps",1,
+                  "tooltip","Increment or decrement p0 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.",
+                  "tab_number",6)
+      setpar(n,43,"objID","ppmOffsetCtrl",
+                  "valueID","ppmOffset")
+      setpar(n,44,"objID","blDebugCtrl",
+                  "valueID","blDebug")
+
+      setpar(n,46,"enable","false")
+      setpar(n,47,"enable","false")
+      setpar(n,48,"enable","false")
+      setpar(n,49,"enable","false")
+      setpar(n,50,"enable","false")
+      setpar(n,51,"base",0,
+                  "stepsize",1,
+                  "nrSteps",1,
+                  "tooltip","Increment or decrement p1 by 1 degree, with the shift key pressed, 10 degrees, with the alt key 0.1 degree.")
+      setpar(n,53,"base",0,
+                  "stepsize",1,
+                  "nrSteps",1,
+                  "tooltip","Increment or decrement pivot by 1 ppm, with the shift key pressed, 10 ppm, with the alt key 0.1 ppm.")
+      setpar(n,56,"objID","baseLineNrSegmentsCtrl",
+                  "valueID","baseLineNrSegments",
+                  "tab_number",10,
+                  "menu",[16,32,64,128,256])
+      setpar(n,58,"objID","baseLineNoiseFactorCtrl",
+                  "valueID","baseLineNoiseFactor",
+                  "tab_number",10,
+                  "menu",[1,2,3,4,5,6,7,8,9,10])
+      setpar(n,62,"objID","refDeconvLineShapeCtrl",
+                  "valueID","refDeconvLineShape",
+                  "tab_number",10,
+                  "menu",["Lorentzian","Gaussian"])
+      setpar(n,75,"valueID","halveFirstPoint")
+
+endproc(n)

@@ -1,0 +1,109 @@
+procedure(status)
+
+endproc("readonly")
+
+procedure(interfaceDescription)
+
+   interface = [
+      "nmrDiv","NMR parameters","dv", "", "",
+      "nucleus","Nucleus","tb","readonly_string","",
+      "b1Freq1H","B1 Frequency (MHz)","tb","double","[1,400]",
+      "repTime","Repetition time (ms)","tb","float","[1,1e+008]",
+      "shimDelay","Shim delay (ms)","tb","float","[0.001,10000]",
+      "90Amplitude1H","Pulse amplitude (dB)","tb","float","[-85,0]",
+      "pulseLength1H","Pulse length (us)","tb","float","[0.5,1000]",
+      "shiftPoints","Points to shift","tb","integer","[1,1e8]",
+      "manualCalibration","Manual calibration?","cb,proc","string","no,yes",
+      "peakPositionPPM","Peak position (ppm)","tm","float","[\"4.74\",\"7.26\"]",
+      "ctrlDiv","Shim control","dv", "", "",
+      "shimSample","Shim sample","rb,proc","string","18,reference,other,Reference,Other",
+      "startMethod","Shim start mode","rb","string","18,last,database,loaded, Last Expert Shim,Last Standard Shim,Loaded Shims",
+      "shimMethod","Shim search mode","rb","string","18,short,order1,order12,order123,Short sample,1st order and z2,1st and 2nd order,All shims",
+      "shimDiv","Shim values","dv", "", "",
+      "loadShims","Load shims","bt","string","loadCurrentShims()",
+      "saveShims","Save shims","bt","string","saveCurrentShims()",
+      "xshim","x shim","tb","float","[-32678,32767]",
+      "yshim","y shim","tb","float","[-32678,32767]",
+      "zshim","z shim","tb","float","[-32678,32767]",
+      "z2shim","z2 shim","tb","float","[-32678,32767]",
+      "zxshim","zx shim","tb","float","[-32678,32767]",
+      "zyshim","zy shim","tb","float","[-32678,32767]",
+      "xyshim","xy shim","tb","float","[-32678,32767]",
+      "x2y2shim","x2-y2 shim","tb","float","[-32678,32767]",
+      "z3shim","z3 shim","tb","float","[-32678,32767]",
+      "z2xshim","z2x shim","tb","float","[-32678,32767]",
+      "z2yshim","z2y shim","tb","float","[-32678,32767]",
+      "zxyshim","zxy shim","tb","float","[-32678,32767]",
+      "zx2y2shim","z(x2-y2) shim","tb","float","[-32678,32767]",
+      "x3shim","x3 shim","tb","float","[-32678,32767]",
+      "y3shim","y3 shim","tb","float","[-32678,32767]",
+      "acquDiv","Acquisition","dv", "", "",
+      "rxGain","Receiver gain","tm","integer","$gData->rxGainMenu$",
+      "rxChannel","Receiver channel","tm","string","[\"1H\"]",
+      "rxPhase","Receiver phase","tb","float","[-360,360]",
+      "nrPnts","Number of points","tm","integer","$gData->nrPntsMenu$",
+      "dwellTime","Dwell time (us)","tm","float","$gData->dwellTimeMenu$",
+      "nrScans","Number of scans","tb","float","[1,1e8]",
+      "flatFilter","Flat filter","cb","string","no,yes",
+      "accumulate","Accumulate data","cb","string","no,yes",
+      "usePhaseCycle","Phase cycle","cb","string","no,yes",
+      "bandwidth","Bandwidth (kHz)","tb","float","",
+      "acqTime","Acquisition time (ms)","tb","float","",
+      "procDiv","Processing","dv", "", "",
+      "zf","Zero fill factor?","tm","integer","[1,2,4,8,16]",
+      "filter","Apodisation filter?","cb","string","no,yes",
+      "filterType","Filter type","tm","string","[\"none\",\"exponential\",\"sinebellsquared\"]",
+      "fdPhaseCorr","Freq. domain phasing","tm","string","[\"autophase\",\"mag\",\"none\"]",
+      "dispDiv","Display","dv", "", "",
+      "usePPMScale","Use ppm scale?","cb","string","no,yes",
+      "dispRangeMinPPM","Minimum ppm value","tb","float","[-2000,2000]",
+      "dispRangeMaxPPM","Maximum ppm value","tb","float","[-2000,2000]",
+      "dispRange","Display range (Hz)","tb","float","[0,2e6]",
+      "fileDiv","Files","dv", "", "",
+      "saveData","Save data?","cb","string","false,true"]
+
+
+endproc(interface)
+
+#####################################################
+# Organise plots for running and loading experiments
+# Each row has quoted plot names separated by a semicolon
+# Allowable plot names are ptx or imx. (x = 1,2 ...)
+# Can have up to 6 plots for 1D 4 for 2D.
+#####################################################
+
+procedure(plot_run_layout)
+
+   layout = ["pt1","pt2";
+             "pt3","pt4";
+             "pt5","pt6"]
+
+endproc(layout)
+
+
+procedure(plot_load_layout)
+
+   layout = ["pt1","pt2";
+             "pt3","pt4";
+             "pt5","pt6"]
+
+endproc(layout)
+
+#####################################################
+# Defines the controls which will appear to the 
+# right of the plots below the default conrols.
+# If 'null' is returned or this proceudre is missing
+# then only default controls will be added.
+#####################################################
+
+
+procedure(processing_controls)
+
+   layout = struct(buttonLabel = "Next Fit", plotName = "pt6",
+                   macroToRun = "QuickShim:LoadNextFit(\"pt6\")";
+                   buttonLabel = "Last Fit", plotName = "pt6",
+                   macroToRun = "QuickShim:LoadPreviousFit(\"pt6\")")
+
+endproc(layout)
+
+

@@ -1,0 +1,367 @@
+##########################################################
+#             submatrix3d.mac
+#
+# Extract a 3D submatrix from a 3D real or complex
+# data set.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+##########################################################
+
+   
+procedure(submatrix3d)
+
+   n = :windowdefinition()
+    :update_window()
+    :set_plane()
+    :display_plane()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Update the submatrix limits
+####################################################
+
+procedure(updatedialog)
+
+   matName = getpar(0,3,"text")
+   if(matName == "")
+      return
+   endif
+   mat = alias(matName,"eval")
+   (w,h,d) = size(mat)
+   setpar(0,4,"text",w)  
+   setpar(0,6,"text",h)  
+   setpar(0,8,"text",d)
+   setpar(0,13,"text",0)  
+   setpar(0,17,"text",0)  
+   setpar(0,21,"text",0)  
+   setpar(0,15,"text",w)  
+   setpar(0,19,"text",h)  
+   setpar(0,23,"text",d) 
+
+endproc()
+
+####################################################
+# Update the input and output matrix names and 
+# default SMX dimensions
+####################################################
+
+procedure(update_window)
+
+   menu3d = matrixlist(4)
+
+   if(size(menu3d) > 0) 
+      setpar(0,3,"menu",menu3d)
+      setpar(0,3,"text",menu3d[0]) 
+      setpar(0,11,"menu",menu3d)
+      setpar(0,11,"text",menu3d[0]+"_smx") 
+      :updatedialog() 
+   endif 
+
+endproc()
+
+
+####################################################
+# Update the output matrix name and  
+# default SMX dimensions
+####################################################
+
+procedure(update_matrix)
+
+   matName = getpar(0,3,"text")
+   if(matName == "")
+      return
+   endif
+
+   menu3d = matrixlist(4)
+
+   if(size(menu3d) > 0) 
+      setpar(0,11,"menu",menu3d)
+      setpar(0,11,"text",matName+"_smx") 
+      :updatedialog() 
+   endif 
+
+endproc()
+
+####################################################
+# Extract the data from the selected region
+####################################################
+
+procedure(extractData)
+
+   matName = getpar(0,3,"text")
+   name = getpar(0,11,"text") 
+
+   if(matName == name)
+     message("Error","Output matrix must have different name from input matrix")
+     return()
+   endif
+
+   mat = alias(matName,"eval")
+
+   w = getpar(0,4,"value")  
+   h = getpar(0,6,"value")  
+   d = getpar(0,8,"value")
+
+   sx = getpar(0,13,"value")  
+   sy = getpar(0,17,"value")  
+   sz = getpar(0,21,"value")  
+   sw = getpar(0,15,"value")  
+   sh = getpar(0,19,"value")  
+   sd = getpar(0,23,"value") 
+
+# Check for errors
+   if(sx < 0 | sy < 0 | sz < 0)
+      message("Error","Invalid start coordinate(s)")
+      return
+   endif
+
+   if((sx+sw > w) | (sy+sh > h) | (sz+sd > d))
+      message("Error","Invalid width, height or depth")
+      return
+   endif
+
+# Extract submatrix
+   submat = submatrix(mat,sx,sx+sw-1,sy,sy+sh-1,sz,sz+sd-1)
+
+   assign(name,submat, "global")
+   message("Message","Submatrix extracted","info")
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Extract 3D submatrix", -1, -1, 224, 382)
+
+      # Define all controls with basic parameters
+       windowvar(menu3d,reset)
+       groupbox(1, "Input matrix", 4, 3, 210, 103)
+       statictext(2, 12, 28, "left", "Name")
+       textmenu(3, 47, 26, 129, 200,
+          :update_matrix();
+          :set_plane();
+          :display_plane();)
+       textbox(4, 28, 68, 38)
+       statictext(5, 74, 72, "left", "x")
+       textbox(6, 90, 68, 38)
+       statictext(7, 137, 72, "left", "x")
+       textbox(8, 152, 68, 38)
+       groupbox(9, "Submatrix", 4, 199, 210, 140)
+       statictext(10, 12, 225, "left", "Name")
+       textmenu(11, 47, 222, 153, 200,
+          :updatedialog();)
+       statictext(12, 13, 261, "left", "x-start")
+       textbox(13, 48, 257, 46)
+       statictext(14, 100, 313, "left", "new depth")
+       textbox(15, 155, 257, 46)
+       statictext(16, 13, 287, "left", "y-start")
+       textbox(17, 48, 283, 46)
+       statictext(18, 98, 287, "left", "new height")
+       textbox(19, 155, 283, 46)
+       statictext(20, 13, 313, "left", "z-start")
+       textbox(21, 47, 309, 46)
+       statictext(22, 102, 261, "left", "new width")
+       textbox(23, 155, 309, 46)
+       button(24, 22, 348, 43, 26, "Extract",
+          :extractData();)
+       button(25, 87, 348, 43, 26, "Help",
+          :show_help();)
+       button(26, 152, 348, 43, 26, "Exit",
+          closewindow(0);)
+       button(27, 183, 26, 17, 20, "U",
+          :update_window();
+          :update_matrix();
+          :set_plane();
+          :display_plane();)
+       radiobuttons(28, 44, 132, 20, "vertical", "xy,yz,xz", "xy",
+            :set_plane();
+            :display_plane();)
+       statictext(29, 39, 130, "right", "xy")
+       statictext(30, 39, 150, "right", "yz")
+       statictext(31, 39, 170, "right", "xz")
+       slider(32, 64, 145, 142, 30, "horizontal",
+            :display_plane();)
+       groupbox(33, "Scan planes", 4, 110, 209, 83)
+       statictext(34, 98, 130, "left", "scan input planes")
+       getmessage(36,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,3,"name","matnames",
+                   "tab_number",1,
+                   "menu",[""])
+       setpar(n,4,"name","ipwidth",
+                   "tab_number",3)
+       setpar(n,6,"name","ipheight",
+                   "tab_number",4)
+       setpar(n,8,"name","ipdepth",
+                   "tab_number",5)
+       setpar(n,11,"tab_number",6,
+                   "menu",[""])
+       setpar(n,13,"tab_number",8)
+       setpar(n,15,"tab_number",9)
+       setpar(n,17,"tab_number",10)
+       setpar(n,19,"tab_number",11)
+       setpar(n,21,"tab_number",12)
+       setpar(n,23,"tab_number",13)
+       setpar(n,24,"tab_number",7)
+       setpar(n,25,"tab_number",2)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\3D","submatrix3d.htm")
+endproc()
+
+
+####################################################
+# Display the slice
+####################################################
+
+procedure(display_plane)
+
+   name = getpar(0,3,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval") 
+   plane = getpar(0,32,"value")
+   dir = getpar(0,28,"text")
+
+  (w,h,d) = size(mat)
+
+   draw2d("false")
+      (nl,mode) = contour("getargs")
+      (left,right,bottom,top) = zoom2d("getargs")
+      if(dir = "xy")
+          image(mat[~,~,plane])
+       elseif(dir = "yz")
+          image(mat[plane,~,~])
+       elseif(dir = "xz")
+          image(mat[~,plane,~])
+       endif
+      contour(nl,mode)
+       title("$name$ ($dir$ plane : $plane$)")
+       if(reset == 0)
+          zoom2d(left,right,bottom,top)
+       endif
+    draw2d("true")
+
+    reset = 0
+
+endproc()
+
+
+####################################################
+# Set the plane direction, plot labels and slider  
+# limits for the current data set
+####################################################
+
+procedure(set_plane)
+
+   name = getpar(0,3,"text")
+   if(name == "")
+      return
+   endif
+   mat = alias(name,"eval")
+   (w,h,d) = size(mat)
+
+   planeDir = getpar(0,28,"text")
+   plane = 0
+   setpar(0,32,"value",plane)
+   if(planeDir = "xy")
+      setpar(0,32,"range",[0,d-1])
+      setpar(0,32,"tickstep",d/10)
+      xlabel("x")
+      ylabel("y")
+   elseif(planeDir = "yz")
+      setpar(0,32,"range",[0,w-1])
+      setpar(0,32,"tickstep",w/10)
+      xlabel("y")
+      ylabel("z")
+   elseif(planeDir = "xz")
+      setpar(0,32,"range",[0,h-1])
+      setpar(0,32,"tickstep",h/10)
+      xlabel("x")
+      ylabel("z")
+   endif
+
+   reset = 1
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,36,"text")
+
+   if(src == "2D Plot" & cmd == "DrawRectangle")
+       :update_region()
+   endif
+
+endproc()
+
+####################################################
+# Update the submatrix dimensions using the 
+# rectangle drawn over the 2D plot
+####################################################
+
+procedure(update_region)
+
+   (x0,y0,x1,y1) = getrect()
+    if(x0 == -1)
+      (x0,x1,y0,y1) = zoom2d("getargs")
+    endif
+   
+   plane = getpar(0,32,"value")
+   dir = getpar(0,28,"text")
+
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   mIn = alias(nameIn,"eval") 
+   (w,h,d)= size(mIn)
+
+
+   if(dir == "xy")
+      setpar(0,13,"text",x0)
+      setpar(0,15,"text",x1-x0+1)
+      setpar(0,17,"text",y0)
+      setpar(0,19,"text",y1-y0+1)
+      setpar(0,21,"text",0)
+      setpar(0,23,"text",d)
+   elseif(dir == "yz")
+      setpar(0,13,"text",0)
+      setpar(0,15,"text",w)
+      setpar(0,17,"text",x0)
+      setpar(0,19,"text",x1-x0+1)
+      setpar(0,21,"text",y0)
+      setpar(0,23,"text",y1-y0+1)
+   elseif(dir == "xz")
+      setpar(0,13,"text",x0)
+      setpar(0,15,"text",x1-x0+1)
+      setpar(0,17,"text",0)
+      setpar(0,19,"text",h)
+      setpar(0,21,"text",y0)
+      setpar(0,23,"text",y1-y0+1)
+   endif
+
+endproc()
+

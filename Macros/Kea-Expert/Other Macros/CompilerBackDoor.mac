@@ -1,0 +1,1394 @@
+#############################################################
+# Allow the compilation of a pulse program without
+# user interface. (Can be called from scripts)
+# 
+# parameters structure
+#
+# lockMode ...... yes/no are we programming for the lock board?
+# outputFolder .. where the pulse program is located
+# baseName ...... pulse program name
+# supportV3Ctrl . generate V3 interface
+#
+# Note the following files should already be present
+# before the compilation begins:
+#
+# $baseName$_pp.mac ... pulse program macro
+# $baseName$
+#
+###############################################################
+
+#########################################################
+# Compile the selected pulse program macro and make
+# a basic gui
+#########################################################
+
+procedure(compileIt, parameters)
+
+
+# Make sure we are using the correct DLL
+   if(parameters->lockMode == "yes")
+      try
+         usedll("UCSLockPPRun.dll")
+      catch
+         usedll("UCSLockPPDebug.dll")
+      endtry
+   else
+      try
+         usedll("UCSPPRun.dll")
+      catch
+         usedll("UCSPPDebug.dll")
+      endtry
+   endif
+
+   outputFolder = parameters->outputFolder
+   baseName = parameters->baseName
+   supportV3Ctrl = parameters->supportV3Ctrl
+   supportV4Ctrl = parameters->supportV4Ctrl
+   supportV5Ctrl = parameters->supportV5Ctrl
+
+   bak = getcwd()
+
+# Change to the pulse-program folder
+   cd(outputFolder)
+   if(isdir(baseName) == 0)
+      message("Error","Pulse program macro '$baseName$' not found.","error")
+      return(1, null)
+   endif
+   
+# Generate file names
+   ppMacro = baseName + "_pp.mac"       # Input pp procedure
+   guiName = baseName + ".mac"          # Output GUI/processing macro
+   asmName = baseName + ".asm"          # Output asm file
+
+# Get the comments for the pulse sequence macro
+   cd(baseName)
+   escapechar("false")
+   if(isfile(ppMacro) == 0)
+      escapechar("true")
+      message("Error","Pulse program macro '$ppMacro$' not found.","error")
+      return(1)
+   endif
+   ppTxt = load(ppMacro)
+   escapechar("true")
+
+   comments = scanstr(ppTxt,"##*#\r\n%1\r\n##*#")
+   if(comments == null)
+      comments = "#"
+   endif
+
+# Run the pp macro which will generate the asm file
+# and return the list of variables.
+# The compilation is performed in the asmWorking directory 
+   try
+      if(parameters->lockMode == "yes")
+         (lst,tabs,interface,relationships,variables,dim,phaseList) = :generatePP(outputFolder,baseName,"yes",ppMacro,"i")
+      else
+         (lst,tabs,interface,relationships,variables,dim,phaseList) = :generatePP(outputFolder,baseName,"no",ppMacro,"1")
+      endif
+   catch
+      return(1, null)
+   endtry
+
+# Standardize tab names
+  for(k = 0 to size(tabs)-1)
+     tabs[k] = replacestr(tabs[k]," ","_")
+     tabs[k] = replacestr(tabs[k],"+","_")
+  next(k)
+
+# Check for interface errors
+  szInt = size(interface)
+  if(vartype(interface) == "list")
+     if(((szInt % 6) != 0))
+        message("Error","There is an error in the pulse sequence interface description.\rThe number of elements is incorrect.\rHave you missed comma?","error")
+        return(1, null)
+      endif
+   endif
+
+# Generate the V4 parameter interface
+   if(supportV4Ctrl == "yes" | supportV5Ctrl == "yes")
+      par = struct()
+      par->lst = lst
+      if(size(tabs) == 0)
+         par->tabs = null
+      else
+         par->tabs = tabs[1:]
+      endif
+      par->interface = interface
+      par->relationships = relationships
+      par->variable = variables
+      par->dim = dim
+      par->phaseList = phaseList
+      par->outputFolder = outputFolder
+      par->baseName = baseName  
+      if(generateSpinsolveExpertInterface(par) == 0)
+          pr("\n   Parameter interface generation failed!\n")  
+         return(1, null)
+      endif
+   endif
+
+# Generate V3 of macro if required (includes tabbed window)
+   if(supportV3Ctrl == "yes")
+
+      :generateV3GUI(outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                     lst,tabs,interface,relationships,variables,dim,phaseList)
+
+# Otherwise just generate the simplified V4 macro
+   elseif(supportV4Ctrl == "yes")
+
+      r = :generateV4GUI(outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                     lst,tabs,interface,relationships,variables,dim,phaseList)
+      if(r == 1)
+         return(1, null)
+      endif
+
+# Or V5 macro
+   elseif(supportV5Ctrl == "yes")
+
+      r = :generateV5GUI(outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                     lst,tabs,interface,relationships,variables,dim,phaseList)
+      if(r == 1)
+         return(1, null)
+      endif
+
+   endif
+
+# To compile standard Spinsolve software I just need the parameter list
+
+   ppInfo = struct()
+   ppInfo->lst = lst
+   ppInfo->relationships = relationships
+   ppInfo->variable = variables
+   ppInfo->phaseList = phaseList
+
+endproc(0, ppInfo)
+
+
+####################################################################
+# Generate V3 of the interface (i.e. with tabbed window)
+####################################################################
+
+procedure(generateV3GUI,outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                        lst,tabs,interface,relationships,variables,dim,phaseList)
+
+# Load the final gui macro
+   cd(outputFolder)
+   if(isfile(guiName)) # V3 of interface exists
+
+   # Load the file
+      escapechar("false")
+      txt = load(guiName)
+      escapechar("true")
+
+   # Extract the title
+      guiTitle = scanstr(txt,"*n = window(\"%1\", -1, -1,*")
+ 
+   # Extract any processing procedure
+      prosproc = scanstr(txt,"*endproc(n)\r\n%1endproc(\"execpp\")")
+
+   # If processing procedure exists allow user to abort
+      if(prosproc != null)
+         prosproc =  prosproc + "endproc(\"execpp\")"
+      # Extract all other procedures
+         otherproc = scanstr(txt,"*endproc(n)*endproc(\"execpp\")%1")
+      else
+         otherproc = txt
+      endif
+   
+   # Make a backup copy of the current macro - just in case!
+      inFile = "$guiName$"
+      outFile = "$guiName$.bak"
+      copyfile(inFile,outFile)
+
+   # Delete the V4 interface if it exists - but make a backup first
+      cd(baseName)
+      if(isfile(guiName))
+         inFile = "$guiName$"
+         outFile = "$guiName$.bak"
+         copyfile(inFile,outFile)   
+         rmfile(inFile)
+      endif   
+      cd("..")   
+   else # V4 exists - extract the processing macros
+      cd(baseName)
+      if(isfile(guiName))
+         escapechar("false")
+         txt = load(guiName)
+         escapechar("true")
+         prosproc = scanstr(txt,"*endproc(rel,var,pp_list,pp_name,phase_list)\r\n%1")
+         otherproc = ""
+         guiTitle = baseName
+         inFile = "$guiName$"
+         outFile = "$guiName$.bak"
+         copyfile(inFile,outFile)   
+         rmfile(inFile)
+      else
+         prosproc = null
+         otherproc = ""
+      endif  
+   endif
+
+   cd("$appdir$\\Macros\\UCS-PP")
+
+# Make the parent window
+   pw = guiwinnr() 
+   n = window("", -1, -1, 573, 400)
+   cn = 1000 # Start numbering controls from 1000 (don't expect this many!)
+   sz = size(tabs)
+
+# Define storage
+   groupRange = matrix(2*(sz+1))
+   extent = matrix(4,sz+2)
+
+# Add the getmessage command
+   getmessage(0, ucsCtrl:processMessage();)
+
+# Make tab
+   tbw = 50  # Tab button width
+   tbx = 6   # Tab button horizontal position
+   tby = 7   # Tab button vertical position
+   cd("$appdir$\\Macros\\UCS-PP\\tabs")
+   tab(cn,6,6,562,185,"")
+   setpar(n,cn,"inittabs",[""],"active", "true")
+
+# Added callback code for the tab
+   out = "which = getpar(0,1,\"currenttab\");"
+   started = 0
+
+   for(k = 0 to sz-1)
+
+     func = "$tabs[k]$.mac"
+
+# Add any initialisation procedures from the tab window
+     if(isfile(func))
+          proc =  load(func)
+          proc = scanstr(proc,"*procedure(tabPressed)\r\n\r\n%1\r\nendproc()")
+          if(proc != null & started == 0)
+             out = out + "   if(which == $k$);"
+             out = out + proc
+             started = 1
+          elseif(proc != null & started == 1)
+             out = out + "   elseif(which == $k$);"
+             out = out + proc
+         endif
+      else
+      endif
+
+   next(k) 
+
+   if(started == 1)
+      out = out + "endif();"
+   endif
+
+   setpar(n,cn,"procedure",out)
+
+# Store window extent of tab buttons
+   (xmin,xmax,ymin,ymax) = :controlExtent(n,cn,cn)
+   extent[~,0] = [xmin,xmax,ymin,ymax]
+
+   cn = cn + 1
+
+# Loop over tabs adding controls
+   for(t = 0 to sz-1)
+     if(tabs[t] == "Pulse_sequence")
+         groupRange[t*2] = cn-1000+1
+         cn = :makepstab(outputFolder,guiTitle,cn,dim,interface)
+         if(cn == null)
+            closewindow(n)
+            return(0)
+         endif  
+         groupRange[t*2+1] = cn-1000
+         (xmin,xmax,ymin,ymax) = :controlExtent(n,groupRange[t*2]+999+1,groupRange[t*2+1]+999)
+         extent[~,t+1] = [xmin,xmax,ymin,ymax]
+         tabs[t] = "Pulse Sequence"
+      else
+         bak = getcwd()
+         cd("$appdir$\\Macros\\UCS-PP\\tabs")
+         tabMacro = "$tabs[t]$:definecontrols"
+         groupRange[t*2] = cn-1000+1
+         groupbox(0, tabs[t], tbx, tby-1, 548, 115)
+         (m,name) = tabMacro(n) # Generate the tab
+         tabs[t] = name # Overwrite filename with label name
+
+      # Remove control offsets and renumber them with a 1000 offset
+         for(k = 0 to m)
+           setpar(n,k,"objnr",cn)
+           cn = cn + 1
+         next(k)
+         cd(bak)
+         groupRange[t*2+1] = cn-1000
+         (xmin,xmax,ymin,ymax) = :controlExtent(n,groupRange[t*2]+999+1,groupRange[t*2+1]+999)
+         extent[~,t+1] = [xmin,xmax,ymin,ymax]
+      endif
+   next(t)
+
+# Renumber controls starting from 1
+   last = cn-999-1
+   for(k = cn-1 to 1000 step -1)
+     setpar(n,k,"objnr",k-999)
+     cn = cn + 1
+   next(k)
+
+# Add control buttons at bottom of window
+   by = ymax-10
+   cn = last + 1
+   off = 20
+   space = 65
+   groupRange[t*2] = round(cn)
+ 
+   colorbox(cn, off-20, by-10, 10, 10,[255,255,255,255])
+   colorbox(cn+1, off-20, by+10, 10, 10,[255,255,255,255])
+   button(cn+2, off, by, 54, 29, "Run",
+         (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar();
+          ucsCtrl:runPP(getmacropath(),wv_pp_name);)
+   button(cn+3, off+space*1, by, 54, 29, "Abort",
+          setwindowpar(0,"title","Wait for macro to abort ...");
+          assignlock("wvExpStatus","stop","window"))
+   button(cn+4, off+space*2, by, 54, 29, "Finish",
+          setwindowpar(0,"title","Wait for phase-cycling to complete ...");
+          assignlock("wvExpStatus","finish","window"))
+   button(cn+5, off+space*3, by, 54, 29, "Load Par.",
+          ucsFiles:loadParameters();)
+   button(cn+6, off+space*4, by, 54, 29, "Help",
+          help("Spinsolve","1Pulse");)
+   button(cn+7, off+space*5, by, 54, 29, "Spinsolve Pref.",
+          ucsCtrl:showPreferences();)
+   button(cn+8, off+space*6, by, 54, 29, "Collapse",
+          ucsCtrl:toggleWindowSize(1);)
+   button(cn+9, off+space*7, by, 54, 29, "Close",
+        guipar = getctrlvalues(0);
+        if(getwindowpar(0,"type") == "dialog");
+           guipar = ucsFiles:addWindowSpecifics(guipar);
+           ucsFiles:saveCommonPar(guipar);
+           closedialog(guipar);
+        else;
+           ucsFiles:saveParameters();
+           closewindow(0);
+        endif;)
+
+
+    menu(cn+10, "bkgMenu", "Edit macro\tCtrl+Dbl-Click", edit("$getmacroname()$"),
+                "Show compiler\tCtrl+Shift+Dbl-Click", MakeUCSPulseProgram("$getmacropath()$","$rmext(getmacroname())$"))
+
+    setpar(n,cn,"objID","ppStatus",
+                 "tooltip","Experiment Status Indicator\rGreen: running\rBlue: processing\rYellow: waiting")
+    setpar(n,cn+1,"objID","rxOverflow",
+                 "tooltip","Receiver Overflow Indicator\rRed: overflow")
+    setpar(n,cn+2,"name","run",
+                 "tooltip","Start the experiment.")
+    setpar(n,cn+3,"name","stop",
+                 "tooltip","Stop the experiment without saving data.",
+                 "active","true")
+    setpar(n,cn+4,"name","finish",
+                 "tooltip","Finish the current phase cycle and save data.",
+                 "active","true")
+    setpar(n,cn+5,"name","load",
+                 "tooltip","Load a parameter set for a similar experiment.")
+    setpar(n,cn+6,"name","help",
+                 "tooltip","Display HTML help for this experiment.",
+                  "active", "true")
+    setpar(n,cn+7,"name","showPref",
+                 "tooltip","Display a preferences dialog for the Spinsolve spectrometer.")
+    setpar(n,cn+8, "name","size",
+                 "tooltip","Expand or collapse the window size to show all or fewer controls.",
+                  "active", "true")
+    setpar(n,cn+9,"name","close",
+                 "tooltip","Close the window saving all parameters.")
+
+    setwindowpar(n,"bkgmenu",cn+10)
+
+# Set help name
+   setpar(n,cn+6,"procedure","help(\"Macros\\$getbasedir(outputFolder)$\",\"$baseName$.htm\");")
+
+   first = round(cn)
+   last = round(cn + 9)
+
+   (xmin,xmax,ymin,ymax) = :controlExtent(n,first,last)
+   groupRange[t*2+1] = last
+   extent[~,sz+1] = [xmin,xmax,ymin,ymax]
+
+# Shift each group of controls to final location
+   first = 1
+   last = sz
+   xoff = extent[0,0]
+   yoff = extent[2,0]
+
+# Shift tab buttons
+   for(k = first to last)
+      x = getpar(n,k,"x")
+      setpar(n,k,"x",x-xoff+tbx)
+      y = getpar(n,k,"y")
+      setpar(n,k,"y",y-yoff+tby)
+   next(k)
+
+# Work out maximum width and height of each control group
+# not including the group box
+   wmax = -10
+   hmax = -10
+   for(m = first to last+1)
+
+      xoff = extent[0,m]   # Group x offset
+      yoff = extent[2,m]   # Group y offset
+      w = extent[1,m]-xoff # Group width
+      h = extent[3,m]-yoff # Group height
+
+      if(w > wmax)
+         wmax = w
+      endif
+
+      if(h > hmax)
+         hmax = h
+      endif
+
+   next(m)
+
+# Provide some borders around the controls
+   xo = tbx # x-offset of group boxes
+   yo = tby-1 # y-offset of group boxes
+   dw = 55 # Width difference between widest control group and window
+   dh = 60 # Height difference between widest control group and collapsed window
+   gbGap = 10 # Gap between edge of window and group box
+   wmax = wmax + dw
+
+# Make sure there is enough room for the tab buttons
+   if(wmax < size(tabs)*tbw+dw/2+xo*2)
+      wmax = size(tabs)*tbw+dw/2+xo*2
+   endif
+   hmax = hmax + dh
+
+# Shift each tab group to its final position (ignore group boxes)
+   for(m = 0 to sz-1)
+
+      first = groupRange[2*m] # First control in group (group box)
+      last = groupRange[2*m+1] # Last control in group
+
+      xoff = extent[0,m+1]   # Group x offset
+      yoff = extent[2,m+1]   # Group y offset
+      w = extent[1,m+1]-xoff # Group width
+      h = extent[3,m+1]-yoff # Group height
+
+      xs = (wmax-w)/2
+      ys = (hmax-h)/2
+      for(k = first+1 to last)
+         x = getpar(n,k,"x")
+         setpar(n,k,"x",round(x-xoff+xs))
+         y = getpar(n,k,"y")
+         setpar(n,k,"y",round(y-yoff+ys+m*(hmax-23)-(dh/4-dw/4)+2))
+      next(k)
+   next(m)
+
+# Resize and shift the group boxes
+   for(m = 0 to sz-1)
+      first = groupRange[2*m] # First control in group (group box)
+      setpar(0,first,"x",gbGap)
+      setpar(0,first,"y",m*(hmax-23)+dw/4)
+      setpar(0,first,"width",wmax-gbGap*2)
+      setpar(0,first,"height",hmax-dh/2)
+   next(m)
+
+# Move control buttons
+   first = groupRange[2*sz]
+   last = groupRange[2*sz+1]
+
+   xoff = extent[0,sz+1]
+   yoff = extent[2,sz+1]
+   w = extent[1,sz+1]-xoff
+   h = extent[3,sz+1]-yoff
+
+   lgb = groupRange[2*(sz-1)] # Last group box
+   y = getpar(n,lgb,"y") 
+   h = getpar(n,lgb,"height") 
+   cbg = 10 # Control button gap top and bottom
+   yp = y+h+cbg
+
+   for(k = first to last)
+      x = getpar(n,k,"x")
+      setpar(n,k,"x",x-xoff+(wmax-w)/2)
+      y = yp
+      if(k == first) # Status light
+         y = y+3 
+      endif
+      if(k == first+1) # Overflow light
+         y = y + 16
+      endif
+      setpar(n,k,"y",y)
+   next(k)
+
+# Height of control buttons
+   cbh = getpar(n,last,"height")
+# Height of tab buttons
+   tbh = 26 #getpar(n,1,"height")
+# Get border size
+   bs = getwindowpar(n,"bordersize")
+
+# Calculate and set final window size
+   setwindowpar(n,"width",wmax+dw/4)
+   expandedHeight = round(dw/4+size(tabs)*(hmax-dh/2)+(size(tabs)-1)*(tby)+cbh+cbg+cbg+bs)
+   collapseHeight = round(tbh+(hmax-dh/2)+cbh+2*cbg+bs)
+   setwindowpar(n,"height",expandedHeight)
+
+# Set tab dimensions
+   setpar(n,1,"width",wmax+dw/4-18) ### Needs more rational numbers
+   setpar(n,1,"height",collapseHeight-12)
+
+# Work out amount to shift each group of controls
+# when in collapsed mode
+   groupShift = matrix(sz+1)
+   groupShift[0] = round(dw/4-23)
+
+   for(k = 1 to sz-1)
+     groupShift[k] = round(k*(hmax-23)+dw/4-23)
+   next(k)
+
+   groupShift[sz] = groupShift[sz-1]+3
+
+# Set up collapse and size matrix
+  collapseAndSize = [last-1,collapseHeight,expandedHeight]
+
+# Save macro intro
+   cd("$appdir$\\Macros\\UCS-PP\\MacroWorking")
+   if(isfile("startCode.mac"))
+      escapechar("false")
+      txt = load("startCode.mac")
+      escapechar("true")
+   else
+      message("Error","Can't find 'startCode.mac' - aborting","error")
+      return(0)
+   endif
+
+# Replace text variables
+   txt = replacestr(txt,"PPNAME",baseName)
+   txt = replacestr(txt,"HEADING",comments)
+   txt = replacestr(txt,"TABS","$tabs$")
+   txt = replacestr(txt,"groupRange","$groupRange$")
+   txt = replacestr(txt,"groupShift","$groupShift$")
+   txt = replacestr(txt,"collapseAndSize","$collapseAndSize$")
+   txt = replacestr(txt,"ppName","\"$baseName$.p\"")
+   txt = replacestr(txt,"macroName","$rmext(guiName)$")
+   txt = replacestr(txt,"relationships","$relationships,10$")
+   txt = replacestr(txt,"phaseList","$phaseList$")
+   txt = replacestr(txt,"variables","$variables$")
+   txt = replacestr(txt,"lst","$lst$")
+
+# Save the result to a temporary directory
+   cd(tempdir)
+   mkdir("ucsPP")
+   cd("ucsPP")
+   save(guiName,txt)
+
+# Save the window into this macro
+   seteditwin(n)
+   savelayout(guiName)
+   closewindow(n)
+
+# Add on the pulse program execute procedure and other procedures
+   if(prosproc != null)
+     escapechar("false")
+     txt = load(guiName)
+     escapechar("true")
+     txt = txt + prosproc
+     txt = txt + otherproc
+     txt = replacestr(txt,"HELPFILE","$baseName$")
+     txt = replacestr(txt,"get_cdata","getData")
+     save(guiName,txt)
+   else
+     bak = getcwd()
+     message("Error","No execpp procedure found","error");
+     return(0)
+   endif
+
+# Move the macro to its final destination
+   movefile("$tempdir$\\ucsPP\\$guiName$", "$outputFolder$\\$guiName$")
+
+endproc()
+
+
+####################################################################
+# Generate V4 of the interface (i.e. designed for expert interface)
+####################################################################
+
+procedure(generateV4GUI,outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                     lst,tabs,interface,relationships,variables,dim,phaseList)
+
+# Start in the main experiment folder
+   cd(outputFolder)
+
+# Update the final processing macro with the new pulse program information
+
+   if(isfile(guiName)) # Currently it is V3 of macro
+      escapechar("false")
+      txt = load(guiName)
+      escapechar("true")
+
+      prosproc = scanstr(txt,"*endproc(n)\r\n%1")
+
+      inFile = "$guiName$"
+      outFile = "$guiName$.bak"
+      copyfile(inFile,outFile)
+      rmfile(inFile)
+
+    else # Currently it is V4 of macro
+      if(not(isdir(baseName)))
+         message("Error","can't find baseName folder - aborting!","error")
+         return(1)
+      endif
+      cd(baseName)
+
+      if(not(isfile(guiName)))
+         message("Error","can't find experiment macro '$guiName$' - aborting!","error")
+         return(1)
+      endif
+
+      escapechar("false")
+      txt = load(guiName)
+      escapechar("true")
+
+      prosproc = scanstr(txt,"*endproc(rel,var,pp_list,pp_name,phase_list)\r\n%1")
+   
+      inFile = "$guiName$"
+      outFile = "$guiName$.bak"
+      copyfile(inFile,outFile)
+ 
+   endif
+
+# Load standard macro startcode
+   cd("$appdir$\\Macros\\UCS-PP\\MacroWorking")
+   if(isfile("startCodeV4.mac"))
+      escapechar("false")
+      txt = load("startCodeV4.mac")
+      escapechar("true")
+   else
+      message("Error","Can't find 'startCodeV4.mac' - aborting","error")
+      return(1)
+   endif
+
+# Replace text variables in startcode
+   txt = replacestr(txt,"PPNAME",baseName)
+   txt = replacestr(txt,"HEADING",comments)
+   txt = replacestr(txt,"ppName","\"$baseName$.p\"")
+   txt = replacestr(txt,"relationships","$relationships,10$")
+   txt = replacestr(txt,"phaseList","$phaseList$")
+   txt = replacestr(txt,"variables","$variables$")
+   txt = replacestr(txt,"lst","$lst$")
+
+# Add on the processing procedures to startcode
+   txt = txt + prosproc
+
+# Save the result
+   cd("$outputFolder$\\$baseName$")
+   save(guiName,txt)
+
+endproc(0)
+
+
+####################################################################
+# Generate V5 of the interface (i.e. designed for expert interface)
+####################################################################
+
+procedure(generateV5GUI,outputFolder,baseName,guiName,asmName,ppMacro,comments,
+                     lst,tabs,interface,relationships,variables,dim,phaseList)
+
+# Start in the main experiment folder
+   cd(outputFolder)
+
+# Update the final processing macro with the new pulse program information
+
+   if(isfile(guiName)) # Currently it is V3 of macro
+      escapechar("false")
+      txt = load(guiName)
+      escapechar("true")
+
+      prosproc = scanstr(txt,"*endproc(n)\r\n%1")
+
+      inFile = "$guiName$"
+      outFile = "$guiName$.bak"
+      copyfile(inFile,outFile)
+      rmfile(inFile)
+      precode = ""
+
+    else # Currently it is V4 of macro
+      if(not(isdir(baseName)))
+         message("Error","Can't find baseName folder - aborting!","error")
+         return(1)
+      endif
+      cd(baseName)
+      if(not(isfile(guiName)))
+         message("Error","Can't find experiment macro '$guiName$' - aborting!","error")
+         return(1)
+      endif
+
+      escapechar("false")
+      txt = load(guiName)
+      escapechar("true")
+
+       # V5
+      prosproc = scanstr(txt,"*endproc(seqInfo)\r\n%1")
+      if(prosproc == null) # V3/4     
+         prosproc = scanstr(txt,"*endproc(rel,var,pp_list,pp_name,phase_list)\r\n%1")
+      endif
+
+      inFile = "$guiName$"
+      outFile = "$guiName$.bak"
+      copyfile(inFile,outFile)
+
+     # Check for precode (e.g. a pilot scan) in the backdoor macro (V5 only)
+      try
+         precode = scanstr(txt,"%1\r\n   seqInfo = :getseqpar()")
+         precode = scanstr(precode,"*procedure(backdoor, guipar)\r\n%1")
+         if(sum(strtoascii(precode)) == size(precode)*32) # Prevents excess spaces from appearing on this line
+            precode = ""
+         endif
+      catch
+         precode = ""
+      endtry
+
+   endif
+
+# Load standard macro startcode
+   cd("$appdir$\\Macros\\UCS-PP\\MacroWorking")
+   if(isfile("startCodeV5.mac"))
+      escapechar("false")
+      txt = load("startCodeV5.mac")
+      escapechar("true")
+   else
+      message("Error","Can't find 'startCodeV5.mac' - aborting","error")
+      return(1)
+   endif
+
+# Replace text variables in startcode
+   txt = replacestr(txt,"PRECODE",precode)
+   txt = replacestr(txt,"PPNAME",baseName)
+   txt = replacestr(txt,"HEADING",comments)
+   txt = replacestr(txt,"PARENTPATH",outputFolder)
+   txt = replacestr(txt,"ppName","\"$baseName$.p\"")
+   txt = replacestr(txt,"relationships","$relationships,10$")
+   txt = replacestr(txt,"phaseList","$phaseList$")
+   txt = replacestr(txt,"variables","$variables$")
+   txt = replacestr(txt,"lst","$lst$")
+
+# Add on the processing procedures to startcode
+   txt = txt + prosproc
+
+# Save the result
+   cd("$outputFolder$\\$baseName$")
+   save(guiName,txt)
+
+endproc(0)
+
+
+procedure(controlExtent,n,first,last)
+
+   xmin = 1e6
+   ymin = 1e6
+   xmax = -10
+   ymax = -10
+
+   for(k = round(first) to round(last))
+      x =  getpar(n,k,"x")
+      y =  getpar(n,k,"y")
+      w =  getpar(n,k,"width")
+      h =  getpar(n,k,"height")
+
+      if(x < xmin)
+         xmin = x
+      endif
+      if(y < ymin)
+         ymin = y
+      endif
+      if(x+w > xmax)
+         xmax = x+w
+      endif
+      if(y+h > ymax)
+         ymax = y+h
+      endif
+   next(k)
+
+endproc(xmin,xmax,ymin,ymax)
+
+
+##################################################
+#
+# pw .......... parent window number
+# cn .......... current object number
+# dim ......... x & y spacing between controls
+# interface ... GUI interface description
+#
+##################################################
+
+procedure(makepstab,outputFolder,guiTitle,cn,dim,interface)
+
+# Run the raw macro interface
+   cd(outputFolder)
+   macroDir = getmacropath() + "\\MacroWorking"
+   cd(macroDir)
+
+# Generate a gui interface based on the parameters in lst
+   oc = cn
+   x0 = 0
+   y0 = 0
+
+# Make groupbox for acquisition tab 
+   groupbox(oc, "Pulse sequence", 6, 6, 548, 115)
+   oc = oc + 1
+
+   epc = 6 # nr of entries per control
+   for(k = 0 to size(interface)/epc-1)
+      x = x0+dim[0]*eval(interface[k*epc+2])
+      y = y0+dim[1]*eval(interface[k*epc+3])
+      txt = interface[k*epc+1]
+      ctrlType = interface[k*epc+4]
+      varType = interface[k*epc+5]
+
+  # Add controls
+      if(ctrlType == "tb") # Text box + label
+         statictext(oc,x,y+4,"right",txt)
+         textbox(oc+1,x+6,y,40)
+      elseif(ctrlType == "tbv") # Text box + label (vertical)
+         statictext(oc,x,y-5,"centre",txt)
+         textbox(oc+1,x-20,y+10,40)
+      elseif(ctrlType == "tbw") # Wide text box + label
+         statictext(oc,x,y+4,"right",txt)
+         textbox(oc+1,x+6,y,46)
+      elseif(ctrlType == "tbwv") # Wide text box + label (vertical)
+         statictext(oc,x,y-5,"centre",txt)
+         textbox(oc+1,x-23,y+10,46)
+
+      elseif(ctrlType == "tm") # Text menu + label
+         statictext(oc,x,y+4,"right",txt)
+         textmenu(oc+1,x+6,y,40,100)
+      elseif(ctrlType == "tmv") # Text menu + label (vertical)
+         statictext(oc,x,y-5,"centre",txt)
+         textmenu(oc+1,x-20,y+10,40,100)
+
+      elseif(ctrlType == "cb") # Check box + label
+         statictext(oc,x,y+4,"right",txt)
+         checkbox(oc+1,x+6,y+4,"no,yes","no")
+      elseif(ctrlType == "cbv") # Check box + label (vertical)
+         statictext(oc,x,y-10,"centre",txt)
+         checkbox(oc+1,x-10,y+8,"no,yes","no")
+
+      elseif(ctrlType == "rbv") # Radio button + labels (vertical)
+         statictext(oc,x,y-10,"centre",txt)
+         radiobuttons(oc+1,x-10,y+10,20,"vert","no,yes","no")
+         rblst = parse(varType,",")
+         nrRbArgs = size(rblst)
+         if(nrRbArgs%2==0)
+            message("Error","Invalid number of arguments to radiobutton.\r\"spacing,op1,op2 ..., lbl1,lbl2...\"","error")
+            return(null)
+         endif
+         for(m = 0 to (nrRbArgs-1)/2-1)
+            statictext(oc+2+m,x-15,y+9,"right","$m+1$")
+         next(k)
+      elseif(ctrlType == "rb") # Radio button + labels (horizontal)
+         rblst = parse(varType,",")
+         nrRbArgs = size(rblst)
+         if(nrRbArgs%2==0)
+            message("Error","Invalid number of arguments to radiobutton.\r\"spacing,op1,op2 ..., lbl1,lbl2...\"","error")
+            return(null)
+         endif
+         for(m = 0 to (nrRbArgs-1)/2-1)
+            statictext(oc+2+m,x-15,y+14,"right","$m+1$")
+         next(k)
+         nrButtons = (nrRbArgs-1)/2
+         spacing = eval(rblst[0])
+         radiobuttons(oc+1,x-10,y+15,40,"horiz","no,yes","no")
+         statictext(oc,x,y-10,"centre",txt) # Title
+      elseif(ctrlType == "bt") # Button 
+         button(oc+1,x,y,20,16,txt)
+         statictext(oc,x,y,"centre","")
+      else
+         message("Error","Invalid control '$ctrlType$'.","error")
+         return(null)
+      endif
+
+      setpar(0,oc+1,"name",interface[k*epc])
+
+  # Add data type and range checks
+      if(ctrlType == "tb" | ctrlType == "tbv" | ctrlType == "tbw" | ctrlType == "tbwv") # Text box
+         if(varType == "freq")
+            setpar(0,oc+1,"type","double")
+            setpar(0,oc+1,"range",[1,400])
+            setpar(0,oc+1,"tag","freqRange")
+         elseif(varType == "reptime")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[1,1e+008])
+         elseif(varType == "sdelay")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[2,327670])
+         elseif(varType == "ldelay")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[2,167e6])
+         elseif(varType == "ldelayms")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[2e-3,167e3])
+         elseif(varType == "pulselength")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[0.5,1000])
+         elseif(varType == "pulseamp")
+            setpar(0,oc+1,"type","float")
+            setpar(0,oc+1,"range",[-85,0])
+         elseif(varType == "integer")
+            setpar(0,oc+1,"type","integer")
+            setpar(0,oc+1,"range",[1,1000])
+         elseif(varType == "float")
+            setpar(0,oc+1,"type","float")
+         elseif(varType == "array")
+            setpar(0,oc+1,"type","array")
+         elseif(varType == "string")
+            setpar(0,oc+1,"type","string")
+         elseif(varType == "readonly_string")
+            setpar(0,oc+1,"type","string")
+            setpar(0,oc+1,"readonly","true")
+         elseif(varType == "other" | varType == "")
+         else # General case e.g "float,[-2.5,2.5]"
+            try
+               (type,range) = scanstr(varType,"%1,%2")
+               setpar(0,oc+1,"type",type)
+               if(type == "string") # Second arg sets tb width
+                  setpar(0,oc+1,"width",eval(range))
+                  setpar(0,oc+1,"type","string")
+               else # Second arg sets range
+                  setpar(0,oc+1,"range",eval(range))
+               endif
+            catch
+               message("Error","Invalid variable parameter '$varType$'","error")
+               return(null)
+            endtry
+         endif
+      elseif(ctrlType == "tm" | ctrlType == "tmv") # Text menu
+         try
+            (op1,op2) = scanstr(varType,"%1,%2")
+            setpar(0,oc+1,"menu",eval(op2))
+            setpar(0,oc+1,"width",eval(op1))
+         catch
+            setpar(0,oc+1,"menu",eval(varType))
+         endtry
+      elseif(ctrlType[0] == "c") # Check box
+         try
+            (op1,op2) = scanstr(varType,"%1,%2")
+            setpar(0,oc+1,"options",varType)
+            setpar(0,oc+1,"init",op1)
+         catch
+            message("Error","Invalid variable parameters '$varType$'","error")
+            return(null)
+         endtry
+      elseif(ctrlType == "rbv") # Radiobuttons
+         try
+            spacing = rblst[0]
+            sz = (nrRbArgs-1)/2
+            opLst = list(sz)
+            spacing = eval(rblst[0])
+            y = getpar(0,oc+2,"y_exp")
+            for(k = 1 to sz)
+              opLst[k-1] = rblst[k]
+              setpar(0,oc+1+k,"text",rblst[k+sz])
+              setpar(0,oc+1+k,"y_exp",eval(y)+spacing*(k-1))
+            next(k)
+            setpar(0,oc+1,"options",opLst)
+            setpar(0,oc+1,"spacing", spacing)
+         catch
+            message("Error","Invalid variable parameters '$varType$'","error")
+            return(null)
+         endtry
+         oc = oc+sz
+      elseif(ctrlType == "rb") # Radiobuttons
+         try
+            spacing = rblst[0]
+            sz = (nrRbArgs-1)/2
+            opLst = list(sz)
+            spacing = eval(rblst[0])
+            x = getpar(0,oc+2,"x_exp")
+            for(k = 1 to sz)
+              opLst[k-1] = rblst[k]
+              setpar(0,oc+1+k,"text",rblst[k+sz])
+              setpar(0,oc+1+k,"x_exp",eval(x)+spacing*(k-1))
+            next(k)
+            setpar(0,oc+1,"options",opLst)
+            setpar(0,oc+1,"spacing", spacing)
+         catch
+            message("Error","Invalid variable parameters '$varType$'","error")
+            return(null)
+         endtry
+         oc = oc+sz
+      elseif(ctrlType == "bt") # Button
+         try
+            (op1,op2,op3) = scanstr(varType,"%1,%2,%3")
+            setpar(0,oc+1,"width",eval(op1))
+            setpar(0,oc+1,"height",eval(op2))
+            setpar(0,oc+1,"procedure",op3)
+         catch
+            message("Error","Invalid variable parameters '$varType$'","error")
+            return(null)
+         endtry
+      endif
+      oc = oc + 2
+   next(k)
+   setwindowpar(0,"title",guiTitle)
+
+endproc(oc)
+
+
+#########################################################
+# Generates a pulse program (.p file) and associated
+# assembly files (.asm).
+#########################################################
+
+procedure(generatePP,outputFolder,baseName,lockMode,ppMacro,type)
+
+   bak = getcwd()
+
+# Work out file names based on HPA type
+   ppName  = baseName + ".p"
+   asmName = baseName + ".asm"
+
+# outDir is were the final files are going (where _pp macro is)
+# tempDir is a working location where we have write permission
+# asmDir is where the asm files and executables are stored
+   outDir = getcwd()
+   cd(tempdir)
+   mkdir("SpinsolvePP")
+   ucsTemp = tempdir + "\\SpinsolvePP"
+   asmDir = "$appdir$\\Macros\\UCS-PP\\ASMWorking"
+
+# Copy template files to temp dir
+   if(lockMode == "yes")
+      copyfile("$asmDir$\\startCodeLock.asm","$ucsTemp$\\startCodeLock.asm")
+      copyfile("$asmDir$\\endCodeLock.asm","$ucsTemp$\\endCodeLock.asm")
+   else
+      copyfile("$asmDir$\\startCode.asm","$ucsTemp$\\startCode.asm")
+      copyfile("$asmDir$\\endCode.asm","$ucsTemp$\\endCode.asm")
+   endif
+
+# Generate the asm file in the temp dir
+   usequotedstrings("false")
+   allowvariables()
+   cd(outDir)
+   try
+      (lst,tabs,interface,relationships,variables,dim,phaseList) = ppMacro(ucsTemp,type)
+   catch
+      usequotedstrings("true")
+      allowvariables("global","window")
+      err = lasterror()
+      pr ("\n   Error: $err->description$")
+      pr ("\n   Error occurred in statement '$err->line$'")
+      pr ("\n   on line $err->linenr+1$ of macro '$err->macro$'\n")
+      return(null)
+   endtry
+   usequotedstrings("true")
+   allowvariables("global","window")
+
+# Replace key words in the temp.asm file
+   cd(ucsTemp)
+   escapechar("false")
+   txt = load("temp.asm")
+   escapechar("true")
+
+  specialMode = getlistvalue(relationships,"specialMode")
+
+   if(lockMode == "yes")
+      if(specialMode == "wobbleLock")
+         txt = replacestr(txt,"RF_LOCATION1","move    #$$1200,a1")
+      else
+         txt = replacestr(txt,"RF_LOCATION1","move    #$$0400,a1")
+      endif
+   else
+      if(specialMode == "wobbleH")
+         txt = replacestr(txt,"RF_LOCATION1","move    #$$9000,a1")
+      elseif(specialMode == "wobbleC")
+         txt = replacestr(txt,"RF_LOCATION1","move    #$$1400,a1")
+      else
+         txt = replacestr(txt,"RF_LOCATION1","move    #$$8000,a1")
+      endif
+   endif
+
+   if(specialMode == "wobbleH")
+      txt = replacestr(txt,"WOBBLE1","move    #$$001000,a1")
+      txt = replacestr(txt,"WOBBLE2","move    #$$001040,a1")
+      txt = replacestr(txt,"WOBBLE3","move    #$$001040,a1")
+      txt = replacestr(txt,"WOBBLE4","move    #$$001000,a1")
+   elseif(specialMode == "wobbleC")
+      txt = replacestr(txt,"WOBBLE1","move    #$$000400,a1")
+      txt = replacestr(txt,"WOBBLE2","move    #$$000440,a1")
+      txt = replacestr(txt,"WOBBLE3","move    #$$000440,a1")
+      txt = replacestr(txt,"WOBBLE4","move    #$$000400,a1")
+   elseif(specialMode == "wobbleLock")
+      txt = replacestr(txt,"WOBBLE1","move    #$$000200,a1")
+      txt = replacestr(txt,"WOBBLE2","move    #$$000240,a1")
+      txt = replacestr(txt,"WOBBLE3","move    #$$000240,a1")
+      txt = replacestr(txt,"WOBBLE4","move    #$$000200,a1")
+   else
+      txt = replacestr(txt,"WOBBLE1","move    #$$000000,a1")
+      txt = replacestr(txt,"WOBBLE2","move    #$$000040,a1")
+      txt = replacestr(txt,"WOBBLE3","move    #$$000040,a1")
+      txt = replacestr(txt,"WOBBLE4","move    #$$000000,a1")
+   endif
+
+# Allow for a trigger to start an experiment - need to add
+# the line "triggerMode = \"onHigh\"" to the relationships table
+# other options are shown below
+
+   triggerMode = getlistvalue(relationships,"triggerMode")
+
+   if(triggerMode == "onHighToLow")
+      triggerCode = "\n;Trigger code (trigger on falling edge)\n"
+      triggerCode = triggerCode + "        clr     a\n"
+      triggerCode = triggerCode + "        move    x:UseTrigger,a1\n"
+      triggerCode = triggerCode + "        tst     a\n"
+      triggerCode = triggerCode + "        jclr    #0,a,TRGLBL\n"
+      triggerCode = triggerCode + "        jset    #12,x:A_HDR,*\n"
+      triggerCode = triggerCode + "        jclr    #12,x:A_HDR,*\n"
+      triggerCode = triggerCode + "TRGLBL  nop\n"
+      txt = replacestr(txt,"TRIGGERCODE",triggerCode)
+   elseif(triggerMode == "onLowToHigh")
+      triggerCode = "\n;Trigger code (trigger on rising edge)\n"
+      triggerCode = triggerCode + "        clr     a\n"
+      triggerCode = triggerCode + "        move    x:UseTrigger,a1\n"
+      triggerCode = triggerCode + "        tst     a\n"
+      triggerCode = triggerCode + "        jclr    #0,a,TRGLBL\n"
+      triggerCode = triggerCode + "        jclr    #12,x:A_HDR,*\n"     
+      triggerCode = triggerCode + "        jset    #12,x:A_HDR,*\n"
+      triggerCode = triggerCode + "TRGLBL  nop\n"
+      txt = replacestr(txt,"TRIGGERCODE",triggerCode)
+   elseif(triggerMode == "onHigh")
+      triggerCode = "\n;Trigger code (trigger on high)\n"
+      triggerCode = triggerCode + "        clr     a\n"
+      triggerCode = triggerCode + "        move    x:UseTrigger,a1\n"
+      triggerCode = triggerCode + "        tst     a\n"
+      triggerCode = triggerCode + "        jclr    #0,a,TRGLBL\n"
+      triggerCode = triggerCode + "        jset    #12,x:A_HDR,*\n"
+      triggerCode = triggerCode + "TRGLBL  nop\n"
+      txt = replacestr(txt,"TRIGGERCODE",triggerCode)
+   elseif(triggerMode == "onLow")
+      triggerCode = "\n;Trigger code (trigger on low)\n"
+      triggerCode = triggerCode + "        clr     a\n"
+      triggerCode = triggerCode + "        move    x:UseTrigger,a1\n"
+      triggerCode = triggerCode + "        tst     a\n"
+      triggerCode = triggerCode + "        jclr    #0,a,TRGLBL\n"
+      triggerCode = triggerCode + "        jclr    #12,x:A_HDR,*\n"
+      triggerCode = triggerCode + "TRGLBL  nop\n"
+      txt = replacestr(txt,"TRIGGERCODE",triggerCode)
+   else
+      txt = replacestr(txt,"TRIGGERCODE"," ")
+   endif
+
+
+   escapechar("false")
+   save("temp.asm",txt)
+   escapechar("true")
+
+# Compile temp.asm to give temp.lst and temp.p
+   cd(asmDir)
+
+   arg = "\"$ucsTemp$\\temp.lst\" \"$ucsTemp$\\temp.cld\" \"$ucsTemp$\\temp.asm\""
+   execwait("compileA.bat",arg)
+   arg = "$ucsTemp$\\temp.cld"
+   execwait("compileB.bat",arg)
+
+# Check for compile failure
+   if(isfile(arg) == 0)
+      if(query("error","Compilation failed - do you wish to view the LST file") == "yes")
+         escapechar("false")
+         load("$ucsTemp$\\temp.lst","useextension","display")
+         escapechar("true")
+      endif
+      abort("")
+   endif
+
+# Move pulse program .ASM file to macro folder
+   cd("$appdir$\\Macros\\UCS-PP")
+   inFile = "$ucsTemp$\\temp.asm"
+   outFile = "$outputFolder$\\$baseName$\\$asmName$"
+   movefile(inFile,outFile)
+
+# Move pulse program .P to macro folder
+   inFile = "$ucsTemp$\\temp.p"
+   outFile = "$outputFolder$\\$baseName$\\$ppName$"
+   movefile(inFile,outFile)
+   cd(outDir)
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+
+##################################################
+# Use an existing pulse program as a template
+# Basically copy it and change basename and if
+# necessary the pathname
+##################################################
+
+procedure(copyPulseProgram, parameters)
+
+   templateName = parameters->templateName
+   templatePath = parameters->templatePath
+   newName = parameters->newName
+   newFolder = parameters->newFolder
+
+# Define names for src and dst files
+   exptMacroSrc = "$templateName$.mac"
+   ppMacroSrc   = "$templateName$_pp.mac"
+   parFileSrc   = "$templateName$Default.par"
+   itfcFileSrc  = "$templateName$_interface.mac"
+
+   exptMacroDst = "$newName$.mac"
+   ppMacroDst   = "$newName$_pp.mac"
+   parFileDst   = "$newName$Default.par"
+   itfcFileDst  = "$newName$_interface.mac"
+
+# Check for template files
+   cd(templatePath)
+   if(isfile(ppMacroSrc) == 0)
+      message("Error","No pulse program macro in template folder","error")
+      return
+   endif
+   if(isfile(parFileSrc) == 0)
+      message("Error","No parameter file in template folder","error")
+      return
+   endif
+   if(isfile(exptMacroSrc) == 0 & isfile("..\\$exptMacroSrc$") == 0)
+      message("Error","No experiment macro in template folder","error")
+      return
+   endif
+
+# Read the template files
+   cd(templatePath)
+   escapechar("false")
+   ppText = load(ppMacroSrc)
+   parText = load(parFileSrc)
+   itfcText = load(itfcFileSrc)
+   exptVersion = 4
+   try
+      exptTxt = load(exptMacroSrc)
+   catch
+      cd("..")
+      exptTxt = load(exptMacroSrc)
+      exptVersion = 3
+   endtry
+
+# Update the names in the files
+   exptTxt = replacestr(exptTxt,"# $templateName$","# $newName$")
+   exptTxt = replacestr(exptTxt,"pp_name = \"$templateName$.p\"","pp_name = \"$newName$.p\"")
+   exptTxt = replacestr(exptTxt,"procedure($templateName$, guipar)","procedure($newName$, guipar)") # V3
+   exptTxt = replacestr(exptTxt,"n,\"$templateName$\"","n,\"$newName$\"") # V3
+   parText = setlistvalue(parText,"expName","\"$newName$\"")
+
+# Save copies in new location and with new names
+   mkdir(newFolder)
+   cd(newFolder)
+   mkdir(newName)
+   if(exptVersion == 3)
+      save(exptMacroDst,exptTxt)
+      cd(newName)
+   else
+      cd(newName)
+      save(exptMacroDst,exptTxt)
+   endif
+   save(ppMacroDst,ppText)
+   save(parFileDst,parText)
+   save(itfcFileDst,itfcText)
+   escapechar("true")
+
+endproc()
+
+##################################################
+# Rename the current pulse program by modifying
+# the basename as it appears in various files.
+# Converts both version 3 and version 4 files.
+##################################################
+
+procedure(renamePulseProgram)
+
+# Initial paths and pulse program names
+   outputFolder = outputFolderCtrl->text
+   baseName = baseNameCtrl->text
+   path = "$outputFolder$\\$baseName$" 
+
+# Check for their existance
+   if(isdir(outputFolder) == 0)
+      message("Error","Can't find output directory","error")
+      return
+   endif
+   cd(outputFolder)
+   if(isdir(baseName) == 0)
+      message("Error","Can't find pulse program directory $baseName$","error")
+      return
+   endif
+
+# Get the new pulse program name
+   newName = GetText("Select new name for pulse program","$baseName$",20)
+
+   if(newName == baseName)
+      message("Error","Name has not changed","error")
+      return
+   endif
+   if(newName == "cancel")
+      return
+   endif
+
+# Check for unique name
+   if(isdir("$outputFolder$\\$newName$"))
+      message("Error","New pulse program name '$newName$' already exists","error")
+      return
+   endif
+
+# Change the pulse program folder name
+   result = movefile("$baseName$","$newName$")
+   if(result == "error") 
+      message("Error","Can't rename pulse program.\rIs a file open in this folder?","error")
+      return
+   endif
+
+# Move into this folder and change file names and contents where necessary
+   path = "$outputFolder$\\$newName$" 
+   cd(path)
+
+   if(isfile("$baseName$_pp.mac"))
+      movefile("$baseName$_pp.mac","$newName$_pp.mac")
+   endif
+   if(isfile("$baseName$_int.asm"))
+      movefile("$baseName$_int.asm","$newName$_int.asm")
+   endif   
+   if(isfile("$baseName$_ext.asm"))
+      movefile("$baseName$_ext.asm","$newName$_ext.asm")
+   endif 
+   if(isfile("$baseName$.asm"))
+      movefile("$baseName$.asm","$newName$.asm")
+   endif 
+   if(isfile("$baseName$_int.p"))
+      movefile("$baseName$_int.p","$newName$_int.p")
+   endif 
+   if(isfile("$baseName$_ext.p"))
+      movefile("$baseName$_ext.p","$newName$_ext.p")
+   endif 
+   if(isfile("$baseName$.p"))
+      movefile("$baseName$.p","$newName$.p")
+   endif 
+   if(isfile("$baseName$_interface.mac"))
+      movefile("$baseName$_interface.mac","$newName$_interface.mac")
+   endif
+   if(isfile("$baseName$Default.par"))
+      escapechar("false")
+      par = load("$baseName$Default.par")
+      par = setlistvalue(par,"expName","\"$newName$\"")
+      save("$newName$Default.par",par)
+      escapechar("true")
+      rmfile("$baseName$Default.par")        
+   endif 
+
+   if(isfile("$baseName$.mac") == 0)
+      cd("..")
+   endif
+   if(isfile("$baseName$.mac"))
+      escapechar("false")
+      txt = load("$baseName$.mac")
+      txt = replacestr(txt,"# $baseName$","# $newName$")
+      txt = replacestr(txt,"pp_name = \"$baseName$.p\"","pp_name = \"$newName$.p\"")
+      txt = replacestr(txt,"procedure($baseName$, guipar)","procedure($newName$, guipar)") # V3 only
+      txt = replacestr(txt,"n,\"$baseName$\"","n,\"$newName$\"") # V3 only
+      save("$newName$.mac",txt)
+      escapechar("true")
+      rmfile("$baseName$.mac")
+   endif
+
+# Reload the pulse program showing the new name
+   baseNameCtrl->text(newName)
+   :loadFiles()       
+
+endproc()
+

@@ -1,0 +1,49 @@
+procedure(timer_test2,verbose,delay)
+
+   n = :windowdefinition()
+    setwindowpar(n,"exit_procedure",":exit_procedure($id$);")
+    showwindow(n)
+
+endproc(n)
+
+procedure(windowdefinition)
+
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Stop watch", -1, -1, 165, 90)
+       windowvar(id)
+      # Define all controls with basic parameters
+       statictext(1, 50, 45, "left", "time = 0.0")
+       getmessage(2,:callback();)
+       button(3, 10, 10, 60, 24, "Start",
+              time(0);
+              id = starttimer(0.5);)
+       button(4, 90, 10, 60, 24, "Stop",
+              stoptimer(id);)
+
+endproc(n)
+
+
+procedure(callback)
+
+   t = time()
+   (name,ids) = getpar(0,2,"text")
+   if(name == "Timer")
+      if(eval(ids) == id)
+         setpar(0,1,"text","time = $t,2.1f$")
+         if(t == 100)
+            stoptimer(id)
+            closewindow(0)
+         endif
+      endif
+   endif
+
+endproc()
+
+procedure(exit_procedure,id)
+
+   stoptimer(id)
+
+endproc()
+

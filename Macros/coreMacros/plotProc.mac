@@ -1,0 +1,173 @@
+#######################################
+# Get or Set all Plot parameter
+# Note: all parameters must have
+# unique names since the structures
+# are combined.
+#######################################
+
+procedure(getAllPar, plt, trNr)
+
+   if(nrArgs == 0)
+      plt = curplot()
+      trNr = -1
+   elseif(nrArgs == 1)
+      trNr = -1
+   endif
+   par = :getLabels(plt)
+   if(trNr == -2)
+      par = par + :getTracePar(plt,trNr)
+   endif
+   par = par + :getZoom(plt)
+   par = par + :getGrid(plt)
+
+endproc(par)
+
+procedure(setAllPar,par,plt,trcNr)
+
+   if(nrArgs == 1)
+      plt = curplot()
+      trcNr = -2
+   else if(nrArgs == 2)
+      trcNr = -2
+   endif
+
+   :setLabels(par,plt)
+   if(trcNr >= -1)
+      :setTracePar(par,plt)
+   endif
+   :setZoom(par,plt)
+   :setGrid(par,plt)
+
+endproc(par)
+
+#######################################
+# Get or Set Plot labels
+#######################################
+
+procedure(getLabels,pt)
+
+   if(nrArgs == 0)
+      pt = curplot()
+   endif
+   p = struct()
+   p->tl = pt->title->text
+   p->xlab = pt->xlabel->text
+   p->ylab = pt->ylabel->text
+
+endproc(p)
+
+procedure(setLabels,p,pt)
+
+   if(nrArgs == 1)
+      pt = curplot()
+   endif
+   pt->title->text(p->tl)
+   pt->xlabel->text(p->xlab)
+   pt->ylabel->text(p->ylab)
+
+endproc()
+
+#######################################
+# Get or Set Plot grid
+#######################################
+
+procedure(getGrid,pt)
+
+   if(nrArgs == 0)
+      pt = curplot()
+   endif
+   p = struct()
+   p->xgridStatus = pt->grid->xgrid()
+   p->fxgridStatus = pt->grid->finexgrid()
+   p->ygridStatus = pt->grid->ygrid()
+   p->fygridStatus = pt->grid->fineygrid()
+
+endproc(p)
+
+procedure(setGrid,p,pt)
+
+   if(nrArgs == 1)
+      pt = curplot()
+   endif
+
+   pt->grid->xgrid(p->xgridStatus)
+   pt->grid->finexgrid(p->fxgridStatus)
+   pt->grid->ygrid(p->ygridStatus)
+   pt->grid->fineygrid(p->fygridStatus)
+
+endproc()
+
+#######################################
+# Get or Set Plot zoom
+#######################################
+
+procedure(getZoom,pt)
+
+   if(nrArgs == 0)
+      pt = curplot()
+   endif
+   p = struct()
+   (x1,x2,y1,y2) = pt->zoom()
+   p->x1 = x1
+   p->x2 = x2
+   p->y1 = y1
+   p->y2 = y2
+
+endproc(p)
+
+procedure(setZoom,p,pt)
+
+   if(nrArgs == 1)
+      pt = curplot()
+   endif
+   pt->zoom(p->x1,p->x2,p->y1,p->y2)
+
+endproc()
+
+#######################################
+# Get or Set current trace parameters
+#######################################
+
+procedure(getTracePar, plt, trcNr)
+
+   if(nrArgs == 0)
+      tc = curtrace()
+   elseif(nrArgs == 1)     
+      tc = plt->curtrace()
+   else
+      if(trcNr < 0)
+         tc = plt->curtrace()
+      else
+         tc = plt->trace(trcNr)
+      endif
+   endif
+   p = struct()
+   p->rc = tc->realcolor()
+   p->ic = tc->imagcolor()
+   p->rs = tc->realstyle()
+   p->is = tc->imagstyle()
+   p->sc = tc->symbolcolor()
+   p->ss = tc->symbolshape()
+   p->tt = tc->tracetype()
+   p->tw = tc->tracewidth()
+
+endproc(p)
+
+procedure(setTracePar,p,plt)
+
+   if(nrArgs == 1)
+      tc = curtrace()
+   else
+      tc = plt->curtrace()
+   endif
+
+   tc->realcolor(p->rc)
+   tc->imagcolor(p->ic)
+   tc->realstyle(p->rs)
+   tc->imagstyle(p->is)
+   tc->symbolcolor(p->sc)
+   tc->symbolshape(p->ss)
+   tc->tracetype(p->tt)
+   tc->tracewidth(p->tw)
+
+endproc()

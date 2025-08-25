@@ -1,0 +1,75 @@
+# Steps through all folders in the Prospa Tests folder
+# with names which match the command names and running
+# macros that it finds there.
+
+procedure(tests)
+
+
+   cd(getmacropath())
+   rmallvar("global")
+
+   verbose = 1
+   d = .1
+   missed = 0
+   comp = 0
+
+   #printtofile("log.txt")
+
+   # Store all prospa commands to a list
+   cmds = listcom()
+
+   tt = getwindowpar(1,"title")
+
+   # Step through each folder in the following directory
+#pr getcwd()
+   nCmds = size(cmds)
+   pr "\n\n##### Tests started #####\n\n"
+   try
+      for(n = 0 to nCmds-1)
+        folder = "$cmds[n]$"
+        if(isdir(folder) != 0)
+            setwindowpar(1,"title","Testing $folder$")
+            cd(folder)
+            tests = getfilelist(".")
+            nTests = size(tests)
+            if(nTests > 0)
+               pr("  '$folder$' tests started\n")
+               for(m = 0 to nTests-1) 
+      
+                  if(getext(tests[m]) == "mac") 
+                     macro = tests[m]
+                     (r,s) = macro(verbose,d)
+                     if(r == 0)
+                       pr(s)
+                     endif
+                  endif
+               next(m)
+              pr("  '$folder$' tests completed\n\n")
+              comp = comp + 1
+            else
+              pr("  No tests for '$folder$'!!!!\n\n")
+              missed = missed + 1
+            endif
+            cd("..")
+         else
+            pr("  No tests for '$folder$'!!!!\n\n")
+         endif
+         
+      next(n)
+
+      pr ("$comp$ tests completed\n")
+      pr ("$missed$ tests missing\n")
+
+  catch
+     pr "Found error in $folder$"
+  endtry
+
+  setwindowpar(1,"title",tt)
+
+
+endproc()
+
+     
+
+
+

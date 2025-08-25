@@ -1,0 +1,60 @@
+procedure(laplace)
+
+   n = window("Laplace", -1, -1, 573, 157)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+
+procedure(definecontrols,n)
+
+      # Define all controls with basic parameters
+       statictext(1, 133, 30, "right", "Filter time domain")
+       checkbox(2, 141, 31, "no,yes", "no",
+            fn = findobj(0,"name","filter");
+            ucsCtrl:enableControls(fn+1,fn+3,fn);)
+       statictext(3, 50, 61, "right", "Filter")
+       textmenu(4, 57, 57, 98, 200)
+       button(5, 164, 57, 22, 22, "...",
+          filters();)
+       statictext(6, 133, 93, "right", "Time magnitude")
+       checkbox(7, 141, 94, "no,yes", "no")
+       statictext(8, 311, 62, "right", "Inverse Laplace Fit")
+       checkbox(9, 318, 62, "no,yes", "no",
+            fn = findobj(0,"name","ILFit");
+            ucsCtrl:enableControls(fn+1,fn+8,fn);)
+       statictext(10, 410, 29, "center", "Relaxation range (ms)")
+       statictext(11, 398, 55, "right", "Minimum")
+       textbox(12, 405, 50, 43)
+       statictext(13, 398, 80, "right", "Maximum")
+       textbox(14, 405, 77, 43)
+       statictext(15, 539, 39, "right", "Smoothing")
+       statictext(16, 538, 53, "right", "parameter")
+       textbox(17, 493, 72, 44)
+
+     # Set other control parameters
+       setpar(n,2,"name","filter")
+       setpar(n,4,"name","filterType")
+       setpar(n,7,"name","timeMag")
+       setpar(n,9,"name","ILFit")
+       setpar(n,12,"name","x_minimum")
+       setpar(n,14,"name","x_maximum")
+       setpar(n,17,"name","alpha")
+
+
+endproc(17, "processing+display")
+
+##########################################################
+# Procedure to update state GUI based on certain variables
+# this will appear as part of the tab button procedure
+##########################################################
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","filter");
+   ucsCtrl:enableControls(fn+1,fn+3,fn);
+   fn = findobj(0,"name","ILFit");
+   ucsCtrl:enableControls(fn+1,fn+8,fn);
+
+endproc()

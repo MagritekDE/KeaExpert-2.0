@@ -1,0 +1,34 @@
+lw = 1
+T2 = 1/(pi*lw)
+N = 2048
+tacq = 8
+l = [0,0.8,0.6,0.4,0.2]
+p  = curplot("1d")
+p->axes->minaxisvalue(-50)
+p->axes->maxaxisvalue(200)
+p->axes->type("box_y_independent")
+
+for(m = 1 to 4)
+   f1 = -2
+   f2 = 2
+   T2 = 1/(pi*(5-m)*lw)
+   (x,y1) = complex(N,tacq,f1,T2)
+   (x,y2) = complex(N,tacq,f2,T2)
+   fmax = N/(2*tacq)
+   f = linspace(-fmax,fmax,N)
+   n = p->plot(f,real(ft((5-m)*(y1+y2))))
+   p->zoom(-10,10)
+   tc = p->trace(n)
+  # tc->xoffset(m*100)
+   tc->yoffset(l[m])
+   tc->whitewash(1)
+   if(m == 1)
+       hold("on")
+   endif
+next(m)
+
+p->xlabel("Frequency (ppm)")
+p->title("Peak dispersion with linewidth = 1 Hz")
+p->axes()->xdirection("reversed")
+hold("off")
+

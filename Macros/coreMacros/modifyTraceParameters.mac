@@ -1,0 +1,615 @@
+procedure(ModifyTraceParameters)
+
+  :makeLocalPlotCurrent()
+
+# See if this window is already loaded
+   n = findwin("name","ModifyTraceParameters")
+
+   if(n > 0)
+      sendmessage("ModifyTraceParameters","")
+      showwindow(n)
+      return
+   endif
+
+   n = :windowdefinition()
+   :initIcons()
+   :initParameters()
+
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Trace parameters (win:3,1 region:1,1 trace:0) ", -1, -1, 432, 366)
+
+      # Define all controls with basic parameters
+       groupbox(1, "Trace properties", 10, 58, 407, 97)
+       button(2, 132, 91, 36, 36, "",
+          :setLineStyle("dots");)
+       button(3, 94, 91, 36, 36, " ",
+          :setLineStyle("stairs");)
+       button(4, 56, 91, 36, 36, " ",
+          :setLineStyle("lines");)
+       button(5, 170, 91, 36, 36, " ",
+          :setLineStyle("none");)
+       statictext(6, 51, 100, "right", "Style:")
+       updown(7, 229, 94, 16, 32, "vertical",
+            :setLineWidth(getobj(0,7),getobj(0,9));)
+       statictext(8, 246, 70, "right", "Width:")
+       statictext(9, 255, 70, "center", "1.0")
+       textmenu(10, 292, 117, 83, 200,
+          :setImagStyle();)
+       textmenu(11, 292, 89, 83, 200,
+          :setRealStyle();)
+       colorbox(12, 385, 90, 18, 18, [255,128,0],
+          :setRealColor(getobj(0,12));)
+       colorbox(13, 385, 117, 18, 18, [255,194,166],
+          :setImagColor(getobj(0,13));)
+       statictext(14, 273, 92, "center", "Real")
+       statictext(15, 285, 119, "right", "Imag")
+       statictext(16, 405, 70, "right", "Color")
+       statictext(17, 344, 70, "right", "Dash")
+       groupbox(18, "Symbol properties", 10, 158, 314, 107)
+       button(19, 57, 178, 23, 23, " ",
+          :setSymbolType("diamond");)
+       button(20, 88, 178, 23, 23, " ",
+          :setSymbolType("triangle");)
+       button(21, 119, 178, 23, 23, " ",
+          :setSymbolType("invtriangle");)
+       button(22, 150, 178, 23, 23, " ",
+          :setSymbolType("square");)
+       button(23, 181, 178, 23, 23, " ",
+          :setSymbolType("circle");)
+       button(24, 57, 203, 23, 23, " ",
+          :setSymbolType("opendiamond");)
+       button(25, 88, 203, 23, 23, " ",
+          :setSymbolType("opentriangle");)
+       button(26, 119, 203, 23, 23, " ",
+          :setSymbolType("openinvtriangle");)
+       button(27, 150, 203, 23, 23, " ",
+          :setSymbolType("opensquare");)
+       button(28, 181, 203, 23, 23, " ",
+          :setSymbolType("opencircle");)
+       button(29, 57, 228, 23, 23, " ",
+          :setSymbolType("plus");)
+       button(30, 88, 228, 23, 23, " ",
+          :setSymbolType("cross");)
+       button(31, 119, 228, 23, 23, " ",
+          :setSymbolType("none");)
+       statictext(32, 262, 231, "center", "3")
+       updown(33, 275, 221, 16, 32, "vertical",
+            :setSymbolSize(getobj(0,33),getobj(0,32));)
+       statictext(34, 252, 231, "right", "Size:")
+       groupbox(35, "Error bar properties", 10, 268, 314, 87)
+       statictext(36, 57, 318, "right", "Colour:")
+       colorbox(37, 66, 317, 18, 18, [255,0,0],
+          :setErrorBarColor();)
+       checkbox(38, 68, 292, "false,true", "false",
+            :setErrorBarStatus();)
+       statictext(39, 57, 292, "right", "Show:")
+       radiobuttons(40, 110, 297, 20, "vertical", "true,false", "true",
+            :setErrorBarFixedMode();)
+       statictext(41, 130, 296, "left", "Fixed height")
+       statictext(42, 130, 317, "left", "Variable height")
+       statictext(43, 223, 287, "left", "Fixed half-height")
+       button(44, 348, 266, 56, 33, "Help",
+          help("Macros\\Core","modifyTraceParameters.htm");)
+       button(45, 348, 309, 56, 33, "Close",
+          :close();)
+       textbox(46, 236, 308, 50,
+         :setErrorBarStatus();)
+       groupbox(47, "", 332, 248, 85, 107)
+       statictext(48, 51, 205, "right", "Shape:")
+       statictext(49, 246, 193, "right", "Color:")
+       colorbox(50, 257, 191, 18, 18, [0,255,0],
+          :setRealSymbolColor(getobj(0,50));)
+       textmenu(51, 233, 308, 50, 200,
+          :setErrorBarArray();)
+       getmessage(52,
+         :processMessage();)
+       radiobuttons(53, 353, 198, 20, "vertical", "left,right", "left",
+            :setAxisLocation();)
+       statictext(54, 373, 197, "left", "Left")
+       statictext(55, 373, 218, "left", "Right")
+       statictext(56, 344, 176, "left", "Axis location")
+       groupbox(57, "", 332, 158, 85, 87)
+       textmenu(58, 92, 24, 149, 200,
+         :setName();)
+       statictext(59, 83, 27, "right", "Name:")
+       checkbox(60, 362, 28, "false,true", "false",
+            :setInLegendStatus();)
+       colorbox(61, 289, 191, 18, 18, [0,255,0],
+          :setImagSymbolColor(getobj(0,61));)
+       statictext(62, 316, 27, "center", "Show in legend:")
+       groupbox(63, "Current trace", 10, 4, 407, 51)
+       statictext(64, 265, 172, "center", "Real")
+       statictext(65, 309, 172, "right", "Imag")
+
+     # Set other control parameters
+       setpar(n,10,"type","integer",
+                  "range",[0,4],
+                  "menu",["solid","dashed","dots","dash-dot","dash-dot-dot"])
+       setpar(n,11,"type","integer",
+                  "range",[0,4],
+                  "menu",["solid","dashed","dots","dash-dot","dash-dot-dot"])
+       setpar(n,51,"menu",[""])
+
+endproc(n)
+
+procedure(setLineStyle,style)
+
+  curtrace()->tracetype(style)
+
+endproc()
+
+procedure(setLineWidth,udCtrl,resCtrl)
+
+  result = udCtrl->value()
+  resCtrl->text("$result,1.1f$")
+  curtrace()->tracewidth(result)
+
+endproc()
+
+procedure(setSymbolSize,udCtrl,resCtrl)
+
+  result = udCtrl->value()
+  resCtrl->text(result)
+  curtrace()->symbolsize(result)
+
+endproc()
+
+
+procedure(setRealColor,ctrl)
+
+   trc = curtrace()
+   col = trc->realcolor()
+   col = getcolor(col)
+   if(col != null)
+      ctrl->color(col)
+      trc->color(col)
+      getobj(0,13)->color(trc->imagcolor())
+   endif
+
+endproc()
+
+procedure(setImagColor,ctrl)
+
+   trc = curtrace()
+   col = trc->imagcolor()
+   col = getcolor(col)
+   if(col != null)
+      ctrl->color(col)
+      trc->imagcolor(col)
+   endif
+
+endproc()
+
+procedure(setRealSymbolColor,ctrl)
+
+   trc = curtrace()
+   col = trc->realsymbolcolor()
+   col = getcolor(col)
+   if(col != null)
+      ctrl->color(col)
+      trc->symbolcolor(col)
+      getobj(0,61)->color(trc->imagsymbolcolor())
+   endif
+
+endproc()
+
+procedure(setImagSymbolColor,ctrl)
+
+   trc = curtrace()
+   col = trc->imagsymbolcolor()
+   col = getcolor(col)
+   if(col != null)
+      ctrl->color(col)
+      trc->imagsymbolcolor(col)
+   endif
+
+endproc()
+
+
+procedure(setRealStyle)
+
+   try
+      trc = curtrace()
+      style = getobj(0,11)->zindex()
+      trc->realstyle(style)
+   catch
+      message("Error","Invalid real dash number")
+      return(1) 
+   endtry 
+
+endproc(0)
+
+procedure(setImagStyle)
+
+   try
+      trc = curtrace()
+      style = getobj(0,10)->zindex()
+      trc->imagstyle(style)  
+   catch
+      message("Error","Invalid imag dash number") 
+      return(1)
+   endtry 
+
+endproc(0)
+
+procedure(setSymbolType,type)
+
+   trc = curtrace()
+   trc->symbolshape(type)
+  
+endproc
+
+procedure(initIcons)
+
+    dir = getcwd()
+    cd(getmacropath())
+    cd(rmext(getmacroname()))
+
+  # Set other control parameters
+    setpar(0,4,"icon","LINEBTN1.png")
+    setpar(0,3,"icon","LINEBTN2.png")
+    setpar(0,2,"icon","LINEBTN3.png")
+    setpar(0,5,"icon","LINEBTN4.png")
+
+    for(m = 1 to 12)
+       setpar(0,m+18,"icon","symbolbtn$m$.png")
+    next(m)
+    cd(dir)
+
+endproc()
+
+procedure(initParameters)
+
+   try
+      trc = curtrace()
+   catch
+      message("Error","No current trace","error")
+      abort("")
+   endtry
+
+
+  (x,y) = trc->getdata()
+
+  :updateTraceList()
+    
+# Get trace name
+   getobj(0,58)->text(trc->name)
+
+# Get trace width
+   udc = getobj(0,7)
+   width = trc->tracewidth
+   udc->value(width)
+   getobj(0,9)->text("$width,1.1f$")
+   udc->base(1)
+   udc->nrSteps(18)
+   udc->stepSize(0.5)
+
+# Get real color
+   col = trc->realcolor
+   getobj(0,12)->color(col)
+
+# Get imaginary color
+   col = trc->imagcolor
+   getobj(0,13)->color(col)
+
+# Set dash menus (Dash is character is 6, Dot is 183)
+   getobj(0,10)->menu(["solid","dashed","dots","dash-dot","dash-dot-dot"])
+   getobj(0,11)->menu(["solid","dashed","dots","dash-dot","dash-dot-dot"])
+
+# Get real style
+   style = trc->realstyle
+   getobj(0,11)->zindex(style)
+
+# Get imaginary style
+   style = trc->imagstyle
+   getobj(0,10)->zindex(style)
+
+# Get symbol style
+   shape = trc->symbolshape
+
+# Get symbol color
+   getobj(0,50)->color(trc->realsymbolcolor)
+   getobj(0,61)->color(trc->imagsymbolcolor)
+
+# Get symbol size
+   ssize = trc->symbolsize
+   getobj(0,32)->text(ssize)
+   udc = getobj(0,33)
+   udc->value(ssize)
+   udc->base(1)
+   udc->nrSteps(19)
+   udc->stepSize(1)
+
+# Get errorbar status
+   status = trc->ebarshow
+   getobj(0,38)->text(status)
+
+# Get errorbar height
+   sz = trc->ebarsize
+   getobj(0,46)->text(sz)
+
+# Get errorbar height mode
+   fixed = trc->ebarfixed
+   getobj(0,40)->text(fixed)
+   lst = null
+
+   if(fixed == "true")
+      setpar(0,43,"label","Fixed half-height")
+      setpar(0,46,"visible","true")
+      setpar(0,51,"visible","false")
+   else # populate error bar array menu
+      setpar(0,43,"label","Select error-bars")
+      setpar(0,51,"visible","true")
+      setpar(0,46,"visible","false")
+      arrays = matrixlist(2)
+      na = size(arrays)
+      for(k = 0 to na-1)
+         m = eval(arrays[k])
+         if(size(m,1) == size(x) & size(m,2) == 2)
+           lst = lst + ["$arrays[k]$"]
+         endif
+      next(k)
+   endif
+   if(size(lst) > 0)
+      setpar(0,51,"menu",lst)
+   endif
+
+# Get errorbar color
+   col = trc->ebarcolor
+   getobj(0,37)->color(col)
+
+# Set title
+   cp = curplot()
+   plt = cp->parent
+   getobj(0)->title("Trace parameters (win:$plt->winnr$,$plt->objNr$ region:$cp->position$ trace:$trc->id$) ")
+
+# Get axis location
+   setpar(0,53,"text",trc->axis())
+
+# Get inlegend parameter
+   setpar(0,60,"text",trc->inlegend)
+
+# Window name
+   setwindowpar(0,"name","ModifyTraceParameters")
+
+endproc()
+
+procedure(setInLegendStatus)
+
+   status = getpar(0,60,"text")
+   tc = curtrace()
+   tc->inlegend(status)
+
+endproc()
+
+procedure(setErrorBarStatus)
+
+   show = getpar(0,38,"text") 
+   height = getpar(0,46,"text") 
+   fixed = getpar(0,40,"text") 
+
+   tc = curtrace()
+   if(show == "true")
+      tc->ebarshow("true")
+      if(fixed == "true")
+         if(height != "")
+            tc->ebarfixed("true")
+            tc->ebarsize(eval(height))
+         endif
+      else
+         tc->ebarfixed("false")
+      endif
+   else
+      tc->ebarshow("false")
+   endif
+    
+endproc()
+
+procedure(setErrorBarFixedMode)
+
+   tc = curtrace()
+   fixed = getpar(0,40,"text") 
+   tc->ebarfixed(fixed)
+   if(fixed == "true")
+      setpar(0,43,"label","Fixed half-height")
+      setpar(0,46,"visible","true")
+      setpar(0,51,"visible","false")
+   else
+      setpar(0,43,"label","Select error-bars")
+      setpar(0,51,"visible","true")
+      setpar(0,46,"visible","false")
+   endif
+
+endproc()
+
+procedure(setErrorBarColor)
+
+   trc = curtrace()
+   col = trc->ebarcolor()
+   col = getcolor(col)
+   if(col != null)
+      setpar(0,37,"color",col)
+      trc->ebarcolor(col)
+   endif
+
+endproc()
+
+procedure(setErrorBarArray)
+
+   trc = curtrace()
+   array = getpar(0,51,"text")
+   show = getpar(0,38,"text")
+   if(array != "" & array != "current" & show = "true")
+      m = eval(array)
+      trc->ebararray(m)
+   endif
+
+endproc()
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,52,"text")
+
+   if(src == "1D Plot" | src == "ModifyTraceParameters")
+      :initParameters()
+   endif
+
+endproc()
+
+procedure(makeDefault)
+
+  trc = curtrace()
+  tracepref("symbolshape",trc->symbolshape,
+            "symbolcolor",trc->symbolcolor,
+            "symbolsize",trc->symbolsize,
+            "tracetype",trc->tracetype,
+            "realcolor",trc->realcolor,
+            "imagcolor",trc->imagcolor,
+            "tracewidth",trc->tracewidth,
+            "realstyle",trc->realstyle,
+            "imagstyle",trc->imagstyle,
+            "ebarcolor",trc->ebarcolor,
+            "ebarfixed",trc->ebarfixed,
+            "ebarsize",trc->ebarsize,
+            "ebarshow",trc->ebarshow)
+
+endproc()
+
+procedure(saveParameters)
+
+   :makeDefault()
+
+  trc = curtrace()
+  tracepref("symbolshape",trc->symbolshape,
+            "symbolcolor",trc->symbolcolor,
+            "symbolsize",trc->symbolsize,
+            "tracetype",trc->tracetype,
+            "realcolor",trc->realcolor,
+            "imagcolor",trc->imagcolor,
+            "tracewidth",trc->tracewidth,
+            "realstyle",trc->realstyle,
+            "imagstyle",trc->imagstyle,
+            "ebarcolor",trc->ebarcolor,
+            "ebarfixed",trc->ebarfixed,
+            "ebarsize",trc->ebarsize,
+            "ebarshow",trc->ebarshow)
+
+   cd("$prefdir$\\Core Macros")
+   printtofile("tracePreferences.mac")
+
+   pr("tracepref(\"symbolshape\",\"$trc->symbolshape$\")\n")
+   pr("tracepref(\"symbolcolor\",$trc->symbolcolor$)\n")
+   pr("tracepref(\"symbolsize\",$trc->symbolsize$)\n")
+   pr("tracepref(\"tracetype\",\"$trc->tracetype$\")\n")
+   pr("tracepref(\"realcolor\",$trc->realcolor$)\n")
+   pr("tracepref(\"imagcolor\",$trc->imagcolor$)\n")
+   pr("tracepref(\"tracewidth\",$trc->tracewidth$)\n")
+   pr("tracepref(\"realstyle\",$trc->realstyle$)\n")
+   pr("tracepref(\"imagstyle\",$trc->imagstyle$)\n")
+   pr("tracepref(\"ebarcolor\",$trc->ebarcolor$)\n")
+   pr("tracepref(\"ebarfixed\",\"$trc->ebarfixed$\")\n")
+   pr("tracepref(\"ebarsize\",$trc->ebarsize$)\n")
+   pr("tracepref(\"ebarshow\",\"$trc->ebarshow$\")\n") 
+   closeprint()
+
+
+endproc()
+
+procedure(loadParameters)
+
+  trc = curtrace()
+
+  trc->symbolshape(tracepref("symbolshape"))
+  trc->symbolcolor(tracepref("symbolcolor"))
+  trc->symbolsize(tracepref("symbolsize"))
+  trc->tracetype(tracepref("tracetype"))
+  trc->realcolor(tracepref("realcolor"))
+  trc->imagcolor(tracepref("imagcolor"))
+  trc->tracewidth(tracepref("tracewidth"))
+  trc->realstyle(tracepref("realstyle"))
+  trc->imagstyle(tracepref("imagstyle"))
+  trc->ebarcolor(tracepref("ebarcolor"))
+  trc->ebarfixed(tracepref("ebarfixed"))
+  trc->ebarsize(tracepref("ebarsize"))
+  trc->ebarshow(tracepref("ebarshow"))
+
+  :initParameters()
+
+endproc()
+
+procedure(setAxisLocation)
+
+   lct = getpar(0,53,"text") 
+   curtrace()->axis(lct)
+
+endproc()
+
+# Set the name of a trace if the text has been modified
+# Set the current trace is a menu option has been selected
+
+procedure(setName)
+
+   idx = getpar(0,58,"zindex")
+
+   trcList = curplot("1d")->tracelist()
+
+   if(idx == -1) # Name changed
+      txt = getpar(0,58,"text")
+      curtrace()->name(txt)
+      :updateTraceList()
+   else
+      trc = curplot("1d")->trace(trcList[idx])
+      curtrace(trc)
+      :initParameters()
+   endif
+
+endproc()
+
+procedure(close)
+
+   if(:setRealStyle() | :setImagStyle())
+      abort("")
+   endif         
+   :setName()
+   :setErrorBarStatus()
+
+   closewindow(0)
+
+endproc()
+
+procedure(makeLocalPlotCurrent)
+
+   win = curwin()
+   n = win->nr
+   if(curplot()->parent->parent == win)
+      plt = curplot()
+   else
+      m = findobj(n,"type","1D plot window")
+      plt = getobj(n,m)->subplot(1,1)
+      curplot(plt)
+   endif
+
+endproc(plt)
+
+procedure(updateTraceList)
+
+# Get list of trace names
+  plt = curplot()
+  trcList = plt->tracelist
+  sz = size(trcList)
+  trcMenu = list(sz)
+  for(k = 0 to sz-1)
+     trcMenu[k] = plt->trace(trcList[k])->name
+  next(k)
+
+# Update trace menu with this list
+  getobj(0,58)->menu(trcMenu)
+
+endproc()

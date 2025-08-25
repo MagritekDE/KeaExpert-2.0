@@ -1,0 +1,68 @@
+###################################################
+# The MLEV17 decoupling sequence block
+#
+# Arguments:
+#
+#  ch ..... channel 1 = 1H or 2 = X
+#  a90 .... amplitude of the 90 pulses
+#  a180 ... amplitude of the 90 pulses
+#  d90 .... duration of 90 pulse
+#  d180 ... duration of 180 pulse
+#  pXp .... +x phase
+#  pXm .... -x phase
+#  pYp .... +y phase
+#  pYm .... -y phase
+#  d1 ..... delay between pulses (1)
+#
+###################################################
+
+procedure(MLEV16, ch, a90, a180, d90, d180, ph1, ph2, ph3, ph4, d1=1)
+   
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+   pulse(ch,a90,ph3,d90); delay(d1); pulse(ch,a180,ph4,d180); delay(d1); pulse(ch,a90,ph3,d90); delay(d1); 
+
+   pulse(ch,a90,ph1,d90); delay(d1); pulse(ch,a180,ph2,d180); delay(d1); pulse(ch,a90,ph1,d90); delay(d1); 
+
+endproc()
+
+###################################################
+# Return the length of the MLEV16 block in us
+# given the following delays:
+#
+#  d90 .... length of the 90 pulse.
+#  d180 ... length of the 180 pulse.
+#  pgo .... delay between start of pulse command
+#           and actual pulse output.
+#  d1 ..... delay between pulses (1)
+#
+###################################################
+
+
+procedure(duration, d90, d180, pgo, d1=1)
+
+   if(gData->procType == "FX3")
+      endDelay = 3
+   else
+      endDelay = 1
+   endif
+   dur = (d90*32 + d180*16 + d1*48 + pgo*48 + endDelay)
+
+endproc(dur)

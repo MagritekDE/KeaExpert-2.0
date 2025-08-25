@@ -1,0 +1,102 @@
+########################################################
+# 
+# Spin-echo imaging
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["nucleus",        "Nucleus",                  "tb",  "readonly_string";
+               "b1Freq1H",       "B1 Frequency (MHz)",       "tb",  "freq";
+               "maxPercent",     "% of k-space to collect",  "tb",  "float,[1,100]";
+               "FOV",            "Field of view (mm)",       "tb",  "float,[0.01,1000]";
+               "calX",           "x-shim T/m per 10000",     "tb",  "float";
+               "calY",           "y-shim T/m per 10000",     "tb",  "float";
+               "calZ",           "z-shim T/m per 10000",     "tb",  "float";
+               "plane",          "Imaging plane",            "tm",  "string,[\"xy\",\"yx\",\"xz\",\"zx\",\"yz\",\"zy\"]";
+               "90Amplitude1H",  "Pulse amplitude (dB)",     "tb",  "pulseamp";
+               "pulseLength1H",  "Pulse length (us)",        "tb",  "pulselength";
+               "echoTime",       "Echotime (us)",            "tb",  "sdelay";
+               "repTime",        "Repetition time (ms)",     "tb",  "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["readGrad = 2*pi*nrPnts/(acqTime*1e-3*gamma*FOV*1e-3)",
+                    "phaseGrad = acqTime*500*readGrad/(echoTime/2-500)",
+                   "(n1,n2,n3,n4,n5,n6,n7,n8) = seimaging:setImagingPlane(plane,readGrad,phaseGrad,xshim,yshim,zshim,calX,calY,calZ)",
+                   "d1 = pulseLength1H*2",
+                   "d2 = echoTime/2-500",
+                   "d3 = echoTime/2-d1/2-4-d2-pgo",
+                   "d4 = echoTime/2-acqTime*500-d1/2+rxLat",
+                   "n10 = nrPnts",
+                   "a1 = 90Amplitude1H-6",
+                   "a2 = 90Amplitude1H",
+                   "totPnts = nrPnts",
+                   "totTime = acqTime"]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Acquisition","Processing_Display_Std","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["n4"]
+
+# dx,dy
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   delay(10000)
+   shim16(n1,n2)                   # Set read gradient
+   shim16(n5,n6)                   # Set other gradient to shim
+   pulse(1,a1,p1,d1)               # Hard 90 pulse 
+   shim16(n3,n4)                   # Set phase gradient 
+   delay(d2)                       # Delay
+   shim16(n3,n8)                   # phase gradient to shim
+   delay(d3)                       # Delay
+   pulse(1,a2,p2,d1)               # Hard 180 pulse
+   delay(d4)                       # 180 - acq delay
+   acquire("overwrite",n10)        # Acquire data
+   shim16(n1,n7)                   # Set read gradient to shim
+   delay(10000)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle list
+   phaseList = [1,3,3,1; # +y,-y,-y,+y : 90 phase
+                0,0,1,1; # +x,+x,+y,+y : 180 phase
+                2,0,2,0] # -x,+x,-x,+x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par = ["rxGain        = $modelPar->rxGain$",
+          "pulseLength1H = $PulseLength_1H$",
+          "90Amplitude1H = $PowerLevel_1H$",
+          "b1Freq1H      = $Frequency_1H$"]
+
+endproc(par)
+

@@ -1,0 +1,162 @@
+####################################################
+#
+# Apply the same function to each row of
+# a 2D matrix. User can enter function expression
+# into the GUI.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(rowOp)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_x,wv_y)
+   setpar(0,1,"text","m1[~,y]")
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apply row operation to 2D plot", -1, -1, 389, 98)
+
+      # Define all controls with basic parameters
+       windowvar(wv_y,wv_x,wv_mat)
+       textbox(1, 17, 20, 230)
+       button(2, 12, 53, 45, 30, "Apply",
+          :apply();)
+       button(3, 159, 53, 45, 30, "Help",
+          :showhelp();)
+       statictext(4, 300, 24, "left", "width:")
+       statictext(5, 296, 42, "left", "height:")
+       statictext(6, 284, 60, "left", "variables: x,y,w,h")
+       statictext(7, 332, 24, "left", "0")
+       statictext(8, 333, 42, "left", "0")
+       button(9, 208, 53, 45, 30, "Exit",
+          closewindow(0);)
+       button(10, 110, 53, 45, 30, "Undo",
+          :undo();)
+       button(11, 61, 53, 45, 30, "Update",
+          :initialise();)
+       groupbox(12, "Plot parameters", 267, 1, 111, 91)
+       groupbox(13, "", 3, 1, 259, 91)
+       getmessage(14,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,2,"mode","default")
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\2D","rowop.htm")
+endproc()
+
+
+####################################################
+# Initialise the gui based on current 2D plot
+####################################################
+
+procedure(initialise)
+
+   m1 = getplotdata("2d")
+   if(m1 != null)
+      (w,h) = size(m1)
+      setpar(0,7,"text",w)
+      setpar(0,8,"text",h)
+   else
+      setpar(0,7,"text",0)
+      setpar(0,8,"text",0)
+   endif
+
+endproc()
+
+####################################################
+# Apply the same function to each row
+####################################################
+
+procedure(apply)
+
+# Extract the data from the plot
+  (m1,x,y) = getplotdata("2d")
+   if(m1 == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Save the matrix for undo operation
+   wv_mat = m1
+   wv_x = x 
+   wv_y = y
+
+# Record the current 2D plot state
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+
+# Extract the function to apply
+   func = getpar(0,1,"text")
+
+# Apply this function to each row
+   (w,h) = size(m1)
+   if(w != 0 & h != 0)
+      x = [0:1:w-1]
+      for(y = 0 to h-1)
+         m1[~,y] = eval(func)
+      next(y)
+      draw2d("false")
+         image(m1)
+         2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+      draw2d("true")
+   endif
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,14,"text")
+
+   if(src == "2D Plot")
+      :initialise()
+   endif
+
+endproc()
+
+####################################################
+# Restore the matrix before last row op
+####################################################
+
+procedure(undo)
+
+   if(wv_mat != null)
+      (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      draw2d("false")
+      image(wv_mat,wv_x,wv_y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+      draw2d("true")
+   endif
+
+endproc()
+      

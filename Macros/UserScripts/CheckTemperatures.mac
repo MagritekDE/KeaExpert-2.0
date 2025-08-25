@@ -1,0 +1,176 @@
+#####################################################################
+# This example script measures the spectrometer temperatures
+# and stores or appends them in a file. 
+#####################################################################
+
+procedure(CheckTemps, parameters=null)
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else
+      if(parameters == null)
+         parameters = ["nrSteps=1","repTime=1000","fileName=\"temps.txt\"","reset = \"no\"","display = \"yes\""] 
+      endif
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()), parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["nrSteps",      "Nr of measurements",            "tb", "integer",  "",
+                 "repTime",      "Repetition time (ms)",          "tb", "float",    "",
+                 "fileName",     "File-name (on desktop)",        "tb", "string",    "",
+                 "reset",        "Reset the history",             "cb", "string",   "no,yes",
+                 "display",      "Display/save the history",      "cb", "string",   "no,yes"]
+
+
+   plotLayout = ["pt1","pt2";"pt3"] 
+
+   procLayout = null
+   
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+
+###########################################################
+# Execute this command. 'parameters' includes all standard
+# parameters and the ones you have defined above
+# Standard parameters are:
+#
+# dataDirectory .... used to define where expName is stored
+# expName .......... the name of the experiment data folder
+# specID ........... the name of the spectrometer
+# specType ......... the type of spectrometer
+#
+# More parameters can be found in the gData structure
+###########################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   UseDelays(start=0, end=1)
+
+   (pt1,pt2,pt3) = InitPlot(["pt1","pt2";"pt3"])
+
+# Remove the file if in reset mode
+   file = "$desktop$\\$fileName$"
+   if(reset == "yes")
+      if(isfile(file))
+         rmfile(file)
+      endif
+   endif
+
+# Collect data and save to output file
+   printtofile(file,"append")
+   for(k = 0 to nrSteps-1)
+ 
+      temps = MonitorLockAndTemperatures:checkTemps() 
+      N = gData->specParameters->NumberLockPoints
+      if(gData->procType == "FX3")
+         (data, ldata) = gLock->monitorLockData(N)
+         lockindex = ldata[0]
+         lockOffset = ldata[lockindex+1]
+      else
+         nrshimvalues = 100
+         result = program_mB:readData(0,N*2+1+nrshimvalues+10,0,1) 
+         D = result[:-10]
+         dacscale = 145/0x1000
+         ldata = D[N*2:N*2+nrshimvalues]*dacscale
+         lockindex = ldata[0]/dacscale
+         lockOffset = ldata[lockindex+1]
+      endif
+      (h, m, s, ms) = scanstr(gettime("%2d:%2d:%2d:%3d"),"%1:%2:%3:%4")
+      seconds = eval(h)*3600+eval(m)*60+eval(s)+eval(ms)/1000 
+      print("$seconds$, $temps->magnetTemp,1.4f$, $temps->boxTemp,1.4f$,  $temps->magnetVoltage,1.4f$,  $temps->peltierVoltage,1.4f$, $lockOffset$\n")
+      if(WaitForTime(repTime/1000))
+         exitfor()
+      endif
+
+   next(k)
+   closeprint()
+
+# Display and save the data to experiment history
+   if(display == "yes")
+
+      import1dpar("ab", "ascii", "xyrc", "real")   
+      v = import1d(file)
+      sz = size(v)
+      v = reshape(v,6,sz/6)   
+      v[0,~] = v[0,~]- v[0,0]
+        
+      pt1->draw("false")
+      pt1->plot(v[0,~]',v[1,~]',"color",[255,0,0])
+      pt1->hold("on")
+      pt1->plot(v[0,~]',v[2,~]',"color",[0,128,0])
+      pt1->title("Magnet/Box (red/green) temperature vs time")
+      pt1->xlabel("Time (s)")
+      pt1->ylabel("Temperature (C)")
+      pt1->draw("true")
+
+      pt2->draw("false")
+      pt2->plot(v[0,~]',v[3,~]',"color",[255,0,0])
+      pt2->hold("on")
+      pt2->plot(v[0,~]',-v[4,~]',"color",[0,0,255])
+      pt2->title("Magnet/Peltier (red/blue) voltage vs time")
+      pt2->xlabel("Time (s)")
+      pt2->ylabel("Voltage (V)")
+      pt2->draw("true")
+
+      pt3->draw("false")
+      pt3->plot(v[0,~]',v[5,~]',"color",[255,0,255])
+      pt3->title("Lock offset vs time")
+      pt3->xlabel("Time (s)")
+      pt3->ylabel("Offset (Hz)")
+      pt3->draw("true")
+    
+      ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),parameters)
+      ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),parameters)     
+      ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters)    
+ 
+   endif
+
+
+endproc()
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list. 
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","temperatures.pt1","pt2","voltages.pt1","pt3","lock.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+########################################################
+# Return expected experiment duration in seconds
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   totScans = nrSteps + useStartDelay
+   duration = (totScans*repTime)/1000
+
+endproc(duration)

@@ -1,0 +1,58 @@
+###################################################################################
+# Adds lines to end the pulse program and also print out pulse program if 
+# the verbose argument is 1.
+#
+#    endpp([verbose=0/1])
+#
+###################################################################################
+
+procedure(endpp, verbose=0)
+
+   if(wvFX3Info->mode == "run")
+
+      ps = [20d,  0x00000000, 0, # Turn off TTL
+            120d, 0x03000000, 0] # End pulse program
+
+      updatePSArray(ps)
+
+      if(iskeypressed("shift"))
+
+         ps = wvFX3Info->ps
+         print("\n\n  ---------------------------------------------------------\n")
+         print("   Event   Dur.(clk)    Cmd+Adrs       Data\n")
+         print("  ---------------------------------------------------------\n\n")
+
+         if(verbose == 1)
+            print("  -------------------- Start Code --------------------------\n\n")
+         endif
+         s = 0d
+         for(k = 0 to 110*3-3 step 3)
+            if(verbose == 1)
+               print("   $k/3,4d$    $(ps[k])*1,8d$     $ps[k+1],08X$     $ps[k+2],08X$\n")
+            endif 
+            s = s + ps[k]
+         next(k)
+
+         if(verbose == 1)
+            print("\n")
+         endif
+         print("  -------------------- User Code --------------------------\n\n")
+         for(k = 110*3 to size(ps)-3 step 3)
+           # print("   $k/3,4d$:  $s/100*1,8.2f$    $round(ps[k]),10.10g$     $ps[k+1],08X$     $ps[k+2],08X$\n")
+            print("   $k/3,4d$:    $round(ps[k]),10.10g$     $ps[k+1],08X$     $ps[k+2],08X$\n")
+            s = s + ps[k]
+         next(k)
+
+      endif
+
+      return(wvFX3Info->sequence)
+
+   elseif(wvFX3Info->mode == "time")
+
+      totDuration = gSeq->psInfo->durationNStk[0]
+      return(totDuration)
+
+   endif
+
+endproc(wvFX3Info->parameters)
+

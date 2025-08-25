@@ -1,0 +1,186 @@
+# Simulates a CPMG adding the contribution from a number
+# of spins - each spin sees a slightly different Bz field
+# The plot shows the x and  y magnetization throughout the 
+# pulse sequence by solving the Bloch equations.
+# The larger the number of Spins S the closer the result is to 
+# an actual macroscopic measurement.
+
+procedure(cpmg1DSim)
+
+   import("cpmg1DSim",getmacropath(),"local")
+   
+   draw1d("true")
+   
+   time(0)
+   
+   N = 1000 # Number of spins
+   maxTime = 0.002 # Maximum simulation time (2ms)
+   del = 0.000001 # Timing steps (1 us)
+   T = round(maxTime/del) # Number of time steps
+   
+   TA  = dmatrix(T)
+   xAmp = matrix(T)
+   yAmp = matrix(T)
+   zAmp = matrix(T)
+   T1 = 1d  # 1 sec T1
+   T2 = 0.001d # 1 ms uT2
+   Bx = 2.935848e-4d
+   By = 0d
+   Bz = 0d
+   delBz = 10e-4d
+   echoTime = 0.0001
+   180Start = echoTime/(2*del)
+   180Spacing = echoTime/del
+   
+   IBz = delBz*dnoise(N)
+   
+   Bx = dmatrix(N)
+   By = dmatrix(N)
+   Bz = dmatrix(N)
+   Mx = dmatrix(N)
+   My = dmatrix(N)
+   Mz = dmatrix(N)+1
+   c  = 0
+   
+   for(c = 0 to T-1)
+   
+      TA[c] = c*del
+  
+      MxA = dmatrix(N)
+      MyA = dmatrix(N)
+      MzA = dmatrix(N)
+    
+      Bx[~] = 0d
+      By[~] = 0d
+      Bz[~] = IBz
+      
+    # 90 pulse
+      if(c < 5) 
+         Bx[~] = 1.174339e-3d
+         Bz[~] = 0d
+      endif
+ 
+    # 180 pulses     
+      if(c > 180Start-1 & (trunc((c-180Start)/10) % (180Spacing/10)) == 0)
+         By[~] = 1.174339e-3d
+         Bz[~] = 0d
+      endif
+
+      MyA = My + MyA
+      MxA = Mx + MxA
+      MzA = Mz + MzA     
+      
+      (Mx,My,Mz) = :rungeKutta(Mx,My,Mz,Bx,By,Bz,T1,T2,del)
+    
+      xAmp[c] = single(sum(MxA))
+      yAmp[c] = single(sum(MyA))
+      zAmp[c] = single(sum(MzA))
+      
+   # Plot the magnetisations
+      draw1d("false")
+      plot(TA[0:c]*1000,(yAmp[0:c]+i*xAmp[0:c])/N)
+    #  plot(TA[0:c]*1000,(zAmp[0:c])/N)
+      title("CPMG simulation for $N$ spins\n")
+      xlabel("Time (ms)")
+      ylabel("Amplitude (a.u.)")
+      draw1d("true")
+   
+   next(T)
+
+   pr time()
+
+endproc()
+
+
+
+procedure(fid)
+
+    import("bloch",getmacropath(),"local")
+
+    MxA = matrix(1000)
+    MyA = matrix(1000)
+    MzA = matrix(1000)
+    TA = matrix(1000)
+
+    tau = 0.0015
+    h = 0.000005
+    del = 1e-19
+    Mx = 0d
+    My = 0d
+    Mz = 1d
+    Mo = 1d
+
+    Bx = 2.935848e-4d
+    By = 0d
+    Bz = 0d
+    T1 = 1d
+    T2 = 0.00008d
+    H = .000001
+    N = 0
+
+    for(T = 0 to 0.0005 step H)
+       TA[N] = T
+       if(T > 0.00002)
+          Bx = 0
+       endif
+       MxA[N] = Mx
+       MyA[N] = My
+       MzA[N] = Mz
+       N = N + 1
+
+       (Mx,My,Mz) = :rungeKutta(Mx,My,Mz,Bx,By,Bz,T1,T2,H)
+
+    next(T)
+
+    plot(TA[0:N-1],MyA[0:N-1])
+pr time()
+
+endproc()
+
+procedure(fnfx, Mx, My, Mz,Bx,By,Bz,T1,T2)
+
+  rx = gamma*(My.*Bz-Mz.*By)-Mx/T2
+
+endproc(rx)
+
+procedure(fnfy, Mx, My, Mz,Bx,By,Bz,T1,T2)
+
+   ry = gamma*(Mz.*Bx-Mx.*Bz)-My/T2
+
+endproc(ry)
+
+procedure(fnfz, Mx, My, Mz,Bx,By,Bz,T1,T2)
+
+endproc(gamma*(Mx.*By-My.*Bx)-(Mz-1)/T1)
+
+procedure(rungeKutta,Mx,My,Mz,Bx,By,Bz,T1,T2,H)
+
+       ANx = :fnfx(Mx,My,Mz,Bx,By,Bz,T1,T2)
+       ANy = :fnfy(Mx,My,Mz,Bx,By,Bz,T1,T2)
+       ANz = :fnfz(Mx,My,Mz,Bx,By,Bz,T1,T2)
+       xArg = Mx+0.5*H*ANx
+       yArg = My+0.5*H*ANy
+       zArg = Mz+0.5*H*ANz
+       BNx = :fnfx(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       BNy = :fnfy(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       BNz = :fnfz(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       xArg = Mx+0.5*H*BNx
+       yArg = My+0.5*H*BNy
+       zArg = Mz+0.5*H*BNz
+       CNx = :fnfx(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       CNy = :fnfy(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       CNz = :fnfz(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       xArg = Mx+H*CNx
+       yArg = My+H*CNy
+       zArg = Mz+H*CNz
+       DNx = :fnfx(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       DNy = :fnfy(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       DNz = :fnfz(xArg,yArg,zArg,Bx,By,Bz,T1,T2)
+       MxN=Mx+H*(ANx+2*BNx+2*CNx+DNx)/6
+       MyN=My+H*(ANy+2*BNy+2*CNy+DNy)/6
+       MzN=Mz+H*(ANz+2*BNz+2*CNz+DNz)/6
+       Mx = MxN
+       My = MyN
+       Mz = MzN
+
+endproc(Mx,My,Mz)

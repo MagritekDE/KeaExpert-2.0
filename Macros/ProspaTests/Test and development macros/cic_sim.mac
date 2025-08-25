@@ -1,0 +1,26 @@
+M = 10
+fa = linspace(0,100,M)
+N = 1024
+m1  = cmatrix(N)
+for(k = 0 to M-1)
+  f = fa[k]
+  (x,m) = fid_sim:complex(N,1,f,0.4)
+  m1 = m + m1
+next(k)
+
+plot(m1)
+pause(4)
+plot(mag(ft(m1)))
+
+pause(4)
+m2 = convolve(m1,[1,1,1,1,1])/5
+pause(4)
+plot(m2)
+pause(4)
+plot(mag(ft(m2)))
+pause(4)
+m3r = decimate(real(m1),0,4)
+m3i = decimate(imag(m1),0,4)
+plot(m3r)
+pause(4)
+plot(mag(ft(m3r+i*m3i)))

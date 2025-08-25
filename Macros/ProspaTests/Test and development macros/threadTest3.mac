@@ -1,0 +1,27 @@
+procedure(threadTest)
+
+  pp = curplot("1d")->parent
+  pp->multiplot(2,1)
+  p1 = pp->subplot(1,1)
+  p2 = pp->subplot(2,1)
+ 
+  pp->enable("false")
+
+  thread(":testPlot",p1)
+  thread(":testPlot",p2)
+
+endproc()
+
+procedure(testPlot,p)
+
+   for(k = 0 to 10000)
+     p->draw("false")
+     p->plot(noise(100))
+     p->title("k = $k$")
+     p->draw("true")
+   next(k)
+
+endproc()
+
+
+  

@@ -1,0 +1,145 @@
+procedure(makePS)
+
+   file = getfilename("open","Open pulse program","Text files","txt")
+
+   startCode = load("startCode.txt")
+   pp = :getlines(startCode)
+   sz = size(pp)
+   for(k = 1 to sz-1)
+      print("    $pp[k]$\n")
+   next(k)
+
+   txt = load(file)
+   pp = :getlines(txt)
+   parIn = struct()
+
+   
+   par->tm = 0
+   par->offset = 3000000
+   par->linecnt = sz-1
+   par->loopNr = 0
+   par->inLoop = 0
+
+   for(k = 0 to size(pp)-1)
+      cmd = pp[k]
+      if(cmd[0] != "#")
+         (name,args) = scanstr(cmd,"%1(%2)")
+          name = rmsubstr(name,"  ")
+          proc = ":$name$_proc"
+          par = proc(par,args)
+      endif
+   next(k)
+   :endps_proc(par)
+
+endproc()
+
+
+
+# Read pulse program lines in text ignoring first line and also blank lines
+# Returns a 3 by N matrix with time, address and value in each row.
+
+procedure(getlines,txt)
+
+  cnt = 0
+  lst = list(0)
+  while(1)
+
+      line = getline(txt,cnt)
+      if(line == null)
+         exitwhile
+      endif
+      if(line != "")
+         lst = lst + ["$line$"]
+      endif
+      cnt = cnt + 1
+
+   endwhile()
+
+endproc(lst)
+
+procedure(ttl_proc, par, args)
+
+   argList = parse(args,",")
+   if(par->inLoop)
+      tm = eval(argList[0])*1000
+   else
+      tm = eval(argList[0])*1000+par->offset
+   endif
+
+   value = eval(argList[1])
+   pr("$par->linecnt,7d$:  $tm,7d$  00000  $value,05X$\n")
+   par->linecnt = par->linecnt + 1
+   par->tm = tm
+
+endproc(par)
+
+
+procedure(pulse_proc, par, args)
+
+   argList = parse(args,",")
+   if(par->inLoop)
+      tm = eval(argList[0])*1000
+   else
+      tm = eval(argList[0])*1000+par->offset
+   endif
+   amp = eval(argList[1])
+   ph = eval(argList[2])
+   freq = eval(argList[3])
+   duration = eval(argList[4])
+
+   DDSFword = round((freq * 2^32d)/1000d)       
+   DRPFword = round((freq * 2^32d)/1000d)*10d    
+
+   txFreq1  = single((DDSFword & 0xFFFF0000)/(2^16))   # AD9910 Tx frequency   
+   txFreq2 = single((DDSFword & 0x0000FFFF))
+
+   pr("$par->linecnt,7d$:  $tm,7d$  0118E  $amp,05X$\n")
+   pr("$par->linecnt+1,7d$:  $tm+150,7d$  0118E  $ph,05X$\n")
+   pr("$par->linecnt+2,7d$:  $tm+300,7d$  0118E  $txFreq1,05X$\n")
+   pr("$par->linecnt+3,7d$:  $tm+450,7d$  0118E  $txFreq2,05X$\n")
+   pr("$par->linecnt+4,7d$:  $tm+1500,7d$  00000  $0xC000,05X$\n")
+   pr("$par->linecnt+5,7d$:  $tm+1500+duration*1000,7d$  00000  00000\n")
+   par->linecnt = par->linecnt + 6
+   par->tm = tm+1500+duration*1000
+
+endproc(par)  
+
+procedure(loop_proc, par, args)
+
+   argList = parse(args,",")
+   if(par->inLoop)
+      tm = eval(argList[0])*1000
+   else
+      tm = eval(argList[0])*1000+par->offset
+   endif
+   nr = eval(argList[1])
+   pr("$par->linecnt,7d$:  $tm,7d$  04000  $nr,05X$\n")
+   par->offset = par->tm
+   par->linecnt = par->linecnt + 1
+   par->nrLoops = nr
+   par->loopStart = tm
+   par->inLoop = 1
+
+endproc(par)
+
+procedure(endloop_proc, par, args)
+
+   argList = parse(args,",")
+   tm = eval(argList[0])*1000
+   loopto = par->loopNr*3*4
+   pr("$par->linecnt,7d$:  $tm,7d$  05000  $loopto,05X$\n")
+   par->linecnt = par->linecnt + 1
+   par->loopNr = 0
+   par->tm = par->loopStart + par->nrLoops*tm
+   par->inLoop = 0
+
+endproc(par)
+
+procedure(endps_proc, par)
+
+   tm = par->tm+1000
+   pr("$par->linecnt,7d$:  $tm,7d$  02000  $0,05X$\n")
+   par->linecnt = par->linecnt + 1
+   par->loopNr = 0
+
+endproc(par)

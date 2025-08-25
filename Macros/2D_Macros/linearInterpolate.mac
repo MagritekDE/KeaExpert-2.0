@@ -1,0 +1,179 @@
+###########################################################
+#                linearinterpolateRCA.mac
+#
+# Interface to the interp() command for 2D images
+#
+# Version history
+#
+# V1.0 - released with V2.1
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek 2006-7
+#
+###########################################################
+
+procedure(linearInterpolate)
+
+   n = :windowdefinition()
+   windowvar(wv_mIn)
+   setpar(n,3,"text",0.1)
+   setpar(n,7,"text",5)
+   setpar(n,2,"range",[1,101])
+   :update()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define GUI window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Linear interpolate", -1, -1, 300, 114)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mIn)
+       button(1, 240, 10, 44, 25, "Update",
+          :update();)
+       slider(2, 54, 22, 127, 20, "horizontal",
+            :slider_scaling();)
+       textmenu(3, 60, 63, 40, 200)
+       statictext(4, 54, 58, "right", "Minimum")
+       statictext(5, 51, 73, "right", "scaling")
+       statictext(6, 164, 58, "right", "Maximum")
+       textmenu(7, 170, 63, 40, 200)
+       statictext(8, 159, 73, "right", "scaling")
+       textbox(9, 189, 20, 29,
+         :fixed_scaling();)
+       button(10, 240, 80, 44, 25, "Close",
+          closewindow(0);)
+       groupbox(11, "", 5, 3, 224, 104)
+       statictext(12, 50, 24, "right", "Scaling")
+       button(13, 240, 45, 44, 25, "Help",
+          :show_help();)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",4)
+       setpar(n,2,"type","float",
+                   "range",[1,101],
+                   "tab_number",1)
+       setpar(n,3,"tab_number",2,
+                   "menu",["0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"])
+       setpar(n,7,"tab_number",3,
+                   "menu",["1","2","3","4","5","6","7","8","9","10"])
+       setpar(n,10,"tab_number",5)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","linearInterpolate.htm")
+endproc()
+
+####################################################
+# The update button has been pressed so reload
+# the 2D data
+####################################################
+
+procedure(update)
+
+   wv_mIn = getplotdata("2d","current")
+   minS = getpar(0,3,"value")
+   maxS = getpar(0,7,"value")
+   setpar(0,9,"text",1)
+   sv = 100*(1-minS)/(maxS-minS)
+   setpar(0,2,"value",round(sv))
+
+endproc()
+
+####################################################
+# User has pressed return in text box
+# so apply the scaling entered there and
+# update the slider position
+####################################################
+
+procedure(fixed_scaling)
+
+   sf = getpar(0,9,"value")
+
+   if(sf < 0.1 | sf > 10)
+      message("Error","Scaling out of range","error")
+      return()
+    endif
+
+   :interpolate(sf)
+
+   minS = getpar(0,3,"value")
+   maxS = getpar(0,7,"value")
+   sv = 100*(sf-minS)/(maxS-minS)
+   setpar(0,2,"value",round(sv))
+
+endproc()
+
+####################################################
+# User has moved the slider so update the
+# text box and interpolate
+####################################################
+
+procedure(slider_scaling)
+
+   sv = getpar(0,2,"value")
+   minS = getpar(0,3,"value")
+   maxS = getpar(0,7,"value")
+
+   if(maxS > 10)
+      message("Error","Scaling too large","error")
+      return()
+    endif
+
+   if(minS >= maxS | minS <= 0 | maxS <= 0)
+      message("Error","Invalid min/max values","error")
+      return()
+    endif
+   sv = getpar(0,2,"value")-1
+   sv = minS + sv*(maxS-minS)/100
+   sv = round(sv/minS)*minS
+
+   setpar(0,9,"text",sv)
+
+   :interpolate(sv)
+
+endproc()
+
+####################################################
+# Interpolate the saved data set by factor sv.
+####################################################
+
+procedure(interpolate,scale)
+
+   (w,h) = size(wv_mIn)
+   (m,x,y) = getplotdata("2d")
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+
+   draw2d("off")
+
+   if(vartype(wv_mIn) == "cmatrix2d")
+      draw2d("off")
+      m = interp(real(wv_mIn),round(w*scale),round(h*scale)) @ 
+                 + i*interp(imag(wv_mIn),round(w*scale),round(h*scale))
+      image(m,x,y)
+    #  title("Interpolated $scale$ times")
+
+   else
+
+      image(interp(wv_mIn,round(w*scale),round(h*scale)),x,y)
+    #  title("Interpolated $scale$ times")
+
+   endif
+
+   2dpar:set(txt,lx,ly,nc,mode)
+   draw2d("on")
+
+endproc

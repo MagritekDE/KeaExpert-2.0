@@ -1,0 +1,108 @@
+procedure(MSP430FirmwareUpdater, fwFolder, fwName, statusCtrl)
+   # this update procedure requires compatible FW versions on the MSP430 and FX3 (date 23.09.22 and later)
+   # This version also used hardware BSL invocation which is supported by FX3 controller HW v1.2 or higher
+   MASSERASEFIRST=1
+
+   MAXBLOCKSIZE = 160
+   FLASHSEGMENTSIZE = 512
+   CMD_WRITEBLOCK   = 0xF200
+   CMD_SETADDRESS   = 0xF300
+   CMD_ERASESEGMENT = 0xF400
+
+   if(isdir(fwFolder) == 0)
+      pr "   Error: MSP430 Firmware folder not found.\n"
+   endif
+   cd(fwFolder)
+
+   # Run Update 
+   if(isfile(fwName))
+      pr "\n\n   Firmware file '$fwName$' found"
+      fwVersionTempCtrl = fx3read("t",0x1f,1)
+     # pr hex(fwVersionTempCtrl)
+
+      statusCtrl->text("Erasing MSP430 flash ...")
+      :initBSL(MASSERASEFIRST)
+
+      statusCtrl->text("Updating MSP430 firmware ...")
+      pr "\n   Updating MSP430 firmware "
+      offset = 0
+      while(offset != -1)
+         (adrs,data,offset) = readmsp430(fwName, offset)
+         bytesOfData = size(data)
+         if(bytesOfData > 0)
+            fullBlocks = floor(bytesOfData/MAXBLOCKSIZE)
+            remainder = bytesOfData%MAXBLOCKSIZE
+
+            # Erase memory segments that will be written to
+            segmentsInvolved = ceil(bytesOfData/FLASHSEGMENTSIZE)   # calculate needed space in number of segments
+            for (segment=0 to segmentsInvolved-1)
+               fx3write("u",CMD_ERASESEGMENT,[adrs + segment*FLASHSEGMENTSIZE])
+               pause(0.1)
+               #pr "Erased segment with address $hex(adrs + segment*FLASHSEGMENTSIZE)$.\n"
+            next(segment)
+
+            fx3write("u",CMD_SETADDRESS,[adrs])      # set address pointer for current firmware block
+            if(fullBlocks>0)
+               for(block=1 to fullBlocks)
+                  pr "."
+                  startAddr = (block-1)*MAXBLOCKSIZE
+                  #addrPointerRb = fx3read("u",0xF300,1)
+                  #pr "Write next block starting from address $hex(addrPointerRb)$.\n"
+                  fx3write("u",CMD_WRITEBLOCK,data[startAddr:startAddr+MAXBLOCKSIZE-1])
+                  pause(.3)
+               next(block)
+            endif
+            if(remainder>0)
+               pr "."
+               startAddr = fullBlocks*MAXBLOCKSIZE
+               #addrPointerRb = fx3read("u",0xF300,1)
+               #pr "Write remainder block starting from address $hex(addrPointerRb)$. Size = $remainder$\n"
+               fx3write("u",CMD_WRITEBLOCK,data[startAddr:startAddr+remainder-1])
+               pause(.3)
+            endif
+            addrPointerRb = fx3read("u",CMD_SETADDRESS,1)
+            #pr "Finished last block at address $hex(addrPointerRb-1)$.\n"
+         endif
+      endwhile()
+      pr "\n   Update done\n"
+      statusCtrl->text("Updating MSP430 firmware complete")
+
+   endif
+    
+endproc()
+
+procedure(massErase)
+
+   pr "\n   Erasing flash" 
+   fx3write("u",0xF666,[0xD00F]);   # mass erase
+   pause(4)
+   pr "\n   Erase done" 
+  
+endproc()
+
+
+procedure(initBSL, massEraseEnabled)
+
+   fx3write("u",0xF555,[0x55AA]);   # invoke Hardware BSL mode
+   pause(1)
+
+   if(massEraseEnabled==1)
+      :massErase()
+      password = [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+               0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+               0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+               0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]
+   else
+      #fx3read("u",0xF113,16)          # get password from firmware
+      password = [0xDC44, 0xDC44, 0xDC44, 0xDC44,
+               0xDC44, 0xDC44, 0xDC44, 0x0044,
+               0xDC44, 0xDC44, 0xDC44, 0xDC44,
+               0xDC44, 0xDC44, 0xDC44, 0xB844]
+   endif
+  # pr hex(password)
+   fx3write("u",0xF113,password)      # write password values are being ignored at the moment
+  # pr "   BSL unlocked.\n"
+   pause(.7)
+   
+endproc()
+

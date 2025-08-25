@@ -1,0 +1,47 @@
+#########################################################
+# 
+# PPNAME
+HEADING
+# Copyright (c) Magritek Ltd 2022
+#
+# U.I. V4
+#########################################################
+
+#########################################################
+# 
+# Provide an interface to this macro which does not
+# require the use of the V3 window interface.
+#
+#########################################################
+
+procedure(backdoor, guipar)
+
+   (rel,var,pp_list,pp_name,phase_list) = :getseqpar()
+  
+   (guipar,ppList,pcList,pcIndex,varList) = ucsCtrl:initialisePP("$getmacropath()$\..",getmacroname(),guipar,rel,var,pp_list,pp_name,phase_list)
+   
+   r = ucsCtrl:runBDPP(guipar,ppList,pcList,pcIndex,varList)
+
+endproc(r)
+
+#########################################################
+# 
+# Returns important pulse sequence parameters
+#
+# rel ......... relationship between pulse sequence parameters
+# var ......... variable which change during the pulse sequence
+# pp_list ..... list of pulse sequence parameters sent to DSP
+# pp_name ..... name of DSP pulse program to run
+# phase_list .. phase cycling information
+#
+#########################################################
+
+procedure(getseqpar)
+
+   rel = relationships
+   var = variables
+   pp_list = lst
+   pp_name = ppName
+   phase_list = phaseList
+
+endproc(rel,var,pp_list,pp_name,phase_list)

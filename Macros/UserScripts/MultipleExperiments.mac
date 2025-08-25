@@ -1,0 +1,91 @@
+#####################################################################
+# This example script runs 3 experiments one after the other in
+# 3 subfolders. This data can be reloaded after completion.
+# Currently there are no parameters or postprocessing tools
+#####################################################################
+
+procedure(MultipleExperiments, parameters=null) 
+ 
+   macroLocation = getmacropath()
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else
+      gExpt->addExperiment(macroLocation,rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+########################################################
+# Specifies the user interface 
+########################################################
+
+procedure(interface)
+
+   ctrlLayout = list(0)
+   plotLayout = ["pt1";"pt2","pt3";"im1"]
+   procLayout = list(0)
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list. 
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","1\\quickShim50.pt1",
+           "pt2","2\\fid.pt1",
+           "pt3","2\\spectrum.pt1",
+           "im1","3\\cosySpectrum.pt2"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+###########################################################
+# This simpy defines the plot layout for each experiment 
+# and then runs it giving an experiment number as an
+# additional parameter so they appear in different subfolders
+###########################################################
+
+procedure(backdoor, parameters)
+
+   UseDelays(start=0,end=1)
+
+   InitPlot(["pt1","pt2";"pt3"])
+   RunExpt("QuickShim",["exptNr = 1","lockAndCalibrate=\"no\""])  
+
+   InitPlot(["pt1";"pt2"])
+   RunExpt("Proton",["exptNr = 2"])
+
+   InitPlot(["pt1","pt2";"im1","im2"])
+   RunExpt("COSY",["exptNr = 3","nrSteps = 128"])
+
+endproc()
+
+########################################################
+# Return expected experiment duration in seconds. This 
+# is done by requesting the parameters for each 
+# experiment and using this to define the duration.
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   UseDelays(start=0,end=1)
+
+   d = GetDuration("QuickShim")
+   d = d + GetDuration("Proton")
+   d = d + GetDuration("COSY")
+
+endproc(d)

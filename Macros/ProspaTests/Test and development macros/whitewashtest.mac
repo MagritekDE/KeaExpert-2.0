@@ -1,0 +1,23 @@
+p = curplot("1d")
+#p->draw("false")
+
+p->axes->minaxisvalue(-1)
+p->axes->maxaxisvalue(1)
+p->axes->type("box_y_independent")
+
+N = 10
+for(k = 0 to N-1)
+n = p->plot(noise(100))
+tc = p->trace(n)
+pr 0.9*(N-k-1)/(N-1) + 0.05
+tc->yoffset(0.9*(N-k-1)/(N-1) + 0.05)
+tc->whitewash(1)
+if(k == 0)
+   p->hold("on")
+endif
+pause(1)
+next(k)
+
+p->zoom(0,99,0,10)
+#p->draw("true")
+p->hold("off")

@@ -1,0 +1,47 @@
+###################################################################################
+# Ramp one of the shim outputs
+#
+#    shimramp16(channel, start, end, steps, duration)
+#
+#    channel  : 0-15
+#    start    : initial amplitude (signed 16 bit number)
+#    end      : final amplitude (signed 16 bit number)
+#    steps    : number of steps is (2^steps+1) (>= 1)
+#    duration : length of each step is 2us*2^duration (>= 1)
+#
+#    Total ramp duration = 2us*2^duration * (2^steps + 1)
+#    
+###################################################################################
+
+procedure(shimramp16, channel=0, start=0, end=10000, steps=20, duration=2)
+
+   if(wvFX3Info->mode == "run")
+   
+      start    = double(round(start))
+      end      = double(round(end))
+      steps    = double(round(steps))
+      duration = double(round(duration))
+      rampTime = (2d^(steps)+1)*(200*2d^duration)
+
+      # Make the pulse sequence entry
+      cmd = 0x0D000000 | (:tohex(duration, 4)*2d^20) | (:tohex(steps, 4)*2d^16) | :tohex(end, 16)
+      value = (:tohex(channel, 8)*2d^24) | 0x00100000  | ((channel % 4)*2d^16) | :tohex(start, 16)
+
+      ps = [rampTime, cmd, value]
+       
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps)
+   
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(start, end, steps, duration)
+
+   endif
+
+endproc()
+
+procedure(tohex, value, exponent)
+
+   result = (value + (2d^exponent)) % (2d^exponent)
+
+endproc(result)

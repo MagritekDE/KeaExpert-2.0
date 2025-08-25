@@ -1,0 +1,538 @@
+procedure(designer)
+
+
+   n = :windowdefinition()
+   objlist =  ["button",
+              "cli",
+              "color box",
+              "check box",
+              "divider",
+         #     "grid",
+              "group box",
+              "list box",
+              "picture",
+              "plot 1d",
+              "plot 2d",
+              "plot 3d", 
+              "progress bar",
+              "radio buttons",
+              "slider",
+              "static text",
+              "status box",
+              "tab control",
+              "text box",
+              "text editor",
+              "text menu",
+              "up-down"]
+
+  iconlist = ["button",
+              "cli",
+              "colorbox",
+              "checkbox",
+              "divider",
+          #    "grid",
+              "groupbox",
+              "listbox",
+              "picture",
+              "plot1d",
+              "plot2d",
+              "plot3d",
+              "progressbar",
+              "radiobutton",
+              "slider",
+              "statictext",
+              "statusbox",
+              "tab",
+              "textbox",
+              "editor",
+              "textmenu",
+              "updown"]
+
+   setpar(n,6,"list",objlist)
+   setpar(n,6,"icons",iconlist)
+   setpar(n,38,"text","true") # Enable grid
+   setpar(n,44,"text","false") # Snap to grid
+   setpar(n,40,"text",10) # Grid spacing
+   setpar(n,59,"text",1) # Initial control value
+   setpar(n,61,"text","yes") # Save with window
+   setpar(n,6,"keepfocus","false")
+   setwindowpar(n,"statusbox",37)
+   showwindow(n)
+   winCnt = 0
+   winX = 90
+   winY = 90
+
+endproc()
+
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Window Designer", -1, -1, 680, 291)
+
+      # Define all controls with basic parameters
+      windowvar(edWin,winCnt,winX,winY,initCtrlNrValue)
+      groupbox(1, "Dialog window", 5, 5, 200, 50)
+      button(2, 15, 25, 55, 20, "make",
+         winCnt = winCnt +1;
+         winX = winX + 20;
+         winY = winY + 20;
+         showGrid = getpar(0,38,"text");
+         snap = getpar(0,44,"text");
+         gridSpacing = getpar(0,40,"value");
+         m = window("untitled $winCnt$",winX,winY,300,300,"resizable");
+         :updateGrid(showGrid,gridSpacing,snap);
+         showwindow(m);
+         seteditwin(m);)
+      button(3, 75, 25, 55, 20, "edit",
+         setpar(0,37,"text","Click on window to edit - <esc> to abort");
+         activatewindow("false");
+         :updateGrid();
+         setpar(0,37,"text","");)
+      button(4, 140, 25, 55, 20, "run",
+         activatewindow("true");)
+      groupbox(5, "Dialog controls", 5, 60, 200, 148)
+      listbox(6, 20, 81, 171, 116,
+         :make_controls();)
+      groupbox(7, "Dialog macro file", 5, 211, 200, 50)
+      button(8, 15, 230, 55, 20, "load",
+         :load_window();)
+      button(9, 75, 230, 55, 20, "save",
+         :save_window();)
+      button(10, 140, 230, 55, 20, "view",
+         :view_macro();)
+      groupbox(11, "Distribute to ends", 215, 5, 120, 50)
+      button(12, 228, 25, 44, 20, "horiz",
+         distobj("horiz");)
+      button(13, 280, 25, 44, 20, "vert",
+         distobj("vert");)
+      groupbox(14, "Align control edge", 215, 61, 120, 112)
+      button(15, 228, 81, 44, 20, "left",
+         setpar(0,37,"text","Select reference object for left alignment - <esc> to abort");
+         alignobj("left");
+         :clearStatus();)
+      button(16, 280, 81, 44, 20, "right",
+         setpar(0,37,"text","Select reference object for right alignment - <esc> to abort");
+         alignobj("right");
+         :clearStatus();)
+      button(17, 228, 111, 44, 20, "top",
+         setpar(0,37,"text","Select reference object for top alignment - <esc> to abort");
+         alignobj("top");
+         :clearStatus();)
+      button(18, 280, 111, 44, 20, "base",
+         setpar(0,37,"text","Select reference object for base alignment - <esc> to abort");
+         alignobj("base");
+         :clearStatus();)
+      button(19, 228, 141, 44, 20, "horiz",
+         setpar(0,37,"text","Select reference object for horizontal alignment - <esc> to abort");
+         alignobj("horiz");
+         :clearStatus();)
+      button(20, 280, 141, 44, 20, "vert",
+         setpar(0,37,"text","Select reference object for vertical alignment - <esc> to abort");
+         alignobj("vert");
+         :clearStatus();)
+      groupbox(21, "Other", 215, 181, 120, 80)
+      button(22, 227, 199, 46, 23, "Close",
+         closewindow(0);)
+      button(23, 280, 199, 46, 23, "Help",
+         :show_help();)
+      groupbox(24, "Equally space controls", 349, 5, 120, 50)
+      button(25, 362, 25, 44, 20, "horiz",
+         distobj("equalhoriz");)
+      button(26, 414, 25, 44, 20, "vert",
+         distobj("equalvert");)
+      groupbox(27, "Distribute in window", 349, 61, 120, 52)
+      button(28, 362, 82, 44, 20, "horiz",
+         distobj("winhoriz");)
+      button(29, 414, 82, 44, 20, "vert",
+         distobj("winvert");)
+      groupbox(30, "Distribute in control", 349, 120, 120, 52)
+      button(31, 362, 141, 44, 20, "horiz",
+         setpar(0,37,"text","Select reference control to enclose others - <esc> to abort");
+         distobj("objhoriz");
+         :clearStatus();)
+      button(32, 414, 141, 44, 20, "vert",
+         setpar(0,37,"text","Select reference control to enclose others - <esc> to abort");
+         distobj("objvert");
+         setpar(0,37,"text","");
+         setfocus(edWin);)
+      groupbox(33, "Make same size", 349, 181, 120, 80)
+      button(34, 362, 201, 44, 21, "width",
+         setpar(0,37,"text","Select reference object for width adjustment - <esc> to abort");
+         resizeobj("width");
+         :clearStatus();)
+      button(35, 414, 201, 44, 21, "height",
+         setpar(0,37,"text","Select reference object for height adjustment - <esc> to abort");
+         resizeobj("height");
+         :clearStatus();)
+      button(36, 362, 230, 97, 21, "width and height",
+         setpar(0,37,"text","Select reference object for size adjustment - <esc> to abort");
+         resizeobj("both");
+         :clearStatus();)
+      statusbox(37)
+      checkbox(38, 529, 28, "false,true", "false",
+           :updateGrid();)
+      statictext(39, 522, 27, "right", "Enable")
+      textbox(40, 501, 103, 40,
+        :updateGrid();)
+      statictext(41, 539, 84, "right", "Spacing")
+      groupbox(42, "Grid", 481, 5, 86, 135)
+      statictext(43, 522, 58, "right", "Snap")
+      checkbox(44, 529, 59, "false,true", "false",
+           :updateGrid();)
+      groupbox(45, "Attach to", 481, 146, 86, 114)
+      button(46, 489, 197, 31, 20, "left",
+         setpar(0,37,"text","Select controls to attach to left of window  - <esc> to abort");
+         attachobj("left");
+         :clearStatus();)
+      button(47, 502, 226, 44, 20, "base",
+         setpar(0,37,"text","Select controls to attach to base of window - <esc> to abort");
+         attachobj("base");
+         :clearStatus();)
+      button(48, 528, 197, 31, 20, "right",
+         setpar(0,37,"text","Select controls to attach to right of window  - <esc> to abort");
+         attachobj("right");
+         :clearStatus();)
+      button(49, 502, 167, 44, 20, "top",
+         setpar(0,37,"text","Select controls to attach to top of window - <esc> to abort");
+         attachobj("top");
+         :clearStatus();)
+      groupbox(50, "Expand with", 581, 146, 86, 114)
+      button(51, 589, 197, 31, 20, "h-off",
+         setpar(0,37,"text","Select controls to expand when left side of window is resized - <esc> to abort");
+         :expandobj("hoff");
+         :clearStatus();)
+      button(52, 602, 226, 44, 20, "vert",
+         setpar(0,37,"text","Select controls to expand when base of window is resized - <esc> to abort");
+         :expandobj("von");
+         :clearStatus();)
+      button(53, 628, 197, 31, 20, "horiz",
+         setpar(0,37,"text","Select controls to expand when right side of window is resized - <esc> to abort");
+         :expandobj("hon");
+         :clearStatus();)
+      button(54, 602, 167, 44, 20, "v-off",
+         setpar(0,37,"text","Select controls to expand when top of window is resized - <esc> to abort");
+         :expandobj("voff");
+         :clearStatus();)
+      groupbox(55, "Control Nrs", 579, 5, 86, 135)
+      button(56, 587, 56, 31, 20, "Start",
+         :modifyCtrlNrs();)
+      button(57, 626, 56, 31, 20, "Stop")
+      button(58, 600, 26, 44, 20, "Reset",
+         :resetCtrlNrs();)
+      textbox(59, 604, 103, 40)
+      statictext(60, 650, 84, "right", "Initial value")
+      checkbox(61, 312, 233, "no,yes", "no")
+      statictext(62, 267, 226, 79, 27, "center", "Include window in procedure")
+
+     # Set other control parameters
+      setpar(n,59,"objID","initCtrlNrValue")
+      setpar(n,61,"objID","saveWithWindowCtrl")
+
+endproc(n)
+
+procedure(clearStatus)
+
+  setpar(0,37,"text","")
+  setfocus(geteditwin())
+
+endproc()
+
+procedure(make_controls)
+
+
+   event =  getpar(0,6,"event")
+
+   if(event != "single_click_up")
+     return()
+   endif
+
+   type = getpar(0,6,"text")
+   
+   if(type == "button")
+      setpar(0,37,"text","Click on new window to place button - <esc> to abort")
+      mkobj(button(1,10,10,40,20,"button",""))
+    elseif(type == "cli")
+       setpar(0,37,"text","Click on new window to place CLI - <esc> to abort");
+       mkobj(cli(1,10,10,200,200));
+   elseif(type == "color box")
+      setpar(0,37,"text","Click on new window to place colorbox - <esc> to abort")
+      mkobj(colorbox(1,10,10,22,22,[255,0,0],""))
+   elseif(type == "divider")
+      setpar(0,37,"text","Click on new window to place divider - <esc> to abort")
+      mkobj(divider(1,10,10,100,3,"horiz"))
+   elseif(type == "check box")
+      setpar(0,37,"text","Click on new window to place checkbox - <esc> to abort")
+      mkobj(checkbox(1,10,10,"no,yes","no",""))
+   elseif(type == "grid")
+      setpar(0,37,"text","Click on new window to place grid control - <esc> to abort")
+      mkobj(gridctrl(1,10,10,200,63,3,3)) 
+   elseif(type == "group box")
+      setpar(0,37,"text","Click on new window to place groupbox - <esc> to abort")
+      mkobj(groupbox(1,"groupbox",10,10,100,100))
+   elseif(type == "list box")
+      setpar(0,37,"text","Click on new window to place listbox - <esc> to abort")
+      mkobj(listbox(1,10,10,100,100,""))
+   elseif(type == "picture")
+      setpar(0,37,"text","Click on new window to place picture - <esc> to abort")
+      mkobj(picture(1,10,10,200,200))
+   elseif(type == "plot 1d")
+      setpar(0,37,"text","Click on new window to place 1D plot - <esc> to abort")
+      mkobj(plot1d(1,10,10,200,200,""))
+   elseif(type == "plot 2d")
+      setpar(0,37,"text","Click on new window to place 2D plot - <esc> to abort")
+      mkobj(plot2d(1,10,10,200,200,""))
+   elseif(type == "plot 3d")
+      setpar(0,37,"text","Click on new window to place 3D plot - <esc> to abort")
+      mkobj(plot3d(1,10,10,200,200,""))
+   elseif(type == "progress bar")
+      setpar(0,37,"text","Click on new window to place progressbar - <esc> to abort");
+      mkobj(progressbar(1,10,10,100,16,"horizontal"));
+    elseif(type == "radio buttons")
+      setpar(0,37,"text","Click on new window to place radiobuttons - <esc> to abort");
+      mkobj(radiobuttons(1,10,10,20,"horiz","yes,no","yes",""));
+   elseif(type == "slider")
+      setpar(0,37,"text","Click on new window to place slider - <esc> to abort");
+      mkobj(slider(1,10,10,100,20,"horiz",""));
+   elseif(type == "static text")
+      setpar(0,37,"text","Click on new window to place statictext - <esc> to abort");
+      mkobj(statictext(1,10,10,"right","text"));
+   elseif(type == "status box")
+      setpar(0,37,"text","Click on new window to place statusbox - <esc> to abort");
+      mkobj(statusbox(1));
+    elseif(type == "tab control")
+       setpar(0,37,"text","Click on new window to place tabcontrol - <esc> to abort");
+       mkobj(tab(1,10,10,200,100));
+    elseif(type == "text box")
+       setpar(0,37,"text","Click on new window to place textbox - <esc> to abort");
+       mkobj(textbox(1,10,10,40));
+    elseif(type == "text editor")
+       setpar(0,37,"text","Click on new window to place editor - <esc> to abort");
+       mkobj(editor(1,10,10,200,200));
+    elseif(type == "text menu")
+      setpar(0,37,"text","Click on new window to place textmenu - <esc> to abort");
+      mkobj(textmenu(1,10,10,40,100));
+    elseif(type == "up-down")
+      setpar(0,37,"text","Click on new window to place updown control - <esc> to abort");
+      mkobj(updown(1,10,10,30,16,"horiz"));
+  endif
+   
+   :clearStatus()
+
+endproc()
+
+
+procedure(show_help)
+
+   help("Macros\\GUI","designer.htm")
+
+endproc()
+
+procedure(save_window)
+
+   edWin = geteditwin()
+   if(edWin > 0)
+      cd(getwindowpar(edWin,"macropath"))
+      fileIn = getwindowpar(edWin,"macroname")
+      if(fileIn == "designer.mac")
+          winTitle = getwindowpar(edWin,"title")
+         fileIn = "$winTitle$.mac"
+      endif
+      fileOut = getfilename("Save","Save window macro","layout","mac",fileIn)
+      if(fileOut != "cancel")
+         if(saveWithWindowCtrl->text == "yes")
+            savelayout(fileOut,"window with objects","definition and setpar separated") #"definition and setpar combined")
+            copyfile(fileOut,fileOut+".bak")
+         else
+            savelayout(fileOut,"objects without window","definition and setpar separated")
+            copyfile(fileOut,fileOut+".bak")
+         endif
+      endif
+   else
+      message("Error","There is no window being edited")
+   endif
+
+endproc()
+
+procedure(view_macro)
+
+   edWin = geteditwin()
+   if(edWin > 0)
+      cd(getwindowpar(edWin,"macropath"))  
+      fileIn = getwindowpar(edWin,"macroname")
+      if(fileIn == "designer.mac")
+          winTitle = getwindowpar(edWin,"title")
+         fileIn = "$winTitle$.mac"
+      endif
+   else
+      fileIn = ""
+   endif
+
+   fileOut = getfilename("Load","Macro to edit","layout","mac",fileIn)
+
+   if(fileOut != "cancel")
+      edit(fileOut)
+   endif
+
+endproc()
+
+procedure(load_window)
+   
+   edWin = geteditwin()
+   if(edWin > 0)
+      cd(getwindowpar(edWin,"macropath"))
+   endif
+   fileIn = getfilename("Load","Load window macro","layout","mac")
+   if(fileIn != "cancel")
+      run("\"$fileIn$\"()")
+   endif
+
+endproc()
+
+procedure(updateGrid,drawGrid,spacing,snap)
+
+   if(nrArgs == 0)
+      drawGrid = getpar(0,38,"text")
+      spacing = getpar(0,40,"value")
+      snap = getpar(0,44,"text")
+   endif
+
+   edWin = geteditwin();
+   if(edWin == -1)
+      message("Information","No window being edited","info")
+      return
+   endif
+   setwindowpar(edWin,"showgrid",drawGrid);
+   setwindowpar(edWin,"gridspacing",spacing);
+   setwindowpar(edWin,"snaptogrid",snap);
+   drawwin(edWin);
+
+endproc()
+
+
+procedure(expandobj,edge)
+
+   if(edge == "hon")
+
+      (winNr, objNrs) = editobj()
+      nrObjs = size(objNrs)
+      for(k = 0 to nrObjs-1)
+         win = getobj(winNr)
+         wwidth = win->width()
+         wborder = win->bordersize()
+         obj = getobj(winNr,objNrs[k])
+         x = obj->x()
+         w = obj->width()
+         obj->wexp("ww-$wwidth-w-wborder*2$")
+      next(k)
+  
+   elseif(edge == "hoff")
+
+      (winNr, objNrs) = editobj()
+      nrObjs = size(objNrs)
+      for(k = 0 to nrObjs-1)
+         obj = getobj(winNr,objNrs[k])
+         w = obj->width()
+         obj->wexp("$w$")
+      next(k)
+
+   elseif(edge == "von")
+
+      (winNr, objNrs) = editobj()
+      nrObjs = size(objNrs)
+      for(k = 0 to nrObjs-1)
+         win = getobj(winNr)
+         wheight = win->height()
+         hborder = win->bordersize()
+         obj = getobj(winNr,objNrs[k])
+         h = obj->height()
+         obj->hexp("wh-$wheight-h-hborder-1$") # 1 is for resizable frame
+      next(k)
+   
+   elseif(edge == "voff")
+
+      (winNr, objNrs) = editobj()
+      nrObjs = size(objNrs)
+      for(k = 0 to nrObjs-1)
+         obj = getobj(winNr,objNrs[k])
+         h = obj->height()
+         obj->hexp("$h$")
+      next(k)
+   
+   endif
+
+endproc()
+
+procedure(resetCtrlNrs)
+
+  curWin = guiwinnr()
+
+   setpar(0,37,"text","Select window to be modified - press Stop button to abort.");
+
+   winNr = selectobj()
+
+   if(winNr == curWin | winNr == -1)
+      setpar(0,37,"text","")
+      message("Info","Aborted","info")
+      return
+   endif
+
+   win = getobj(winNr)
+   objList = win->ctrllist()
+
+   for(k = 0 to size(objList)-1)
+      on = objList[k]
+      getobj(winNr,on)->ctrlnr(-1)
+   next(k)
+
+   setpar(0,37,"text","")
+   win->draw("true")
+
+endproc()
+
+
+procedure(modifyCtrlNrs)
+
+
+   curWin = guiwinnr()
+
+   setpar(0,37,"text","Select window to be edited. Control numbers in this window should be displayed.");
+
+   winNr = selectobj()
+
+   if(winNr == -1 | winNr == curWin)
+      setpar(0,37,"text","");
+      message("Info","Aborted","info")
+      return
+   endif
+
+   setpar(0,37,"text","Start modifying control numbers. Press Stop button to abort");
+
+   win = getobj(winNr)
+   objList = win->ctrllist()
+   cnt = initCtrlNrValue->value
+   
+   while(1)
+
+    (wNr, oNr, obj) = selectobj()
+     if(obj != null)
+         if(wNr == winNr)
+            obj->ctrlnr(cnt)
+            obj->draw("true")
+            pause(0.01)
+            #keaCtrl:beep()
+            cnt = cnt + 1
+         elseif(wNr != winNr)
+            win->draw("true")
+            message("Info","Finishing modifying","info")
+            setpar(0,37,"text","");
+            return
+         endif
+      endif
+
+   endwhile()
+
+
+endproc()
+

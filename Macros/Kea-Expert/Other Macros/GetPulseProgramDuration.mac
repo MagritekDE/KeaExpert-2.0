@@ -1,0 +1,254 @@
+#####################################################
+# Given a protocol name parse the pulse program to 
+# determine the expected time of 1 scan
+#####################################################
+
+procedure(GetPulseProgramDuration, protocol, usePPBlocks=1,guipar=null)
+
+# Get the current protocol name of not provided
+   if(nrArgs == 0)
+      protocol = gData->curExpt->protocol
+   endif
+
+   if(gData->procType == "FX3")
+      return(:fx3Duration(protocol, usePPBlocks, guipar))
+   elseif(gData->procType == "DSP")
+      return(:dspDuration(protocol, usePPBlocks, guipar))
+   else
+      return(0)
+   endif
+
+endproc()
+
+###################################################################
+# Calculate the duration for the sequence if we are using the FX3
+# In this case the timing information is determined by generating
+# the event table and summing up all the times using packps
+# Note that the time does not include the startcode
+###################################################################
+
+procedure(fx3Duration, protocol, usePPBlocks, guipar)
+
+# Find the protocol
+   folder = gData->findPP(protocol)
+   if(folder == null)
+      return(0)
+   endif
+ 
+   if(not(isdir(folder)))
+      return(0)
+   endif
+
+# Load the pulse program information or return if not found
+   cd(folder)
+   if(isproc(folder,protocol,"getseqpar"))
+      proc = "$protocol$:getseqpar"
+      ppInfo = proc()
+   else
+      return(0)
+   endif
+
+# Get the user interface parameters
+   if(guipar == null)
+      guipar = getctrlvalues(gView->wn)
+   endif
+   assignlist(guipar)
+
+# Intialize the pulse sequence vector
+   wvFX3Info->psStartCode = 0
+   wvFX3Info->pgo = 5
+   wvFX3Info->dwellTime = dwellTime
+   wvFX3Info->flatFilter = flatFilter
+
+# Determine the receiver latency
+   tSample = 1/100e6                                  
+   fixLat  = 9*tSample
+   rxLat   = fixLat*1e6
+   if(flatFilter == "yes")
+      rxLat = rxLat + (6 - gFX3->nrPntsToIgnoreFIR)*dwellTime + 1.65
+   else
+      rxLat = rxLat + (3 - gFX3->nrPntsToIgnoreCIC)*dwellTime + 1.65
+   endif
+
+# Generate the pulse program parameter list
+   assignlist(gData->preferences)
+   assignlist(ppInfo->rel)
+
+# Replace tables with simple 2x1 array
+# This version does not update table addresses
+# it is just to provide timing
+   for(k = 0 to size(ppInfo->pp_list)-1)
+      var = ppInfo->pp_list[k]
+      if(var[0] == "t")
+         fullTable = eval(var)
+         smallTable = [0,size(fullTable)+1]
+         assign(var,smallTable,"local")
+      endif
+   next(k)
+
+   pars = mkparstruct(ppInfo->pp_list)
+
+# Add the phase parameters to the p.p. par list
+   pl2D = ppInfo->phase_list
+   (w,h) = size(pl2D)
+   pl = list(h-1)
+   for(k = 0 to h-2)
+      pl[k] = "p$k+1$ = $pl2D[0,k]$"
+   next(k)
+   pars = pars + struct(pl)
+
+# Run the pulse program macro
+   cd(folder)
+   proc = "$protocol$_pp.mac"
+   usequotedstrings("false")
+   wvFX3Info->mode = "compile"
+   wvFX3Info->getDuration = 1
+   try
+      proc("wvFX3Info","internal",pars)
+      usequotedstrings("true")
+   catch
+      pr lasterror()
+      usequotedstrings("true")
+      throw("")
+   endtry
+
+# Sum up the durations by packing the data
+   (code, duration) = packps(wvFX3Info->ps)
+
+# Return duration in ms
+endproc(single(duration*1e-5))
+
+###################################################################
+# Calculate the duration for the sequence if we are using the DSP
+# In this case the timing information is stored in the folder 
+# $appdir$\\Macros\\UCS-Core\\UCSCommandInfo
+# This procedure is used to return visualization information
+# for both DSP and FX3 modes
+###################################################################
+
+procedure(dspDuration, protocol, usePPBlocks, guipar)
+
+# Find the protocol
+   folder = gData->findPP(protocol)
+   if(folder == null)
+      return(0)
+   endif
+ 
+   if(not(isdir(folder)))
+      return(0)
+   endif
+
+# Load the pulse program information or return if not found
+   cd(folder)
+   if(isproc(folder,protocol,"getseqpar"))
+      proc = "$protocol$:getseqpar"
+      ppInfo = proc()
+   else
+      return(0)
+   endif
+
+# Get the user parameters and save in a global space
+   if(guipar == null)
+      guipar = getctrlvalues(gView->wn)
+   endif
+
+# Save in gSeq
+   gSeq->psInfo = struct()
+   if(vartype(guipar) == "structure")
+      gSeq->psInfo->guipar = guipar
+   else
+      gSeq->psInfo->guipar = struct(guipar)
+   endif
+ 
+# Generate the pulse program parameter list
+   rxLat = 1
+   assignlist(gData->preferences)
+   assignlist(guipar) # guipar variable override any preferences
+   assignlist(ppInfo->rel)
+
+  # pars = mkparlist(ppInfo->pp_list)
+   pars = mkparstruct(ppInfo->pp_list)
+
+# Add the phase parameters to the p.p. par list
+   pl2D = ppInfo->phase_list
+   (w,h) = size(pl2D)
+   pl = list(h-1)
+   for(k = 0 to h-2)
+      pl[k] = "p$k+1$ = $pl2D[0,k]$"
+   next(k)
+   pars = pars + struct(pl)
+
+# Ignore the UCS pulse program DLL commands
+   searchdlls("false")
+ 
+# Depending on the usePPBlocks flag show or hide the block details
+   if(usePPBlocks)
+
+   # Remove the commands which expand the blocks
+      dir = "$appdir$\\Macros\\Kea-Expert\\Pulse Program Blocks"
+      files = getfilelist(dir)
+      for(k = 0 to size(files)-1)
+         rmcachedmacro(dir,files[k],"global")
+      next(k) 
+
+   # And replace these with detailed versions
+      dir = "$appdir$\\Macros\\UCS-Core\\UCSCommandInfo"
+      files = getfilelist(dir)
+      for(k = 0 to size(files)-1)
+         import(files[k],dir,"global")
+      next(k)
+
+   else
+
+   # Add all detailed version
+      dir = "$appdir$\\Macros\\UCS-Core\\UCSCommandInfo"
+      files = getfilelist(dir)
+      for(k = 0 to size(files)-1)
+         import(files[k],dir,"global")
+      next(k)
+
+   # And remove the simplified block versions 
+      dir1 = "$appdir$\\Macros\\Kea-Expert\\Pulse Program Blocks"
+      dir2 = "$appdir$\\Macros\\UCS-Core\\UCSCommandInfo"
+      files1 = getfilelist(dir1)
+      for(k = 0 to size(files1)-1)
+         rmcachedmacro(dir2,files1[k],"global")
+      next(k) 
+
+   endif
+
+# Run the pulse program macro
+   cd(folder)
+   proc = "$protocol$_pp.mac"
+   escapechar("false")
+   psText = load(proc)
+
+   escapechar("true")
+   usequotedstrings("false")
+   try
+      duration = psText(folder,"internal",pars)
+   catch
+      pr lasterror()
+     duration = 0
+   endtry
+   usequotedstrings("true")
+
+# Reload the UCS pulse program DLL
+   searchdlls("true")
+
+# Remove special commands which have been cached
+   dir = "$appdir$\\Macros\\UCS-Core\\UCSCommandInfo"
+   files = getfilelist(dir)
+   for(k = 0 to size(files)-1)
+      rmcachedmacro(dir,files[k],"global")
+   next(k) 
+
+# Add the pulse program blocks back to the cache
+   dir = "$appdir$\\Macros\\Kea-Expert\\Pulse Program Blocks"
+   lst = getfilelist(dir)
+   for(k = 0 to size(lst)-1)
+      import(lst[k],dir,"global")
+   next(k)
+
+endproc(duration/1000)
+

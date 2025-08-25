@@ -1,0 +1,29 @@
+####################################################
+#                  ft1decho.mac
+#
+# Calculate the echo FFT of the current 1D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek June 2013
+#
+#####################################################
+
+procedure(ft1dEcho)
+
+  (t,A) = getplotdata("1d")
+  if(t != null)
+     if(maths:ispower2(size(t))) 
+        N = size(t)
+        dt = t[1] - t[0]
+        f = ([0:1:N-1]-N/2)/(N*dt)
+        plot(f,ft(ftshift((A)))/(f[-1]-f[0]))
+      else
+         message("Can't complete operation","1D data set size is not a power of 2")
+      endif    
+   else
+      message("Can't complete operation","No 1D data set presently plotted","error")
+   endif  
+
+endproc()
+

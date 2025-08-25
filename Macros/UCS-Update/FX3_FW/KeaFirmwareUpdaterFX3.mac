@@ -1,0 +1,407 @@
+#########################################################
+# Allow the updating of the different types of firmware
+# used by the FX3 based Kea spectrometer
+#
+# Author C Eccles/ R Tamrzadeh, 
+# Magritek 2019-2022
+#
+# Change log:
+# v1.3
+#  1. added support and compatibility check for TReX 4.1 (676/484 pin version)
+# v1.4
+#  1. Added support for TRex-2
+# v1.5
+#  1. Added support for FX3
+
+#########################################################
+
+procedure(KeaFirmwareUpdaterFX3, mode="normal", pref=null)
+
+   n = :windowdefinition(mode, pref)
+   assignctrls(n)
+   setwindowpar(n,"sizelimits",[346,-1,363,-1])
+   setwindowpar(n,"statusbox",6)
+   :loadPar()
+#   if(isvar("gData") & isvar("gView"))
+#      if(gData->permissions->canOverWriteFirmware == "no") # | gView->tester == 0)  
+#         setpar(n,1,"enable","false")
+#      endif
+#   endif
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition, mode, pref)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Kea Firmware Updater v1.5", -1, -1, 360, 403, "resizable")
+
+       import(getmacroname(),getmacropath(),"window")
+
+      # Define all controls with basic parameters
+      windowvar(wvPref,fwTypeCtrl,fwListCtrl,statusCtrl,writeToFlashCtrl,wvProcType)
+      wvPref = pref
+      wvProcType = "FX3"
+
+      button(1, "ww-71", 198, 62, 32, "Update Firmware",
+         :updateFirmware();)
+      if(mode == "normal")
+         button(2, "ww-71", 327, 62, 32, "Close",
+         :savePar();
+         :exitMacro();)
+      else
+         button(2, "ww-71", 327, 62, 32, "Close",
+         :savePar();
+         :closeTest(wvPref);)
+      endif
+
+      button(3, "ww-71", 284, 62, 32, "Help",
+         help("Macros\Kea-Update","DSPFirmwareUpdater.htm");)
+      button(4, "ww-71", 155, 62, 32, "Current Version",
+         :readCurrentVersion();)
+      button(5, "ww-71", 241, 62, 32, "Reset\rFX3",
+         :resetFX3();)
+      statusbox(6)
+      statictext(7, 20, 138, "left", "Firmware versions available:")
+    #  checkbox(8, "ww-90", 79, "no,yes", "yes")
+    #  statictext(9, "ww-53", 59, "right", "Write to flash")
+    #  statictext(10, 190, 97, "right", "Temperature Controller")
+      listbox(11, 20, 156, "ww-99", "wh-196")
+      radiobuttons(12, 198, 39, 20, "vertical", "FX3,MSP430,TRex", "FX3",
+           :setFWType();)
+      statictext(13, 190, 59, "right", "MSP430")
+      statictext(14, 190, 78, "right", "Transceiver")
+      statictext(15, 190, 40, "right", "FX3")
+      groupbox(16, "Kea Modules", 20, 14, "ww-30", 112)
+
+     # Set other control parameters
+      setpar(n,6,"objID","statusCtrl")
+    #  setpar(n,8,"objID","writeToFlashCtrl",
+    #              "valueID","writeToFlash")
+      setpar(n,11,"objID","fwListCtrl")
+      setpar(n,12,"objID","fwTypeCtrl",
+                  "valueID","fwType")
+
+     # Set other window parameters
+endproc(n)
+
+#######################################################
+# Display the list of firmware file for a specific 
+# firmware type
+#######################################################
+
+procedure(setFWType)
+
+   dir = null
+   if(fwTypeCtrl->text == "FX3")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\FX3 Firmware"
+   elseif(fwTypeCtrl->text == "MSP430")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\MSP430 Firmware"
+   elseif(fwTypeCtrl->text == "TRex")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\Transceiver Firmware"
+   elseif(fwTypeCtrl->text == "Lock")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\Lock Firmware"
+   elseif(fwTypeCtrl->text == "TempCtrl")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\TempCtrl Firmware"
+   endif
+
+   if(dir != null)
+      fws = getfilelist(dir)
+      fwListCtrl->list(fws)
+   endif
+
+endproc()
+
+
+
+#######################################################
+# Read the current firmware version 
+# from the spectrometer
+#######################################################
+
+procedure(readCurrentVersion)
+
+   if(gData->connected == 0)
+      message("Error","No connection to spectrometer.\rCheck for connected spectrometers","error")
+   endif
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+   if(fwTypeCtrl->text == "FX3")
+      :readFX3Version()
+   elseif(fwTypeCtrl->text == "TRex")
+      :readTRexFWVersion()
+   elseif(fwTypeCtrl->text == "MSP430")
+      :readMSPFWVersion()
+   elseif(fwTypeCtrl->text == "Lock")
+      :readLockFWVersion()
+   elseif(fwTypeCtrl->text == "TempCtrl")
+      :readTempCtrlFWVersion()
+   endif
+
+   if(isvar("gExpt"))
+      gExpt->resumeMonitoring()
+   endif
+
+endproc()
+
+
+#######################################################
+# FX3 version
+#######################################################
+
+procedure(readFX3Version)
+   try
+      FWver = fx3read("V",0,1)
+      statusCtrl->text("Firmware version: $FWver[0]$")
+      return("$FWver[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+#######################################################
+# Transceiver version
+#######################################################
+
+procedure(readTRexFWVersion)
+   try
+      FWver = fx3read("E",0x83,1)
+      statusCtrl->text("Firmware version: $FWver[0]$")
+      return("$FWver[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+
+#######################################################
+# Lock firmware version
+#######################################################
+
+procedure(readLockFWVersion)
+
+   try
+      verFW = fx3read("E",0x09083,1)
+      verHW = fx3read("E",0x09082,1)
+      statusCtrl->text("Firmware version: $verFW[0]$, hardware version: $verHW[0]$")
+      return("$verFW[0]$.$verHW[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+#######################################################
+# Temperature controller version
+#######################################################
+
+procedure(readTempCtrlFWVersion)
+
+   try
+      ver = fx3read("E",0x0F096,2)
+      statusCtrl->text("Version number = $ver[1]$.$ver[0]$")
+      return("$ver[1]$.$ver[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+
+#######################################################
+# Temperature controller version
+#######################################################
+
+procedure(readMSPFWVersion)
+
+   try
+      ver = fx3read("T",0x06,1)
+      statusCtrl->text("Version date = $hex(ver[0])$")
+      return("$ver[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+
+#######################################################
+# Update the firmware
+#######################################################
+
+procedure(updateFirmware)
+
+   if(gData->connected == 0)
+      message("Error","No connection to spectrometer.\rCheck for connected spectrometers","error")
+   endif
+
+   if(query("Warning","You are about to FLASH the $fwTypeCtrl->text$ module. Proceed?") == "no")
+      return
+   endif
+
+   message("Warning","Do not switch off the spectrometer until flashing is complete.","warning")
+
+   file = fwListCtrl->text
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+   if(fwTypeCtrl->text == "FX3")
+      path = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\FX3 Firmware"
+      FX3FirmwareUpdater(path, file, statusCtrl)
+   elseif(fwTypeCtrl->text == "MSP430")
+      path = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\MSP430 Firmware"
+      MSP430FirmwareUpdater(path, file, statusCtrl)
+   elseif(fwTypeCtrl->text == "TRex")
+      path = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\Transceiver Firmware"
+      TRexFirmwareUpdater(path, file, statusCtrl)
+ #  elseif(fwTypeCtrl->text == "Lock")
+ #     :updateLockFirmware()
+   elseif(fwTypeCtrl->text == "TempCtrl")
+      path = "$getmacropath()$\\KeaFirmwareUpdaterFX3\\TempCtrl Firmware"
+      TempCtrlFirmwareUpdater(path, file, statusCtrl)
+   endif
+
+   if(gData->connected == 0)
+      message("Error","No connection to spectrometer.\rCheck for connected spectrometers","error")
+   endif
+
+endproc()
+
+
+###################################################
+# Reset the FX3 (alternative to pressing reset button)
+###################################################
+
+procedure(resetFX3)
+
+   if(gData->connected == 0)
+      message("Error","No connection to spectrometer.\rCheck for connected spectrometers","error")
+   endif
+
+   if(isvar("gExpt"))
+      gExpt->pauseMonitoring()
+   endif
+
+   fx3write("u",0x1F00,[0xBA])
+   print("\n   FX3 resetting - please wait\n")
+
+endproc()
+
+###################################################
+# Write progress to status bar and to CLI use
+# a message box if there is an error
+###################################################
+
+procedure(updatetext,txt,abortTxt)
+
+   if( isvar("abortTxt") )
+      message("Error",txt)
+      abort(txt)
+   else
+      statusCtrl->text(txt)
+    #  pr "   $txt$\n"
+   endif
+   
+endproc()
+
+
+###################################################
+# Load the firmware folder information and update
+# the firmware list
+###################################################
+
+procedure(loadPar)
+
+# Check for saved firmware folder
+  bak = getcwd()
+   dir = "$prefdir$\\KeaParameters"
+   found = 0
+   if(isdir(dir))
+      cd(dir)
+      if(isfile("firmWare.par"))
+        lst = load("firmWare.par")
+        assignlist(lst)
+        setctrlvalues(0,lst)
+        found = 1
+      endif
+   endif
+
+# Default is to use the macros DSPFirmware folder
+   if(found==0)
+      path = "$getmacropath()$\\TRexFirmware"
+      lst = ["fwPath = \"$path$\""]
+      setctrlvalues(0,lst)
+   endif
+   cd(bak)
+
+# Display the list of firmware folders
+   :setFWType()
+
+endproc()
+
+
+###################################################
+# Save the firmware folder information and update
+# the firmware list
+###################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   dir = "$prefdir$\\KeaParameters"
+   mkdir(dir)
+   cd(dir)
+   lst = getctrlvalues(0)
+   save("firmWare.par",lst)
+   cd(bak)
+
+endproc()
+
+
+procedure(exitMacro)
+
+   if(getwindowpar(0,"mainWindow") == "true")
+      exit()
+   else
+      closewindow(0)
+   endif
+
+endproc()
+
+procedure(closeTest, pref)
+
+   bak = getcwd()
+   dir = "$pref->dataBaseDirectory$\\$pref->KeaDataDirectory$\\DSP Tests"
+   mkdir(dir)
+   cd(dir)
+
+   tRexVer = :readTRexFWVersion()
+   lockVer = :readLockFWVersion()
+   tempVer = :readTempCtrlFWVersion()
+
+   printtofile("DSP_FW_Info.par")
+   print("testTime = \"$getdate()$ $gettime(\"%2d:%02d\")$\"\n")
+   nrProg = (tRexVer == "101") +  (lockVer == "4.4") + (tempVer == "2.32")
+
+   if(nrProg == 4)
+      print("status = \"alltested\"\n")
+   elseif(nrProg > 0)
+      print("status = \"sometested\"\n")
+   else
+      print("status = \"untested\"\n")
+   endif
+   closeprint()
+
+   cd(bak)
+   sendmessage("FirmwareUpdater","alltested")
+   closewindow(0)
+
+endproc()

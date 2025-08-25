@@ -1,0 +1,17 @@
+###################################################################################
+# 
+###################################################################################
+
+procedure(cleardata, nrPnts)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + (40*nrPnts+150)/1000
+      gSeq->psInfo->command = gSeq->psInfo->command + ["cleardata,$nrPnts$,$args[0]$"]
+   
+   endif
+
+endproc()
+

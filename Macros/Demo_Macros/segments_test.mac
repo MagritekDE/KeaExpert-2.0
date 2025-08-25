@@ -1,0 +1,29 @@
+procedure(lines_test)
+   
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+   
+   clear3d
+   k = [0:2:1000]
+   x1 = sin(k/10)
+   x2 = sin((k+1)/10)
+   y1 = cos(k/10)
+   y2 = cos((k+1)/10)
+   z1 = k/200
+   z2 = (k+1)/200
+   m = matrix(6,size(z1))
+   m[0,~] = x1'
+   m[1,~] = x2'
+   m[2,~] = y1'
+   m[3,~] = y2'
+   m[4,~] = z1'
+   m[5,~] = z2'
+   color3d([1,1,0])
+   segments3d(m)
+   shift3d(-0.5,-0.5,-2.5)
+   rotate3d(42,30,0)
+   viewdistance(13)
+
+endproc()

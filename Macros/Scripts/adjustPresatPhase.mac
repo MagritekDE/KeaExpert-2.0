@@ -1,0 +1,50 @@
+#####################################################################
+# Find the correct coadd phase for the presat-multi experiment
+#####################################################################
+
+procedure(backdoor, guipar)
+
+# Some error checking
+   name = wvCurrentExpt->name
+   if(name != "Presat" & name != "PresatMulti")
+      message("Error","Only works with Presat and PreastMulti experiments","error")
+      return
+   endif
+
+   if(vartype(wvPlotLayout) == "list")
+      message("Error","All 4 plots should be visible","error")
+      return
+   endif
+
+   InitScript(getmacropath(),getmacroname())
+
+   (pt1,pt2,pt3,pt4) = GetPlots()
+
+   (tAxis,fidPlus) = pt1->getdata()
+   (tAxis,fidMinus) = pt2->getdata()
+   zf = 4
+   sz = size(fidPlus)
+   flt = matrix(sz)+1
+
+   im1 = InitPlot(["im1"])
+
+   N = 50
+   spectra = cmatrix(sz,N)
+   p0 = -16
+   p1 = 0
+   pivot = 7500
+   for(r = 0 to N-1)
+      ph = r
+      fact = 0.33*exp(i*ph*pi/180)
+      fidSum = 1.5*(fidPlus-fact*fidMinus)
+      fidSum = fidSum .* exp(-tAxis/1000*pi*0.2)
+      ps = exp(i*(p0+p1*2/sz*([0:sz-1]-pivot))/180*pi)
+      spectra[~,r] = ps.*ft(fidSum)
+    
+      im1->image(spectra)
+
+   next(ph)
+
+   EndScript()
+
+endproc()

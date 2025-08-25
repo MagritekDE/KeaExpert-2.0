@@ -1,0 +1,126 @@
+###########################################################
+# Command to control selection of the sample in the 
+# batch list.
+###########################################################
+
+procedure(SelectSample, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      name = gView->sampleNameCtrl->text
+      parameters = ["batchSampleName=\"$name$\""]
+      gExpt->addExperiment(getmacropath(),"SelectSample", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Add this command to the batch list (overrides default if
+# uncommented)
+###########################################################
+
+procedure(addCommand)
+
+   assignlist(getctrlvalues(0))
+   entry = "SelectSample|$batchSampleName$"
+ 
+endproc(entry)
+
+###########################################################
+# The user has changed the sample name in the parameter
+# list so update the file comment to match
+###########################################################
+
+procedure(parameterChanged,protocol,comment,exptNr)
+
+  assignlist(getctrlvalues(0))
+
+  gBatch->saveCurrentParameters(protocol,comment,exptNr)
+  gBatch->renameSingleProtocol(protocol,comment,exptNr,"$batchSampleName$")
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result. A string type allows
+# loop numbers like 'lc1'
+###########################################################
+
+procedure(interface)
+
+   if(isvar("gSample->sampleList"))
+      sampleList = gSample->sampleList
+   else
+      sampleList = [""]
+   endif
+   ctrlLayout = ["batchSampleName","Sample name","tm_wide","string","$sampleList$"]
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+#####################################################################
+# Select the sample from batchList or normal interface
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+# Get the sample index.The parameter batchSampleName could be a number
+# a name or a variables either lcx or samples[lcx]
+   try
+      result =  eval(batchSampleName)
+   catch
+      result = batchSampleName
+   endtry
+
+# Convert to an numeric index
+   if(vartype(result) == "float")
+      sampleNumber = round(result)
+   else
+      sampleNumber = getlistindex(samples,result)
+   endif
+  
+   if(sampleNumber == -1)
+      message("Error","Invalid sample name: $batchSampleName$","error")
+      abort("Invalid sample name: $batchSampleName$")
+   endif
+
+   bak = getcwd()
+   cd("$appdir$\\Spinsolve special programs\\Autosampler")
+
+   gView->statusCtrl->label("Selecting sample $sampleNumber$)")
+   pr "\n   Select sample $sampleNumber$ ('$samples[sampleNumber]$')\n"
+   r = execandwait("AutoSamplerCSharpCLI.exe","armPosition")
+   if(r < 100)
+      if(r != 0) # At bottom so first retrieve the sample
+         r = execandwait("AutoSamplerCSharpCLI.exe","up")
+      endif
+      r = execandwait("AutoSamplerCSharpCLI.exe","rotate $sampleNumber$")
+      r = execandwait("AutoSamplerCSharpCLI.exe","down")
+      if(r != 0)
+         print("\n   Autosampler Error ($r$)!\n")
+      endif
+   else
+      message("Action required!","Please insert sample '$samples[sampleNumber]$'.","info")
+   endif
+
+   cd(bak)
+   gView->statusCtrl->label("")
+
+   pause(1)
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   duration = 30
+
+endproc(duration)
+

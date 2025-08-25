@@ -1,0 +1,356 @@
+# Display the Prospa help viewer.
+procedure(helpViewer)
+
+   (x,y,w,h) = :loadwinpos()
+   n = :windowdefinition(x,y,w,h)  
+   windowvar(wv_dir,wv_curlist)
+
+   :updateTopics()
+   :updateTopicIcons()
+
+   setwindowpar(n,"exit_procedure",
+         ":savewinpos();closewindow(0);")
+   showwindow(n)
+
+endproc()
+
+# Define the window
+# Do not change the window name since this is used by Prospa
+# when displaying help.
+procedure(windowdefinition,x,y,w,h)
+
+   n = window("Prospa Help", x,y,w,h,"resize")
+
+      # Define all controls with basic parameters
+       windowvar(wv_dir,wv_group)
+       htmlbox(1, 304, 6, "ww-310", "wh-13")
+       listbox(2, 124, 30, 170, "wh-165",
+          :updateHTMLPage();)
+       listbox(3, 14, 30, 100, "wh-165",
+          :updateTopicIcons();
+          :updateFileList();)
+       button(4, 219, "wh-60", 62, 33, "Close",
+          :savewinpos();
+          closewindow(0);)
+       button(5, 24, "wh-60", 62, 33, "Back",
+          :goback();)
+       statictext(6, 50, 12, "centre", "Topic")
+       statictext(7, 190, 12, "center", "Help")
+       button(8, 93, "wh-60", 62, 33, "Forward",
+          :gofwd();)
+       getmessage(9,
+         :process_message();)
+       groupbox(10, "", 14, "wh-130", 280, 122)
+       radiobuttons(11, 114, "wh-110", 20, "vertical",
+                    "internal,external", "internal",
+                    :selectHelpType();)
+       statictext(12, 134, "wh-111", "left", "Internal commands")
+       statictext(13, 134, "wh-91", "left", "External commands")
+       statictext(14, 100, "wh-105", "right", "List help for:")
+
+       menu(15,"Edit","Copy\tCtrl+C",setpar(0,1,"copyselection",""))
+       menu(16,"View","Go Back\tCtrl+B",setpar(0,1,"goback",""),
+                      "Go Forward\tCtrl+F",setpar(0,1,"goforward",""))
+
+       setwindowpar(n,"menu",[15,16])
+
+     # Set other control parameters
+endproc(n)
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 400; h = 400
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("htmlhelp.par"))
+      lst = load("htmlhelp.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("htmlhelp.par",lst)
+
+endproc()
+
+procedure(updateHelpList)
+
+   if(wv_dir == "InternalCommands")
+      :updateInternalCmdList()
+      :updateCmdGroupIcons()
+   else
+      :updateMacroList()
+      :updateMacroGroupIcons()
+   endif
+
+endproc()
+
+# Update the command list based on the command group selection
+procedure(updateMacroList)
+
+   dir = getpar(0,3,"text")
+   wv_dir = dir
+   bak = getcwd()
+   cd(dir)
+
+   filelst = getfilelist(".")
+   filesz = size(filelst)
+   if(filesz > 0)
+      for(k = 0 to filesz-1)
+         filelst[k] = rmext(filelst[k])
+      next(k)
+   endif 
+
+   if(isfile("helplist.lst"))
+      hlplst = load("helplist.lst")
+      hlpsz = size(hlplst)
+   
+      for(k = 0 to hlpsz-1)
+         if(hlplst[k] == "ALL OTHERS")
+            hlplst = rmfromlist(hlplst,k)
+            hlplst = mergelists(hlplst,filelst) 
+            hlplst = rmfromlist(hlplst,"helplist") 
+            exitfor
+         endif
+      next(k)
+   
+      hlpsz = size(hlplst)
+      hlpicons = matrix(hlpsz)+16
+        
+      for(k = 0 to hlpsz-1)
+         if(hlplst[k] == "SPACE")
+            hlplst[k] = "----------------------------------------------"
+            hlpicons[k] = -1
+         else
+            hlplst[k] = rmext(hlplst[k])
+         endif     
+      next(k)
+
+      setpar(0,2,"list",hlplst)
+      setpar(0,2,"icons",hlpicons)
+      setpar(0,2,"index",1)
+
+   else
+      if(filesz > 0)
+         setpar(0,2,"list",sortlist(filelst))
+         setpar(0,2,"icons",matrix(filesz)+16)
+         setpar(0,2,"index",1)
+      else
+         setpar(0,2,"list",[""])
+      endif
+   endif
+
+   cd(bak)
+
+endproc()
+
+# Set the macro menu list
+procedure(updateMenuList)
+
+  cd(appdir + "\\Documentation\\Help Files")
+  menus = sortlist(getdirlist("."))
+  menus = rmfromlist(menus,"InternalCommands")
+
+  setpar(0,3,"list",menus)
+  setpar(0,3,"icons",matrix(size(menus))+15)
+
+endproc()
+
+# Load command based on list selection
+procedure(loadHelp)
+
+   dir = appdir + "\\Documentation\\Help Files\\$wv_dir$\\"
+   event = getpar(0,2,"event")
+   file = getpar(0,2,"text") 
+
+   if(event == "single_click_down" | event == "enter_pressed")
+      if(file != "----------------------------------------------")
+         file = dir + file + ".htm"
+         setpar(0,1,"url",file)
+      endif
+   endif
+
+endproc()
+
+###############################
+# Load a page
+###############################
+
+procedure(updateHTMLPage)
+
+
+   index = getpar(0,2,"index")-1
+
+   file = replacestr(wv_curlist[index*2]," ","_")
+
+   bkMark = replacestr(wv_curlist[index*2+1]," ","_")
+
+   if(file == "")
+      file = appdir + "\\Documentation\\Manual Files\\1D\\" + bkmark + ".htm"
+   else
+      file = appdir + "\\Documentation\\Manual Files\\1D\\" + file + ".htm#" + bkMark
+   endif
+
+   setpar(0,1,"url",file)
+
+endproc()
+
+# Go to the last reference
+procedure(goback)
+
+   setpar(0,1,"goback","")
+
+endproc()
+
+# Go to the next reference
+procedure(gofwd)
+
+   setpar(0,1,"goforward","")
+
+endproc()
+
+# Prospa has sent a message to load help for a command
+procedure(process_message)
+
+   (src,cmd) = getpar(0,9,"text")
+   if(src == "HelpViewer")
+      try
+         (dir,cmd) = scanstr(cmd,"%1:%2")
+         :loadCommand(dir,rmext(cmd))
+      catch
+         :loadCommand("InternalCommands",rmext(cmd)) 
+      endtry  
+   endif
+
+endproc()
+
+procedure(testit)
+
+  pr "\n" 
+   cmds = getpar(0,2,"list")
+
+  for(k = 0 to size(cmds)-1)
+     pr ("k = $k$\r")
+     :loadCommand(cmds[k])
+   next(k)
+
+# for(k = 0 to size(cmds)-1)
+#     pr ("k = $k$\r")
+#    lst = listcom()
+#    setpar(0,2,"text",lst[k])
+# next(k)
+
+
+endproc()
+
+# Set the topic list
+procedure(updateTopics)
+
+   topics = ["Introduction","Main Menu","1D Plot","2D Plot","3D Plot","CLI","DLL","GUI","Macros"]
+   setpar(0,3,"list",topics)
+
+endproc()
+
+# Set the command group list icons
+procedure(updateTopicIcons)
+
+   sel = getpar(0,3,"index")
+   lst = getpar(0,3,"list")
+   icons = matrix(size(lst))+18
+   if(sel > 0)
+      icons[sel-1] = 19
+   endif
+   setpar(0,3,"icons",icons)
+
+endproc()
+
+# Update the command list based on the command group selection
+procedure(updateFileList)
+
+  topicList = getpar(0,3,"text")
+  
+   if(topicList == "Introduction")
+     lst = ["Introduction","section"]    
+   elseif(topicList == "1D Plot")
+     lst = [    "File Menu","File Menu",
+                "File Menu","Load Plots",
+                "File Menu","Close", 
+                "File Menu","Save Plot as", 
+                "File Menu","Save WMF",
+                "File Menu","Print Plot"]
+#            "Edit Menu", "",
+#            "View Menu", "",
+#                "Zoom a region", "page",
+#                "Show last region", "page",
+#                "Display all data", "page",
+#                "Show real part", "page",
+#                "Show imaginary part", "page",
+#                "Select rectangular region", "page",
+#                "Move a plot", "page",
+#                "Toggle toolbar visibility", "page",
+#                "Toggle borders", "page",
+#                "Multiplot functions", "page",
+#                "Remove blank plots", "page",
+#                "Overlapping plots", "page",
+#                "Autorange", "page",
+#                "Move and scale data", "page",
+#                "Select centre point", "page"] 
+      
+   endif
+
+   sz = size(lst)
+   labels = list(sz/2)
+   icons = matrix(sz/2)
+   for(k = 0 to sz/2-1)
+     labels[k] = lst[k*2+1]
+     if(lst[k*2+1] == lst[k*2])
+        icons[k] = 17
+     else
+        icons[k] = 16 + 0x1400
+     endif
+   next(k)
+
+  setpar(0,2,"list",labels)
+  setpar(0,2,"icons",icons)
+  setpar(0,2,"index",1)
+
+  wv_curlist = lst
+
+endproc()
+
+# Set the macro group list icons
+procedure(updateMacroGroupIcons)
+   
+   lst = getpar(0,3,"list")
+   sel = getpar(0,3,"index")
+   icons = matrix(size(lst))+15
+   if(sel > 0)
+      icons[sel-1] = 17
+   endif
+   setpar(0,3,"icons",icons)
+
+endproc()
+
+procedure(selectHelpType)
+
+   type = getpar(0,11,"text")
+   if(type == "internal")
+      :loadCommand("InternalCommands")
+   else
+      :loadCommand("1D")
+   endif
+
+
+endproc()

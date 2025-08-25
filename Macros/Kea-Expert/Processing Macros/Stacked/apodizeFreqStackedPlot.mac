@@ -1,0 +1,303 @@
+####################################################
+#         apodizeFreqStackedPlot.mac
+#
+# Apply an apodization function to all traces in the
+# current stacked plot
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek  May 2024
+#
+###################################################
+
+
+procedure(apodizeFreq, fidPlotName, specPltName)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   n = :windowdefinition()
+   if(nrArgs == 2)
+      windowvar(wvFidPlt,wvSpecPlt)
+      wvFidPlt = gPlot->getPlotObject(fidPlotName)
+      wvSpecPlt = gPlot->getPlotObject(specPltName)
+   else
+      windowvar(wvFidPlt,wvSpecPlt)
+      wvSpecPlt = curplot("1d")
+      wvFidPlt = null
+   endif
+
+   import("maths.mac","$appdir$\\Macros\\CoreMacros","window")
+
+   setpar(n,3,"list",["none","exponential","sinebell","sinebell2",
+                     "cosinebell","cosinebell2","gauss","gaussdeconv"])
+   setpar(n,2,"value",0)
+   setpar(n,7,"value",0)
+   setpar(n,3,"text","none")
+   :select_filter()
+   :update_data()
+   setwindowpar(n,"exit_procedure",":restoreTraces()")
+   showwindow(n)
+
+endproc()
+
+###########################################################
+# Make sure the current plots are reset
+###########################################################
+
+procedure(restoreTraces)
+
+   if(wvFidPlt != null)
+      trcFID = wvFidPlt->tracelist
+      if(size(trcFID) == 3)
+         wvFidPlt->rmtrace(1)
+         wvFidPlt->rmtrace(2)
+         wvFidPlt->trace(0)->color([165,47,25])
+      endif
+   endif
+
+   trcSpec = wvSpecPlt->tracelist
+   if(size(trcSpec) == 2)
+      wvSpecPlt->rmtrace(1)
+      wvSpecPlt->trace(0)->color([165,47,25])
+   endif
+   
+endproc()
+
+###########################################################
+# Update the spectrum with the new apodized trace
+###########################################################
+
+procedure(updateTraces)
+
+   if(wvFidPlt != null)
+      trcFID = wvFidPlt->tracelist
+      if(size(trcFID) == 3)
+         wvFidPlt->rmtrace(1)
+         wvFidPlt->rmtrace(2)
+         wvFidPlt->trace(0)->color([165,47,25])
+      endif
+   endif
+
+   trcSpec = wvSpecPlt->tracelist
+   if(size(trcSpec) == 2)
+      trc = wvSpecPlt->trace(1)
+      (x,y) = trc->getdata()
+      trc = wvSpecPlt->trace(0)
+      trc->name("Apodized spectrum")
+      trc->setdata(struct(x,y))
+      wvSpecPlt->rmtrace(1)
+      wvSpecPlt->trace(0)->color([165,47,25])
+   endif
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   parentWin = gView->wn
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apodize 1D Frequency Domain Data", -1, -1, 410, 138)
+   #    setwindowpar(n,"type","dialog")
+      # Define all controls with basic parameters
+      windowvar(N,yOrig,xOrig,lwBrd,lwNar,parWinNr,b1Freq,isPPMScale)
+      parWinNr = parentWin
+      statictext(1, 296, 46, "left", "0")
+      slider(2, 165, 44, 130, 20, "horizontal",
+           :apply_filter();)
+      listbox(3, 23, 28, 119, 86,
+         if(getpar(0,3,"event") == "single_click_down");
+         :apply_filter();
+         endif;)
+      statictext(4, 296, 89, "left", "0")
+      groupbox(5, "Filters", 9, 4, 146, 123)
+      button(6, 346, 55, 45, 27, "Help",
+         :load_help();)
+      slider(7, 165, 87, 130, 20, "horizontal",
+           :apply_filter();)
+      button(8, 346, 95, 45, 27, "Exit",
+         :restoreTraces();
+         closewindow(0);)
+      statictext(9, 243, 28, "right", "Broadening")
+      groupbox(10, "Adjust line-width", 164, 4, 172, 123)
+      statictext(11, 237, 74, "right", "Narrowing")
+      button(12, 346, 15, 45, 27, "Update",
+         :updateTraces();
+         closewindow(0);)
+
+     # Set other control parameters
+      setpar(n,2,"type","float",
+                  "range",[0,100])
+      setpar(n,7,"type","float",
+                  "range",[0,100])
+      setpar(n,8,"mode","cancel")
+
+     # Set other window parameters
+endproc(n)
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(load_help)
+   help("Macros\\1D","apodizeFreq.htm")
+endproc()
+
+
+#####################################################################
+# Load the current data set
+#####################################################################
+
+procedure(update_data)
+
+   assignlist(getctrlvalues(parWinNr, "list", "list",["nucleus"]))
+
+   varName1 = "b1Freq$nucleus$"
+   varName2 = "b1FreqXN"
+   assignlist(getctrlvalues(parWinNr, "list", "list",[varName1,varName2]))
+   if(isvar("nucleus"))
+      if(isvar(varName1))
+         b1Freq = single(eval(varName1))
+      elseif(isvar("b1FreqXN"))
+         b1Freq = single(b1FreqXN)
+      endif
+   else
+      message("Error","Nucleus not defined","error")
+      return
+   endif
+
+   cp = curplot("1d")
+   tcList = cp->tracelist()
+   sz = size(tcList)
+   tc = cp->trace(0)
+   (xOrig,y) = tc->getdata()
+   w = size(xOrig)
+   yOrig = cmatrix(w,sz)
+   yOrig[~,0] = y
+   for(cnt = 1 to sz-1)
+      tc = cp->trace(cnt)
+      (x,y) = tc->getdata()
+      yOrig[~,cnt] = y
+   next(cnt)
+
+   isPPMScale = cp->axes->xppmscale
+   N = size(xOrig)
+   cd("$appdir$\\Macros\\coreMacros")
+   cachemacro("1dpar.mac")
+   cacheproc("true")
+
+endproc()
+
+#####################################################################
+# Determine an expression for the chosen filter
+#####################################################################
+
+procedure(select_filter)
+
+   fltStr = getpar(0,3,"text")
+
+   if(fltStr == "none")
+      flt = "matrix(N)+1"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "exponential")
+      flt = "exp(-abs(x-p1)*p2)"
+      broad = "true"; narrow = "false"
+      lwBrd = "p2*N/pi*del"; lwNar = "0"
+   elseif(fltStr == "cosinebell")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "cosinebell2")
+      flt = "cos(0.5*pi*(x-p1)/(N-p1))^2"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "sinebell")
+      flt = "sin(pi*(x-p1)/(N-p1))"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "sinebell2")
+      flt = "sin(pi*(x-p1)/(N-p1))^2"
+      broad = "false"; narrow = "false"
+      lwBrd = "0"; lwNar = "0"
+   elseif(fltStr == "gauss")
+      flt = "exp(-(x-p1)^2*p2^2)"
+      lwBrd = "1.66*p2*N/pi*del"; lwNar = "0"
+      broad = "true"; narrow = "false"
+   elseif(fltStr == "gaussdeconv")
+      flt = "exp((x-p1)*p3-(x-p1)^2*(p2/1.66)^2)"
+      broad = "true"; narrow = "true"
+      lwBrd = "p2*N/pi*del"; lwNar = "p3*N/pi*del"
+   endif
+
+# Enable/disable the controls based on choice
+   setpar(0,2,"enable",broad)
+   setpar(0,9,"enable",broad)
+   setpar(0,7,"enable",narrow)
+   setpar(0,11,"enable",narrow)
+
+endproc(flt)
+
+#####################################################################
+# Apply the chosen filter
+#####################################################################
+
+procedure(apply_filter)
+
+   if(N == 0)
+      return()
+   endif
+
+   if(maths:is_not_power2(N))
+      message("Error","Data set length must be a power of 2");
+      return()
+   endif
+
+   x = [0:1:N-1]
+   flt = :select_filter()
+
+   p1 = 0
+   p2 = getpar(0,2,"value")/N
+   p3 = getpar(0,7,"value")/N
+
+   if(isPPMScale == "true")
+      xOrig = xOrig*b1Freq
+   endif
+
+   maxLW = 5 # Maximum linewidth in Hz
+   del = xOrig[1] - xOrig[0]
+   k = maxLW*pi/(100*del)
+   p2 = p2*k
+   p3 = p3*k
+
+   if(isPPMScale == "true")
+      xOrig = xOrig/b1Freq
+   endif
+
+   setpar(0,1,"text","$eval(lwBrd),1.1f$ Hz")
+   setpar(0,4,"text","$eval(lwNar),1.1f$ Hz")
+   filter = eval(flt)
+
+   wvSpecPlt->draw("false")
+   (x1,x2,y1,y2) = wvSpecPlt->zoom()
+   trcList = wvSpecPlt->traceList()
+   sz = size(trcList)
+
+   for(cnt = 0 to sz-1)
+      tc = wvSpecPlt->trace(cnt)
+      fid = ift(ftshift((yOrig[~,cnt])))
+      spec = ftshift(ft(fid.*filter))
+      tc->setdata(struct(xOrig,spec))
+   next(cnt)
+
+   wvSpecPlt->zoom(x1,x2,y1,y2)
+   wvSpecPlt->draw("true")
+
+endproc()

@@ -1,0 +1,916 @@
+#####################################################################
+# This adds the PowerShim protocol to the parameter list or
+# by holding the shift key down allows the protocol to be edited.
+#####################################################################
+
+procedure(PowerShim, parameters=null)
+
+   macroLocation = getmacropath()
+   parentPath = getbasepath(macroLocation)
+
+   if(iskeypressed("shift"))
+      ProtocolEditor(gView->wn, parentPath, "PowerShim")
+   else
+      gExpt->addExperiment(parentPath,"PowerShim", parameters)
+   endif
+
+endproc()
+
+#####################################################################
+# The backdoor entry for the PowerShim protocol. 
+# guipar are the parameters from the user interface
+#####################################################################
+
+procedure(backdoor, parameters)
+
+# Check we aren't in simulator mode
+   if(wvSpecType == "Simulator")
+      message("Error","PowerShim not available in simulator mode.","error")
+      return(null)
+   endif   
+
+# Run the experiment
+   InitScript(getmacropath(),getmacroname())
+      InitPlot(["pt1","pt2";"pt3"])
+      shimPar = :PowerShimCore(parameters)
+   EndScript()
+
+endproc(shimPar)
+
+#####################################################################
+#
+# The PowerShim procedure
+#
+# This searches for the best shim values by performing an FID RMS 
+# measurement at 3 points for each shim. A parabolic fit is performed
+# to determine the minimum RMS values made on each shim.
+# This process is repeated for each shim in an order which has
+# been found to most likely result in an optimal set of shims.
+#
+# The shims can use as a starting point based on the exptMethod 
+# variable in psPar
+#
+# zero ....... all shims are zeroed
+# factory .... the shim settings 
+# database ... the results from the standard software are used
+# file ....... the best shim values previously measured are used
+# 
+# The PowerShim protocol requires the TestShims experiment be present
+# in the seach path to perform the shim setting and FID measurement.
+#
+# The PowerShim protocol requires the SpinsolveExpert environment.
+#
+# psPar is a structure containing the user interface parameters
+# Returns the shim parameter list on completion or 0 on failure
+#
+#####################################################################
+
+#########################################################
+# Class declarations
+# power : simplex
+#########################################################
+
+procedure(PowerShimCore, parameters)
+
+# Make parameter list and UI based on the source
+   type = vartype(parameters)
+   if(type == "list")    
+      psPar = struct(parameters)
+   elseif(type == "structure") 
+      psPar = parameters
+   else  
+      return(0)
+   endif 
+
+ #  :setCurrentExperiment() ???
+ #  parameterLabelCtrl->label("PowerShim (menu) parameters")
+   pr("\n\n-------- Power Shim --------\n")
+
+  # Import the parabolic search class
+   import("simplex.mac","$appdir$\\Macros\\Spinsolve-Expert\\Setup Macros\\SetShims")
+   power = class("simplex:init")
+
+  # Some local procedures which should be used to check the FID quality
+   power->measureLineWidth = "PowerShim:measureLineWidth"
+   power->checkShimQuality = "PowerShim:checkShimQuality"
+
+  # Optimise the FID RMS when finding the best shim
+   power->parameterToOptmise = "RMS"
+
+  # Estimate the experiment time and scans
+   :estimateExptTime(alias(power),psPar)
+
+   power->startTime = time()
+
+   pr("\n   Stopping lock ...\n")
+   ucsUtilities:disableLock()
+
+# Record the current shims in case of abort
+   shimsBackup = setupUtilities:loadShims("noUIUpdate")
+
+# Select start values for shims 
+   if(psPar->startMethod == "zero") # Zero the shims before the simplex search
+      psPar = :zeroShims(psPar) 
+   elseif(psPar->startMethod == "factory") # Apply the factor shims before the simplex search
+      psPar = :loadFactoryShims(psPar)
+   elseif(psPar->startMethod == "database") # Read the shims from the standard software
+      psPar = :importSpinsolveShims(psPar)
+   elseif(psPar->startMethod == "last") # Load the last saved shims
+      psPar = :loadBestShims(psPar)
+   endif # Otherwise use the loaded shims
+
+# Check for error
+   if(psPar == null)
+      return(0)
+   endif
+
+# Get ready to run
+   gView->completeButton->enable("false")
+   experimentLabelCtrl->label("Performing Powershim")
+
+# Copy these shim values into the 'power' object
+   :updateShimCurrents(alias(power),psPar)
+
+# Update the UI with these shim values
+   :updateShimsInUI(power)
+
+# Refind F0 and linewidth
+   pr("   Finding the B1 Frequency ...\n")
+   (result,psPar,specPar) = :findF0(alias(power), psPar, hiRes=0)
+
+# Simplex shim search. We shim the first order shims and the
+# first and second and then finally all shims
+   power->psPar = psPar
+ 
+   gView->completeButton->enable("true")
+
+   if(wvExpStatus == "running" & power->nrScans1 > 0)
+
+  # First pass with large search range
+      pr("   Shimming the magnet, phase 1 ...\n")
+      power->iteration = 0
+      power->psPar->pulseLength1H = psPar->pulseLength1H
+      power->psPar->shimDelay = power->ieTime1*1000
+      power->psPar->dwellTime = 10
+      power->psPar->nrPnts = 4096
+      power->psPar->acqTime = 40.96
+      power->psPar->bandwidth = 100
+      power->psPar->dispRange = 10000
+      power->psPar->saveData = "false"
+      power->psPar->zf = 1
+      power->psPar->filter = "yes"
+      power->psPar->filterType = "exp:10"
+      power->shimsToOptimise = [0,1,1,1,1]
+      power->shimDeltas = [0,2000,2000,2000,2000]
+      power->maxInterations = power->nrScans1
+      :updateUI(power)
+      power->SimplexSearch(1)
+
+   endif
+
+  # Next optimise the first and second order shims
+   if(wvExpStatus == "running" & power->nrScans2 > 0)
+
+      pr("   Shimming the magnet, phase 2 ...\n")
+      power->iteration = 0
+      power->psPar->pulseLength1H = psPar->pulseLength1H
+      power->psPar->shimDelay = power->ieTime2*1000
+      power->psPar->dwellTime = 20
+      power->psPar->nrPnts = 8192
+      power->psPar->acqTime = 163.84
+      power->psPar->bandwidth = 50
+      power->psPar->dispRange = 5000
+      power->psPar->zf = 1
+      power->psPar->filter = "yes"
+      power->psPar->filterType = "exp:1"
+      power->shimsToOptimise = [0,1,1,1,1,1,1,1,1]
+      power->shimDeltas = [0,500,500,500,10000,10000,10000,10000,10000]
+      power->maxInterations = power->nrScans2
+      :updateUI(power)
+      power->SimplexSearch(2)
+
+   endif
+
+  # Finally optimise all shims
+   if(wvExpStatus == "running" & power->nrScans3 > 0)
+
+      pr("   Shimming the magnet, phase 3 ...\n")
+      power->iteration = 0
+      power->psPar->pulseLength1H = psPar->pulseLength1H
+      power->psPar->shimDelay = power->ieTime3*1000
+      power->psPar->dwellTime = 80
+      power->psPar->nrPnts = 8192
+      power->psPar->acqTime = 655.36
+      power->psPar->bandwidth = 12.5
+      power->psPar->dispRange = 3000
+      power->psPar->zf = 2
+      power->psPar->filter = "yes"
+      power->psPar->filterType = "exp:0.5"
+      power->shimsToOptimise = [0,1,1,1,1,1,1,1,1]
+      power->shimDeltas = [0,250,250,250,2500,2500,2500,2500,2500]
+      power->maxInterations = power->nrScans3 
+      :updateUI(power)
+      power->SimplexSearch(3)
+
+   endif
+
+  # Finally optimise all shims
+   if(wvExpStatus == "running" & power->nrScans4 > 0)
+
+      pr("   Shimming the magnet, phase 4 ...\n")
+      power->iteration = 0
+      power->psPar->pulseLength1H = psPar->pulseLength1H
+      power->psPar->shimDelay = power->ieTime4*1000
+      power->psPar->dwellTime = 300
+      power->psPar->nrPnts = 8192
+      power->psPar->acqTime = 2457.6
+      power->psPar->bandwidth = 3.333
+      power->psPar->dispRange = 1000
+      power->psPar->zf = 4
+      power->psPar->filter = "yes"
+      power->psPar->filterType = "exp:0.1"
+      power->shimsToOptimise = [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+      power->shimDeltas = [0,200,200,200,1000,1000,1000,1000,1000,10000,10000,10000,10000,10000,10000,10000]
+      power->maxInterations = power->nrScans4 
+      :updateUI(power)
+      power->SimplexSearch(4)
+
+   endif
+
+# Check for abort
+   if(wvExpStatus == "stop")
+      print("   Restoring shims ...\n")
+      RunExpt("updateShims",shimsBackup) 
+      print("   Restarting lock ...\n")
+      gLock->findLock()
+      pause(3)
+      CheckLockAndTemperature(0,0)
+      print("   Finished\n")
+      experimentLabelCtrl->label("PowerShim aborted")
+      return(0)
+   endif
+
+# Save the plot data
+   if(wvExpStatus == "finish" | wvExpStatus == "running")
+      pt3 = gView->g3->subplot(1,1)
+      :saveShimData(pt3, power->psPar)
+   endif
+
+# Save the shims to a file
+   shimPar = :saveShims(power,result)
+
+# Find the lock
+   pr("\n   Finding lock ...\n")
+   gLock->findLock()
+   pr("   Lock found\n")
+
+# Restore the shim data
+   InitPlot(["pt1","pt2";"pt3"])
+   cd(gData->curExpt->dataPath)
+   try
+      gView->g3->load("powerShim.pt1")
+   catch
+   endtry
+
+# Calibrate
+   pr("\n   Refinding the B1 Frequency and measuring linewidth ...\n")
+   power->psPar->zf = 4
+   (result,psPar,specPar) = :findF0(alias(power), power->psPar, hiRes=1, saveData="true")
+   pr("      Linewidth (50%/0.55%) = ($result->lw50,1.2f$ Hz/$result->lw0.55,1.2f$ Hz)\n")
+   pr("\n   Calibrating ...\n")
+   :calibrate(psPar)
+
+# Redisplay spectrum in ppm
+   power->psPar->b1Freq1H = psPar->b1Freq1H
+   TestShims:backdoor(list(power->psPar))
+
+   pr("   Calibration complete\n")
+
+   experimentLabelCtrl->label("PowerShim Complete")
+
+   pr("\n-------- Power Shim Finished --------\n")
+
+endproc(shimPar)
+
+#####################################################################
+# Calculate the linewidth from the last findF0 result
+#####################################################################
+
+procedure(calcLineWidth, result)
+
+   setupUtilities:calcLineWidth(result)
+
+endproc()
+
+
+#########################################################
+# Update the common parameters with the found frequency
+#########################################################
+
+procedure(calibrate, psPar)
+   
+   setupUtilities:calibrate(psPar)
+
+endproc()
+
+############################################################################################################
+#  Update the UI and spectrometer with the currently 
+#  determined shim values and then measure the 
+#  shim quality (Linewidth, Peak and RMS).
+#  Returns the parameter being optimised (LW , Peak or RMS)
+############################################################################################################
+
+procedure(checkShimQuality, power, shimCurrent, shimIndices)
+
+## Update the shim values used in experiment
+   for(m = 1 to size(shimCurrent)-1)
+      k = shimIndices[m]
+      name = power->shimNames[k]
+      assign("power->psPar->$name$",round(shimCurrent[m]),"local")
+      n = findobj(0,"name",name)
+      if(n > 0)
+         setpar(0,n,"text",round(shimCurrent[m]))
+      endif
+   next(m)
+
+# Measure the linewidth and time domain RMS
+   result = :measureLineWidth(power,power->psPar)
+
+# Return the optimised parameter
+   ptoopt = power->parameterToOptmise
+   if(ptoopt == "FWHM")
+      value = result->lw50
+   elseif(ptoopt == "Base")
+      value = result->lw0.55
+   elseif(ptoopt == "RMS")
+      value = 1/result->RMS
+   else
+      value = 1/result->maxAmp
+   endif
+
+endproc(value, result)
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   duration = :estimateExptTime(guipar)
+
+endproc(duration)
+
+
+############################################################################################################
+#  Work out how long the experiment should take and how many scans it will perform.
+############################################################################################################
+
+procedure(estimateExptTime, arg1, arg2)
+   
+   if(nrArgs == 2)
+      power = arg1
+      par = arg2
+   else
+      par = arg1
+   endif
+
+   procTime = 0.5 # Guess
+
+   nrScans1 = par->phase1Steps
+   nrScans2 = par->phase2Steps
+   nrScans3 = par->phase3Steps
+   nrScans4 = par->phase4Steps
+
+   ieTime1  = 1 # Time for shims to stabilise
+   ieTime2  = 1
+   ieTime3  = 1
+   ieTime4  = 1
+
+   scanTime1 = 0.041 # Seconds
+   scanTime2 = 0.164
+   scanTime3 = 0.6482
+   scanTime4 = 2.4576
+
+   expectedExptTime = 0.032+0.327+3.2768+3*procTime             + @
+                         (scanTime1+ieTime1+procTime)*nrScans1  + @
+                         (scanTime2+ieTime2+procTime)*nrScans2  + @
+                         (scanTime3+ieTime3+procTime)*nrScans3  + @ 
+                         (scanTime4+ieTime4+procTime)*nrScans4 
+
+   expectedNrScans = 3 + @
+                        (nrScans1+5+4+1) + @
+                        (nrScans2+1+9+1) + @
+                        (nrScans3+1+9+1) + @
+                        (nrScans4+1+16+1)
+
+   if(nrArgs == 2)
+
+      power->expectedExptTime = expectedExptTime
+      power->expectedNrScans  = expectedNrScans
+
+      power->ieTime1 = ieTime1
+      power->ieTime2 = ieTime2
+      power->ieTime3 = ieTime3
+      power->ieTime4 = ieTime4
+   
+      power->nrScans1 = nrScans1
+      power->nrScans2 = nrScans2
+      power->nrScans3 = nrScans3
+      power->nrScans4 = nrScans4
+
+   else
+
+      duration = expectedExptTime
+      return(duration)
+
+   endif
+
+endproc()
+
+#########################################################
+# Search for the resonant frequency using dwellTimes 
+# 2, and 100/200 us (depending on highRes argument)
+#########################################################
+
+procedure(findF0, shimObj, psPar, hiRes=0, saveData="false")
+
+   usePPMScale = psPar->usePPMScale
+   (result, psPar, specPar) = setupUtilities:findF0(shimObj, psPar, hiRes, saveData)
+   psPar->usePPMScale = usePPMScale
+
+endproc(result, psPar, specPar)
+
+#########################################################
+# Generate a user interface from the interface description
+# macro for exptName and load the parameters 'par' into it
+########################################################
+
+procedure(generateUI, exptName, par)
+
+   dir = "$appdir$\\Macros\\Setup\\$exptName$"
+   cd(dir)
+   proc = "$exptName$_interface:interfaceDescription"
+   itfc = proc()
+   exptInfo = struct(protocol = "$exptName$")
+   gParam->makeUIFromParList(itfc,exptInfo)
+   gView->exptPanel->panelupdate("")
+   setctrlvalues(0,par)
+   for(k = gParam->firstParameterCtrl to gParam->lastParameterCtrl)
+      if(getpar(0,k,"tag") == "hidden")
+         setpar(0,k,"visible","false")
+      else
+         setpar(0,k,"visible","true")
+      endif
+      if(getpar(0,k,"tag") == "disabled")
+         setpar(0,k,"enable","false")
+      else
+         setpar(0,k,"enable","true")
+      endif
+   next(k)
+
+endproc()
+
+########################################################
+# Get initial shims based on the startMethod parameter
+########################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par2 = ["rxGain = $modelPar->rxGain$",
+           "pulseLength1H = $PulseLength_1H$",
+           "90Amplitude1H = $PowerLevel_1H$",
+           "b1Freq1H = $Frequency_1H$"]
+
+   method = getlistvalue(par,"startMethod")
+
+   if(method != null)
+      if(method == "factory") # Apply the factory shims before the QuickDhim search
+         psPar = QuickShim:loadFactoryShims(null)
+      elseif(method == "database") # Read the shims from the standard software
+         psPar = QuickShim:importSpinsolveShims(null)
+      else
+         psPar = QuickShim:loadBestShims(null)
+      endif
+      if(psPar == null)
+         return(null)
+      endif
+      par = mergelists(par2,list(psPar))
+      return(par)
+   endif
+
+endproc(null)
+
+#########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo,plotRegion)
+
+   info = ["pt1","fid.pt1",
+           "pt2","spectrum.pt1",
+           "pt3","powerShim.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+
+#############################################################
+# Import shim parameters from Standard Spinsolve software
+#
+# psPar is a structure containing the current UI parameters
+# Returns a structure with the shim parameters updated.
+#############################################################
+
+procedure(importSpinsolveShims, psPar)
+
+   par = setupUtilities:importSpinsolveShims(psPar)
+
+endproc(struct(par))
+
+
+#############################################################
+# Load the default parameters for powershim
+#############################################################
+
+procedure(loadDefaults, exptName)
+
+   dir = getcwd()
+   cd(getmacropath())
+   pref = load("$exptName$Default.par")
+
+endproc(pref)
+
+#########################################################
+# Read the DSP parameters and return as a list
+# or structure based on the mode
+#########################################################
+
+procedure(loadDSPParameters, mode="list")
+
+   specPar = setupUtilities:loadDSPParameters(mode)
+
+endproc(specPar)
+
+#########################################################
+# Load the shim settings from the DSP parameter list
+#########################################################
+
+procedure(loadFactoryShims, psPar)
+
+   psPar = setupUtilities:loadFactoryShims(psPar)
+
+endproc(psPar)
+
+
+#########################################################
+# Load the shim values from a file in the preferences
+# SpinsolveExpert shim folder
+#########################################################
+
+procedure(loadBestShims, psPar)
+
+   par = setupUtilities:loadShims("noUIUpdate")
+
+# Extract the shims value
+   shimNames = ["xshim", "yshim",  "zshim",
+                 "z2shim", "zxshim", "zyshim", "x2y2shim",
+                 "xyshim", "z3shim", "z2xshim", "z2yshim",
+                 "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+   par = getsublist(par,shimNames)
+   if(psPar != null)
+      par = mergelists(par,list(psPar))
+      psPar = struct(sortlist(par))
+   else
+      psPar = struct(sortlist(getsublist(par,shimNames)))
+   endif
+
+endproc(psPar)
+
+
+#############################################################
+# Load a shims parameters into the GUI
+#############################################################
+
+procedure(loadCurrentShims)
+
+   bak = getcwd()
+
+   shimDir = "$prefdir$\\SpinsolveParameters\\Shims"
+   mkdir(shimDir)
+   cd(shimDir)
+
+   file = getfilename("load","Load shim parameter file from ...","Parameter files","par")
+   if(file != "cancel")
+      par = load(file)
+
+      shimNames = ["xshim", "yshim",  "zshim",
+                    "z2shim", "zxshim", "zyshim", "x2y2shim",
+                    "xyshim", "z3shim", "z2xshim", "z2yshim",
+                    "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+      par = getsublist(par,shimNames) 
+
+      setctrlvalues(0,par)
+
+   endif
+
+   cd(bak)
+
+endproc()
+
+
+#########################################################
+# Collect an FID and then plot the linewidth, peak 
+# and RMS
+#########################################################
+
+procedure(measureLineWidth, power, psPar)
+
+# Set the shims and measure the linewidth
+   result = TestShims:backdoor(list(psPar))
+
+  # pause(1)
+
+# Check for aborts
+   if(wvExpStatus == "stop")
+      throw("Abort pressed")
+   endif
+   if(wvExpStatus == "finish")
+      throw("Finish pressed")
+   endif
+
+# Add the linewidth measurement to the current data
+   pt3 = gView->g3->subplot(1,1)
+   lst = pt3->tracelist()
+   if(size(lst) == 0) # First time
+      sz    = 1
+      x     = [0]
+      y50   = [result->lw50]
+      y0.55   = [result->lw0.55]
+   else
+      (x,y50)   = pt3->trace(0)->getdata()
+      (x,y0.55)   = pt3->trace(1)->getdata()
+      sz    = size(x)
+      x     = join(x,[sz])
+      y50   = join(y50,[result->lw50])
+      y0.55   = join(y0.55,[result->lw0.55])
+   endif
+
+# Plot the latest linewidth
+   pt3->draw("false")
+   pt3->plot(x,y50,"color",[128,0,0])
+   pt3->hold("on")
+   pt3->plot(x,y0.55,"color",[0,128,0])
+   pt3->axes->ymapping("log")
+   pt3->xlabel("Iteration")
+   pt3->ylabel("FWHM (Hz)")
+   if(result->lw50 < 1)
+      pt3->title("Linewidth (50% : $result->lw50,1.2f$ Hz 0.55% : $result->lw0.55,1.1f$ Hz)")
+   elseif(result->lw50 < 10)
+      pt3->title("Linewidth (50% : $result->lw50,1.1f$ Hz 0.55% : $result->lw0.55,1.1f$ Hz)")
+   else
+      pt3->title("Linewidth (50% : $result->lw50,1.0f$ Hz 0.55% : $result->lw0.55,1.0f$ Hz)")
+   endif
+   pt3->grid->xgrid("on")
+   pt3->grid->ygrid("on")
+   pt3->grid->finexgrid("on")
+   pt3->grid->fineygrid("on")
+   pt3->zoom(0,sz,0.1,4000)
+   pt3->hold("off")
+   pt3->draw("true")
+
+# Save the linewidth history into the simplex object 
+   power->lw0.55  = y0.55
+   power->lw50  = y50
+
+# Increment the number of steps taken
+   power->iteration = power->iteration + 1
+
+endproc(result)
+
+
+#############################################################
+# Save the shim data
+#############################################################
+
+procedure(saveShimData, pt3, psPar)
+
+   bak = getcwd()
+
+# Get the SPA name
+   dspPar = :loadDSPParameters("struct")
+   if(dspPar == null)
+      return
+   endif
+
+# Get the location to save the data
+   if(isdir(psPar->dataDirectory) == 0)
+      cd("$prefdir$\\SpinsolveParameters")
+      mkdir("Shims\\ShimData")
+      cd("Shims\\ShimData")
+      psPar->dataDirectory = getcwd()
+      name = "powerShim$dspPar->SystemID$"
+   else
+      name =  :getPlotInfo("pt3")
+   endif
+
+# Save the data
+   psPar->saveData = "true"
+   ucsFiles:savePlot(pt3,name,list(psPar)) #,"noReport")
+
+   cd(bak)
+
+endproc()
+
+
+#############################################################
+# Save the shims parameters in the GUI
+#############################################################
+
+procedure(saveCurrentShims)
+
+   bak = getcwd()
+
+   par = getctrlvalues(0,"list","range",[gParam->firstParameterCtrl,gParam->lastParameterCtrl])
+
+   shimNames = ["xshim", "yshim",  "zshim",
+                 "z2shim", "zxshim", "zyshim", "x2y2shim",
+                 "xyshim", "z3shim", "z2xshim", "z2yshim",
+                 "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+   par = getsublist(par,shimNames) 
+
+   shimDir = "$prefdir$\\SpinsolveParameters\\Shims"
+   mkdir(shimDir)
+   cd(shimDir)
+
+   file = getfilename("save","Save shim parameter file as ...","Parameter files","par")
+   if(file != "cancel")
+      save(file,par)
+   endif
+
+   cd(bak)
+
+endproc()
+
+#############################################################
+# Save the shims parameters to a file
+#############################################################
+
+procedure(saveShims, power, lwInfo)
+
+# Make a shim list from the power object
+   sz = size(power->shimCurrents)
+   shimValues = list(sz-1)
+   for(k = 1 to sz-1)
+      name = power->shimNames[k]
+      value = power->shimCurrents[k]
+      shimValues[k-1] = "$name$ = $round(value)$"
+   next(k)
+
+# Add the linewidths
+   shimValues = ["lw50 = $lwInfo->lw50$","lw0.55 = $lwInfo->lw0.55$"] + shimValues
+
+# Get the SPA name
+   dspPar = :loadDSPParameters("struct")
+   if(dspPar == null)
+      return
+   endif
+
+# Save the shims
+   fileName = "$dspPar->SystemID$Shim.par"
+   setupUtilities:saveShims(fileName,shimValues,lwInfo->lw50)
+
+endproc(shimValues)
+
+#############################################################
+# Set the current experiment used in the expert interface
+# if this is run from the menu or a script
+#############################################################
+
+procedure(setCurrentExperiment)
+
+   name = wvCurrentExpt->name
+   if(name != "PowerShim")
+      exptInfo = struct()
+      exptInfo->name = "PowerShim"
+      exptInfo->suffix = ""
+      exptInfo->nr = ""
+      exptInfo->path = "$prefdir$\\SpinsolveParameters\\Shims\\ShimData\\PowerShim"
+      exptInfo->type = "protocol"
+      wvCurrentExpt = exptInfo
+   endif
+
+endproc()
+
+#########################################################
+# Update the progress bar and experiment times
+#########################################################
+
+#procedure(updateProgress, power)
+#
+#   setupUtilities:updateProgress(power)
+#
+#endproc()
+
+########################################################
+# Update the shimCurrents in power based on the values
+# in psPar
+#########################################################
+
+procedure(updateShimCurrents,power,psPar)
+
+   for(k = 1 to size(power->shimCurrents)-1)
+
+      name = "psPar->$power->shimNames[k]$"
+      value = eval(name)
+      power->shimCurrents[k] = value 
+
+   next(k)
+
+endproc()
+
+########################################################
+# Update the shimCurrents in the user interface if
+# text field with the correct names are present
+#########################################################
+
+procedure(updateShimsInUI, power)
+
+## Update the shim values used in experiment
+   for(m = 1 to size(power->shimCurrents)-1)
+      name = power->shimNames[m]
+      n = findobj(0,"name",name)
+      if(n > 0)
+         setpar(0,n,"text",round(power->shimCurrents[m]))
+      endif
+   next(m)
+
+endproc()
+
+#########################################################
+# Update the parameter list in the UI with latest shims
+# and acquisition parameters
+#########################################################
+
+procedure(updateUI, power)
+
+   lst = list(power->psPar)
+   setctrlvalues(0,lst)
+
+endproc()
+
+
+#########################################################
+# Zero the shim values 
+#########################################################
+
+procedure(zeroShims, psPar)
+
+  psPar = setupUtilities:zeroShims(psPar)
+
+endproc(psPar)
+
+
+#########################################################
+# Zero the shim values in the UI
+#########################################################
+
+procedure(zeroCurrentShims)
+
+   shimNames = ["xshim", "yshim",  "zshim",
+                 "z2shim", "zxshim", "zyshim", "x2y2shim",
+                 "xyshim", "z3shim", "z2xshim", "z2yshim",
+                 "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+   sz = size(shimNames)
+   par = list(sz)
+   for(k = 0 to sz-1)
+      name = shimNames[k]
+      par = par + ["$name$ = 0"]
+   next(k)
+   par = getsublist(par,shimNames) 
+   setctrlvalues(0,par)
+
+endproc()
+
+

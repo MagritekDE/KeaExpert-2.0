@@ -1,0 +1,50 @@
+
+# A test of the getctrlvalues command
+
+
+procedure(getctrlvalues_test1)
+
+   n = :windowdefinition()
+
+   setpar(0,6,"text","Hi there")
+   setpar(0,7,"text","1.234e5")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("getctrlvalues test", -1, -1, 243, 244)
+
+      # Define all controls with basic parameters
+       checkbox(1, 33, 24, "2,4", "2")
+       button(2, 7, 185, 109, 20, "Print control values",
+          :process();)
+       checkbox(3, 95, 24, "no,yes", "no")
+       radiobuttons(4, 28, 62, 20, "horizontal", "A,B", "A")
+       radiobuttons(5, 85, 62, 20, "horizontal", "0,1", "0")
+       textbox(6, 26, 93, 80)
+       textbox(7, 120, 93, 60)
+       colorbox(8, 25, 139, 22, 22, [255,0,0])
+       slider(9, 81, 141, 100, 20, "horizontal")
+
+     # Set other control parameters
+       setpar(n,1,"name","chk1")
+       setpar(n,3,"name","chk2")
+       setpar(n,4,"name","rb1")
+       setpar(n,5,"name","rb2")
+       setpar(n,6,"name","eb1")
+       setpar(n,7,"name","eb2")
+       setpar(n,8,"name","cb1")
+       setpar(n,9,"range",[0,100])
+
+endproc(n)
+
+procedure(process)
+
+  lst = getctrlvalues(0)
+  pr lst
+
+endproc()

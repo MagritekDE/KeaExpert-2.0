@@ -1,0 +1,16 @@
+###################################################################################
+# 
+###################################################################################
+
+procedure(acquireoff, mode, nrPnts)
+
+   if(gSeq->psInfo->skipCmds == 0)
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      dwellTime = gSeq->psInfo->guipar->dwellTime
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 0.5
+      gSeq->psInfo->command = gSeq->psInfo->command + ["acquireoff,$mode$,$nrPnts$,$dwellTime$,$args[0]$"]
+   endif
+
+endproc()
+

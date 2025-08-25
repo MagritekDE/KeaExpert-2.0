@@ -1,0 +1,33 @@
+####################################################
+# Allow the user to select the folder hierarchy
+# flat or date based
+####################################################
+
+procedure(SelectDataStorageHierarchy)
+
+   n = :windowdefinition()
+   result = showdialog(n)
+
+endproc(result)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Select data storage hierarchy", -1, -1, 337, 94)
+      setwindowpar(n,"type","dialog")
+      button(1, 249, 10, 62, 24, "OK",:okSelected())
+      hierarchyCtrl = radiobuttons(2, 155, 27, 20, "vertical", "date,flat", "date")
+      statictext(3, 148, 26, "right", "Year\Month\Day")
+      statictext(4, 148, 47, "right", "Flat")
+      button(5, 249, 50, 62, 24, "Cancel",closedialog("cancel"))
+      setpar(n,1,"mode","default")
+
+endproc(n)
+
+procedure(okSelected)
+
+   hierarchy = hierarchyCtrl->text
+   closedialog(hierarchy)
+
+endproc()

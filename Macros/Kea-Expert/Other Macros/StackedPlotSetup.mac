@@ -1,0 +1,294 @@
+procedure(StackedPlotSetup)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   n = :windowdefinition()
+   windowvar(rev,wv_xAxis,wv_m,wv_traceNames)
+   assignctrls(n)
+   if(:init())
+      showwindow(n)
+   endif
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Stacked plot view options", -1, -1, 546, 242)
+
+      # Define all controls with basic parameters
+      windowvar(rev,startColorCtrl,endColorCtrl,maxYAxisCtrl,minYAxisCtrl,tiltCtrl,mappingCtrl,maxDispYAxisCtrl,minDispYAxisCtrl,wv_xAxis,wv_m,whiteWashCtrl)
+      minDispYAxisCtrl = textbox(1, 319, 34, 51)
+      statictext(2, 313, 38, "right", "Minimum y value")
+      maxDispYAxisCtrl = textbox(3, 319, 64, 51)
+      statictext(4, 313, 68, "right", "Maximum y value")
+      groupbox(5, "Vertical axis range", 200, 9, 181, 137)
+      mappingCtrl = radiobuttons(6, 319, 98, 20, "vertical", "lin,log", "lin")
+      statictext(7, 313, 99, "right", "Linear scale")
+      statictext(8, 313, 118, "right", "Logariithmic scale")
+      button(9, 220, 159, 61, 63, "Apply\rChanges",
+         :applyChanges();)
+      button(10, 310, 196, 51, 26, "Close",
+         closewindow(0);)
+      tiltCtrl = textbox(11, 80, 140, 51)
+      statictext(12, 74, 144, "right", "Tilt (ppm)")
+      minYAxisCtrl = textbox(13, 130, 37, 51)
+      statictext(14, 124, 41, "right", "Minimum y value")
+      maxYAxisCtrl = textbox(15, 130, 67, 51)
+      statictext(16, 124, 71, "right", "Maximum y value")
+      groupbox(17, "Vertical data range", 11, 9, 180, 102)
+      groupbox(18, "Data display", 11, 119, 180, 112)
+      button(19, 310, 159, 51, 26, "Help",pr("\n   No help yet"))
+      whiteWashCtrl = checkbox(20, 148, 205, "0,1", "0")
+      endColorCtrl = colorbox(21, 80, 200, 22, 22, [255,0,0],
+         :selectColor(21);)
+      statictext(22, 74, 203, "right", "End color")
+      startColorCtrl = colorbox(23, 80, 170, 22, 22, [0,0,255],
+         :selectColor(23);)
+      statictext(24, 74, 173, "right", "Start color")
+      statictext(25, 153, 173, 53, 26, "center", "White wash plot")
+      groupbox(26, "Processing", 390, 9, 140, 222)
+      statictext(27, 482, 38, "right", "Collapse traces")
+      collapseTraces = checkbox(28, 490, 39, "false,true", "false",:toggleCollapse())
+      phaseCor = textbox(30, 460, 66, 51)
+      statictext(31, 452, 70, "right", "Phase p0")
+
+     # Set other control parameters
+      setpar(n,9,"active","true")
+      setpar(n,13,"active","true")
+      setpar(n,15,"active","true")
+      setpar(n,20,"active","true")
+
+      phaseCor->text("0")
+
+endproc(n)
+
+####################################################################
+# Change the collapse state by adjusting the minimum y-offset values
+# In collapse mode is important that we keep the original y-order by
+# adding a small offset to the y offsets. But we make it small 
+# enough so it is not visible
+####################################################################
+
+procedure(toggleCollapse)
+
+   if(collapseTraces->text == "false")
+      maxYAxisCtrl->text(maxDispYAxisCtrl->value)
+      minYAxisCtrl->text(minDispYAxisCtrl->value)
+   else
+      av = (minYAxisCtrl->value+maxYAxisCtrl->value)/2
+      rng = abs(maxYAxisCtrl->value-minYAxisCtrl->value)
+      maxYAxisCtrl->text("$av+rng*0.0001$")
+      minYAxisCtrl->text("$av-rng*0.0001$")
+   endif
+
+endproc()
+
+procedure(selectColor, n)
+
+   col = getcolor(getpar(0,n,"color"))
+   if(col != null)
+      setpar(0,n,"color",col)
+   endif
+
+endproc()
+
+####################################################################
+# Intialise the window parameters when the windows is first displayed
+####################################################################
+
+procedure(init)
+
+   p = curplot("1d")
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      closewindow(0)
+      return(0)
+   endif
+   trcLst = p->tracelist()
+   (wv_xAxis,y) = p->trace(0)->getdata()
+   ww = p->trace(0)->whitewash()
+   whiteWashCtrl->value(ww)
+   
+   sz = size(trcLst)
+
+   yoff0 = p->trace(0)->yoffset()
+   yoffn = p->trace(sz-1)->yoffset()
+   rev = (yoff0 > yoffn)
+   scol = p->trace(0)->realcolor()
+   ecol = p->trace(sz-1)->realcolor()
+
+# Figure out whether the plot is drawn reversed i.e. top to bottom
+   if(rev)
+      swapvar("scol","ecol")
+      swapvar("yoff0","yoffn")
+   endif
+
+   startColorCtrl->color(scol)
+   endColorCtrl->color(ecol)
+
+   xoffset0 = p->trace(0)->xoffset()
+   xoffsetn = p->trace(sz-1)->xoffset()
+   xrange = p->axes->xrange
+   tilt = (xoffsetn-xoffset0)*(xrange[-1]-xrange[0])
+   if(rev)
+      tilt = -tilt
+   endif
+   tiltCtrl->text(tilt)
+   minYAxis = p->axes->minaxisvalue()
+   maxYAxis = p->axes->maxaxisvalue()
+   minDispYAxisCtrl->text("$minYAxis$")
+   maxDispYAxisCtrl->text("$maxYAxis$")
+
+   minDataY = (yoff0-0.05)/0.9*(maxYAxis-minYAxis)+minYAxis
+   maxDataY = (yoffn-0.05)/0.9*(maxYAxis-minYAxis)+minYAxis
+   minYAxisCtrl->text("$minDataY$")
+   maxYAxisCtrl->text("$maxDataY$")
+   mapping = p->axes->ymapping()
+   mappingCtrl->text(mapping)
+
+   wv_m = cmatrix(size(wv_xAxis),sz)
+   wv_traceNames = list(0)
+   for(k = 0 to sz-1)
+      (x,y) = p->trace(k)->getdata()
+      wv_m[~,k] = y
+      wv_traceNames = wv_traceNames + [p->trace(k)->name]
+   next(k)
+
+# Try and figure out if the plot has been collapsed
+# by looking at the y-offset range
+   if((abs(yoffn-yoff0)/abs(yoffn+yoff0)) < 0.001)
+      collapseTraces->text("true")
+   else
+      collapseTraces->text("false")
+   endif
+      
+endproc(1)
+
+####################################################################
+# Apply all the changes which have been made to the controls to 
+# the plot.
+####################################################################
+
+procedure(applyChanges)
+
+   minYAxis = minYAxisCtrl->value
+   maxYAxis = maxYAxisCtrl->value
+   minDispYAxis = minDispYAxisCtrl->value
+   maxDispYAxis = maxDispYAxisCtrl->value
+   mapping = mappingCtrl->text
+   tilt = tiltCtrl->value
+   phaseP0 = phaseCor->value
+
+   p = curplot("1d")
+
+ #  lines = p->getlines()
+#
+#   if(size(lines) > 0)
+#      p->rmlines()
+#   endif
+
+   (x1,x2,y1,y2) = p->zoom()
+   xlab = p->xlabel()->text
+   ylab = p->ylabel()->text
+   tlab = p->title()->text
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   p->draw("false")
+   trcLst = p->tracelist()
+   (x,y) = p->trace(0)->getdata()   
+   sz = size(trcLst)  
+   xrange = p->axes->xrange
+   scol = startColorCtrl->color
+   ecol = endColorCtrl->color
+   scol = scol[0:2]
+   ecol = ecol[0:2]
+
+   whiteWash = whiteWashCtrl->value
+
+# Work out y offset range for stacked plots as a fraction of the plot height
+   if(mappingCtrl->text == "lin")
+      minOff = (minYAxis-minDispYAxis)/(maxDispYAxis-minDispYAxis)*0.9+0.05
+      maxOff = (maxYAxis-minDispYAxis)/(maxDispYAxis-minDispYAxis)*0.9+0.05
+   else
+      minOff = (log10(minYAxis)-log10(minDispYAxis))/(log10(maxDispYAxis)-log10(minDispYAxis))*0.9+0.05
+      maxOff = (log10(maxYAxis)-log10(minDispYAxis))/(log10(maxDispYAxis)-log10(minDispYAxis))*0.9+0.05
+   endif
+
+# Plot is drawn top to bottom
+   if(rev)
+
+      for(k = 0 to sz-1)
+
+         n = p->plot(wv_xAxis,wv_m[~,k]*exp(i*pi*phaseP0/180))    
+         tc = p->trace(n)
+         if(k == 0)
+           p->hold("on")
+         endif
+         tc->xoffset(tilt*(sz-1-k)/((sz-1)*(xrange[-1]-xrange[0])))
+         tc->yoffset((maxOff-minOff)*(sz-1-k)/(sz-1)+minOff)
+         tc->whitewash(whiteWash)
+         tc->name(wv_traceNames[k])
+        # tc->tracewidth(1.501)
+         tc->realcolor(k/(sz-1)*(scol-ecol)+ecol) 
+         tc->imagcolor(k/(sz-1)*(scol-ecol)+ecol)
+         p->zoom(x1,x2,y1,y2)
+ 
+      next(k)
+      p->hold("off")
+
+# Plot is drawn bottom to top
+   else
+
+      for(k = sz-1 to 0 step -1)  
+
+         n = p->plot(wv_xAxis,wv_m[~,k]*exp(i*pi*phaseP0/180))    
+         tc = p->trace(n)
+         if(k == sz-1)
+           p->hold("on")
+         endif
+         tc->xoffset(tilt*k/((sz-1)*(xrange[-1]-xrange[0])))
+         tc->yoffset((maxOff-minOff)*k/(sz-1)+minOff)
+         tc->whitewash(whiteWash)
+         tc->name(wv_traceNames[k])
+         tc->realcolor(k/(sz-1)*(ecol-scol)+scol) 
+         tc->imagcolor(k/(sz-1)*(ecol-scol)+scol)
+         p->zoom(x1,x2,y1,y2)
+      next(k)
+      p->hold("off")
+
+   endif
+
+# Redraw the lines
+#   for(k = 0 to size(lines)-1)
+#      line = lines[k]
+#      x0 = line->x0
+#      y0 = line->y0
+#      x1 = line->x0-tilt*(sz/(sz-1))
+#      y1 = line->y1
+#      width = line->thickness
+#      style = line->style
+#      color = line->color
+#      units = line->units
+#      p->addline(x0,y0,x1,y1,color,width,style,units)
+#   next(k)
+
+   p->axes->ymapping(mapping)
+   p->axes->minaxisvalue(minDispYAxis)
+   p->axes->maxaxisvalue(maxDispYAxis)
+   p->xlabel(xlab)
+   p->ylabel(ylab)
+   p->title(tlab)
+   p->draw("true")
+
+endproc()
+
+

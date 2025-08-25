@@ -1,0 +1,55 @@
+#########################################################
+# Measures the duration of the MLEV4 decoupling 
+# sequence block and returns the channel number
+# Used by DrawPulseSequence and GetPulseProgramDuration.
+#
+# Arguments:
+#
+#  ch ..... channel 1 = 1H or 2 = X
+#  aDec ... pulse amplitude
+#  d90 .... duration of 90 pulse
+#  d180 ... duration of 180 pulse
+#  pXp .... +x phase
+#  pXm .... -x phase
+#  pYp .... +y phase
+#  pYm .... -y phase
+#
+###################################################
+
+procedure(MLEV4, ch, aDec, d90, d180, pXp, pXm, pYp, pYm, d1, d2)
+  
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      duration = :duration(d90,d180,pgo,d1,d2)
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+      gSeq->psInfo->command = gSeq->psInfo->command + ["mlev4,$ch$,$duration$"]
+
+   endif
+
+endproc()
+
+###################################################
+# Return the length of the MLEV17 block in us
+# given the following delays:
+#
+#  d90 .... length of the 90 pulse.
+#  d180 ... length of the 180 pulse.
+#  pgo .... delay between start of pulse command
+#           and actual pulse output.
+#  d1 ..... delay between pulses (1)
+#
+###################################################
+
+procedure(duration, d90, d180, pgo, d1=1,d2=1)
+
+ if(gData->procType == "FX3")
+      endDelay = 3
+   else
+      endDelay = 1
+   endif
+   dur = (d90*4 + 2*d1 + d2 + 3*pgo + endDelay)*4
+
+endproc(dur)

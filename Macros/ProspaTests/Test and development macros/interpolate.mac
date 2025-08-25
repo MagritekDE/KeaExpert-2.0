@@ -1,0 +1,22 @@
+# From a source reference vector pair x1,y1 
+# generate a pair x2,y2 given x2 by linear interpolation
+# cf y2 = spline(x1,y1)
+
+procedure(interpolate,x1,y1,x2)
+
+   sx1 = size(x1) # Source
+   sx2 = size(x2) # Interpolated reference
+   y2 = matrix(sx2)
+
+   for(k = 0 to sx2-1)
+      for(q = 0 to sx1-2)
+         if(x2[k] >= x1[q] & x2[k] < x1[q+1])
+           ya = y1[q]
+           yb = y1[q+1]
+           y2[k] = (yb-ya)*(x2[k]-x1[q])/(x1[q+1]-x1[q])+ya
+            exitfor()
+         endif
+     next(q)
+   next(k)
+
+endproc(y2)

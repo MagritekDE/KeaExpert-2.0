@@ -1,0 +1,100 @@
+########################################################
+#
+#     calculate trunc and Bmax 
+#
+################################################
+
+
+procedure(Calc_Bmax,N,M,Dec)
+
+   Bmax = :Ceil(N*log2(Dec*M)+16)
+   truncDec = Bmax - 36
+   if( truncDec < 0)
+      truncDec = 0
+   endif
+
+endproc(truncDec, Bmax)
+
+########################################################
+#
+#     calculate trunc and Bmax 
+#
+################################################
+procedure(Calc_Bmax_Exact,N,M,Dec)
+   Bmax = N*log2(Dec*M)+16
+endproc(Bmax);
+
+########################################################
+#
+#     calculate trunc and Bmax 
+#
+################################################
+procedure(Ceil,in)
+   if( in = trunc(in) )
+      out = trunc(in);
+   else
+      out = trunc(in)+1;
+   endif;
+endproc(out);
+
+########################################################
+#
+#     calculate Scale factor to compensate for CIC filter
+#
+################################################
+procedure(Calc_Scale,N,M,Dec,PGA)
+   Vin_max_PGA1 = 0.783221;
+   Vin_max_PGA0 = 1.28852;
+   if( Dec != 1 )
+      bmax_exact = lib_fpga:Calc_Bmax_Exact(N,M,Dec);
+      (truncDec, Bmax) = lib_fpga:Calc_Bmax(N,M,Dec);
+      Scale = (2^((Bmax-bmax_exact)))/(2^24)
+   else
+       Scale = 1/(2^25)
+   endif;
+   pr Scale
+   if( isvar("PGA") )
+      if(PGA = 1)
+         Scale = Scale*Vin_max_PGA1
+      else
+         Scale = Scale*Vin_max_PGA0
+      endif;
+   else
+       Scale = Scale*Vin_max_PGA1
+   endif;
+   Scale = 2*Scale
+endproc(Scale);
+
+########################################################
+#
+#   Calculate 
+#
+################################################
+procedure(Con_48to24,48bitHL)
+   24bit_H = (48bitHL & 0x00FFFFFF)/(2^24);
+   24bit_L = (48bitHL & 0x00FFFFFF);
+endproc(24bit_H, 24bit_L );
+
+########################################################
+#
+#   Calculate 
+#
+################################################
+procedure(Cbit,in,FreqTop)
+   out = (in * 2^32)/(FreqTop);
+endproc(out);
+
+########################################################
+#
+#   Calculate 
+#
+################################################
+procedure(Chk_bounds,in,min1,max1)
+   if(in < min1) 
+      out = min1
+   elseif(in > max1) 
+      out = max1
+   else
+      out = in;
+   endif;
+endproc(out);

@@ -1,0 +1,137 @@
+############################################################
+#  
+# Tests the table modes for the pulse commands
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
+               "ampMin",          "Pulse min amplitude (dig)",    "tb",  "float";
+               "ampMax",          "Pulse max amplitude (dig)",    "tb",  "float";
+               "ampSteps",        "Amplitude steps",              "tb",  "integer";
+               "b1Freq1H",        "Pulse frequency 1 (MHz)",      "tb",  "freq";
+               "pulseLength",     "Pulse length (us)",            "tb",  "pulselength";
+               "pulseDelay",      "Interpulse delay (us)",        "tb",  "pulselength";
+               "repTime",         "Repetition time (ms)",         "tb",  "reptime"]
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts     = nrPnts",
+                    "dPulse        = pulseLength",
+                    "aRF           = 0",
+                    "aRF2          = -6",
+                    "dDelay        = pulseDelay",
+                    "tAmp          = linspace(2000,16000,4)",
+                    "tFreq         = gFX3->convertFrequency(linspace(1,4,4))",
+                    "tFreq2        = gFX3->convertFrequency(matrix(4)+1)",
+                    "tPhase        = linspace(1,4,4)*2^14",
+                    "tAmpPhase     = gFX3->interleaveTables(tAmp,tPhase)",
+                    "tAmpFreq      = gFX3->interleaveTables(tAmp,tFreq)",
+                    "tPhaseFreq    = gFX3->interleaveTables(tPhase,tFreq)",
+                    "nPhaseSteps   = 4",
+                    "nFreqSteps    = 4",
+                    "nAmpSteps     = 4",
+                    "nAmpFreqSteps = 4",
+                    "nPhaseFreqSteps = 4",
+                    "nAmpPhaseSteps = 4",
+                    "nDurSteps     = 10",
+                    "tDur1         = gFX3->convertDelays(linspace(1,10,nDurSteps))",
+                    "tDur2         = gFX3->convertDelays(linspace(2,30,nDurSteps))",
+                    "freq          = b1Freq1H",
+                    "dAcqDelay     = 20",
+                    "totPnts       = nrPnts",
+                    "totTime       = acqTime",
+                    "freqCh2       = 2",
+                    "freqCh1       = freq",
+                    "freqRx        = freq"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)                      # Define compile directory and clear parameter list
+
+   pulse("1", aRF, p1, dPulse, 60)
+   delay(10)
+   pulse("1", aRF, p1, 60, "2", aRF, p1, 20, dPulse)
+
+# Amplitude table - Works
+   setindex(tAmp,0)
+   loop("l1",nAmpSteps)
+     pulse(1,tAmp,p1,dPulse)        # RF pulse on channel 1 with phase p1
+     incindex(tAmp,1)
+   endloop("l1")
+# Duration table - Working with 117
+   setindex(tDur1,0)
+   loop("l2",nDurSteps)
+     pulse(1,aRF,p1,tDur1)        # RF pulse on channel 1 with phase p1
+     incindex(tDur1,2)
+   endloop("l2")
+# Delay table - Working with 117
+   setindex(tDur2,0)
+   loop("l3",nDurSteps)
+     pulse(1,aRF2,p1,dPulse)  
+     delay(tDur2)
+     incindex(tDur2,2)
+   endloop("l3")
+# Frequency table - Works
+   setindex(tFreq,0)
+   loop("l4",nFreqSteps)
+     pulse(1,aRF2,p1,dPulse,tFreq)  
+     delay(10)
+     incindex(tFreq,2)
+   endloop("l4")
+   delay(dAcqDelay)                 # Pulse - acquire delay
+# Phase table - Works
+   setindex(tPhase,0)
+   loop("l5",nPhaseSteps)
+     pulse(1,aRF2,tPhase,dPulse,1)  
+     delay(10)
+     incindex(tPhase,1)
+   endloop("l5")
+# Amplitude and phase table - works
+   delay(0.25)
+   setindex(tAmpPhase,0)
+   loop("l6",nAmpPhaseSteps)
+     pulse(1,tAmpPhase,tAmpPhase,dPulse)  
+     delay(10)
+     incindex(tAmpPhase,2)
+   endloop("l6")
+# Amplitude and frequency table - working
+   setindex(tAmpFreq,0)
+   loop("l7",nAmpFreqSteps)
+     pulse(1,tAmpFreq,p1,dPulse,tAmpFreq)  
+     delay(10)
+     incindex(tAmpFreq,3)
+   endloop("l7")
+# Phase and frequency table - working
+   setindex(tPhaseFreq,0)
+   loop("l8",nPhaseFreqSteps)
+     pulse(1,aRF2,tPhaseFreq,dPulse,tPhaseFreq)  
+     delay(10)
+     incindex(tPhaseFreq,3)
+   endloop("l8")
+   delay(dAcqDelay)                 # Pulse - acquire delay
+   acquire("overwrite",nDataPnts)   # Acquire FID
+
+   parList = endpp(0)                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,0,0,0;   # p1 : Pulse 1 phase
+                # 0,1,2,3;   # p2 : Pulse 2 phase
+                 0,1,2,3]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+
+

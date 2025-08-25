@@ -1,0 +1,170 @@
+procedure(draw3Dscale)
+
+   n = :windowdefinition()
+   showwindow(n)
+   :axes_mode_changing()
+   setpar(n,2,"text",10)
+   setpar(0,18,"text",-1)
+   setpar(0,22,"text",1) 
+   setpar(0,15,"text",-1) 
+   setpar(0,14,"text",1)
+   setpar(0,12,"text",-1) 
+   setpar(0,13,"text",1)
+   setpar(0,34,"text",0)
+   setpar(0,33,"text",0) 
+   setpar(0,32,"text",0)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Draw 3D Axes", 1022, 561, 248, 280)
+
+      # Define all controls with basic parameters
+       groupbox(1, "Axes dimensions", 3, 126, 154, 123)
+       textbox(2, 82, 146, 40)
+       statictext(3, 80, 22, "left", "No axes")
+       statictext(4, 69, 89, "left", "[1,1,0]")
+       button(5, 15, 85, 47, 22, "Colour",
+          :select_axes_color();)
+       statictext(6, 40, 54, "left", "Axes with scales")
+       statictext(7, 63, 38, "left", "Simple axes")
+       statictext(8, 76, 150, "right", "length")
+       radiobuttons(9, 125, 23, 16, "vertical", "None,Simple,Scale", "Simple",
+            :axes_mode_changing();)
+       groupbox(10, "Axes", 3, -1, 157, 122)
+       statictext(11, 14, 212, "left", "z-range")
+       textbox(12, 58, 209, 32)
+       textbox(13, 115, 209, 32)
+       textbox(14, 115, 184, 32)
+       textbox(15, 58, 184, 32)
+       statictext(16, 14, 187, "left", "y-range")
+       statictext(17, 14, 162, "left", "x-range")
+       textbox(18, 58, 159, 32)
+       statictext(19, 106, 213, "right", "->")
+       statictext(20, 106, 188, "right", "->")
+       statictext(21, 106, 163, "right", "->")
+       textbox(22, 115, 159, 32)
+       groupbox(23, "Control", 167, -1, 66, 250)
+       checkbox(24, 192, 64, "no,yes", "no")
+       statictext(25, 177, 45, "left", "Clear plot")
+       button(26, 179, 210, 41, 27, "Exit",
+          closewindow(0);)
+       button(27, 179, 170, 41, 27, "Help",
+          closewindow(0);)
+       button(28, 179, 130, 41, 27, "Plot",
+          :plot_scale();)
+       statictext(29, 76, 199, "right", "y-origin")
+       statictext(30, 76, 223, "right", "z-origin")
+       statictext(31, 76, 175, "right", "x-origin")
+       textbox(32, 82, 219, 40)
+       textbox(33, 82, 195, 40)
+       textbox(34, 82, 171, 40)
+
+     # Set other control parameters
+endproc(n)
+
+procedure(plot_scale)
+
+   axes_mode = getpar(0,9,"text")
+   axCol = getpar(0,4,"value")
+
+   x1 = getpar(0,18,"value")
+   x2 = getpar(0,22,"value") 
+   y1 = getpar(0,15,"value") 
+   y2 = getpar(0,14,"value")
+   z1 = getpar(0,12,"value") 
+   z2 = getpar(0,13,"value")
+
+   x0 = getpar(0,34,"value")
+   y0 = getpar(0,33,"value") 
+   z0 = getpar(0,32,"value")
+
+   draw3d("false")
+
+      if(getpar(0,24,"text") == "yes")
+         clear3d()
+      endif
+
+     if(axes_mode == "Simple")
+
+         axLen = getpar(0,2,"value")
+         labelsize3d(axLen/20,axLen/10,axLen/10)
+         axes3d([x0,y0,z0],axLen,axCol)
+
+      elseif (axes_mode == "Scale")
+
+         color3d(axCol)
+         dw = x2-x1; dh = y2-y1; dd = z2-z1
+         maxd = sqrt(dw^2+dh^2+dd^2)
+         fogrange(-maxd,2*maxd) 
+         labelsize3d(maxd/60,maxd/30,maxd/30)
+         axis3d("x",[x1,x2],y1,z1)
+         axis3d("y",[y1,y2],z1,x1)
+         axis3d("z",[z1,z2],x1,y1)
+         box3d(x1,x2,y1,y2,z1,z2) 
+         viewdistance(maxd*2)
+     
+      endif
+
+   draw3d("true") 
+
+endproc()
+
+procedure(axes_mode_changing)
+
+   mode = getpar(0,9,"text")
+
+   if(mode == "Scale")
+     visRange = "true"
+     visLength = "false"
+     setpar(0,1,"label","Axes range")
+   elseif(mode == "Simple")
+     visRange = "false"
+     visLength = "true"
+     setpar(0,1,"label","Axes length and location")
+   else
+     visRange = "false"
+     visLength = "false"
+     setpar(0,1,"label","")
+   endif
+
+   setpar(0,17,"visible",visRange)
+   setpar(0,18,"visible",visRange)
+   setpar(0,21,"visible",visRange)
+   setpar(0,22,"visible",visRange)
+   setpar(0,16,"visible",visRange)
+   setpar(0,15,"visible",visRange)
+   setpar(0,20,"visible",visRange)
+   setpar(0,14,"visible",visRange)
+   setpar(0,11,"visible",visRange)
+   setpar(0,12,"visible",visRange)
+   setpar(0,19,"visible",visRange)
+   setpar(0,13,"visible",visRange)
+   setpar(0,2,"visible",visLength)
+   setpar(0,8,"visible",visLength)
+   setpar(0,2,"visible",visLength)
+   setpar(0,31,"visible",visLength)
+   setpar(0,34,"visible",visLength)
+   setpar(0,29,"visible",visLength)
+   setpar(0,33,"visible",visLength)
+   setpar(0,30,"visible",visLength)
+   setpar(0,32,"visible",visLength)
+
+endproc()
+
+############################################
+# Select the color for the iso-surface
+############################################
+
+procedure(select_axes_color)
+
+   col = getcolor(getpar(0,4,"value"))
+   if(col[0] != -1)
+      colTxt = "[$col[0]/255,1.1g$,$col[1]/255,1.1g$,$col[2]/255,1.1g$]"
+      setpar(0,4,"text",colTxt)
+   endif
+
+endproc()

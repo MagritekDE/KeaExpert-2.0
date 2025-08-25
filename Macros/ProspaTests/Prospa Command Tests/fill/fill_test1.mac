@@ -1,0 +1,59 @@
+# fill function test - needs more cases
+procedure(fill_test1,verbose,delay)
+
+# Fill with zero
+   x = noise(100)
+   xf1 = matrix(100)
+   xf2 = matrix(50)
+   plot(x)
+   y = fill(x,200,"end",0)
+   yc = join(x,xf1)
+   if(yc != y)
+      return(0, "Invalid result for: fill #1")
+   endif 
+   pause(1)
+   plot(y)
+   y = fill(x,200,"start",0)
+   yc = join(xf1,x)
+   if(yc != y)
+      return(0, "Invalid result for: fill #2")
+   endif 
+   pause(1)
+   plot(y)
+   y = fill(x,200,"sides",0)
+   yc = join(xf2,x)
+   yc = join(yc,xf2)
+   if(yc != y)
+      return(0, "Invalid result for: fill #3")
+   endif 
+   pause(1)
+   plot(y)
+
+# Fill with number
+   x = noise(100)
+   xf1 = matrix(100) + 2
+   xf2 = matrix(50) + 2
+   plot(x)
+   y = fill(x,200,"end",2)
+   yc = join(x,xf1)
+   if(yc != y)
+      return(0, "Invalid result for: fill #4")
+   endif 
+   pause(1)
+   plot(y)
+   y = fill(x,200,"start",2)
+   yc = join(xf1,x)
+   if(yc != y)
+      return(0, "Invalid result for: fill #5")
+   endif 
+   pause(1)
+   plot(y)
+   y = fill(x,200,"sides",2)
+   yc = join(xf2,x)
+   yc = join(yc,xf2)
+   if(yc != y)
+      return(0, "Invalid result for: fill #6")
+   endif 
+   pause(1)
+   plot(y)
+endproc(1,"")

@@ -1,0 +1,30 @@
+####################################################
+#                  real1d.mac
+#
+# Take the real part of the current 1D 
+# data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(real1d)
+
+   (x,y) = getplotdata("1d")
+   if(x != null)
+      if(vartype(y) == "cmatrix1d")
+        draw1d("false")
+           (txt,lx,ly,x1v,x2v) = 1dpar:get()
+            plot(x,real(y))
+            1dpar:set(txt,lx,ly,x1v,x2v)
+        draw1d("true")
+      else
+         message("Info","Data is already real")
+      endif
+   else
+      message("Can't complete operation","No 1D data set presently plotted","error")
+   endif
+
+endproc()

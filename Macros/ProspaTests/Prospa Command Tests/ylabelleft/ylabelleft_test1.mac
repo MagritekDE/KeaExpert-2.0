@@ -1,0 +1,35 @@
+procedure(ylabelleft_test1,verbose,delay)
+ 
+   clear1d()
+   
+   # Set with no traces, 1D
+   ylabelleft("I should be invisible")
+   
+   m = [0:1:100]^2
+   my_trace = plot(m)
+   title("ylabelleft test")
+   ylabelleft("Set left y label")
+   pause(1)
+
+   # Set with a trace on the right hand axis and none on the left
+   
+   my_trace = curtrace()
+   my_trace->axis("right")
+   ylabelleft("I should be invisible")
+   pr "finished 1D\n"
+   clear2d()
+   
+   # Set with no traces, 2D
+   ylabelleft("No trace set")
+   
+   m = noise(100,100)
+   image(m)
+   m = [-100:100]
+   m = (m'*m)^2
+   image(m)
+   title("Title test")
+   ylabelleft("Set left y label")
+   pause(1)
+      pr "finished 2D\n"
+
+endproc(1,"")

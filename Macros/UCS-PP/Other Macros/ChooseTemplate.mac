@@ -1,0 +1,199 @@
+################################################################
+# Choose a template for a pulse program and the controlling
+# experiment procedure
+#
+# Author: C Eccles, Magritek
+# Date: 20 June 2014
+################################################################
+
+procedure(ChooseTemplate, outputFolder)
+
+   n = :windowdefinition()
+   windowvar(wvOutputFolder)
+   wvOutputFolder = outputFolder
+   assignctrls(n)
+   :loadParameters()
+   :updateLists()
+   setwindowpar(n,"sizelimits",[400,-1,300,-1])
+   setwindowpar(n,"type","dialog")
+   result = showdialog(n)
+
+endproc(result)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Choose pulse program and experiment templates", -1, -1, 553, 378, "resizable")
+
+      # Define all controls with basic parameters
+      listbox(1, 10, 110, "ww*0.5-15", "wh-187",
+         :selectPPTemplate();)
+      statictext(2, "ww*0.25", 88, "center", "Pulse program templates")
+      listbox(3, "ww*0.5+5", 110, "ww*0.5-15", "wh-187",
+         :selectExptTemplate();)
+      statictext(4, "ww*0.75", 88, "center", "Experiment templates")
+      textbox(5, 120, 20, "ww-165")
+      textbox(6, 10, "wh-69", "ww*0.5-15")
+      textbox(7, "ww*0.5+5", "wh-69", "ww*0.5-15")
+      button(8, 10, "wh-41", 110, 34, "Make pulse program using these templates",
+         :makePPFromTemplate();)
+      textbox(9, 120, 50, "ww-343")
+      button(10, "ww-121", "wh-41", 50, 34, "Help")
+      button(11, "ww-61", "wh-41", 50, 34, "Cancel",
+         :saveParameters();
+         closedialog("cancel");)
+      statictext(12, 110, 24, "right", "Template folder")
+      button(13, "ww-36", 20, 24, 22, "...",
+         :selectTemplateFolder();)
+      statictext(14, 110, 54, "right", "Pulse program name")
+
+     # Set other control parameters
+      setpar(n,1,"objID","ppTemplateListCtrl")
+      setpar(n,3,"objID","experimentListCtrl")
+      setpar(n,5,"objID","templateFolderCtrl",
+                  "valueID","templateFolder")
+      setpar(n,6,"objID","ppTemplateCtrl")
+      setpar(n,7,"objID","experimentCtrl")
+      setpar(n,9,"objID","baseNameCtrl")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(updateLists)
+
+   dir = templateFolderCtrl->text
+   if(isdir(dir))
+      cd(dir)
+      if(isdir("Pulse Programs"))
+         cd("Pulse Programs")
+         pp = ls("*_pp.mac")
+         sz = size(pp)
+         names = list(sz)
+         for(k = 0 to sz-1)
+            file = pp[k]
+            names[k] = file[0:size(file)-8]
+         next(k)
+         if(sz > 0)
+            ppTemplateListCtrl->list(names)
+            ppTemplateListCtrl->zindex(0)
+            ppTemplateCtrl->text(ppTemplateListCtrl->text)
+         endif
+      endif
+      cd(dir)
+      if(isdir("Experiments"))
+         cd("Experiments")
+         pp = ls("*.mac")
+         sz = size(pp)
+         names = list(sz)
+         for(k = 0 to sz-1)
+            file = pp[k]
+            names[k] = file[0:size(file)-5]
+         next(k)
+         if(sz > 0)
+            experimentListCtrl->list(names)
+            experimentListCtrl->zindex(0)
+            experimentCtrl->text(experimentListCtrl->text)
+         endif
+      endif
+   endif
+   
+endproc()
+
+
+procedure(selectTemplateFolder)
+
+   dir = templateFolderCtrl->text
+   if(dir == "")
+      dir = "$appdir$\\Macros\\UCS-PP\\Templates"
+   endif
+   dir = getfolder(dir,"Select template folder")
+   templateFolderCtrl->text(dir)
+    :updateLists()
+
+endproc()
+
+procedure(selectPPTemplate)
+
+   ppTemplateCtrl->text(ppTemplateListCtrl->text)
+   
+endproc()
+
+procedure(selectExptTemplate)
+
+   experimentCtrl->text(experimentListCtrl->text)
+   
+endproc()
+
+procedure(makePPFromTemplate)
+
+   ppTemplate = ppTemplateCtrl->text
+   exptTemplate =  experimentCtrl->text
+   baseName = baseNameCtrl->text
+   dir = templateFolderCtrl->text
+   if(isdir(dir))
+      cd(dir)
+      if(isdir("Pulse Programs"))
+         cd("Pulse Programs")
+         ppTxt = load("$ppTemplate$_pp.mac")
+      endif
+      cd(dir)
+      if(isdir("Experiments"))
+         cd("Experiments")
+         exptTxt = load("$exptTemplate$.mac")
+      endif
+   endif
+
+   dir2 = "$appdir$\\Macros\\UCS-PP\\MacroWorking"
+   if(isdir(dir2))
+      cd(dir2)
+      startTxt = load("startcodeV4.mac")
+   endif   
+
+   finalTxt = startTxt + "\r\n\r\n" + exptTxt
+# This file along with renamed pp and .par file can be compiled.
+# This interface should be a dialog which returns
+   cd(wvOutputFolder)
+   mkdir(baseName)
+   save("$baseName$\\$baseName$.mac",finalTxt)
+   srcFile = "$dir$\\Pulse Programs\\$ppTemplate$_pp.mac"
+   dstFile =  "$wvOutputFolder$\\$baseName$\\$baseName$_pp.mac"
+
+   copyfile(srcFile,dstFile)
+   srcFile = "$dir$\\Pulse Programs\\$ppTemplate$Default.par"
+   dstFile =  "$wvOutputFolder$\\$baseName$\\$baseName$Default.par"
+
+   copyfile(srcFile,dstFile)
+
+   :saveParameters()
+   closedialog(baseNameCtrl->text)
+
+endproc()
+
+# Load parameters from  preferences
+procedure(loadParameters)
+
+   cd(prefdir)
+   if(isdir("Other Macros"))
+      cd("Other Macros")
+      if(isfile("chooseTemplate.par"))
+         lst = load("chooseTemplate.par")
+         setctrlvalues(0,lst)
+      else
+         templateFolderCtrl->text("$appdir$\\Macros\\UCS-PP\\Templates")
+      endif
+   endif
+
+endproc()
+
+# Save parameters to preferences
+
+procedure(saveParameters)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   lst = getctrlvalues(0)
+   save("chooseTemplate.par",lst)
+
+endproc()

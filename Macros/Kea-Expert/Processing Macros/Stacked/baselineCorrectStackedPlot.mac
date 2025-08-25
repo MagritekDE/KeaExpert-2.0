@@ -1,0 +1,56 @@
+####################################################
+#         baselineCorrectStackedPlot.mac
+#
+# Apply baseline offset to the current stacked plot
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek  May 2024
+#
+###################################################
+
+
+procedure(baselineCorrectStackedPlot, fidPlotName, specPltName)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   offsetStr = getText("Enter baseline offset",20)
+
+   if(offsetStr == "cancel")
+      return
+   endif
+
+   :applyOffset(eval(offsetStr))
+
+   print("offset applied")
+
+endproc()
+
+
+
+#####################################################################
+# Apply the offset
+#####################################################################
+
+procedure(applyOffset,offset)
+
+   cp = curplot("1d")
+   cp->draw("false")
+   trcList = cp->traceList()
+   sz = size(trcList)
+   (x1,x2,y1,y2) = cp->zoom()
+
+   for(cnt = 0 to sz-1)
+      tc = cp->trace(trcList[cnt])
+      (x,y) = tc->getdata()
+      y = y - offset
+      tc->setdata(struct(x,y))
+   next(cnt)
+
+   cp->zoom(x1,x2,y1,y2)
+   cp->draw("true")
+
+endproc()

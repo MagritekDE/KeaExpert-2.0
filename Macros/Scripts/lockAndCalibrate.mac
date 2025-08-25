@@ -1,0 +1,162 @@
+#####################################################################
+# Find and engage the lock, find the B1 frequency and then calibrate
+#####################################################################
+
+procedure(LockAndCalibrate, parameters=null)
+
+   macroLocation = getmacropath()
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   elseif(iskeypressed("control"))
+      while(1)  
+         refStr = gettext("Enter reference peak (ppm)","4.74",10)
+         if(refStr == "cancel")
+            return
+         endif
+         if(isfloat(refStr))
+            refPeakPPM = eval(refStr)
+            lst = gView->batch->list  
+            lst = lst + "LockAndCalibrate|$refPeakPPM$ ppm"
+            gBatch->displayBatchList(lst)
+            gView->batch->index(size(lst))    
+            return
+         endif
+      endwhile
+   else
+      if(parameters == null)
+         parameters = ["refPeakPPM=4.74"]
+      endif
+      gExpt->addExperiment(macroLocation,"LockAndCalibrate", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["refPeakPPM","Offset Frequency (ppm)","tm","float","[\"4.74\",\"7.26\"]"]
+   plotLayout = listto2d(["pt1"])
+
+   procLayout = struct(buttonLabel = "SNR",     plotName = "pt1", macroToRun = "snrSpectrum()";
+                   buttonLabel = "Phase",   plotName = "pt1", macroToRun = "manualPhase1DSpecial()";
+                   buttonLabel = "SNR",     plotName = "pt1", macroToRun = "snrSpectrum()";
+                   buttonLabel = "Calib.",  plotName = "pt1", macroToRun = "calibrateXAxis()")
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","spectrum.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   try
+      rmvar("parameters->samples")
+   catch
+   endtry
+
+# FindF0 requires common parameters
+   if(gData->useCommonPar == "no")
+      message("Error","Calibration will not work unless common parameters are activated in preferences.\n", "error")
+      return
+   endif
+
+   InitScript(getmacropath(),getmacroname())
+
+      assignstruct(parameters)
+      if(not(isvar("refPeakPPM")))
+         refPeakPPM = gettext("Select PPM for maximum peak", "$wvPPMOffset1H$", 10) 
+      endif
+         
+      if(isfloat(refPeakPPM))
+
+         try
+            pr("\n---------- Lock and calibrate ----------\n")
+            pr("\n   Finding lock ...\n")
+            gLock->findLock()
+            InitPlot(["pt1";"pt2"])
+            pr("\n   Finding B1 frequency and calibrating to $refPeakPPM$ ppm ...\n")
+            experimentLabelCtrl->label("Finding f0 and calibrating")
+            RunExpt("FindF0-H",["findFromDefaults = \"yes\"","dwellTime = 1","nrPnts = 8192",
+                                "peakPositionPPM = $refPeakPPM$", "saveData=\"false\"","verbose = 0","filter=\"yes\""])
+            pause(3)
+            result = RunExpt("FindF0-H",["dwellTime =100","nrPnts = 16384","saveData=\"false\"", "zf=2",
+                                         "peakPositionPPM = $refPeakPPM$", "verbose = 1","filter=\"no\""])     
+            experimentLabelCtrl->label("Measuring linewidth")
+            pr("\n   Measuring linewidth ...\n")
+            pause(3) 
+            result = RunExpt("Proton",["saveData = \"true\"","usePPMScale = \"yes\"","zf = 2"],list(parameters))
+            setupUtilities:calcLineWidth(result)
+            pr("\n---------- Finished --------------------\n")
+         catch
+            err = lasterror()
+            if(err->type != "Throw")
+               pr err
+            endif
+         endtry
+
+      endif
+
+   EndScript()
+
+endproc()
+
+#########################################################
+# Update the proton PPM offset 
+#########################################################
+
+procedure(modifyReferenceOffset, offsetPPM)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("SpinsolveParameters\\Preferences")
+   cd("SpinsolveParameters\\Preferences")
+   file = "ucsPreferences.par"
+
+# Save to UCS preferences list
+   calpar = ["ppmOffset1H = $offsetPPM$"]
+   if(isfile(file))
+      par = load(file)
+      newlst = mergelists(calpar,par)
+      save(file,sortlist(newlst))
+   else
+      save(file,calpar)
+   endif
+   assign("wvPPMOffset1H",offsetPPM,"window")
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   duration = 20 # Empirically determined
+
+endproc(duration)

@@ -1,0 +1,76 @@
+procedure(sum_test1,verbose,delay)
+
+# real 1D test
+   m = noise(100)
+   s = 0
+   for(x = 0 to 99)
+      s = s + m[x]
+   next(x)
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #1")
+   endif 
+
+# real 2D test
+   m = noise(100,100)
+   s = 0
+   for(y = 0 to 99)
+      for(x = 0 to 99)
+         s = s + m[x,y]
+      next(x)
+   next(y)
+
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #2")
+   endif 
+
+# real 3D test
+   m = noise(20,20,20)
+   s = 0
+   for(z = 0 to 19)
+      for(y = 0 to 19)
+         for(x = 0 to 19)
+            s = s + m[x,y,z]
+         next(x)
+      next(y)
+   next(z)
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #3")
+   endif 
+
+# complex 1D test
+   m = noise(100)+i*noise(100)
+   s = 0
+   for(x = 0 to 99)
+      s = s + m[x]
+   next(x)
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #4")
+   endif 
+
+# complex 2D test
+   m = noise(100,100)+i*noise(100,100)
+   s = 0
+   for(y = 0 to 99)
+      for(x = 0 to 99)
+         s = s + m[x,y]
+      next(x)
+   next(y)
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #5")
+   endif 
+
+# complex 3D test
+   m = noise(40,40,40)+i*noise(40,40,40)
+   s = 0
+   for(z = 0 to 39)
+      for(y = 0 to 39)
+         for(x = 0 to 39)
+            s = s + m[x,y,z]
+         next(x)
+      next(y)
+   next(z)
+   if(s != sum(m))
+      return(0, "Invalid result for: sum_test1 #6")
+   endif 
+
+endproc(1,"")

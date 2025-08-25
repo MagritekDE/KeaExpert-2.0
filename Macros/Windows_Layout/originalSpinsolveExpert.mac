@@ -1,0 +1,408 @@
+############################################
+# Display 1D/2D/3D editor and cli in 
+# separate windows.
+#
+# If parameters is present then use this
+# list to determine the layout.
+#
+# If the old window layout is different or
+# nonexistent then make the window
+# from scratch.
+############################################
+
+procedure(original,parameters)
+
+   tm = matrix(10)
+   time(0, "double")
+   if(nrArgs == 0)
+      parameters = null
+   endif
+
+   if(nrArgs == 1)
+      name = getwindowpar(0,"macroname")
+     if(name == "original.mac")
+         :reconfigure(parameters)
+         return
+      endif
+   endif
+
+   try
+      closewindow(0,"restart")
+   catch
+   endtry
+
+   label = "Prospa V$version(\"string\")$"
+   mainW = window(label,100,100,1000,900,"resizable")
+
+   setwindowpar(mainW,"show_menu","false")
+
+      :MakeMainMenu(mainW ,1)
+      setwindowpar(mainW ,"keepInFront","false")
+      setwindowpar(mainW ,"exit_procedure",":ExitProc()")
+      cd("$appdir$\\Macros\\Windows_Layout")
+
+      pw = mainW
+      cw = cliWin(2)
+      p1w = plot1dwin(2)
+      p2w = plot2dwin(2)
+      p3w = plot3dwin(2)
+      edw = editorwin(2)
+
+      setwindowpar(pw,"name","pw")
+      setwindowpar(cw,"name","cw")
+      setwindowpar(p1w,"name","p1w")
+      setwindowpar(p2w,"name","p2w")
+      setwindowpar(p3w,"name","p3w")
+      setwindowpar(edw,"name","edw")
+
+      setwindowpar(pw,"keepInFront","false")
+      setwindowpar(cw,"keepInFront","false")
+      setwindowpar(p1w,"keepInFront","false")
+      setwindowpar(p2w,"keepInFront","false")
+      setwindowpar(p3w,"keepInFront","false")
+      setwindowpar(edw,"keepInFront","false")
+
+      setwindowpar(mainW,"dragndropproc","original:AddMenuOption")
+
+      :LoadPar(parameters)
+      setfocus(mainW )
+
+
+endproc()
+
+############################################
+# Use parameters to position the windows
+# The parameters can be built in,
+# passed to the procedure or from a the 
+# file original.par
+############################################
+
+procedure(LoadPar,pos)
+
+   pw = findwin("name","pw")
+   cw = findwin("name","cw")
+   p1w = findwin("name","p1w")
+   p2w = findwin("name","p2w")
+   p3w = findwin("name","p3w")
+   edw = findwin("name","edw")
+
+   bak = getcwd()
+   cd(prefdir)
+
+   if(pos == null)
+      try
+         cd("Windows")
+         pos = load("original.par")
+   
+      catch
+          pos = ["ww*0.0210938","wh*0.0583419","ww*0.921094","wh*0.896622",
+                "ww*0.66296","wh*0.498792","ww*0.335329","wh*0.498792",
+                "0","0","ww*0.643285","wh*0.498792",
+                "ww*0.643285","0","ww*0.355004","wh*0.498792",
+                "0","wh*0.498792","ww*0.307956","wh*0.498792",
+                "ww*0.308811","wh*0.498792","ww*0.353293","wh*0.498792",
+                "true","true","true","true","true","false"]
+      endtry
+   endif
+
+   setwindowpar(pw,"dimensions",pos[0:3])
+
+   if(size(pos) == 30)
+      if(pos[29] == "true")
+         showwindow(pw,"maximized")
+      else
+         showwindow(pw)
+      endif
+   else
+      showwindow(pw)
+   endif
+
+   setwindowpar(cw,"dimensions",pos[4:7])
+   setwindowpar(p1w,"dimensions",pos[8:11])
+   setwindowpar(p2w,"dimensions",pos[12:15])
+   setwindowpar(p3w,"dimensions",pos[16:19])
+   setwindowpar(edw,"dimensions",pos[20:23])
+
+   if(pos[24] == "true")
+      showwindow(cw,"recalc")
+   else
+      finishwindow(cw,"recalc")
+   endif
+
+   if(pos[25] == "true")
+      showwindow(p1w,"recalc")
+   else
+      finishwindow(p1w,"recalc")
+   endif
+
+   if(pos[26] == "true")
+      showwindow(p2w,"recalc")
+   else
+      finishwindow(p2w,"recalc")
+   endif
+
+   if(pos[27] == "true")
+      showwindow(p3w,"recalc")
+   else
+      finishwindow(p3w,"recalc")
+   endif
+
+   if(pos[28] == "true")
+      showwindow(edw,"recalc")
+    else
+      finishwindow(edw,"recalc")
+   endif
+
+   
+
+endproc(pos)
+
+############################################
+# Just rearrange the window positions
+############################################
+
+procedure(reconfigure,pos)
+
+   cw = findwin("name","cw")
+   p1w = findwin("name","p1w")
+   p2w = findwin("name","p2w")
+   p3w = findwin("name","p3w")
+   edw = findwin("name","edw")
+   setwindowpar(cw,"dimensions",pos[4:7])
+   setwindowpar(p1w,"dimensions",pos[8:11])
+   setwindowpar(p2w,"dimensions",pos[12:15])
+   setwindowpar(p3w,"dimensions",pos[16:19])
+   setwindowpar(edw,"dimensions",pos[20:23])
+
+   if(pos[24] == "true")
+      showwindow(cw)
+   else
+      hidewindow(cw)
+   endif
+
+   if(pos[25] == "true")
+      showwindow(p1w)
+   else
+      hidewindow(p1w)
+   endif
+
+   if(pos[26] == "true")
+      showwindow(p2w)
+   else
+      hidewindow(p2w)
+   endif
+
+   if(pos[27] == "true")
+      showwindow(p3w)
+   else
+      hidewindow(p3w)
+   endif
+
+   if(pos[28] == "true")
+      showwindow(edw)
+    else
+      hidewindow(edw)
+   endif
+
+endproc()
+
+############################################
+# When the window is exited save the layout
+# so it looks the same next time
+############################################
+
+procedure(ExitProc)
+
+   pos = :GetLayout()
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Windows")
+   cd("Windows")
+   save("original.par",pos)
+   par = ["cd(\"$$appdir$$\\Macros\\Windows_Layout\")","original.mac"]
+   save("lastProspaLayout.mac",par)
+   cd(bak)
+ 
+endproc(exit())
+
+procedure(GetLayout)
+
+   pw = findwin("name","pw")
+   cw = findwin("name","cw")
+   p1w = findwin("name","p1w")
+   p2w = findwin("name","p2w")
+   p3w = findwin("name","p3w")
+   edw = findwin("name","edw")
+
+   viscw = getwindowpar(cw,"visible")
+   visp1w = getwindowpar(p1w,"visible")
+   visp2w = getwindowpar(p2w,"visible")
+   visp3w = getwindowpar(p3w,"visible")
+   visedw = getwindowpar(edw,"visible")
+   pos = getwindowpar(pw,"dimensiontxt")
+   pos = pos + getwindowpar(cw,"dimensiontxt")
+   pos = pos + getwindowpar(p1w,"dimensiontxt")
+   pos = pos + getwindowpar(p2w,"dimensiontxt")
+   pos = pos + getwindowpar(p3w,"dimensiontxt")
+   pos = pos + getwindowpar(edw,"dimensiontxt")
+   pos = pos + ["$viscw$","$visp1w$","$visp2w$","$visp3w$","$visedw$"]
+   pos = pos + ["$getobj(0)->maximized$"]
+
+
+endproc(pos)
+
+procedure(MakeMainMenu,n, m)
+
+    menu(m, "&File", "Load data ...\tCtrl+L", funcProspa("load data"),
+              "Save data  ...\tCtrl+S", funcProspa("save data"),
+              "Separator", ,
+              "Import data ...\tCtrl+I", funcProspa("import data"),
+              "Export data ...\tCtrl+E", funcProspa("export data"),
+              "Separator", ,
+              "Open application folder ...", exec("explorer",appdir);,
+              "Open preferences folder ...", exec("explorer",prefdir);,
+              "Separator", ,
+              "Set current folder ...\tCtrl+I", :SetCurrentFolder();,
+              "Run macro file ...\tCtrl+R", :RunMacro(),
+              "Halt running macro\tEsc", funcProspa("halt macro"),
+              "Separator", ,
+              "Save window layout ...", :SaveLayout(),
+              "Load window layout ...", :LoadLayout(),
+              "Separator", ,
+      #        "Prospa preferences ...\tCtrl+P", funcProspa("preferences"),
+              "Prospa preferences ...\tCtrl+P", ProspaPreferences(),
+              "Separator", ,
+              "Quit\tCtrl+Shift+Q", :ExitProc(); exit())
+
+    menu(m+1, "Window", "Show/Hide temp windows...\tF2",funcProspa("show/hide windows"),
+              "Show next window\tCtrl+Tab", shownextwindow(0),
+              "Show last window\tCtrl+Shift+Tab", showlastwindow(0),
+              "windows menu", "windows")
+
+
+    menu(m+2, "Help","Help viewer ... \tF1", prospaHelpViewer(),
+                     "Separator", ,
+                     "Display Prospa release notes", :showProspaReleaseNotes(),
+                     "Display SpinsolveExpert release notes", :showUCSReleaseNotes(),
+                     "Separator", ,
+                     "About Prospa ...", aboutProspa())
+
+    setwindowpar(n,"menubar",[m,m+1,-1,m+2])
+
+endproc()
+
+procedure(RunMacro)
+
+   name = getfilename("load","Run a macro","Macro files","mac")
+   if(name != "cancel")
+      name()
+   endif
+   
+endproc()
+
+procedure(SetCurrentFolder)
+
+   folder = getfolder(getcwd(),"Set the current folder. This will be the folder used by the CLI\rand will be the default folder used in macros.")
+   if(folder != "cancel")
+      cd(folder)
+   endif
+
+endproc()
+
+procedure(LoadLayout)
+
+   file = getfilename("load","Load a window layout","Parameter files","par")
+   if(file != "cancel")
+      par = load(file)
+      if(size(par) == 30)
+         original(par)
+      else
+         message("Error","Invalid parameter file","error")
+      endif
+   endif
+   
+endproc
+
+procedure(SaveLayout)
+
+   file = getfilename("save","Save the window layout","Parameter files","par")
+   if(file != "cancel")
+      par = :GetLayout()
+      save(file,par)
+   endif
+   
+endproc
+
+#####################################################################
+# Add a new menu option to the Prospa main menu
+# after dragging and dropping a folder icon onto the main window
+# If the folder is in appdir then make it a relative path
+# otherwise absolute
+#####################################################################
+
+procedure(AddMenuOption,path,file,ext,objNr)
+
+
+   if(isdir(path))
+     
+      menuName = gettext("Add new menu name for this path", getbasedir(path))
+      if(menuName != "cancel")
+
+         try
+            varstatus("usermenus","visible","readwrite","permanent")
+            relativepath = relpath(path,appdir) # Relative to appdir
+            if(issubstr(relativepath,"..")) # Outside appdir? Use absolute path
+               usermenus = usermenus + ["$menuName$","$path$"]
+            else # Use relative path
+               usermenus = usermenus + ["$menuName$","$relativepath$"]
+            endif
+            varstatus("usermenus","visible","readonly","permanent")
+         catch # Use absolute path
+            usermenus = usermenus + ["$menuName$","$path$"]
+         endtry
+   
+         cd("$prefdir$\\Startup")
+         if(isfile("userMenus.lst"))
+            save("userMenus.lst",usermenus)
+            varstatus("usermenus","visible","readwrite","permanent")
+            assign("usermenus",usermenus,"global")
+            varstatus("usermenus","visible","readonly","permanent")
+            updatemainmenu()
+         else
+            message("Error","Can't save menu preferences","error")
+         endif
+
+
+      endif
+
+   endif
+
+endproc()
+
+procedure(showUCSReleaseNotes)
+
+   bak = getcwd()
+   cd(appdir)
+   exec("SpinsolveExpert release notes.pdf")
+   cd(bak)
+
+endproc()
+
+procedure(showProspaReleaseNotes)
+
+   bak = getcwd()
+   cd(appdir)
+   exec("Prospa release notes.pdf")
+   cd(bak)
+
+endproc()
+   
+
+procedure(showKeaReleaseNotes)
+
+   bak = getcwd()
+   cd(appdir)
+   exec("Kea release notes.pdf")
+   cd(bak)
+
+endproc()

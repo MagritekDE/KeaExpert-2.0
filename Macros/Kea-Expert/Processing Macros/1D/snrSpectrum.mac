@@ -1,0 +1,46 @@
+###################################################
+# Return the SNR of a spectrum
+#
+# 'Signal' is the maximum peak amplitude.
+# The user must select the noise region
+###################################################
+
+procedure(GetSNR)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   plt = curplot("1d")
+   if(plt == null)
+      return
+   endif
+
+   (x,y) = plt->getdata()
+   if(y == null)
+      message("Error","No data present in current 1D plot.","error")
+      return
+   endif
+   
+   ry = real(y)
+   sig = max(mag(ry))
+   sz = size(y)
+   message("Information","Please select a signal/peak free region of the FID/spectrum to determine the noise level.\r\rClick with the mouse on the left and right sides of this region.","info")
+   gView->statusCtrl->label("Select one side of noise")
+   p1 = getx("index")
+   gView->statusCtrl->label("Select other side of noise")
+   p2 = getx("index")
+   gView->statusCtrl->label("")
+   if(p1 > p2)
+      swapvar(p1,p2)
+   endif
+   ns = sd(ry[p1:p2])
+
+   if(plt->axes->xdirection == "reversed")
+      pr "\n   SNR(Spectrum) = peakSignal/(2*sdNoise) = $sig/(2*ns),1.1f$\n"
+   else
+      pr "\n   SNR(FID) = peakSignal/(2*sdNoise) = $sig/(2*ns),1.1f$\n"
+   endif
+
+endproc()

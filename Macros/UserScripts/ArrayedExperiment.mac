@@ -1,0 +1,602 @@
+#####################################################################
+# This  script allows the selection of a 1D experiment which will be
+# repeated with a parameter being stepped between experiments based
+# on the contents of a parameter array. 
+# The results will be stored in subfolders with sequential numbers 
+# and reloaded as a stacked plot (1D) or a series of images (2D).
+# The experiment can be repeated without changng a parameter by 
+# choosing the parameter 'Repeat'. In this case the parameter array 
+# just defines the number of repeats.
+#####################################################################
+
+procedure(ArrayedExperiment, parameters=null) 
+ 
+   macroLocation = getmacropath()
+
+   defaultProtocol = "Proton"
+
+   if(iskeypressed("shift"))
+      EditorWin()
+      cd(getmacropath())
+      ed(getmacroname())
+   else
+      :upDateParameterUI(defaultProtocol)
+   endif
+
+endproc()
+
+
+########################################################
+# Specifies the user interface for the script. 
+# Called automatically from gParam->createScriptCtrls.
+# The parameters  gParam->auxProtocol is used to store
+# the name of the protocol which will be repeated.
+########################################################
+
+procedure(interface)
+
+   expertExpts = :getExperimentList()
+
+   auxProtocol = gParam->auxProtocol
+   if(auxProtocol == null)
+      print("The auxProtocol parameter for this experiment has not been saved in acqu.par. Aborting!\n")
+      return(null,null,null)
+   endif
+
+   proc = "$auxProtocol$:getPlotInfo"
+   fileList = proc("all")
+   fileList = fileList[1:2:-1]
+
+   ctrlLayout = ["exptDiv",        "Arrayed-Experiment",    "dv",           "",       "",
+                 "auxProtocol",    "Protocol",              "tm_wide,proc", "string", "$expertExpts$",
+                 "parameter",      "Parameter to change",   "tm_wide",      "string", "",
+                 "arrayExp",       "Parameter array",       "tb_wide",      "string", "",
+                 "dataToLoad",     "Data to display",       "tm_wide,proc", "string", "$fileList$",
+                 "displayMode",    "Display as",            "tm_wide,proc", "string", "[\"Stacked Plot\", \"Multi-Plots\"]",
+                 "viewUpdate",     "Update viewer",         "tm_wide,proc", "string", "[\"no\", \"yes\"]",
+                 "exptDiv",        "$auxProtocol$",         "dv",           "",       ""]
+
+   
+   proc = "$auxProtocol$_interface:interfaceDescription"
+   protocolPar = proc()
+   if(protocolPar[0] == "exptDiv")
+      protocolPar = protocolPar[5:-1]
+   endif
+
+   ctrlLayout = ctrlLayout + protocolPar
+
+   plotLayout = ["pt1"]
+
+   procLayout = struct(buttonLabel = "View",      plotName = "pt1", macroToRun = "StackedPlotSetup()",
+                       toolTip = "Modify the stacked plot view. Also provided a phasing tool.";
+                       buttonLabel = "MNova",   plotName = "pt1", macroToRun = "exportMNova(\"pt1\")")
+
+endproc(ctrlLayout, plotLayout, null)
+
+
+########################################################
+# Return the list of all experiments
+########################################################
+
+procedure(getExperimentList)
+
+   # Load all possible protocols into the protocol dropdown menu
+   expertExptsDir = gData->ppLocations
+   expertExpts = list(0)
+   for(k = 0 to size(expertExptsDir)-1)
+      dir = expertExptsDir[k]
+      cd(dir)
+      lst = getdirlist(dir)
+      expertExpts = expertExpts + ["====== $caseset(getbasedir(dir),\"upper\")$ ======"]
+      expertExpts = expertExpts + lst
+      cd("..")
+   next(k)
+
+endproc(expertExpts)
+
+########################################################
+# Parameter callback - called when protocol or parameter
+# to change menu selected
+########################################################
+
+procedure(parameterCallBack)
+
+   assignlist(getctrlvalues(0))
+
+# Allow the selection of different protocols
+   if(parentCtrl->name == "auxProtocol")
+
+      if(parentCtrl->event == "enter" | parentCtrl->event == "undefined")
+
+         bak = getcwd()
+         try
+            :upDateParameterUI(auxProtocol)
+            :setParameterMenu(auxProtocol)
+         catch
+            pr lasterror()
+         endtry
+         cd(bak)
+
+      endif
+
+# Allow the selection of other data sets
+   elseif(parentCtrl->name == "dataToLoad")
+
+      try
+         :onLoad([""],dataToLoad,displayMode)
+      catch
+      endtry
+
+# Allow the selection of other data sets
+   elseif(parentCtrl->name == "displayMode")
+
+      try
+         :onLoad([""],dataToLoad,displayMode)
+      catch
+      endtry
+
+# Call auxillary protocol callback
+   else
+
+      try
+         proc = "$auxProtocol$_pp:parameterCallBack"
+         proc()
+      catch
+      endtry
+
+   endif
+
+endproc()
+
+########################################################
+# Regenerate the UI for the array protocol
+# gParam->auxProtocol is used to store the name of the 
+# protocol to add to the parameter list. This is used
+# in the interface procedure
+########################################################
+
+procedure(upDateParameterUI, auxProtocol)
+
+   macroLocation = getmacropath()
+
+# Set some defaults
+   parameters = ["auxProtocol   = \"$auxProtocol$\"",
+                 "parameter     = \"pulseLength1H\"",
+                 "arrayExp      = \"[1:1:10]\"",
+                 "dataToLoad    = \"spectrum.pt1\"",
+                 "displayMode   = \"Stacked Plot\"",
+                 "viewUpdate    = \"no\""]
+
+# Add the experiment + parameter fields
+   gParam->auxProtocol = auxProtocol
+   gExpt->addExperiment(macroLocation,rmext(getmacroname()),parameters)
+
+# Add the parameters for the auxillary protocol
+   par = gData->getExptParameters(auxProtocol,findFolder=1)
+   setctrlvalues(0,list(par))
+
+# Add the file name menu and text 
+   :setFileMenu(auxProtocol)
+
+# Reset the auillary protocol parameter
+   gParam->auxProtocol = null
+
+# Update the protocol and parameter lists
+   try
+      expertExpts = :getExperimentList()
+      n = findobj(0,"name","auxProtocol")
+      if(n > 0)
+         setpar(0,n,"menu",expertExpts)
+         setpar(0,n,"text","$auxProtocol$")
+      endif
+      :setParameterMenu("$auxProtocol$")
+   catch
+     pr lasterror()
+   endtry
+
+endproc()
+
+########################################################
+# Update the file menu based on the protocol
+########################################################
+
+procedure(setFileMenu, protocol)
+
+   proc = "$protocol$:getPlotInfo"
+   fileList = proc("all")
+   fileList = fileList[1:2:-1]
+   idx = findobj(0,"name","dataToLoad")
+   setpar(0,idx,"menu",fileList)
+   setpar(0,idx,"text",fileList[-1])
+
+endproc()
+
+########################################################
+# Update the parameter menu based on the protocol
+# Add the Repeat option which means no parameters
+# is changed, the experiment is just repeated.
+########################################################
+
+procedure(setParameterMenu, protocol)
+
+   path = findmacro(protocol)
+   cd(path)
+   defaults = load("$protocol$Default.par")
+   parameters = sortlist(getlistnames(defaults))
+   parameters = ["Repeat"] + sortlist(parameters)
+   objNr = findobj(0,"name","parameter")
+   setpar(0,objNr,"menu",parameters)
+   setpar(0,objNr,"text",parameters[0])
+
+endproc()
+
+
+########################################################
+# Overrides the normal data load procedure when 
+# selecting from the history list.
+# In this case we load all the data in the subfolders
+# and display as a stacked plot (1D) or as a series
+# of images or contour plots (2D)
+# We also update the parameter name and menu
+# Currently the data menu is not updated
+########################################################
+
+procedure(onLoad, layout, newFileName=null, newDispMode=null)
+
+# Get the experiment parameters
+   assignstruct(gData->curExpt)
+
+# Get the acquisition parameters
+   cd(dataPath)
+   par = load("acqu.par")
+   assignlist(par)
+
+   # See if we want to override the display mode
+   if(isvar("displayMode") == 0)
+      displayMode = "Stacked Plot"
+   endif
+   if(newDispMode != null)
+      displayMode = newDispMode
+   endif
+   # See if we want to override the filename
+   if(newFileName != null)
+      fileName = newFileName
+   else
+      if(isvar("dataToLoad") == 0)
+         if(isfile("parameterArrayInfo.mac")) # Old version
+            (parName, fileName, yAxis) = parameterArrayInfo()
+         endif
+      else
+         fileName = dataToLoad
+      endif
+   endif
+
+   # Rename some acqu.par parameters
+   parName = parameter
+   yAxis = eval(arrayExp)
+
+   # Update the parameter interface
+   idx = findobj(0,"name","dataToLoad")
+   setpar(0,idx,"text",fileName)
+   idx = findobj(0,"name","parameter")
+   parMenu = ["Repeat","-----"] + sortlist(getlistnames(par))
+   setpar(0,idx,"menu",parMenu)
+   setpar(0,idx,"text",parName)
+   idx = findobj(0,"name","displayMode")
+   setpar(0,idx,"text",displayMode)
+
+   sz = size(yAxis)
+
+# 1D or 2D?
+   names = parse(nucleus,"-")
+   dim = size(names)
+
+# Check for invalid display-mode
+   if(dim == 2 & displayMode == "Stacked Plot")
+      print("\n   This is 2D data - can't display as stacked plot\n")
+      idx = findobj(0,"name","displayMode")
+      setpar(0,idx,"text","Multi-Plots")
+   endif
+
+# Get directory list
+   dir = sortlist(getdirlist(".")) 
+
+# Load 1D experiments into a stacked plot   
+   if(dim == 1)
+
+     # if(isvar("nrSteps") & displayMode == "Multi-Plots")
+      if(displayMode == "Multi-Plots")
+
+         h = ceil(sqrt(sz))
+         w = ceil(sz/h)
+         loadplotmode("1d","append")
+         layout = ["pt1"]
+         sp = InitPlot(layout)
+         curplot(sp->parent->multiplot(w,h))
+
+        try
+           drawplot("false")
+           # Load each data set into im
+            for(k = 0 to size(dir)-1)
+               bak = getcwd()
+               if(isinteger(dir[k]))
+                  cd(dir[k])
+                  idx = k % w
+                  idy = trunc(k / h)
+                  load(fileName)
+                  if(parName == "Repeat")
+                     curplot()->title("Repeat: $k$")
+                  else
+                     curplot()->title("$parName$ = $yAxis[k]$")
+                  endif
+                  cd("..")
+               endif
+            next(k)
+            loadplotmode("1d","new")
+            drawplot("true")
+         catch
+            drawplot("true")
+            pr lasterror() 
+            return(0,null)
+         endtry
+
+      elseif(displayMode == "Stacked Plot")
+         
+         layout = ["pt1"]
+         pt1 = InitPlot(layout)
+         pt1->draw("false")
+   
+         if(sz <= 1)
+            return(0,null)
+         endif
+   
+      # These are the min and max y positions for a box_y_independent
+      #  plot as a fraction of the screen height
+         minOff = 0.05
+         maxOff = 0.95
+   
+         mnAll = +1e20
+         mxAll = -1e20
+         found = 0
+         try
+           # Load each data set into pt1 and then extract and store data in matrix m
+            for(k = 0 to size(dir)-1)
+               if(isinteger(dir[k]))
+                  cd(dir[k])
+                  if(isfile(fileName))
+                     gView->gTemp->load(fileName) # Load into temporary plot
+                     (fAxis,specData) = gView->gTemp->subplot(1,1)->getdata() # Extract the data
+                     rsd = real(specData)
+                     mx = max(rsd)
+                     mn = min(rsd)
+                     if(mx > mxAll); mxAll = mx; endif
+                     if(mn < mnAll); mnAll = mn; endif
+                     if(k == 0) 
+                        pt1->hold("true")
+                        pt1->autorange("false")
+                     endif
+                     n = pt1->plot(fAxis,specData)
+                     tc = pt1->trace(n)      
+                     tc->yoffset((maxOff-minOff)*k/(sz-1)+minOff)
+                     tc->name("$yAxis[k]$")
+                     found = 1
+                  else
+                     print("\n   No file called 'spectrum.pt1' found in folder '$k$'")
+                  endif
+                  cd("..")
+               endif
+            next(k)
+            if(found == 0)
+               pt1->draw("true")
+               return(0,null)
+            endif
+            pt1->hold("false")
+            pt1->axes->type("box_y_independent")
+            pt1->axes->minaxisvalue(yAxis[0])
+            pt1->axes->maxaxisvalue(yAxis[-1])
+            pt1->axes->xppmscale("true")
+            pt1->axes->xdirection("reversed")
+            pt1->title("Arrayed experiment ($parName$)")
+            pt1->xlabel("Frequency (ppm)")
+            pt1->ylabel("$parName$")
+            if(isvar("dispRangeMinPPM") & isvar("dispRangeMaxPPM"))
+               pt1->zoom(dispRangeMinPPM,dispRangeMaxPPM,mnAll*sz*1.1,mxAll*sz*1.1)
+            else
+               pt1->zoom(fAxis[0],fAxis[-1],mnAll*sz*1.1,mxAll*sz*1.1)
+            endif
+            pt1->showimag("false")
+         catch
+            pt1->draw("true")
+            pr lasterror()
+            return(0,null)
+         endtry
+   
+      # Show the plot
+         pt1->draw("true")
+         curplot(pt1)
+
+      endif
+
+   else # 2D
+
+      h = ceil(sqrt(sz))
+      w = ceil(sz/h)
+      loadplotmode("2d","append")
+      layout = ["im1"]
+      sp = InitPlot(layout)
+      curplot(sp->parent->multiplot(w,h))
+
+      try
+        drawimage("false")
+        # Load each data set into im
+         for(k = 0 to size(dir)-1)
+            if(isinteger(dir[k]))
+               cd(dir[k])
+               idx = k % w
+               idy = trunc(k / h)
+               load(fileName)
+               if(parName == "Repeat")
+                  curplot()->title("Repeat: $k$")
+               else
+                  curplot()->title("$parName$ = $yAxis[k]$")
+               endif
+               cd("..")
+            endif
+         next(k)
+         loadplotmode("2d","new")
+         drawimage("true")
+      catch
+         drawimage("true")
+         pr lasterror() 
+         return(0,null)
+      endtry
+
+   endif
+
+endproc(1,layout)
+
+################################################################
+# This runs the Protocol multiple times according to the 
+# parameter to change. It also saves important parameters to 
+# a file (parameterArrayInfo.mac) so we can reload the data
+# and parameters later from the history list.
+################################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+# Get the array information
+   try
+      parameterArray = eval(arrayExp)
+      nrArraySteps = size(parameterArray)
+   catch
+      message("Error","Invalid array $arrayExp$ - please check\n","error")
+      return
+   endtry
+
+# Set delays so all scans take 1 reptime
+   UseDelays(start=0,end=1)
+
+# Get the plot layout
+   plotProc = "$auxProtocol$_interface:plot_run_layout"
+   plotLayout = plotProc()
+   InitPlot(plotLayout)
+
+# Update the graph groupbox label
+   gView->graphLabel->label("Arrayed Experiment ($auxProtocol$) running ...")
+
+# Loop over the parameter array
+   for(k = 0 to nrArraySteps-1)
+
+      value = parameterArray[k]
+
+      if(parameter == "Repeat")
+         print("\n   Repetition: ($k+1$/$nrArraySteps$)\n")
+         RunExpt(auxProtocol,["exptNr = $k+1$"], parameters)
+      else
+         print("\n   $parameter$ = $value$ ($k+1$/$nrArraySteps$)\n")
+         RunExpt(auxProtocol,["$parameter$ = $value$",
+                                "exptNr = $k+1$"], parameters)
+      endif
+
+      if(wvExpStatus == "stop")
+         return
+      endif
+
+      if(wvExpStatus == "finish")
+         exitfor()
+      endif
+
+    # Save the parameter values to a file
+      :saveParameterInfo(parameters, parameterArray, k, auxProtocol, parameter, dataToLoad)
+
+    # Send message to viewer
+      if(viewUpdate == "yes")
+         :sendMessage("$auxProtocol$", k+1)
+      endif
+
+   next(k)
+
+ 
+endproc()
+
+################################################################
+# Send a message to Expert viewer to update history
+################################################################
+
+procedure(sendMessage, protocol, cnt)
+
+   w = findprospawin()
+   ids = list(0)
+   ID = gData->specParameters->SystemID
+   for(k = 0 to size(w)-1)
+      runremote("arrayedInfo(\"$ID$\",\"$protocol$\",$cnt$)",w[k])
+   next(k)
+
+endproc()
+
+########################################################
+# Save the parameter info to a file 
+########################################################
+
+procedure(saveParameterInfo, guipar, parameterArray, curStepNr, protocol, parName, fileName)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+# Save data and plot in data folder
+   bak = getcwd()
+   cd(dataDirectory)
+   cd(expName)
+   if(isvar("exptNr"))
+      cd("$exptNr$")
+   endif
+   printtofile("parameterArray.txt")
+   for(k = 0 to curStepNr)
+      print("$parameterArray[k]$\n") 
+   next(k)
+   closeprint()
+
+   printtofile("parameterArrayInfo.mac")
+   print("procedure(parameterArrayInfo)\n\n")
+
+   print("   auxProtocol = \"$protocol$\"\n")
+   print("   parameter = \"$parName$\"\n")
+   print("   fileName = \"$fileName$\"\n")
+   print("   array = [")
+   for (k = 0 to curStepNr-1)
+      print("$parameterArray[k]$,") 
+   next(k)
+   print("$parameterArray[curStepNr]$]\n")
+   print("\nendproc(parameter, fileName, array)\n")
+   closeprint()
+
+endproc()
+
+########################################################
+# Return expected experiment duration in seconds. This 
+# is done by requesting the parameters for each 
+# experiment and using this to define the duration.
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+
+   UseDelays(start=0,end=1)
+   nrArraySteps = size(eval(arrayExp))
+   if(isvar("nrSteps"))
+      d = repTime*nrScans*nrArraySteps*nrSteps/1000
+   else
+      d = repTime*nrScans*nrArraySteps/1000
+   endif
+
+endproc(d)
+
+###################################
+# Callback for help - don't remove
+###################################
+
+procedure(helpInfo)
+endproc("Scripts","ArrayedExperiment","")

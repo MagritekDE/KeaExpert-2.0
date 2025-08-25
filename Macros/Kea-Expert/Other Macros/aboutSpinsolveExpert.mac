@@ -1,0 +1,87 @@
+procedure(aboutProgram, exeName)
+
+   n = :windowdefinition(exeName)
+   :loadPix()
+   :loadLicenseInfo()
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"show_menu","false")
+   showdialog(n)
+
+endproc()
+
+procedure(windowdefinition, exeName)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("About $exeName$", -1, -1, 420, 335)
+
+      # Define all controls with basic parameters
+      button(1, 365, 126, 42, 35, "OK",
+         closedialog();)
+      statictext(2, 194, 18, "center", "$exeName$ - powered by Prospa $version(\"string\")$")
+      statictext(3, 194, 54, "center", "Copyright © 2004-2024 Magritek")
+      statictext(4, 194, 72, "center", "New Zealand/Germany")
+      statictext(5, 42, 108, "center", "Authors: ")
+      statictext(6, 80, 126, "left", "Bertram Manz (Pulse Programs)")
+      picture(7, 10, 8, 51, 51)
+      statictext(8, 194, 36, "center", "$version(\"date\")$")
+      statictext(9, 80, 108, "left", "Craig Eccles (Prospa and User interface)")
+      statictext(10, 42, 148, "center", "Contact: ")
+      statictext(11, 80, 148, "left", "support\amagritek.com")
+      statictext(12, 158, 198, "right", "Prospa license serial number:")
+      divider(13, 11, 179, 395, 3, "horizontal")
+      groupbox(14, "Additional licensed products", 10, 224, 395, 100)
+      statictext(15, 162, 198, "left", "0000000")
+      statictext(16, 331, 198, "right", "License duration:")
+      statictext(17, 336, 198, "left", "permanent")
+      picture(18, 355, 10, 48, 48)
+
+     # Set other control parameters
+      setpar(n,1,"mode","default")
+      setpar(n,13,"enable","false")
+      setpar(n,15,"type","double")
+
+
+     # Set other window parameters
+endproc(n)
+
+procedure(loadPix)
+
+  bak = getcwd()
+  cd(getmacropath())
+  setpar(0,18,"file","ProspaIcon.bmp")
+  setpar(0,7,"file","SpinsolveIcon.bmp")
+  cd(bak)
+
+endproc()
+
+procedure(loadLicenseInfo)
+
+   try
+   (serialNr,lst,duration) = licenseinfo("products")
+   catch; endtry;
+   setpar(0,15,"text","$serialNr,9.0f$")
+   sz = size(lst)
+   n = 18
+   dy = 20
+   for(k = 0 to sz-1)
+     (cmd,ver,des,lic) = scanstr(lst[k],"%1 : %2 : %3 : %4")
+     statictext(n+k, 30, 253+dy*k, "left", "$cmd$ : $des$  : $lic$")
+   next(k)
+   if(sz > 0)
+      setpar(0,14,"height",sz*20 + 40)
+      setwindowpar(0,"height",280 + 20*sz)
+   else
+      setpar(0,14,"visible","false")
+      setwindowpar(0,"height",235)
+   endif
+
+   if(duration == 0)
+      setpar(0,17,"text","permanent")
+   elseif(duration == 1)
+      setpar(0,17,"text","$duration$ day")
+   else
+      setpar(0,17,"text","$duration$ days")
+   endif
+
+endproc()

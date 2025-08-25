@@ -1,0 +1,102 @@
+#####################################
+#
+# MakeBackdoor
+#
+# Make a macro which will run a 
+# pulse program without the usual
+# GUI interface. It does this by
+# capturing all the current GUI
+# parameters, storing them in a file
+# and then calling the pulse program
+# macro backdoor procedure.
+#####################################
+
+procedure(MakeBackdoor)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Make backdoor macro", -1, -1, 200, 97-26)
+
+      # Define all controls with basic parameters
+       button(1, 10, 12, 80, 32, "Select macro",
+          :process();)
+       button(2, 100, 12, 80, 32, "Close",
+          closewindow(0);)
+       statusbox(3)
+
+endproc(n)
+
+procedure(process)
+
+# Select the macro to process
+   setpar(0,3,"text","Click on Kea macro")
+   (winNr,objNr) = selectobj()
+   setpar(0,3,"text","")
+
+   if(winNr != -1)
+     guipar = getctrlvalues(winNr)
+   endif
+
+# Source macro information
+  macname = getwindowpar(winNr,"macroname")
+  macpath = getwindowpar(winNr,"macropath")
+
+# Get a filename for the new backdoor macro
+   cd(macpath)
+   outName = getfilename("save", "Select backdoor macro name", 
+                      "Macro files","mac","$rmext(macname)$BD.mac")
+   if(outName == "cancel")
+      return
+   endif
+
+   outPath = getcwd()
+
+# Get the ucs preferences
+   lst = ucsFiles:loadPref()
+
+# MakeBackDoor macro information
+   path = getmacropath()
+   name = getmacroname()
+
+   cd(path)
+   txt = load(name)
+   nm = "PROCNAME"
+   txt = scanstr(txt,"*procedure($nm$)%1endproc()")
+   txt = "procedure($rmext(outName)$)"+txt
+   txt = txt + "endproc()"
+   txt = replacestr(txt,"MACROFOLDER","$getbasedir(macpath)$")
+   txt = replacestr(txt,"FULLMACNAME","$macname$")
+   txt = replacestr(txt,"MACNAME","$rmext(macname)$")
+   txt = replacestr(txt,"GUIPAR","\r\n   guipar = $sortlist(guipar),13$\r\n\r\n")
+   cd(outPath)
+   save(outName,txt)
+
+   edit(outName)
+
+endproc()
+
+procedure(PROCNAME)
+  
+# Cache macros
+   cd("$appdir$\\\\Macros\\\\MACROFOLDER")
+   cachemacro("FULLMACNAME","local")
+   cd("$appdir$\\\\Macros\\\\UCS-Core")
+   cachemacro("ucsCtrl.mac","local")
+   cachemacro("ucsRun.mac","local")
+   cachemacro("ucsPlot.mac","local")
+   cachemacro("ucsFiles.mac","local")
+   cacheproc("true")
+
+# Set up gui par
+   GUIPAR
+# Run the macro via the backdoor
+   MACNAME:backdoor(guipar)
+
+endproc()

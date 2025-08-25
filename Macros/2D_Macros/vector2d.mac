@@ -1,0 +1,101 @@
+####################################################
+#                    vector2d.mac
+#
+# Treat the values of 2 real matrices as the x and y
+# components of 2D vector matrix, plotting the data
+# as arrows.      
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+####################################################
+
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(vector2d)
+
+   n = :windowdefinition()
+   menu2d = matrixlist(2)
+   if(size(menu2d) >= 2)
+      setpar(n,1,"menu",menu2d)
+      setpar(n,1,"text",menu2d[0])
+      setpar(n,4,"menu",menu2d)
+      setpar(n,4,"text",menu2d[1])
+      setpar(n,5,"menu",[1,2,3,4,5,10])
+      setpar(n,5,"text","1")
+      setpar(n,8,"menu",[1,2,3,4,5,10])
+      setpar(n,8,"text","1")
+   else
+      closewindow(n)
+      message("Error","Two 2D matricies required","error")
+      return()
+   endif
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   n = window("Vector Plot", -1, -1, 290, 165)
+       textmenu(1, 45, 26, 54, 200)
+       textmenu(4, 130, 26, 54, 200)
+       statictext(2, 24, 30, "left", "mx")
+       statictext(3, 109, 30, "left", "my")
+       textmenu(5, 130, 60, 54, 200)
+       textmenu(8, 45, 60, 54, 200)
+       statictext(6, 109, 64, "left", "dy")
+       statictext(7, 24, 64, "left", "dx")
+       slider(9, 80, 102, 100, 20, "horizontal",
+            :drawPlot();)
+       statictext(10, 16, 103, "left", "Arrow length")
+       button(11, 216, 13, 50, 28, "Plot",
+            :drawPlot();)
+       button(12, 216, 95, 50, 28, "Cancel",
+          closewindow(0);)
+       statictext(13, 183, 103, "left", "1")
+       button(14, 217, 54, 50, 28, "Help",
+          :showhelp();)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\2D","vector2d.htm")
+endproc()
+
+
+####################################################
+# Draw the vector plot
+####################################################
+
+procedure(drawPlot)
+
+   nameX = getpar(0,1,"text")
+   mx = alias(nameX,"eval")
+   nameY = getpar(0,4,"text")
+   my = alias(nameY,"eval")
+   dx = getpar(0,5,"value")
+   dy = getpar(0,8,"value")
+   length = getpar(0,9,"value")
+   setpar(0,13,"text",length)
+   
+   (x1,y1,x2,y2) = zoom2d("getargs")
+   drawimage("false")
+   vectorplot(mx,my,length,dx,dy)
+   title("$nameX$ i + $nameY$ j")
+   zoom2d(x1,y1,x2,y2);
+   drawimage("true");
+
+endproc()

@@ -1,0 +1,300 @@
+##################################################
+# Generate a 1D plot window for visualizing 
+# pulse sequences
+###################################################
+
+procedure(sequenceVisualizer, callback="DrawPulseSequence")
+
+# Load the plot preferences
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      plotPreferences() 
+      tracePreferences() 
+   catch
+   endtry
+   cd(bak)
+
+   (x,y,w,h) = :loadpar()
+
+   n = window("Sequence Visualizer", x,y,w,h,"resizable")
+   setwindowpar(n,"dimensions",[x,y,w,h])
+ 
+   :windowdefinition(n)
+
+   func1d("drag plot")
+   windowvar(wvCopyInfo,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo,wvCallBack)
+   wvCopyInfo = null
+   wvFontSize = 8
+   wvShowArgs = 1
+   wvUsePSBlocks = 1
+   wvShowTableInfo = 1
+   wvCallBack = callback
+   setwindowpar(n,"toolbar",2)
+   showwindow(n,"recalc") 
+   setwindowpar(n,"keepInFront","true")
+   setwindowpar(n,"menubar",[11:15])
+   setwindowpar(n,"focus",1)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+
+endproc(n)
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("sequenceViz.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 1000
+      h = 800
+   endtry
+   cd(bak)
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   save("sequenceViz.par",par)
+   cd(bak)
+   hidewindow(0)
+
+endproc()
+
+
+procedure(windowdefinition, n)
+
+
+   plot1d(1,0,0,"ww","wh-40")
+
+
+   toolbark(2, "toolbar1D", "Open plot", "", func1d("load plot"),
+              "Save plot",  "", func1d("save plot"),
+              "Print plot", "",  func1d("print plot"),
+              "Separator", "", "",
+              "Zoom plot",  "", func1d("zoom region"),
+              "Last zoom",  "", func1d("last region"),
+              "Full region",  "", func1d("full region"),
+              "Separator",  "", "",
+              "Modify trace and symbols",  "", modifyTraceParameters(),
+              "Modify plot colours",  "", PlotParameters("Colors"),
+              "Separator",  "", "",
+              "Region selection",  "select_region", func1d("select region"),
+              "Move plot",  "drag_plot", func1d("drag plot"),
+              "Separator",  "", "")
+
+   menu(3, "traceMenu", "Modify trace and symbols ...\tCtrl+T", modifyTraceParameters(),
+              "Copy trace data to new 1D window ...\tCtrl+N", :copyToNewWindow(),
+              "Separator", ,
+              "Remove data set", func1d("remove current data"))
+
+   menu(4, "bkgMenu","Keep this region, remove others", func1d("remove other subplots"),
+              "Remove all data from region", func1d("remove all data"))
+
+   menu(5, "axesMenu", "Axes font", PlotParameters("Axes"),
+              "Axes range", PlotParameters("Range"),
+              "Tick and label spacing ...", PlotParameters("Ticks"),
+              "Log/lin mapping", PlotParameters("Mapping"),
+              "Grids", PlotParameters("Grid"))
+
+   menu(6, "titleMenu", "Modify title ...", PlotParameters("Title"))
+
+   menu(7, "labelMenu", "Modify labels ...", PlotParameters("Labels"))
+
+   menu(8, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+              "Reduce vertical\tShift+down", func1d("reduce vertical"),
+              "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+              "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+   menu(9, "Move", "Move up\tup", func1d("move down"),
+              "Move down\tdown", func1d("move up"),
+              "Move right\tright", func1d("move right"),
+              "Move left\tleft", func1d("move left"))
+   menu(10, "Multiplot", "1 plot\tCtrl+Shift+S", func1d("multiplot 1*1"),
+              "1 row by 2 columns\tCtrl+Shift+H", func1d("multiplot 1*2"),
+              "2 rows by 1 column\tCtrl+Shift+D", func1d("multiplot 2*1"),
+              "2 rows by 2 columns\tCtrl+Shift+G", func1d("multiplot 2*2"),
+              "m rows by n columns\tCtrl+Shift+M", func1d("multiplot m*n"))
+   menu(11, "&File", "&Open Plot ...\tCtrl+O", func1d("load plot"),
+              "&Save Plot ...\tCtrl+S", func1d("save plot"),
+              "Save as &Image ...\tCtrl+I", func1d("save as image"),
+              "&Print Plot ...\tCtrl+P", func1d("print plot"))
+   menu(12, "&Edit", "Copy all plots\tCtrl+Shift+C", func1d("copy all plots"),
+              "Delete all plots\tCtrl+D", func1d("delete all plots"),
+              "Separator", ,
+              "Copy current plot\tCtrl+C", :copySequence(),
+              "Cut current plot\tCtrl+X", func1d("cut plot"),
+              "Paste to current plot\tCtrl+V", :pasteSequence(),
+              "Paste into current plot\tCtrl+Shift+V", func1d("paste into plot"))
+
+   menuk(13, "&View", "&Select a rectangular region\ts","select_region", func1d("select region"),
+              "&Move plot\tm","drag_plot", func1d("drag plot"),
+              "Separator", , ,
+              "&Zoom a region\tz", "zoom_region",func1d("zoom region"),
+              "Show &last region\tl", "show_last", func1d("last region"),
+              "Display &all data\ta", "display_all", func1d("full region"),
+              "Separator", , ,
+              "Pull_right", "", 10,
+              "&View one plot\tv", "", func1d("view one plot"),
+              "&Full view\tf", "", func1d("show all plots"),
+              "Overlapping plots\to", "hold" ,func1d("overlapping plots"),
+              "Separator", , ,
+              "Pull_right", "", 9,
+              "Pull_right", "", 8,
+              "Separator", , ,
+              "Show next window\tCtrl+Tab", "",  shownextwindow(0),
+              "Show last window\tCtrl+Shift+Tab", "", showlastwindow(0),
+              "Hide window\tCtrl+W", "",  hidewindow(0);)
+   menu(14, "&Pref", "&Title text and font ...\tShift+T", PlotParameters("Title"),
+              "X and Y &labels and font ...\tShift+L", PlotParameters("Labels"),
+              "Separator", ,
+              "Plot &colours ...\tShift+C",PlotParameters("Colors"),
+              "&Trace settings ...\tCtrl+T", modifyTraceParameters())
+
+
+   menu(15, "&Help", "Window &help", help("User Interface\1D Plot","Introduction.htm"))
+
+   divider(20,0,"wh-37","ww",3,"horizontal")
+   button(21,20,"wh-31",45,26,"Reset",
+      wvFontSize = 8;
+      wvShowArgs = 1;
+      wvUsePSBlocks = 1;
+      setpar(0,23,"value",wvShowArgs);
+      setpar(0,25,"value",wvUsePSBlocks);
+      setpar(0,27,"value",wvFontSize);
+      setpar(0,27,"value",wvShowTableInfo);
+      wvCallBack("current",0,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo))
+
+   statictext(22,160,"wh-25","right","Show Variables:")
+   checkbox(23,165,"wh-24","0,1","1",:toggleVariableDisplay())
+
+   statictext(24,280,"wh-25","right","Use PS Blocks:")
+   checkbox(25,285,"wh-24","0,1","1",:togglePSBlocksDisplay())
+
+   statictext(26,370,"wh-25","right","Font Size:")
+   updown(27,375,"wh-30",20,26,"vertical",:changeFontSize())
+   setpar(n,27,"base",4)
+   setpar(n,27,"nrsteps",12)
+   setpar(n,27,"value",8)
+
+   statictext(28,495,"wh-25","right","Show table info:")
+   checkbox(29,500,"wh-24","0,1","1",:toggleTableInfo())
+
+# Set toolbar, statusbox and menu box  1D plot
+   setpar(n,13,"checkitem",0)
+   setpar(n,13,"checkitem",8)
+   setpar(n,13,"checkitem",9)
+   setpar(n,13,"checkitem",11) 
+   setpar(n,13,"name","plot_view_menu")          
+   setpar(n,2,"name","plot_toolbar") 
+   setpar(n,2,"checkitem",13) 
+         
+   setpar(n,1,"toolbar",2)
+   setpar(n,1,"menubar",[11:15])
+   setpar(n,1,"traceMenu",3)
+   setpar(n,1,"bkgMenu",4)
+   setpar(n,1,"axesMenu",5)
+   setpar(n,1,"titleMenu",6)
+   setpar(n,1,"labelMenu",7)
+
+endproc()
+
+procedure(toggleVariableDisplay)
+
+   wvShowArgs = parentCtrl->value()
+   wvCallBack("current",1,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo)
+
+endproc()
+
+procedure(togglePSBlocksDisplay)
+
+   wvUsePSBlocks = parentCtrl->value()
+   wvCallBack("current",0,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo)
+
+endproc()
+
+procedure(changeFontSize)
+
+   wvFontSize = parentCtrl->value()
+   wvCallBack("current",1,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo)
+
+endproc()
+
+procedure(toggleTableInfo)
+
+   wvShowTableInfo = parentCtrl->value()
+   wvCallBack("current",0,wvFontSize,wvShowArgs,wvUsePSBlocks,wvShowTableInfo)
+
+endproc()
+
+
+procedure(copySequence)
+
+  plt = curplot("1d")
+  wvCopyInfo = struct()
+  wvCopyInfo->minaxisvalue = plt->axes->minaxisvalue()
+  wvCopyInfo->maxaxisvalue = plt->axes->maxaxisvalue()
+  wvCopyInfo->lines = plt->getlines()
+  wvCopyInfo->text = plt->gettext()
+  (x1,x2,y1,y2) = plt->zoom()
+  wvCopyInfo->zoom = [x1,x2,y1,y2]
+  func1d("copy plot")
+
+endproc()
+
+procedure(pasteSequence)
+
+  if(wvCopyInfo != null)
+     plt = curplot("1d")
+     func1d("paste plot")
+     z = wvCopyInfo->zoom
+
+     if(wvCopyInfo->lines != null)
+        plt->addlines(wvCopyInfo->lines)
+     endif
+     if(wvCopyInfo->text != null)
+        plt->addtext(wvCopyInfo->text)
+     endif
+     plt->axes->minaxisvalue(wvCopyInfo->minaxisvalue)
+     plt->axes->maxaxisvalue(wvCopyInfo->maxaxisvalue)
+     plt->zoom(z[0],z[1],z[2],z[3])
+   endif
+
+endproc()
+
+procedure(copyToNewWindow)
+
+  plt = curplot("1d")
+  minaxisvalue = plt->axes->minaxisvalue()
+  maxaxisvalue = plt->axes->maxaxisvalue()
+  lines = plt->getlines()
+  text = plt->gettext()
+  (x1,x2,y1,y2) = plt->zoom()
+  func1d("copy plot")
+  sequenceVisualizer()
+  func1d("paste plot")
+  func1d("toggle border")
+  plt = curplot("1d")
+  plt->zoom(x1,x2,y1,y2)
+  if(lines != null)
+     plt->addlines(lines)
+  endif
+  if(text != null)
+     plt->addtext(text)
+  endif
+  plt->axes->minaxisvalue(minaxisvalue)
+  plt->axes->maxaxisvalue(maxaxisvalue)
+  sendmessage("1D Plot","SelectPlot")
+   
+endproc()

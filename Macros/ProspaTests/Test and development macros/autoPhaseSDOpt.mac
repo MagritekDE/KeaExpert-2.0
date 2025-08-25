@@ -1,0 +1,47 @@
+sz = size(yOrig)
+NL = 10
+y1 = yOrig + NL*(noise(sz)+i*noise(sz))
+plot(xOrig,y1)
+
+theta = [-180:1:180]
+sz = size(theta)
+sdd = matrix(sz)
+sm = matrix(sz)
+ent = matrix(sz)
+(freqa,speca) = getplotdata("1d")
+for(c = 0 to sz-1)
+   th = theta[c] 
+   ya = exp(i*th/180*pi)*speca
+   d = convolve(diff(real(ya)),matrix(3)+1)
+  # d = real(ya)
+  # d = diff(real(ya))
+   h = abs(d)/sum(abs(d))
+   ent[c] = -sum(h.*loge(h))
+   sdd[c] = sd(d)
+   sm[c] = sum(real(ya))
+   draw1d("false")
+   plot(freqa,ya,"color",[0,0,255])
+   draw1d("true")
+  # pause(0.01)
+next(theta)
+
+#plot(theta,sdd,"color",[255,0,0])
+
+
+plot(theta,sm,"color",[0,0,255])
+curtrace()->axis("left")
+hold("on")
+
+#plot(theta,(sm>0).*(ent) + max(ent)*(sm<0))
+#(val,pos) =  min((sm>0).*(ent) + max(ent)*(sm<0))
+#curtrace()->axis("right")
+
+#ph0 = theta[pos]
+#pr ph0
+plot(theta,sdd,"color",[0,255,0])
+curtrace()->axis("right")
+
+hold("off")
+#
+#pr("Phase correction (sd) = $max(sdd)$\n")
+#pr("Phase correction (max) = $max(sm)$\n")

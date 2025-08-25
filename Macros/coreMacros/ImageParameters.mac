@@ -1,0 +1,1139 @@
+procedure(ImageParameters, tabName)
+
+# No arguments
+   if(nrArgs == 0)
+      tabName = "Ticks"
+   endif
+
+  :MakeLocalPlotCurrent()
+
+# See if this window is already loaded
+   n = findwin("name","imageParameters")
+   if(n > 0)
+      sendmessage("ImageParameters",tabName)
+      showwindow(n)
+      return
+   endif
+
+# Define the window
+   n = :windowdefinition()
+   assignctrls(n)
+   :InitAllTabs(tabName)
+   setwindowpar(n,"name","imageParameters")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Image parameters", -1, -1, 554, 262)
+
+      # Define all controls with basic parameters
+      windowvar(titleFontSize,titleFontStyle,titleFontName,titleFontColor,labelFontSize,labelFontStyle,labelFontName,axesFontColor,labelFontColor,axesFontSize,axesFontStyle,axesFontName,yDirection,xDirection,bottomMargin,topMargin,rightMargin,leftMargin,bkgColor,borderColor,mapY,mapX,tickApplyAll,allColor,labelYRightField,labelYLeftField,labelXField,autoRange,titleField,maxY,maxX,minY,fgridColor,gridColor,yfgridState,xfgridState,ygridState,xgridState,minX,tickColor,lgTickSz,smTickSz,yTPL,xTPL,ySpacing,xSpacing,useZoom,parTabs)
+      getmessage(-1,
+        :ProcessMessage();)
+      tab(1, 11, 10, 466, 241)
+      groupbox(2, "Tick and label spacing", 20, 39, 363, 122)
+      groupbox(3, "Tick length", 20, 164, 446, 77)
+      checkbox(4, 84, 60, "false,true", "false",
+           :UseZoomToggled();
+           :TicksProc();)
+      statictext(5, 104, 60, "left", "Choose tick parameters using zoom")
+      textbox(6, 150, 84, 49,
+        :TicksProc();)
+      textbox(7, 150, 116, 49,
+        :TicksProc();)
+      textbox(8, 281, 84, 49,
+        :TicksProc();)
+      textbox(9, 281, 116, 49,
+        :TicksProc();)
+      statictext(10, 143, 88, "right", "X tick spacing")
+      statictext(11, 143, 119, "right", "Y tick spacing")
+      statictext(12, 273, 88, "right", "X ticks/label")
+      statictext(13, 273, 119, "right", "Y ticks/label")
+      textbox(14, 167, 197, 37,
+        :TicksProc();)
+      textbox(15, 276, 197, 37,
+        :TicksProc();)
+      statictext(16, 136, 193, "center", "Small tick")
+      statictext(17, 136, 208, "center", "length")
+      statictext(18, 242, 193, "center", "Long tick")
+      statictext(19, 242, 208, "center", "length")
+      groupbox(20, "", 20, 39, 426, 202)
+      groupbox(21, "", 20, 39, 426, 202)
+      groupbox(22, "", 20, 39, 426, 202)
+      groupbox(23, "", 20, 39, 426, 202)
+      colorbox(24, 419, 99, 22, 22, [0,0,0],
+         :TicksProc();)
+      textbox(25, 167, 89, 60,
+        :RangeProc();)
+      statictext(26, 454, 78, "right", "Tick color")
+      checkbox(27, 165, 100, "off,on", "off",
+           :GridProc();)
+      checkbox(28, 165, 125, "off,on", "off",
+           :GridProc();)
+      checkbox(29, 165, 150, "off,on", "off",
+           :GridProc();)
+      checkbox(30, 165, 175, "off,on", "off",
+           :GridProc();)
+      statictext(31, 190, 100, "left", "x grid")
+      statictext(32, 190, 125, "left", "y grid")
+      statictext(33, 190, 150, "left", "Fine x grid")
+      statictext(34, 190, 175, "left", "Fine y grid")
+      colorbox(35, 270, 110, 22, 22, [160,160,160],
+         :GridProc();)
+      colorbox(36, 270, 155, 22, 22, [220,220,220],
+         :GridProc();)
+      statictext(37, 300, 115, "left", "Grid color")
+      statictext(38, 300, 160, "left", "Fine grid color")
+      textbox(39, 167, 119, 60,
+        :RangeProc();)
+      textbox(40, 317, 89, 60,
+        :RangeProc();)
+      textbox(41, 317, 119, 60,
+        :RangeProc();)
+      statictext(42, 106, 92, "left", "Minimum X")
+      statictext(43, 107, 123, "left", "Minimum Y")
+      statictext(44, 255, 93, "left", "Maximum X")
+      statictext(45, 254, 123, "left", "Maximum Y")
+      groupbox(46, "Color", 394, 39, 72, 122)
+      textbox(47, 141, 80, 181,
+        :TitleProc();)
+      checkbox(48, 139, 176, "false,true", "false",
+           :RangeProc();)
+      statictext(49, 193, 168, "center", "Auto range")
+      statictext(50, 131, 83, "right", "Title")
+      statictext(51, 193, 183, "center", "when plotting")
+      statictext(52, 131, 163, "right", "Font Style:")
+      button(53, 484, 100, 56, 50, "Apply\rto all subplots",
+         :ApplyAllSubPlots();)
+      statictext(54, 349, 169, "right", "Size:")
+      textbox(55, 141, 65, 181,
+        :LabelsProc();)
+      statictext(56, 132, 68, "right", "x label")
+      textbox(57, 141, 95, 181,
+        :LabelsProc();)
+      statictext(58, 131, 98, "right", "left y label")
+      textbox(59, 141, 127, 181,
+        :LabelsProc();)
+      statictext(60, 131, 130, "right", "right y label")
+      groupbox(61, "", 20, 39, 426, 202)
+      statictext(62, 132, 198, "right", "Font Style:")
+      groupbox(63, "", 20, 39, 426, 202)
+      colorbox(64, 270, 160, 22, 22, [0,0,0],
+         :ColorsProc();)
+      statictext(65, 256, 166, "right", "All labels and ticks")
+      button(66, 484, 207, 56, 34, "Close",
+         closewindow(0);)
+      button(67, 484, 39, 56, 50, "Apply",
+         :ApplyAll();)
+      button(68, 484, 158, 56, 34, "Help",
+         help("Macros\\Core","PlotParameters.htm");)
+      statictext(69, 201, 93, "left", "left margin:")
+      radiobuttons(70, 234, 92, 20, "vertical", "lin,log", "lin",
+           :MappingProc();)
+      radiobuttons(71, 235, 147, 20, "vertical", "lin,log", "lin",
+           :MappingProc();)
+      statictext(72, 256, 91, "left", "Linear x")
+      statictext(73, 255, 112, "left", "Log x")
+      statictext(74, 255, 147, "left", "Linear y")
+      statictext(75, 255, 167, "left", "Log y")
+      statictext(76, 258, 104, "right", "Border")
+      colorbox(77, 270, 100, 22, 22, [230,230,230],
+         :ColorsProc();)
+      statictext(78, 258, 134, "right", "Background")
+      colorbox(79, 270, 130, 22, 22, [255,255,255],
+         :ColorsProc();)
+      statictext(80, 195, 123, "left", "right margin:")
+      statictext(81, 200, 153, "left", "top margin:")
+      statictext(82, 183, 183, "left", "bottom margin:")
+      textbox(83, 261, 90, 40,
+        :MarginsProc();)
+      textbox(84, 261, 120, 40,
+        :MarginsProc();)
+      textbox(85, 261, 151, 40,
+        :MarginsProc();)
+      textbox(86, 261, 180, 40,
+        :MarginsProc();)
+      groupbox(87, "", 20, 39, 426, 202)
+      checkbox(88, 310, 179, "forward,reversed", "forward",
+           :RangeProc();)
+      statictext(89, 344, 157, "center", "Reverse plot")
+      statictext(90, 352, 178, "center", "x direction")
+      checkbox(91, 310, 205, "forward,reversed", "forward",
+           :RangeProc();)
+      textmenu(92, 208, 80, 122, 200,
+         :AxesProc();)
+      statictext(93, 198, 144, "right", "Size:")
+      textmenu(94, 208, 110, 122, 200,
+         :AxesProc();)
+      textmenu(95, 208, 140, 42, 200,
+         :AxesProc();)
+      statictext(96, 200, 113, "right", "Font Style:")
+      statictext(97, 132, 168, "right", "Font:")
+      colorbox(98, 359, 194, 22, 22, [0,0,0],
+         :LabelsProc();)
+      statictext(99, 351, 198, "right", "Color:")
+      statictext(100, 200, 83, "right", "Font:")
+      colorbox(101, 208, 169, 22, 22, [0,0,0],
+         :AxesProc();)
+      statictext(102, 200, 173, "right", "Color:")
+      statictext(104, 352, 204, "center", "y direction")
+      textmenu(105, 140, 165, 122, 200,
+         :LabelsProc();)
+      textmenu(106, 140, 195, 122, 200,
+         :LabelsProc();)
+      textmenu(107, 359, 165, 43, 200,
+         :LabelsProc();)
+      statictext(108, 349, 134, "right", "Size:")
+      statictext(109, 132, 133, "right", "Font:")
+      colorbox(110, 359, 159, 22, 22, [0,0,0],
+         :TitleProc();)
+      statictext(111, 351, 163, "right", "Color:")
+      textmenu(112, 140, 130, 122, 200,
+         :TitleProc();)
+      textmenu(113, 140, 160, 122, 200,
+         :TitleProc();)
+      textmenu(114, 359, 130, 42, 200,
+         :TitleProc();)
+      groupbox(115, "", 20, 39, 426, 202)
+
+      groupbox(150, "", 20, 39, 446, 202)
+      statictext(151, 138, 93, "center", "Selection method")
+      radiobuttons(152, 170, 121, 25, "vertical", "dottedrect,solidrect", "dottedrect",:enableZoomControls())
+      statictext(153, 165, 120, "right", "Dotted rectangle")
+      statictext(154, 165, 145, "right", "Solid rectangle")
+
+      statictext(155, 330, 93, "center", "Solid rectangle colors")
+      statictext(156, 330, 120, "right", "Rectangle color")
+      statictext(157, 330, 145, "right", "Border color")
+      colorbox(158, 335, 117, 20, 20,[0,128,0],:setZoomRectBGColor())
+      colorbox(159, 335, 142, 20, 20,[0,128,0],:setZoomRectBorderColor())
+
+     # Set other control parameters
+      setpar(n,-1,"mode","panic",
+                  "mode","abort",
+                  "mode","cancel")
+      setpar(n,1,"objID","parTabs",
+                  "inittabs",["Ticks","Grid","Range","Title","Labels","Axes","Colors","Mapping","Margins","Zooming"])
+      setpar(n,2,"tabparent",[1,0])
+      setpar(n,3,"tabparent",[1,0])
+      setpar(n,4,"objID","useZoom",
+                  "tabparent",[1,0])
+      setpar(n,5,"tabparent",[1,0])
+      setpar(n,6,"objID","xSpacing",
+                  "tabparent",[1,0])
+      setpar(n,7,"objID","ySpacing",
+                  "tabparent",[1,0])
+      setpar(n,8,"objID","xTPL",
+                  "tabparent",[1,0])
+      setpar(n,9,"objID","yTPL",
+                  "tabparent",[1,0])
+      setpar(n,10,"tabparent",[1,0])
+      setpar(n,11,"tabparent",[1,0])
+      setpar(n,12,"tabparent",[1,0])
+      setpar(n,13,"tabparent",[1,0])
+      setpar(n,14,"objID","smTickSz",
+                  "tabparent",[1,0])
+      setpar(n,15,"objID","lgTickSz",
+                  "tabparent",[1,0])
+      setpar(n,16,"tabparent",[1,0])
+      setpar(n,17,"tabparent",[1,0])
+      setpar(n,18,"tabparent",[1,0])
+      setpar(n,19,"tabparent",[1,0])
+      setpar(n,20,"tabparent",[1,6])
+      setpar(n,21,"tabparent",[1,5])
+      setpar(n,22,"tabparent",[1,4])
+      setpar(n,23,"tabparent",[1,3])
+      setpar(n,24,"objID","tickColor",
+                  "tabparent",[1,0])
+      setpar(n,25,"objID","minX",
+                  "tabparent",[1,2])
+      setpar(n,26,"tabparent",[1,0])
+      setpar(n,27,"objID","xgridState",
+                  "tabparent",[1,1])
+      setpar(n,28,"objID","ygridState",
+                  "tabparent",[1,1])
+      setpar(n,29,"objID","xfgridState",
+                  "tabparent",[1,1])
+      setpar(n,30,"objID","yfgridState",
+                  "tabparent",[1,1])
+      setpar(n,31,"tabparent",[1,1])
+      setpar(n,32,"tabparent",[1,1])
+      setpar(n,33,"tabparent",[1,1])
+      setpar(n,34,"tabparent",[1,1])
+      setpar(n,35,"objID","gridColor",
+                  "tabparent",[1,1])
+      setpar(n,36,"objID","fgridColor",
+                  "tabparent",[1,1])
+      setpar(n,37,"tabparent",[1,1])
+      setpar(n,38,"tabparent",[1,1])
+      setpar(n,39,"objID","minY",
+                  "tabparent",[1,2])
+      setpar(n,40,"objID","maxX",
+                  "tabparent",[1,2])
+      setpar(n,41,"objID","maxY",
+                  "tabparent",[1,2])
+      setpar(n,42,"tabparent",[1,2])
+      setpar(n,43,"tabparent",[1,2])
+      setpar(n,44,"tabparent",[1,2])
+      setpar(n,45,"tabparent",[1,2])
+      setpar(n,46,"tabparent",[1,0])
+      setpar(n,47,"objID","titleField",
+                  "tabparent",[1,3])
+      setpar(n,48,"objID","autoRange",
+                  "tabparent",[1,2])
+      setpar(n,49,"tabparent",[1,2])
+      setpar(n,50,"tabparent",[1,3])
+      setpar(n,51,"tabparent",[1,2])
+      setpar(n,52,"tabparent",[1,3])
+      setpar(n,53,"objID","tickApplyAll")
+      setpar(n,54,"tabparent",[1,4])
+      setpar(n,55,"objID","labelXField",
+                  "tabparent",[1,4])
+      setpar(n,56,"tabparent",[1,4])
+      setpar(n,57,"objID","labelYLeftField",
+                  "tabparent",[1,4])
+      setpar(n,58,"tabparent",[1,4])
+      setpar(n,59,"objID","labelYRightField",
+                  "tabparent",[1,4])
+      setpar(n,60,"tabparent",[1,4])
+      setpar(n,61,"tabparent",[1,2])
+      setpar(n,62,"tabparent",[1,4])
+      setpar(n,63,"tabparent",[1,1])
+      setpar(n,64,"objID","allColor",
+                  "tabparent",[1,6])
+      setpar(n,65,"tabparent",[1,6])
+      setpar(n,67,"objID","tickApplyAll",
+                  "mode","default")
+      setpar(n,69,"tabparent",[1,8])
+      setpar(n,70,"objID","mapX",
+                  "tabparent",[1,7])
+      setpar(n,71,"objID","mapY",
+                  "tabparent",[1,7])
+      setpar(n,72,"tabparent",[1,7])
+      setpar(n,73,"tabparent",[1,7])
+      setpar(n,74,"tabparent",[1,7])
+      setpar(n,75,"tabparent",[1,7])
+      setpar(n,76,"tabparent",[1,6])
+      setpar(n,77,"objID","borderColor",
+                  "tabparent",[1,6])
+      setpar(n,78,"tabparent",[1,6])
+      setpar(n,79,"objID","bkgColor",
+                  "tabparent",[1,6])
+      setpar(n,80,"tabparent",[1,8])
+      setpar(n,81,"tabparent",[1,8])
+      setpar(n,82,"tabparent",[1,8])
+      setpar(n,83,"objID","leftMargin",
+                  "tabparent",[1,8])
+      setpar(n,84,"objID","rightMargin",
+                  "tabparent",[1,8])
+      setpar(n,85,"objID","topMargin",
+                  "tabparent",[1,8])
+      setpar(n,86,"objID","bottomMargin",
+                  "tabparent",[1,8])
+      setpar(n,87,"tabparent",[1,8])
+      setpar(n,88,"objID","xDirection",
+                  "tabparent",[1,2])
+      setpar(n,89,"tabparent",[1,2])
+      setpar(n,90,"tabparent",[1,2])
+      setpar(n,91,"objID","yDirection",
+                  "tabparent",[1,2])
+      setpar(n,92,"objID","axesFontName",
+                  "tabparent",[1,5],
+                  "menu",[""])
+      setpar(n,93,"tabparent",[1,5])
+      setpar(n,94,"objID","axesFontStyle",
+                  "tabparent",[1,5],
+                  "menu",["regular","italic","bold","bold+italic"])
+      setpar(n,95,"objID","axesFontSize",
+                  "tabparent",[1,5],
+                  "menu",["6","7","8","9","10","11","12","14","16","18","20","22","24","26","28","36","48","72"])
+      setpar(n,96,"tabparent",[1,5])
+      setpar(n,97,"tabparent",[1,4])
+      setpar(n,98,"objID","labelFontColor",
+                  "tabparent",[1,4])
+      setpar(n,99,"tabparent",[1,4])
+      setpar(n,100,"tabparent",[1,5])
+      setpar(n,101,"objID","axesFontColor",
+                  "tabparent",[1,5])
+      setpar(n,102,"tabparent",[1,5])
+      setpar(n,104,"tabparent",[1,2])
+      setpar(n,105,"objID","labelFontName",
+                  "tabparent",[1,4],
+                  "menu",[""])
+      setpar(n,106,"objID","labelFontStyle",
+                  "tabparent",[1,4],
+                  "menu",["regular","italic","bold","bold+italic"])
+      setpar(n,107,"objID","labelFontSize",
+                  "tabparent",[1,4],
+                  "menu",["6","7","8","9","10","11","12","14","16","18","20","22","24","26","28","36","48","72"])
+      setpar(n,108,"tabparent",[1,3])
+      setpar(n,109,"tabparent",[1,3])
+      setpar(n,110,"objID","titleFontColor",
+                  "tabparent",[1,3])
+      setpar(n,111,"tabparent",[1,3])
+      setpar(n,112,"objID","titleFontName",
+                  "tabparent",[1,3],
+                  "menu",[""])
+      setpar(n,113,"objID","titleFontStyle",
+                  "tabparent",[1,3],
+                  "menu",["regular","italic","bold","bold+italic"])
+      setpar(n,114,"objID","titleFontSize",
+                  "tabparent",[1,3],
+                  "menu",["6","7","8","9","10","11","12","14","16","18","20","22","24","26","28","36","48","72"])
+      setpar(n,115,"tabparent",[1,7])
+
+      setpar(n,150,"tabparent",[1,9])
+      setpar(n,151,"tabparent",[1,9],"color",[128,0,0])
+      setpar(n,152,"tabparent",[1,9],"objID","zoomRectSelectMethod")
+      setpar(n,153,"tabparent",[1,9])
+      setpar(n,154,"tabparent",[1,9])
+      setpar(n,155,"tabparent",[1,9],"color",[128,0,0])
+      setpar(n,156,"tabparent",[1,9])
+      setpar(n,157,"tabparent",[1,9])
+      setpar(n,158,"tabparent",[1,9],"objID","zoomRectBGColor")
+      setpar(n,159,"tabparent",[1,9],"objID","zoomRectBorderColor")
+
+     # Set other window parameters
+endproc(n)
+
+
+procedure(InitAllTabs,tabName)
+
+   curplot("2d")
+
+# Initialise tabs
+   :InitTicksTab()
+   :InitGridTab()
+   :InitRangeTab()
+   :InitAxesTab()
+   :InitTitleTab()
+   :InitLabelsTab()
+   :InitColorsTab()
+   :InitMappingTab()
+   :InitMarginsTab()
+   :InitZoomTab()
+
+# Set tab page
+   if(tabName != "")
+      parTabs->currentPage(tabName)
+   endif
+
+# Set title
+   cp = curplot("2d")
+   plt = cp->parent
+   getobj(0)->title("Image parameters (win:$plt->winnr$,$plt->objNr$ region:$cp->position$) ")
+
+endproc()
+
+
+
+# Processes Tick tab ###############################
+
+# First time or plot has changed so set up controls
+
+procedure(InitTicksTab)
+
+   cp = curplot("2d")
+   plt = cp->parent
+   ax = cp->axes
+
+   useZoom->text(ax->autoscale)
+   :UseZoomToggled()
+
+   xSpacing->text(ax->xtickspacing)
+   ySpacing->text(ax->ytickspacing)
+   xTPL->text(ax->xticksperlabel)
+   yTPL->text(ax->yticksperlabel)
+   smTickSz->text(ax->smticksize)
+   lgTickSz->text(ax->lgticksize)
+   tickColor->color(ax->axescolor)
+
+endproc()
+
+# When individual controls are adjusted
+
+procedure(TicksProc)
+
+   ctrl = parentCtrl  
+   ax = curplot("2d")->axes
+
+   if(ctrl == tickColor) # Update tick color
+
+      col = getcolor(ax->axescolor)
+      if(col != null)
+         ax->axescolor(col)
+         tickColor->color(col)
+      endif
+
+   else # Individual control modified
+
+      if(useZoom->text == "false")
+         if(ctrl == xSpacing)
+            ax->xtickspacing(xSpacing->value)
+         elseif(ctrl == ySpacing)
+            ax->ytickspacing(ySpacing->value)
+         elseif(ctrl == xTPL)
+            ax->xticksperlabel(xTPL->value)
+         elseif(ctrl == yTPL)
+            ax->yticksperlabel(yTPL->value)
+         endif
+      endif
+      if(ctrl == smTickSz)
+         ax->smticksize(smTickSz->value)
+      elseif(ctrl == lgTickSz)
+         ax->lgticksize(lgTickSz->value)
+      elseif(ctrl == useZoom)
+         ax->autoscale(useZoom->text)
+      endif
+
+   endif
+
+endproc
+
+# When all control setting must be applied to plot 'plt'
+
+procedure(TicksProcApply,plt,updateTxt)
+
+   ax = plt->axes
+
+   if(useZoom->text == "false")
+      ax->xtickspacing(xSpacing->value)
+      ax->ytickspacing(ySpacing->value)
+      ax->xticksperlabel(xTPL->value)
+      ax->yticksperlabel(yTPL->value)
+   endif
+
+   ax->smticksize(smTickSz->value)
+   ax->lgticksize(lgTickSz->value)
+   ax->autoscale(useZoom->text)
+   ax->axescolor(tickColor->color)
+
+endproc()
+
+procedure(UseZoomToggled)
+
+   if(useZoom->text == "true")
+      xSpacing->enable("false")
+      ySpacing->enable("false")
+      xTPL->enable("false")
+      yTPL->enable("false")
+   else
+      xSpacing->enable("true")
+      ySpacing->enable("true")
+      xTPL->enable("true")
+      yTPL->enable("true")
+   endif
+
+endproc()
+
+# Processes Grid tab ###############################
+
+procedure(InitGridTab)
+
+  plt = curplot("2d")
+  gd = plt->grid
+  xgridState->text(gd->xgrid)
+  ygridState->text(gd->ygrid)
+  xfgridState->text(gd->fineygrid)
+  yfgridState->text(gd->fineygrid)
+  gridColor->color(gd->color)
+  fgridColor->color(gd->finecolor)
+
+endproc()
+
+
+procedure(GridProc)
+
+  ctrl = parentCtrl
+  plt = curplot("2d")
+
+
+  gd = plt->grid
+
+   if(ctrl == xgridState)
+     gd->xgrid(parentCtrl->text)
+   elseif(ctrl == ygridState)
+     gd->ygrid(parentCtrl->text)
+   elseif(ctrl == xfgridState)
+     gd->finexgrid(parentCtrl->text)
+   elseif(ctrl == yfgridState)
+     gd->fineygrid(parentCtrl->text)
+   elseif(ctrl == gridColor)
+      col = getcolor(gd->color)
+      if(col != null)
+         gridColor->color(col)
+         gd->color(col)
+      endif
+   elseif(ctrl == fgridColor)
+      col = getcolor(gd->finecolor)
+      if(col != null)
+         fgridColor->color(col)
+         gd->finecolor(col)
+      endif
+   endif
+
+endproc()
+
+procedure(GridProcApply, plt, updateTxt)
+
+   gd = plt->grid
+   gd->xgrid(xgridState->text)
+   gd->ygrid(ygridState->text)
+   gd->finexgrid(xfgridState->text)
+   gd->fineygrid(yfgridState->text)
+   gd->color(gridColor->color)
+   gd->finecolor(fgridColor->color)
+
+endproc()
+
+# Processes Range tab ###############################
+
+procedure(InitRangeTab)
+
+   ax = curplot("2d")->axes
+
+   xr = ax->xrange
+   yr = ax->yrange
+
+   minX->text(xr[0])
+   minY->text(yr[0])
+   maxX->text(xr[1])
+   maxY->text(yr[1])
+
+   autoRange->text(curplot("2d")->autorange)
+   xDirection->text(ax->xdirection)
+   yDirection->text(ax->ydirection)
+
+endproc()
+
+procedure(RangeProc)
+
+   plt = curplot("2d")
+   ax = plt->axes
+
+   plt->autorange(autoRange->text)
+
+   xr = [minX->value, maxX->value]
+   yr = [minY->value, maxY->value]
+
+   ax->xrange(xr)
+   ax->yrange(yr)
+
+   ax->xdirection(xDirection->text)
+   ax->ydirection(yDirection->text)
+
+endproc()
+
+procedure(RangeProcApply, plt, updateTxt)
+
+   ax = plt->axes
+
+   plt->autorange(autoRange->text)
+
+   xr = [minX->value, maxX->value]
+   yr = [minY->value, maxY->value]
+
+   ax->xrange(xr)
+   ax->yrange(yr)
+
+# Read them back in case we hit limits
+
+   xr = ax->xrange()
+   yr = ax->yrange()
+
+   minX->text(xr[0])
+   maxX->text(xr[1])
+   minY->text(yr[0])
+   maxY->text(yr[1])
+
+endproc()
+
+# Processes Axes tab ###############################
+
+procedure(InitAxesTab)
+
+  plt = curplot("2d")
+  ax = plt->axes
+  axesFontName->menu(sortlist(getfontlist("Western")))
+  axesFontName->text(ax->fontname)
+  axesFontStyle->text(ax->fontstyle)
+  axesFontSize->text(abs(ax->fontsize))
+  axesFontColor->color(ax->fontcolor)
+
+endproc()
+
+procedure(AxesProc)
+
+  ctrl = parentCtrl
+  plt = curplot("2d")
+
+  lst = getfontlist()
+
+  if(ctrl == axesFontName)
+     plt->axes->fontname(axesFontName->text)
+   elseif(ctrl == axesFontStyle)
+     plt->axes->fontstyle(axesFontStyle->text)
+   elseif(ctrl == axesFontSize)
+     plt->axes->fontsize(axesFontSize->value)     
+   elseif(ctrl == axesFontColor)
+      col = getcolor(plt->axes->fontcolor)
+      if(col != null)
+         plt->axes->fontcolor(col)
+         axesFontColor->color(col)
+      endif
+   endif
+
+   setfocus(ctrl->parent->nr,ctrl->ctrlnr)
+
+endproc()
+
+procedure(AxesProcApply, plt, updateTxt)
+
+   plt->axes->fontname(axesFontName->text)
+   plt->axes->fontstyle(axesFontStyle->text)
+   plt->axes->fontsize(axesFontSize->value)     
+   plt->axes->fontcolor(axesFontColor->color)
+
+endproc()
+
+# Processes Title tab ###############################
+
+procedure(InitTitleTab)
+
+  plt = curplot("2d")
+  tl = plt->title
+  titleField->text(tl->text)
+  titleFontName->menu(sortlist(getfontlist("Western")))
+  titleFontName->text(tl->font)
+  titleFontStyle->text(tl->style)
+  titleFontSize->text(abs(tl->size))
+  titleFontColor->color(tl->color)
+
+endproc()
+
+procedure(TitleProc)
+
+  ctrl = parentCtrl
+  plt = curplot("2d")
+
+   if(ctrl == titleField)
+     plt->title->text(parentCtrl->text)
+   elseif(ctrl == titleFontName)
+     plt->title->font(parentCtrl->text)
+   elseif(ctrl == titleFontStyle)
+     plt->title->style(parentCtrl->text)
+   elseif(ctrl == titleFontSize)
+     plt->title->size(parentCtrl->value)     
+   elseif(ctrl == titleFontColor)
+      col = getcolor(plt->title->color)
+      if(col != null)
+         plt->title->color(col)
+         titleFontColor->color(col)
+      endif
+   endif
+
+ setfocus(ctrl->parent->nr,ctrl->ctrlnr)
+
+endproc()
+
+procedure(TitleProcApply, plt, updateTxt)
+
+  tl = plt->title
+  if(updateTxt)
+     tl->text(titleField->text)
+  endif
+  tl->style(titleFontStyle->text)
+  tl->size(titleFontSize->value)    
+  tl->color(titleFontColor->color)
+  tl->font(titleFontName->text)
+
+endproc()
+
+
+# Processes Labels tab ###############################
+
+procedure(InitLabelsTab)
+
+  plt = curplot("2d")
+  lab = plt->xlabel()
+  labelx = plt->xlabel
+  labelyleft = plt->ylabel->text
+  labelx = plt->xlabel
+  labelXField->text(labelx->text)
+  labelYLeftField->text(labelyleft)
+  labelFontName->menu(sortlist(getfontlist("Western")))
+  labelFontName->text(lab->font)
+  labelFontStyle->text(lab->style)
+  labelFontSize->text(abs(lab->size))
+  labelFontColor->color(lab->color)
+
+endproc()
+
+procedure(LabelsProc)
+
+  ctrl = parentCtrl
+  plt = curplot("2d")
+
+  lst = getfontlist()
+
+
+   if(ctrl == labelXField)
+     plt->xlabel->text(ctrl->text)
+   elseif(ctrl == labelYLeftField)
+     plt->ylabel->text(ctrl->text)
+
+   elseif(ctrl == labelFontName)
+     plt->xlabel->font(ctrl->text)
+     plt->ylabel->font(ctrl->text)
+   elseif(ctrl == labelFontStyle)
+     plt->xlabel->style(ctrl->text)
+     plt->ylabel->style(ctrl->text)
+   elseif(ctrl == labelFontSize)
+     plt->xlabel->size(ctrl->value) 
+     plt->ylabel->size(ctrl->value)
+   elseif(ctrl == labelFontColor)
+      col = getcolor(plt->xlabel->color)
+      if(col != null)
+         plt->xlabel->color(col)
+         plt->ylabel->color(col)
+         labelFontColor->color(col)
+      endif
+   endif
+
+   setfocus(ctrl->parent->nr,ctrl->ctrlnr)
+
+endproc()
+
+procedure(LabelsProcApply,plt, updateTxt)
+
+   xl = plt->xlabel
+   yl = plt->ylabel
+
+   if(updateTxt)
+      xl->text(labelXField->text)
+      yl->text(labelYLeftField->text)
+   endif  
+   
+   xl->font(labelFontName->text)
+   yl->font(labelFontName->text)
+   
+   xl->style(labelFontStyle->text)
+   yl->style(labelFontStyle->text)
+   
+   xl->size(labelFontSize->value) 
+   yl->size(labelFontSize->value)
+   
+   xl->color(labelFontColor->color)
+   yl->color(labelFontColor->color)
+
+
+endproc()
+
+
+# Processes Colors tab ###############################
+
+procedure(InitColorsTab)
+
+  plt = curplot("2d")
+  brdcol = plt->bordercolor()
+  bkgcol = plt->bkgcolor()
+  borderColor->color(brdcol)
+  bkgColor->color(bkgcol)
+  allColor->color(plt->xlabel->color)
+
+endproc()
+
+procedure(ColorsProc)
+
+  ctrl = parentCtrl
+  plt = curplot("2d")
+
+   if(ctrl == borderColor)
+      col = getcolor(plt->bordercolor,1)
+      if(col != null)
+         plt->bordercolor(col)
+         borderColor->color(col)
+      endif
+   elseif(ctrl == bkgColor)
+      col = getcolor(plt->bkgcolor)
+      if(col != null)
+         plt->bkgcolor(col)
+         bkgColor->color(col)
+      endif
+   elseif(ctrl == allColor)
+      col = getcolor([0,0,0])
+      if(col != null)
+         plt->xlabel->color(col)
+         plt->ylabel->color(col)
+         plt->title->color(col)
+         plt->axes->axescolor(col)
+         plt->axes->fontcolor(col)
+         allColor->color(col)
+         :InitLabelsTab()
+         :InitTitleTab()
+         :InitAxesTab()
+         :InitTicksTab()
+      endif
+   endif
+  
+endproc()
+
+procedure(ColorsProcApply, plt, updateTxt)
+
+
+   plt->bordercolor(borderColor->color)
+   plt->bkgcolor(bkgColor->color)
+   plt->xlabel->color(allColor->color)
+   plt->ylabel->color(allColor->color)
+   plt->title->color(allColor->color)
+   plt->axes->axescolor(allColor->color)
+   plt->axes->fontcolor(allColor->color)
+  
+endproc()
+
+# Processes Mapping tab ###############################
+
+procedure(InitMappingTab)
+
+   ax = curplot("2d")->axes
+   mapX->text(ax->xmapping)
+   mapY->text(ax->ymapping)
+
+endproc()
+
+procedure(MappingProc)
+
+  ctrl = parentCtrl
+
+  ax = curplot("2d")->axes
+
+
+  if(parentCtrl == mapX)
+   
+     rng = ax->xrange()
+     if(rng[0] > 0 | mapX->text == "lin")
+        ax->xmapping(mapX->text)
+      else
+        message("Error","x axis contains values <= 0","error")
+        mapX->text("lin")
+        return
+      endif
+
+   elseif(parentCtrl == mapY)
+
+     rng = ax->yrange()
+
+     if(rng[0] > 0 | mapY->text == "lin")
+        ax->ymapping(mapY->text)
+      else
+        message("Error","y axis contains values <= 0","error")
+        mapY->text("lin")
+        return
+      endif
+
+   endif
+  
+endproc()
+
+procedure(MappingProcApply, plt, updateTxt)
+
+  ctrl = parentCtrl
+
+  ax = plt->axes
+
+  rngx = ax->xrange()
+  rngy = ax->yrange()
+
+   if(rngx[0] > 0 | mapX->text == "lin")
+      ax->xmapping(mapX->text)
+   else
+      message("Error","x axis contains values <= 0","error")
+      return
+   endif
+
+   if(rngy[0] > 0 | mapY->text == "lin")
+      ax->ymapping(mapY->text)
+   else
+      message("Error","y axis contains values <= 0","error")
+      return
+   endif
+
+  
+endproc()
+
+
+# Processes Margins tab ###############################
+
+procedure(InitMarginsTab)
+
+   curplot("2d")
+   (left,right,top,base) = windowmargins()
+
+   leftMargin->text(left)
+   rightMargin->text(right)
+   topMargin->text(top)
+   bottomMargin->text(base)
+
+endproc()
+
+procedure(MarginsProc, plt)
+
+  left = leftMargin->value
+  right = rightMargin->value
+  top = topMargin->value
+  base = bottomMargin->value
+
+  curplot("2d")
+  windowmargins(left,right,top,base)
+   
+endproc()
+
+procedure(MarginsProcApply, plt, updateTxt)
+
+  :MarginsProc()
+
+endproc()
+
+
+# Processes Zoom tab ###############################
+
+procedure(InitZoomTab)
+
+   plt = curplot("2d")
+   zoomRectSelectMethod->text(plt->zoomrectmode())
+   zoomRectBGColor->color(plt->zoombkgcolor())
+   zoomRectBorderColor->color(plt->zoombordercolor())
+
+endproc()
+
+procedure(setZoomRectBGColor)
+
+   col = getcolor(zoomRectBGColor->color())
+   if(col != null)
+      zoomRectBGColor->color(col)
+      zoomRectBorderColor->color(col)
+   endif
+
+endproc()
+ 
+
+procedure(setZoomRectBorderColor)
+
+   col = getcolor(zoomRectBorderColor->color())
+   if(col != null)
+      zoomRectBorderColor->color(col)
+   endif
+
+endproc()
+  
+
+procedure(enableZoomControls)
+
+   if(zoomRectSelectMethod->text() == "dottedRect")
+      status = "false"
+   else
+      status = "true"
+   endif
+
+   for(k = 155 to 159)
+      setpar(0,k,"enable",status)
+   next(k)
+
+endproc()
+
+procedure(ZoomingProcApply, plt, updateTxt)
+
+   plt->zoomrectmode(zoomRectSelectMethod->text())
+   col = zoomRectBGColor->color()
+   col[3] = 100
+   plt->zoombkgcolor(col)
+   col = zoomRectBorderColor->color()
+   col[3] = 200
+   plt->zoombordercolor(col)
+
+endproc()
+
+
+############################################################
+# The current subplot should be updated with the current
+# tab parameters
+############################################################
+
+procedure(ApplyAll)
+
+   name = parTabs->tabname
+   plt = curplot("2d")
+   proc = ":"+name+"ProcApply"
+   proc(plt,1)
+
+endproc()
+
+############################################################
+# All subplot in current plot should be updated with the
+# current tab parameters
+############################################################
+
+procedure(ApplyAllSubPlots)
+
+   name = parTabs->tabname
+   proc = ":"+name+"ProcApply"
+
+   plt = curplot("2d")->parent
+   (w,h) = plt->size
+   
+   for(y = 1 to h)
+      for(x = 1 to w)
+         plt->draw("false")
+         proc(plt->subplot(x,y),0)
+         plt->draw("true")
+      next(x)
+   next(y)
+
+endproc()
+
+
+
+############################################################
+# Make the first plot in the current window the current plot
+# unless the current plot is already in this window
+# Used when selecing an option in a menu or toolbar when
+# the current plot is in a different window
+############################################################
+
+procedure(MakeLocalPlotCurrent)
+
+   win = curwin()
+   n = win->nr
+   if(curplot("2d")->parent->parent == win)
+      plt = curplot("2d")
+   else
+      m = findobj(n,"type","2D plot window")
+      plt = getobj(n,m)->subplot(1,1)
+      curplot(plt)
+   endif
+
+endproc(plt)
+
+############################################################
+# Either prospa has loaded or selected a new plot
+# Or another plot parameter has been selected from a menu
+# or toolbar.
+############################################################
+
+procedure(ProcessMessage)
+
+   (src,cmd) = getpar(0,-1,"text")
+
+   if(src == "2D Plot" & (cmd == "LoadImage" | cmd == "SelectImage" | cmd == "NewImage"))
+      :InitAllTabs("")
+   endif
+
+   if(src == "ImageParameters")
+      :InitAllTabs(cmd)
+   endif
+      
+endproc()

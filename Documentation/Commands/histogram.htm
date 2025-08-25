@@ -1,0 +1,239 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>max – finds the maximum value in a 1D or 2D real matrix</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin-right:0cm;
+	margin-left:0cm;
+	font-size:24.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoBodyText, li.MsoBodyText, div.MsoBodyText
+	{mso-style-link:"Body Text Char";
+	margin-right:0cm;
+	margin-left:0cm;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BodyTextChar
+	{mso-style-name:"Body Text Char";
+	mso-style-link:"Body Text";}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span style='font-size:20.0pt'>histogram</span></b></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><i><span lang=EN-AU
+style='font-family:"Tahoma","sans-serif"'>&nbsp;</span></i></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Generate histogram
+data from a vector</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Syntax</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>(x,y) = histogram(data,
+bins, range)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>data ... data to be histogrammed
+(VECTOR)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>bins ... number of bins in
+histogram (INT)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>range .. range of x axis
+over which to bin (VECTOR)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Description</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>This commands
+counts up the number of entries in the <i>data</i> which fall in each bin and
+returns these in the <i>y </i>vector. The <i>x</i> vector covers <i>range</i>
+with size <i>bins</i>.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Example</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>This example
+checks the distribution of the noise command</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>Np = 1e4 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Number of
+points</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>m = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>noise</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(Np)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>Nb = 200 </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Number of
+bin</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>xlimit = 5</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,y) = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>histogram</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(m,Nb,[-xlimit,xlimit])</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>yf = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x^2/2) </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Theoretical
+fit</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>it1 = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>integfunc</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x^2/2),-xlimit,xlimit)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>it2 = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>integfunc</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x^2/2),-xlimit/Nb,xlimit/Nb)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>fac =
+Np/(it1/it2) </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#AA0000'># Scale factor</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Plot
+histogram data</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,y)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>hold</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;on&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Plot
+theoretical data</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,fac*yf,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;tracecolor&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,[0,255,0])</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>title</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;Histogram
+of noise data&quot;</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>ylabel</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;amplitude&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>hold</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;off&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><img width=604 height=302
+id="Picture 1" src="histogram_files/image001.jpg"></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

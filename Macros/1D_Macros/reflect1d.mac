@@ -1,0 +1,23 @@
+##################################################
+#               reflect1d.mac
+#
+# Reflect the 1D data set about its centre point
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+procedure(reflect1d)
+
+   (x,y) = getplotdata("1d")
+   if(x != null)
+      draw1d("false")
+      (txt,lx,ly,x1v,x2v) = 1dpar:get()
+      plot(x,reflect(y))
+      1dpar:set(txt,lx,ly,x1v,x2v)
+      draw1d("true")
+   else
+      message("Can't complete operation","No 1D data set presently plotted")
+   endif
+endproc()

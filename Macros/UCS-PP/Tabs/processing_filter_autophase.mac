@@ -1,0 +1,43 @@
+procedure(processing_filter_autophase)
+
+   n = window("Processing", -1, -1, 530, 175)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 137, 39, "right", "Apodize FID")
+   checkbox(2, 145, 39, "no,yes", "no",
+        fn = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fn+1,fn+4,fn);)
+   statictext(3, 137, 69, "right", "Apodize function")
+   textmenu(4, 145, 66, 112, 200)
+   statictext(5, 137, 99, "right", "View/modify function")
+   button(6, 145, 95, 22, 22, "...",
+      filters();)
+   divider(7, 279, 10, 3, 142, "vertical")
+   statictext(8, 372, 39, "right", "Auto-phase")
+   checkbox(9, 384, 39, "no,yes", "no")
+
+     # Set other control parameters
+   setpar(n,2,"valueID","filter")
+   setpar(n,4,"valueID","filterType",
+               "menu",[""])
+   setpar(n,7,"tag","disable")
+   setpar(n,9,"valueID","autoPhase")
+
+     # Set other window parameters
+endproc(9,"Processing")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+        fn = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fn+1,fn+4,fn);
+   endif;
+
+endproc()

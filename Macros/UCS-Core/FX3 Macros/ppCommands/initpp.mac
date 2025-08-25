@@ -1,0 +1,37 @@
+###################################################################################
+# Intialises the pulse program info structure wvFX3Info. Note that the directory
+# argument is not used with the FX3 and need only be supplied if also compiling the
+# DSP code.
+#
+#    initpp(directory=null)
+#
+###################################################################################
+
+procedure(initpp, directory=null)
+
+   if(wvFX3Info->mode == "run")
+      wvFX3Info->sequence = ""
+      wvFX3Info->parameters = list(0)
+      wvFX3Info->lineCnt = wvFX3Info->startCodeLineCnt
+      wvFX3Info->ps = wvFX3Info->psStartCode
+      wvFX3Info->loopStackMax = 10
+      wvFX3Info->loopNr = matrix(wvFX3Info->loopStackMax)
+      wvFX3Info->loopStackCnt = 0
+
+   elseif(wvFX3Info->mode == "time")
+
+      if(not(isvar("gSeq->psInfo")))
+         gSeq->psInfo = struct()
+      endif
+   
+      gSeq->psInfo->totDuration  = 0
+      gSeq->psInfo->preferences  = gData->preferences
+      gSeq->psInfo->stackSize    = 50
+      gSeq->psInfo->durationNStk = matrix(gSeq->psInfo->stackSize) 
+      gSeq->psInfo->loopNStk     = matrix(gSeq->psInfo->stackSize)
+      gSeq->psInfo->loopCnt      = 0
+      gSeq->psInfo->command      = null
+   endif
+
+endproc()
+

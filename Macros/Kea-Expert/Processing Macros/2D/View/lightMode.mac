@@ -1,0 +1,73 @@
+###########################################################
+# Change the colors in current or all images to 'light mode'
+#
+# Author: C Eccles
+# Copyright Magritek 2022-24
+#
+###########################################################
+
+procedure(lightMode)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# For undo
+   func1d("copy plot")
+
+   pp = curplot("2d")->parent
+   (w,h) = pp->size()
+   for(x = 1 to w)
+      for(y = 1 to h)
+         pt = pp->subplot(x,y)
+         if(pt->parent->visible() == "true") 
+            try
+               pt->draw("false")
+                  pt->bkgcolor([255,255,255])
+                  if(pt->grid->xgrid == "on" | pt->grid->ygrid == "on")
+                     pt->grid->color([192,192,192])
+                  endif
+                  if(pt->grid->finexgrid == "on" | pt->grid->fineygrid == "on")
+                     pt->grid->finecolor([220,220,220])
+                  endif
+                  pt->cmap(rainbow)
+                  pt->contourlinewidth(1.0)
+               pt->draw("true")
+            catch
+               pt->draw("true")
+            endtry
+         endif
+      next(y)
+   next(x)
+
+endproc()
+
+procedure(allplots)
+
+   bak = getcwd()
+   pltBak = curplot("1d")
+   for(k = gView->nr1DPlots+1 to gView->nrGraphs)
+      pt = eval("gView->g$k$->subplot(1,1)")
+      if(pt->parent->visible() == "true")
+          try
+            pt->draw("false")
+               pt->bkgcolor([255,255,255])
+               if(pt->grid->xgrid == "on" | pt->grid->ygrid == "on")
+                  pt->grid->color([192,192,192])
+               endif
+               if(pt->grid->finexgrid == "on" | pt->grid->fineygrid == "on")
+                  pt->grid->finecolor([220,220,220])
+               endif
+               pt->cmap(rainbow)
+               pt->contourlinewidth(1.0)
+            pt->draw("true")
+         catch
+            pt->draw("true")
+         endtry
+      endif
+   next(k)
+   curplot(pltBak)
+   cd(bak)
+
+endproc()

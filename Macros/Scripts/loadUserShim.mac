@@ -1,0 +1,225 @@
+#####################################################################
+# Load the last best shim found then find and engage the lock, find
+# the B1 frequency and then calibrate
+#####################################################################
+
+procedure(LoadExpertShim, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   elseif(iskeypressed("control"))
+      lst = gView->batch->list + "LoadUserShim"
+      gBatch->displayBatchList(lst)
+      gView->batch->index(size(lst))    
+   else
+      parameters = setupUtilities:loadShims()
+      gExpt->addExperiment(getmacropath(),"LoadUserShim", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Add the LoadExpertShim command to the batch list
+###########################################################
+
+procedure(addCommand)
+
+endproc("LoadUserShim|")
+
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout =  ["measureLW","Measure linewidth","cb","string","no,yes",
+                  "ctrlDiv","Shim control","dv", "", "",
+                  "loadShims","Load shims from file","bt","string","loadCurrentShims()",
+                  "factoryShim","Load factory shims","bt","string","loadFactoryShims()",
+                  "zeroShim","Zero shim values","bt","string","zeroCurrentShims()",
+                  "saveShims","Save shims to file","bt","string","saveCurrentShims()",
+                  "ctrlDiv","Shim values","dv", "", "",
+                  "xshim","x shim","tb","float","[-32678,32767]",
+                  "yshim","y shim","tb","float","[-32678,32767]",
+                  "zshim","z shim","tb","float","[-32678,32767]",
+                  "z2shim","z2 shim","tb","float","[-32678,32767]",
+                  "zxshim","zx shim","tb","float","[-32678,32767]",
+                  "zyshim","zy shim","tb","float","[-32678,32767]",
+                  "xyshim","xy shim","tb","float","[-32678,32767]",
+                  "x2y2shim","x2-y2 shim","tb","float","[-32678,32767]",
+                  "z3shim","z3 shim","tb","float","[-32678,32767]",
+                  "z2xshim","z2x shim","tb","float","[-32678,32767]",
+                  "z2yshim","z2y shim","tb","float","[-32678,32767]",
+                  "zxyshim","zxy shim","tb","float","[-32678,32767]",
+                  "zx2y2shim","z(x2-y2) shim","tb","float","[-32678,32767]",
+                  "x3shim","x3 shim","tb","float","[-32678,32767]",
+                  "y3shim","y3 shim","tb","float","[-32678,32767]"]
+
+   plotLayout = ["pt1";"pt2"]
+
+endproc(ctrlLayout, plotLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   measureLW = "yes"
+   assignstruct(parameters)
+
+   InitScript(getmacropath(),getmacroname())
+
+   pr("\n------ Load User Shim ------\n")
+   experimentLabelCtrl->label("Loading user defined shim set")
+   try
+      if(parameters != null)      
+         RunExpt("updateShims",parameters)
+         if(measureLW == "yes")
+            InitPlot(["pt1";"pt2"])
+            experimentLabelCtrl->label("User shim loaded, measuring linewidth")
+            pr("   Measuring the linewidth ...")
+            result = RunExpt("Proton",["saveData = \"true\"","usePPMScale = \"yes\""],parameters)
+            (txt,width1,width2) = setupUtilities:calcLineWidth(result)
+         # Save the shims
+            fileName = "$gData->specID$Shim.par"
+            setupUtilities:saveShims(fileName,parameters,width1)
+         endif
+         pr("\n------------------- Finished -------------------\n")
+      endif
+   catch
+      pr lasterror()
+      throw("abort")
+   endtry
+
+   EndScript()
+
+endproc()
+
+
+#############################################################
+# Load shim parameters from a file update the GUI
+#############################################################
+
+procedure(loadCurrentShims)
+
+   bak = getcwd()
+
+   shimDir = "$prefdir$\\SpinsolveParameters\\Shims"
+   mkdir(shimDir)
+   cd(shimDir)
+
+   file = getfilename("load","Load shim parameter file from ...","Parameter files","par")
+   if(file != "cancel")
+      par = load(file)
+
+      shimNames = ["xshim", "yshim",  "zshim",
+                    "z2shim", "zxshim", "zyshim", "x2y2shim",
+                    "xyshim", "z3shim", "z2xshim", "z2yshim",
+                    "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+      par = getsublist(par,shimNames) 
+
+      setctrlvalues(0,par)
+
+   endif
+
+   cd(bak)
+
+endproc()
+
+#########################################################
+# Load the shim settings from the DSP parameter list
+#########################################################
+
+procedure(loadFactoryShims)
+
+   psPar = setupUtilities:loadFactoryShims()
+   setctrlvalues(0,list(psPar))
+
+endproc()
+
+
+#############################################################
+# Save the shims parameters in the GUI
+#############################################################
+
+procedure(saveCurrentShims)
+
+   bak = getcwd()
+
+   par = getctrlvalues(0,"list","range",[gParam->firstParameterCtrl,gParam->lastParameterCtrl])
+
+   shimNames = ["xshim", "yshim",  "zshim",
+                 "z2shim", "zxshim", "zyshim", "x2y2shim",
+                 "xyshim", "z3shim", "z2xshim", "z2yshim",
+                 "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+   par = getsublist(par,shimNames) 
+
+   shimDir = "$prefdir$\\SpinsolveParameters\\Shims"
+   mkdir(shimDir)
+   cd(shimDir)
+
+   file = getfilename("save","Save shim parameter file as ...","Parameter files","par")
+   if(file != "cancel")
+      save(file,par)
+   endif
+
+   cd(bak)
+
+endproc()
+
+
+
+#########################################################
+# Zero the shim values in the UI
+#########################################################
+
+procedure(zeroCurrentShims)
+
+   shimNames = ["xshim", "yshim",  "zshim",
+                 "z2shim", "zxshim", "zyshim", "x2y2shim",
+                 "xyshim", "z3shim", "z2xshim", "z2yshim",
+                 "zx2y2shim", "zxyshim", "x3shim", "y3shim"]
+
+   sz = size(shimNames)
+   par = list(sz)
+   for(k = 0 to sz-1)
+      name = shimNames[k]
+      par = par + ["$name$ = 0"]
+   next(k)
+   par = getsublist(par,shimNames) 
+   setctrlvalues(0,par)
+
+endproc()
+
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   duration = 17.5 # Empirically determined
+
+endproc(duration)
+
+

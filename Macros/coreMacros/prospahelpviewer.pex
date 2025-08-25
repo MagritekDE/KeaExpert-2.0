@@ -1,0 +1,1309 @@
+# Display the helpviewer interface
+
+procedure(prospahelpviewer,dir,cmd)
+
+## Only one instance can be loaded so check first
+   nr = findwin("title","Prospa Help Viewer")
+   if(nr >= 0)
+      hidewindow(nr)
+      showwindow(nr)
+      return
+   endif
+
+# Make the window
+   (x,y,w,h,ldx,wdx,tdy) = :loadwinpos()
+   n = :windowdefinition()  
+   assignctrls(n)
+   :updateIcons()
+   listDivider->xexp(ldx)
+   windowDivider->xexp(wdx)
+   topicDivider->yexp(tdy)
+   setwindowpar(n,"dimensions",[x,y,w,h])
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   windowvar(wvCnt,wvCntMax,wvSearchMode,wvSearchStatus)
+   wvCnt = 0
+   wvCntMax = 0
+   wvSearchMode = "file"
+   wvSearchStatus = "notStarted"
+   setwindowpar(n,"menubar",[50:53])
+   exitSearchCtrl->enable("false")
+
+   if(:initialiseTopic())
+      closewindow(n)
+      return
+   endif
+
+# Command help requested from Prospa?
+   if(nrArgs == 1)
+      r = :loadCommand(dir)
+   elseif(nrArgs == 2)
+      r = :loadCommand(dir,cmd,getext(cmd))
+   else
+      r = :loadCommand("General Information")
+   endif
+
+   if(r == -1)
+      closewindow(n)
+      return
+   endif
+   setwindowpar(n,"sizelimits",[1100,-1,650,-1])
+   setwindowpar(n,"exit_procedure",":savewinpos(); exit()")
+   setwindowpar(n,"statusbox",30)
+   showwindow(n)
+
+endproc()
+
+
+########################################################
+# Get out of search mode and redisplay normal file list
+########################################################
+ 
+procedure(exitSearch)
+
+   if(wvSearchStatus == "notStarted")
+      return
+   endif
+
+   event = helpFileObj->event
+   file = helpFileObj->text
+   topic = topicObj->text
+   subtopic = subtopicObj->text
+
+   if(file == null)
+      wvSearchStatus = "notStarted"
+      exitSearchCtrl->enable("false")
+      return
+   endif
+
+   if(wvSearchMode == "subtopic")
+      file = scanstr(file,"%1 (%2)")
+   elseif(wvSearchMode == "topic")
+      try
+         (subtopic,file) = scanstr(file,"%1\\%2 (%3)")
+      catch
+         file = scanstr(file,"%1 (%2)")
+      endtry
+   elseif(wvSearchMode == "alltopics")
+      try
+         (topic,subtopic,file) = scanstr(file,"%1\\%2\\%3 (%4)")
+      catch
+         (topic,file) = scanstr(file,"%1\\%2 (%3)")
+      endtry
+   endif
+
+   dir = "$topic$\\$subtopic$"
+  :loadCommand(dir,file)
+   wvSearchStatus = "notStarted"
+   exitSearchCtrl->enable("false")
+
+endproc()
+
+
+#####################################################
+#  Go to the last reference
+#####################################################
+
+procedure(goback)
+
+    htmlObj->goback("")
+
+endproc()
+
+#####################################################
+#  Go to the next reference
+#####################################################
+ 
+procedure(gofwd)
+
+    htmlObj->goforward("")
+
+endproc()
+
+
+#################################################
+# Load help file based on final list selection
+#################################################
+
+procedure(helpFileSelected)
+
+   bak = getcwd()
+   event = helpFileObj->event
+   file = helpFileObj->text
+   topic = topicObj->text
+   subtopic = subtopicObj->text
+
+   if(event == "single_click_down" | event == "enter_pressed" |
+      event == "up_arrow" | event == "down_arrow")
+
+      if(wvSearchMode == "alltopics")
+         try
+            (topic,subtopic,file) = scanstr(file,"%1\\%2\\%3 (%4)")
+         catch
+            (topic,file) = scanstr(file,"%1\\%2 (%3)")
+         endtry
+         
+      elseif(wvSearchMode == "topic")
+         try
+            (subtopic,file) = scanstr(file,"%1\\%2 (%3)")
+         catch
+            file = scanstr(file,"%1 (%2)")
+         endtry
+      elseif(wvSearchMode == "subtopic")
+         file = scanstr(file,"%1 (%2)")
+         if(topic == "Commands")
+            dir = appdir + "\\Documentation\\Commands\\"
+         else
+            dir = appdir + "\\Documentation\\$topic$\\$subtopic$\\"
+         endif
+      endif
+
+      if(topic == "Commands")
+         dir = appdir + "\\Documentation\\Commands\\"
+      else
+         dir = appdir + "\\Documentation\\$topic$\\$subtopic$\\"
+      endif
+
+      ignoreLine = 0
+      if(size(file) > 7)
+         if(file[0:6] == "-------")
+            ignoreLine = 1
+         endif
+      endif
+
+      if(ignoreLine == 0)
+         path = dir + file + ".htm"
+         if(wvSearchMode == "file")
+            htmlObj->url(path)
+            wvCnt = 0
+            wvCntMax = 0
+            wvSearchStatus = "notStarted"
+         else
+           :searchFileCore(dir,file)
+         endif
+      endif
+   endif
+
+   cd(bak)
+   helpFileObj->focus("true")
+
+endproc()
+
+#################################################
+# Set the initial topic to be displayed
+#################################################
+
+procedure(initialiseTopic)
+
+   bak = getcwd()
+   if(isdir("$appdir$\\Documentation"))
+      cd("$appdir$\\Documentation")
+      if(isfile("helplist.lst"))  
+         lst = load("helplist.lst")
+      else
+         lst = getdirlist(".")
+      endif
+      topicObj->list(lst)
+   else
+      message("Help failed","Can't find documentation folder.","error")
+      return(1)
+   endif
+
+endproc(0)
+
+
+#####################################################
+#  Load a specific help file given folder and command
+#####################################################
+
+procedure(loadCommand,folder,cmd,ext)
+
+   if(nrArgs != 3)
+      ext = ""
+   endif
+
+# Folder may contain a subtopic and file like DSP\dspread
+   try
+      (subtopic,file) = scanstr(folder,"%1\\%2")
+   catch
+      subtopic = folder
+   endtry
+
+# cmd may contain a tag if it has an extension
+   tag = null
+   if(ext != "")
+      try
+         (cmdLoc,ext,tag) = scanstr(cmd,"%1.%2#%3")
+         if(tag[0] == ":")
+            tag = tag[1:-1]
+         endif
+         tag = "#"+tag
+         cmd = cmdLoc
+      catch
+         cmd = rmext(cmd)
+      endtry
+   endif
+
+# Don't draw lists while they are being updated
+   helpFileObj->draw("false")
+   subtopicObj->draw("false")
+
+# Choose the subtopic for display
+   if(subtopic == "Commands") # Internal commands list e.g. "ls"
+      subtopicLabel->text("Command Group")
+      helpFileLabel->text("Help file")
+      try
+         topicObj->text(subtopic)
+      catch
+         message("Help failed","Can't find documentation folder '$subtopic$'.","error")
+         return
+      endtry
+      :updateCmdGroupList()
+      :updateSubtopicIcons()
+      subtopicObj->text("All")
+      :updateInternalCmdList()
+   else # General command like "Command Syntax"
+      subtopicLabel->text(subtopic)
+      helpFileLabel->text("Help Files")
+      try
+         topicObj->text(subtopic)
+      catch
+         message("Help failed","Can't find documentation folder '$subtopic$'.","error")
+         return(-1)
+      endtry
+      :updateSubtopicList(subtopic)
+      :updateSubtopicIcons()
+
+      if(nrArgs == 1)
+         lst = subtopicObj->list
+         file = lst[0]
+      endif
+
+      helpFileObj->draw("true")
+      subtopicObj->draw("true")
+
+      try
+         subtopicObj->text(file)
+      catch
+         message("Error","Help for topic '$file$' not found","error")
+         return(-1)
+      endtry
+
+      :updateHelpFileList()
+
+   endif
+
+# If a command hasn't been specified
+# take the first one in the list 
+   if(nrArgs == 1)
+      lst2 = helpFileObj->list
+      cmd = lst2[0]
+   endif
+
+# Try setting the command in the command list window
+   try
+      helpFileObj->text(cmd)
+   catch
+      message("Error","Help for command or macro '$cmd$' not found","error")
+      return(-1)
+   endtry
+
+# Work out the path to the command file
+   path = appdir + "\\Documentation"
+   if(subtopic == "Commands")
+      fullName = "$path$\\$subtopic$\\$cmd$.htm"
+   else
+      fullName = "$path$\\$subtopic$\\$file$\\$cmd$.htm"
+   endif
+
+   if(isfile(fullName) == 0)
+      message("Error","Command or macro \r'$fullName$'\r not found","error")
+      return(-1)
+   endif
+
+# Redisplay lists
+   helpFileObj->draw("true")
+   subtopicObj->draw("true")
+
+# Display the help file
+   if(tag == null)
+      htmlObj->url(fullName)
+   else
+      htmlObj->url(fullName+"$tag$")
+   endif
+   helpFileLabel->text("Help Files")
+   wvCnt = 0
+   wvCntMax = 0
+   wvSearchStatus = "notStarted"
+   exitSearchCtrl->enable("false")
+
+endproc(0)
+
+
+#################################################
+# Load the last window position
+#################################################
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 1100; h = 650
+   ldx = "ww*0.15"
+   wdx = "ww*0.3"
+   tdy = "wh*0.42"
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("htmlhelp.par"))
+      lst = load("htmlhelp.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h,ldx,wdx,tdy)
+
+########################################################
+# Prospa has sent a message to load help for a command
+########################################################
+  
+procedure(process_message)
+
+   (src,cmd) = getpar(0,0,"text")
+
+   if(src == "HelpViewer")
+      try
+         (dir,cmd) = scanstr(cmd,"%1:%2")
+         :loadCommand(dir,cmd,getext(cmd))
+      catch
+         :loadCommand("Commands",rmext(cmd)) 
+      endtry  
+      wvSearchStatus = "notStarted"
+      exitSearchCtrl->enable("false")
+   endif
+
+endproc()
+
+#################################################
+# The search range has changed if file mode
+# selected make sure a file is present and selected
+#################################################
+
+procedure(rangeChanged)
+
+   mode = searchModeCtrl->text()
+
+   if(mode == "file")
+      if(wvSearchStatus == "notStarted")
+         return
+      endif
+      if(helpFileObj->text == null)
+         :subtopicSelected()
+      endif
+   endif
+
+endproc()
+
+#################################################
+# Save the current window position
+#################################################
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   ldx = listDivider->xexp
+   wdx = windowDivider->xexp
+   tdy = topicDivider->yexp
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$",
+          "ldx = \"$ldx$\"",
+          "wdx = \"$wdx$\"",
+          "tdy = \"$tdy$\""]
+   save("htmlhelp.par",lst)
+
+endproc()
+
+
+#################################################
+# Search for a string with a range determined
+# by the search mode textmenu.
+#################################################
+
+procedure(search)
+
+  wvSearchMode = searchModeCtrl->text
+
+   file = helpFileObj->text() 
+   subtopic = subtopicObj->text()
+   topic = topicObj->text()
+
+   if(findObj->text == "")
+      return
+   endif
+
+   if(wvSearchMode == "file")
+      :searchFile(topic,subtopic,file)
+   elseif(wvSearchMode == "subtopic")
+      :searchSubtopic(topic,subtopic)
+   elseif(wvSearchMode == "topic")
+      :searchTopic(topic)
+   elseif(wvSearchMode == "alltopics")
+      :searchAllTopics()
+   endif
+
+   wvSearchStatus = "started"
+   exitSearchCtrl->enable("true")
+
+
+endproc()
+
+#################################################
+# Search for a string in all html files
+#################################################
+
+procedure(searchAllTopics)
+
+   bak = getcwd()
+
+   searchStr = findObj->text
+
+   totMatches = 0
+   totFiles = 0
+   topicLst = topicObj->list
+   totalList = list(0)
+
+   for(n = 0 to size(topicLst)-1)
+
+      topic = topicLst[n]
+
+      if(topic == "Commands")
+
+         dir = appdir + "\\Documentation\\Commands\\"
+         cd(dir)
+         files = ls("*.htm")
+         lst = list(0)
+         totCnt = 0
+         for(k = 0 to size(files)-1)
+           file = files[k]
+           txt = load(file,"text")
+           statusObj->text("Searching $file$")
+           cnt = htmlcountsubstr(txt,"$searchStr$",caseSensitivityObj->text)
+           if(cnt > 0)
+              lst = lst + "$cnt$ Commands\\$rmext(file)$"
+              totMatches = totMatches + cnt
+           endif
+           statusObj->text("")
+         next(k)
+         totFiles = totFiles + size(files)
+         totalList = totalList + :sortList(lst)
+
+      else
+   
+         dir = appdir + "\\Documentation\\$topic$\\"
+         cd(dir)
+
+         dirlst = getdirlist(".")
+   
+         for(k = 0 to size(dirlst)-1)
+      
+            cd(dirlst[k])
+            files = ls("*.htm")
+            lst = list(0)
+            for(m = 0 to size(files)-1)
+              file = files[m]
+              txt = load(file,"text")
+
+              cnt = htmlcountsubstr(txt,"$searchStr$",caseSensitivityObj->text)
+              if(cnt > 0)
+                 lst = lst + "$cnt$ $topic$\\$dirlst[k]$\\$rmext(file)$"
+                 totMatches = totMatches + cnt
+              endif
+            next(m)
+            totalList = totalList + :sortList(lst)
+            totFiles = totFiles + size(files)
+      
+            cd("..")
+      
+         next(k)
+
+         cd("..")
+      endif
+
+   next(n)
+
+   helpFileLabel->text("Search matches")
+   helpFileObj->list(totalList)
+   if(totMatches == 0)
+      statusObj->text("$totFiles$ files searched. No matches found.")
+   else
+      helpFileObj->index(1)
+      statusObj->text("$totFiles$ files searched. $totMatches$ matches found.")
+      :helpFileSelected()
+   endif
+
+   cd(bak)
+
+endproc()
+
+
+#################################################
+# Look for the next hash tag in the current
+# file.
+#################################################
+
+procedure(searchDown)
+
+   if(wvCntMax = 0)
+      return
+   endif
+
+   wvCnt = wvCnt + 1
+   if(wvCnt >= wvCntMax)
+      wvCnt = wvCntMax-1
+   endif
+
+   searchStr = findObj->text
+   htmlObj->javascript("location.hash = \"$searchStr$$wvCnt$\"")
+   if(wvCnt > 0)
+      htmlObj->javascript("document.getElementById(\"$searchStr$$wvCnt-1$\").style.cssText = \"background-color:yellow\"")
+   endif
+   htmlObj->javascript("document.getElementById(\"$searchStr$$wvCnt$\").style.cssText = \"background-color:orange\"")
+
+endproc()
+
+
+#################################################
+# Search for a string in specified file
+#################################################
+
+procedure(searchFile, topic, subtopic, file)
+
+   if(wvSearchStatus == "started")
+      return
+   endif
+
+   bak = getcwd()
+
+   if(topic == "Commands")
+      dir = appdir + "\\Documentation\\Commands\\"
+   else
+      dir = appdir + "\\Documentation\\$topic$\\$subtopic$\\"
+   endif
+
+   ignoreLine = 0
+   if(size(file) > 7)
+      if(file[0:6] == "-------")
+         ignoreLine = 1
+      endif
+   endif
+
+   if(ignoreLine == 0)
+      :searchFileCore(dir,file)
+   endif
+   helpFileObj->focus("true")
+
+   cd(bak)
+
+endproc()
+
+#################################################
+# Search for a string in specified file
+# and modify the html to highlight the
+# found strings and give them a hash tag
+#################################################
+
+procedure(searchFileCore, dir, file)
+
+   searchStr = findObj->text
+   fullname = dir + file + ".htm"
+
+   if(not(isfile(fullname)))
+      pr("File '$fullname$' not found\n")
+      return
+   endif
+   escapechar("false")
+   txt = load(fullname,"text")
+
+  # Add anchors to searched for word 
+   (txt,cnt) = htmlreplacestr(txt,"$searchStr$","<a id=\"$searchStr$%cnt%\" style=\"background-color:yellow\">$searchStr$</a>",caseSensitivityObj->text)
+   txt = replacestr(txt,"src=\"","src=\"file:///$dir$")    # Replace relative image paths with absolute  
+   txt = replacestr(txt,"href=\"#","hrefAnchor")   # Make sure we ignore anchors in the next command
+   txt = replacestr(txt,"href=\"http","hrefHttp")   # Make sure we ignore internet references in the next command
+   txt = replacestr(txt,"href=\"","href=\"file:///$dir$") # Replace relative file paths with absolute   
+   txt = replacestr(txt,"hrefAnchor","href=\"#")   # Restore anchors  
+   txt = replacestr(txt,"hrefHttp","href=\"http")   # Restore internet references  
+    
+  # Save text to a temporary file
+   cd(tempdir)
+   mkdir("Prospa")
+   cd("Prospa")
+   save("help.htm",txt)
+   escapechar("true")
+   file = "$getcwd()$\help.htm"
+
+  # Display the temporary file
+   htmlObj->url(file)
+   pause(0.1)
+   wvCntMax = cnt
+   wvCnt = 0
+
+   if(cnt == 0)
+      statusObj->text("No matches found.")
+   else
+      statusObj->text("$cnt$ matches found.")
+   endif
+
+   # Jump to the first match - if one has been found
+   if(cnt > 0)
+      htmlObj->javascript("location.hash = \"$searchStr$0\"")
+      pause(0.01)
+      htmlObj->javascript("document.getElementById(\"$searchStr$0\").style.cssText = \"background-color:orange\"")
+   endif
+
+endproc()
+
+
+#################################################
+# Search for a string in all subtopic folders
+#################################################
+
+procedure(searchSubtopic, topic, subtopic)
+
+   bak = getcwd()
+
+   searchStr = findObj->text
+
+   if(topic == "Commands")
+      dir = appdir + "\\Documentation\\Commands\\"
+   else
+      dir = appdir + "\\Documentation\\$topic$\\$subtopic$\\"
+   endif
+ 
+   if(not(isdir(dir)))
+      return
+   endif
+
+   cd(dir)
+
+   files = ls("*.htm")
+
+   lst = list(0)
+   totCnt = 0
+   for(k = 0 to size(files)-1)
+     file = files[k]
+     txt = load(file,"text")
+     statusObj->text("Searching $file$")
+     cnt = htmlcountsubstr(txt,"$searchStr$",caseSensitivityObj->text)
+     if(cnt > 0)
+        lst = lst + "$rmext(file)$ ($cnt$)"
+        totCnt = totCnt + cnt
+     endif
+     statusObj->text("")
+   next(k)
+   helpFileLabel->text("Search matches")
+   helpFileObj->list(lst)
+   if(totCnt == 0)
+      statusObj->text("$size(files)$ files searched. No matches found.")
+   else
+      helpFileObj->index(1)
+      :helpFileSelected()
+      statusObj->text("$size(files)$ files searched. $totCnt$ matches found.")
+   endif
+
+   wvSearchMode = "subtopic"
+
+   cd(bak)
+
+endproc()
+
+
+#################################################
+# Search for a string in all topic folders
+#################################################
+
+procedure(searchTopic, topic)
+
+   bak = getcwd()
+
+   searchStr = findObj->text
+
+   if(topic == "Commands")
+      :searchSubtopic("Commands","Commands")
+      return
+   else
+      dir = appdir + "\\Documentation\\$topic$\\"
+   endif
+ 
+   if(not(isdir(dir)))
+      return
+   endif
+
+   cd(dir)
+
+   dirlst = getdirlist(".")
+
+   totalList = list(0)
+   totMatches = 0
+   totFiles = 0
+   for(k = 0 to size(dirlst)-1)
+
+      lst = list(0)
+      cd(dirlst[k])
+      files = ls("*.htm")
+      for(m = 0 to size(files)-1)
+        file = files[m]
+        statusObj->text("Searching $file$")
+        txt = load(file,"text")
+        cnt = htmlcountsubstr(txt,"$searchStr$",caseSensitivityObj->text)
+        if(cnt > 0)
+           lst = lst + "$cnt$ $dirlst[k]$\\$rmext(file)$"
+           totMatches = totMatches + cnt
+        endif
+        statusObj->text("")
+
+      next(k)
+      totFiles = totFiles + size(files)
+      totalList = totalList + :sortList(lst)
+
+      cd("..")
+
+   next(k)
+
+   helpFileLabel->text("Search matches")
+   helpFileObj->list(totalList)
+   if(totMatches == 0)
+      statusObj->text("$totFiles$ files searched. No matches found.")
+   else
+      helpFileObj->index(1)
+      :helpFileSelected()
+      statusObj->text("$totFiles$ files searched. $totMatches$ matches found.")
+   endif
+
+   wvSearchMode = "topic"
+   cd(bak)
+
+endproc()
+
+
+#################################################
+# Look for the previous hash tag in the current
+# file.
+#################################################
+
+procedure(searchUp)
+
+   if(wvCntMax = 0)
+      return
+   endif
+
+   wvCnt = wvCnt - 1
+   if(wvCnt < 0)
+      wvCnt = 0
+   endif
+
+   searchStr = findObj->text
+   htmlObj->javascript("location.hash = \"$searchStr$$wvCnt$\"")
+   if(wvCnt < wvCntMax-1)
+      htmlObj->javascript("document.getElementById(\"$searchStr$$wvCnt+1$\").style.cssText = \"background-color:yellow\"")
+   endif
+   htmlObj->javascript("document.getElementById(\"$searchStr$$wvCnt$\").style.cssText = \"background-color:orange\"")
+
+endproc()
+
+
+
+#################################################
+# Sort a completed match list
+#################################################
+
+procedure(sortByMatches)
+
+   if(wvSearchStatus == "notStarted")
+      return
+   endif
+
+   lst = helpFileObj->list() 
+   if(size(lst) > 0)
+
+      sz = size(lst)
+      idx = helpFileObj->index
+      newList = list(sz)
+      for(k = 0 to sz-1)
+         (file,cnt) = scanstr(lst[k],"%1 (%2)")
+         newList[k] = "$cnt$ $file$"
+      next(k)
+
+      lst = :sortList(newList)
+      helpFileObj->list(lst)
+      if(idx > 0)
+         helpFileObj->index(idx)
+      else
+         helpFileObj->index(1)
+      endif
+   endif
+      
+endproc()
+
+
+#################################################
+# Sort a completed match list
+#################################################
+
+procedure(sortBySubtopics)
+
+   if(wvSearchStatus == "notStarted")
+      return
+   endif
+
+   lst = helpFileObj->list() 
+   if(size(lst) > 0)
+   
+      idx = helpFileObj->index
+      helpFileObj->list(sortlist(lst))
+      if(idx > 0)
+         helpFileObj->index(idx)
+      else
+         helpFileObj->index(1)
+      endif
+
+   endif
+      
+endproc()
+
+#################################################
+# Display this help file
+#################################################
+
+procedure(showHelp)
+
+   dir = "Macros\\Core"
+   file = "HelpViewer"
+   wvSearchMode = "file"
+   :loadCommand(dir,file)
+ 
+endproc()
+
+########################################################
+# Load and display the button icons
+########################################################
+ 
+procedure(updateIcons)
+
+   bak = getcwd()
+   cd("$getmacropath()$\\prospaHelpViewer")
+   setpar(0,18,"icon","backarrow.png")
+   setpar(0,19,"icon","rightarrow.png")
+   setpar(0,10,"icon","uparrow.png")
+   setpar(0,11,"icon","downarrow.png")
+   setpar(0,14,"icon","find.png")
+
+endproc()
+
+#################################################
+# Sort lst based on the number of hits
+# format is assumed to be number, file
+#################################################
+
+procedure(sortList, lst)
+
+   sz = size(lst)
+   slist = sortlist(lst)
+   for(k = 0 to sz-1)
+     txt = slist[sz-k-1]
+     (num,file) = scanstr(txt,"%1 %2")
+     lst[k] = "$file$ ($num$)"
+   next(k)
+
+endproc(lst)
+
+########################################################
+# A subtopic has been selected - update help file list
+########################################################
+
+procedure(subtopicSelected)
+
+   helpFileObj->draw("false")
+   subtopicObj->draw("false")
+   topic = topicObj->text
+   subtopic = subtopicObj->text
+
+# Set current directory
+   if(topic == "Commands")
+      dir = appdir + "\\Documentation\\Commands\\"
+   else
+      dir = appdir + "\\Documentation\\$topic$\\$subtopic$\\"
+   endif
+   cd(dir)
+
+# Update the help list
+   if(topic == "Commands")
+      :updateInternalCmdList()
+      :updateSubtopicIcons()
+   else
+      :updateHelpFileList()
+      :updateSubtopicIcons()
+   endif
+
+   helpFileObj->draw("true")
+   subtopicObj->draw("true")
+
+# Load the HTML file ignoring divider
+   file = helpFileObj->text
+   ignoreLine = 0
+   if(size(file) > 7)
+      if(file[0:6] == "-------")
+         ignoreLine = 1
+      endif
+   endif
+
+   if(ignoreLine == 0)
+      file = dir + file + ".htm"
+      htmlObj->url(file)
+      wvCnt = 0
+      wvCntMax = 0
+   endif
+
+   subtopicObj->focus("true")
+
+   wvSearchMode = "file"
+   wvSearchStatus = "notStarted"
+   exitSearchCtrl->enable("false")
+
+endproc()
+
+########################################################
+# A topic has been selected - update topic and final
+# help file list.
+########################################################
+
+procedure(topicSelected)
+
+   topic = topicObj->text
+   :loadCommand(topic)
+   topicObj->focus("true")
+   wvSearchMode = "file"
+   wvSearchStatus = "notStarted"
+   exitSearchCtrl->enable("false")
+
+endproc()
+
+
+########################################################
+# Load the command groups into the subtopic list
+########################################################
+
+procedure(updateCmdGroupList)
+
+   groups = ["Introduction","All","1D","2D","3D","Classes","Control","Colour","DLLs","Environment","Files","Fourier","GUI",
+            "Help","Lists","License","Macros","Math","Matrices","Misc","Sound","Strings","Structures","Time","Trig","Variables"]
+   subtopicObj->list(groups)
+
+endproc(size(groups))
+
+########################################################
+# Update the help file list based on the
+# subtopics selection. (For folder based subtopics).
+########################################################
+
+procedure(updateHelpFileList)
+
+   dir = subtopicObj->text
+   bak = getcwd()
+   cd(dir)
+
+   filelst = getfilelist(".")
+   filesz = size(filelst)
+   if(vartype(filelst) == "list" & filesz > 0)
+      for(k = 0 to filesz-1)
+         filelst[k] = rmext(filelst[k])
+      next(k)
+   endif 
+
+   if(isfile("helplist.lst"))
+      hlplst = load("helplist.lst")
+      hlpsz = size(hlplst)
+   
+      for(k = 0 to hlpsz-1)
+         if(hlplst[k] == "ALL OTHERS")
+            hlplst = rmfromlist(hlplst,k)
+            hlplst = mergelists(hlplst,filelst) 
+            hlplst = rmfromlist(hlplst,"helplist") 
+            exitfor
+         endif
+      next(k)
+   
+      hlpsz = size(hlplst)
+      hlpicons = matrix(hlpsz)+22
+      hlpcolors = matrix(hlpsz)+22
+        
+      for(k = 0 to hlpsz-1)
+         if(size(hlplst[k]) >= 8)
+            txt = hlplst[k]
+            if(txt[0:6] == "DIVIDER")
+               hlplst[k] = "------- $txt[7:-1]$ ----------------------------------------------"
+               hlpicons[k] = -1
+            endif
+         endif
+         if(hlplst[k] == "SPACE")
+            hlplst[k] = "----------------------------------------------"
+            hlpicons[k] = -1
+         else
+            hlplst[k] = rmext(hlplst[k])
+         endif     
+      next(k)
+
+      helpFileObj->list(hlplst)
+      helpFileObj->icons(hlpicons)
+      helpFileObj->index(1)
+
+      for(k = 0 to hlpsz-1)
+         if(hlpicons[k] == -1)          
+            helpFileObj->color([k,0,128,0])
+         endif
+      next(k)
+
+   else
+      if(vartype(filelst) == "list" & filesz > 0)
+         helpFileObj->list(sortlist(filelst))
+         helpFileObj->icons(matrix(filesz)+22)
+         helpFileObj->index(1)
+      else
+         helpFileObj->list([""])
+      endif
+   endif
+
+   cd(bak)
+
+endproc()
+
+########################################################
+# Update the help file list based on the command
+# group selection taken from the subtopic list
+# (Only used in "commands" mode)
+########################################################
+
+procedure(updateInternalCmdList)
+
+  groupList = subtopicObj->text
+  
+  if(groupList == "All")
+     lst = listcom()
+   elseif(groupList == "Introduction")
+     lst = ["Overview"]    
+   elseif(groupList == "1D")
+     lst = listcom("*","1d")
+   elseif(groupList == "2D")
+     lst = listcom("*","2d")
+   elseif(groupList == "3D")
+     lst = listcom("*","3d")
+   elseif(groupList == "Colour")
+     lst = listcom("*","color")
+   elseif(groupList == "Environment")
+     lst = ["ex","exec","exit","getenvvar","loaddlls","memory","unloaddlls","usedll"]       
+   elseif(groupList == "Files")
+     lst = listcom("*","files")  
+   elseif(groupList == "Fourier")
+     lst = listcom("*","fourier")    
+   elseif(groupList == "Math")
+     lst = listcom("*","math") 
+   elseif(groupList == "GUI")
+     lst = listcom("*","gui")
+  elseif(groupList == "Help")
+     lst = listcom("*","help")
+   elseif(groupList == "Lists")
+     lst = listcom("*","lists")
+     lst = insertinlist(lst,"ABOUT LISTS",0)
+   elseif(groupList == "Structures")
+     lst = listcom("*","struct")
+     lst = insertinlist(lst,"ABOUT STRUCTURES",0)
+   elseif(groupList == "Classes")
+     lst = listcom("*","classes")
+    # lst = insertinlist(lst,"ABOUT CLASSES",0)
+   elseif(groupList == "License")
+     lst = listcom("*","license")
+   elseif(groupList == "Control")
+     lst = listcom("*","control")
+   elseif(groupList == "Macros")
+     lst = listcom("*","macros")
+   elseif(groupList == "Matrices")
+     lst = listcom("*","matrix")  
+   elseif(groupList == "Misc")
+     lst = listcom("*","misc")     
+   elseif(groupList == "Sound")
+     lst = listcom("*","sound")
+   elseif(groupList == "Strings")
+     lst = listcom("*","strings")
+   elseif(groupList == "Time")
+     lst = listcom("*","time")
+   elseif(groupList == "Trig")
+     lst = listcom("*","trig")
+   elseif(groupList == "Variables")
+     lst = listcom("*","variables")       
+   elseif(groupList == "DLLs")
+     lst = listcom("*","dlls")   
+   elseif(groupList == "Threads")
+     lst = listcom("*","threads")     
+   endif
+
+  helpFileObj->list(sortlist(lst))
+  helpFileObj->icons(matrix(size(lst))+22)
+  helpFileObj->index(1)
+
+endproc()
+
+########################################################
+# Set the subtopic icons based on whether an item
+# selected (open-book) or not (closed-book)
+########################################################
+
+procedure(updateSubtopicIcons)
+
+   sel = subtopicObj->index
+   lst = subtopicObj->list
+   icons = matrix(size(lst))+21
+   if(sel > 0)
+      icons[sel-1] = 23
+   endif
+   subtopicObj->icons(icons)
+
+endproc()
+
+########################################################
+# Set the subtopic list given the documentation 
+# subfolder
+########################################################
+ 
+procedure(updateSubtopicList,dir)
+
+  cd(appdir + "\\Documentation\\$dir$\\")
+
+  if(isfile("helplist.lst"))
+     subtopics = load("helplist.lst")
+  else
+     subtopics = sortlist(getdirlist("."))
+  endif
+
+  subtopicObj->list(subtopics)
+  subtopicObj->icons(matrix(size(subtopics))+15)
+
+endproc()
+
+########################################################
+# Define the user interface
+########################################################
+ 
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Prospa Help Viewer", -1, -1, 1100, 650, "resizable")
+
+       getmessage(0,:process_message();)
+      # Define all controls with basic parameters
+      groupbox(1, "Search parameters", 10, 4, "ww-14", 127)
+      statictext(2, 97, 33, "right", "Search range:")
+      button(3, 132, 63, 70, 21,"Exit search",:exitSearch())
+      divider(4, 9, "wh*0.45", "ww-13", 5, "horizontal")
+      textmenu(6, 107, 30, 100, 200,:rangeChanged())
+      statictext(7, 67, 58, 72, 26, "center", "Case sensitive search:")
+      checkbox(8, 109, 67, "ignorecase,casesensitive", "ignorecase")
+      statictext(9, 252, 41, 54, 29, "center", "Move to next match")
+      button(10, 289, 34, 20, 21, "U",
+         :searchUp();)
+      button(11, 289, 56, 20, 21, "D",
+         :searchDown();)
+      statictext(12, 38, 96, 39, 28, "center", "Search string")
+      textbox(13, 61, 99, "ww-110")
+      button(14, "ww-45", 98, 30, 23, "Search",
+         :search();)
+      groupbox(15, "Topics", 10, 139, "ww-98", "wh-150")
+      listbox(16, 22, 155, "ww-120", "wh-175",
+         :topicSelected();)
+      groupbox(17, "Navigation", "ww-79", 139, 75, "wh-150")
+      button(18, "ww-60", 171, 35, 26, "Back",
+         :goback();)
+      button(19, "ww-60", 210, 35, 26, "Forward",
+         :gofwd();)
+      statictext(20, "ww*0.5", 5, "center", "General Information")
+      listbox(21, 10, 22, "ww-14", "wh-51",
+         :subtopicSelected();)
+      statictext(22, "ww*0.5", 5, "center", "Help Files")
+      listbox(23, 6, 22, "ww-10", "wh-51",
+         :helpFileSelected();)
+      divider(24, "ww*0.18", 20, 5, "wh-50", "vertical")
+      divider(25, "ww*0.45", 6, 5, "wh-35", "vertical")
+      htmlbox(26, 6, 6, "ww-10", "wh-35")
+      statusbox(30)
+
+      menu(50, "Edit", "Copy selected text\tCtrl+C", htmlObj->copyselection(""),
+               "Run selected text\tCtrl+R", htmlObj->runselection(""),
+               "Find text\tCtrl+F", :search(),
+               "Search down\tCtrl+D", :searchDown(),
+               "Search up\tCtrl+U", :searchUp(),
+               "Separator",  "",
+               "Sort by number of matches\tCtrl+S", :sortByMatches(),
+               "Sort by name\tCtrl+N", :sortBySubtopics();)
+      menu(51, "View", "Go Back\tCtrl+B", htmlObj->goback(""),
+               "Go Forward\tCtrl+F", htmlObj->goforward(""))
+      menu(52, "Window", "Hide\tF2", hidewindow(0);)
+      menu(53, "Help", "Window help", :showHelp();)
+
+
+     # Set other control parameters
+      setpar(n,1,"region",[-1,25,-3,-4])
+      setpar(n,3,"objID","exitSearchCtrl")
+      setpar(n,4,"objID","topicDivider",
+                 "region",[-1,25,-3,-4],
+                 "limits",["260","wh*0.55"])
+      setpar(n,6,"objID","searchModeCtrl",
+                 "menu",["file","subtopic","topic","alltopics"],
+                 "text","file",
+                 "tab_number",1)
+      setpar(n,8,"objID","caseSensitivityObj",
+                 "tab_number",2)
+      setpar(n,10,"tab_number",5)
+      setpar(n,11,"tab_number",6)
+      setpar(n,13,"objID","findObj",
+                  "region",[-1,25,-3,-4],
+                  "tab_number",3)
+      setpar(n,14,"objID","findCtrl",
+                  "mode","default",
+                  "region",[-1,25,-3,-4],
+                  "tab_number",4)
+      setpar(n,15,"region",[-1,25,-3,4])
+      setpar(n,16,"objID","topicObj",
+                  "region",[-1,25,-3,4],
+                  "tab_number",7)
+      setpar(n,17,"region",[-1,25,-3,4])
+      setpar(n,18,"tab_number",8,
+                  "region",[-1,25,-3,-4])
+      setpar(n,19,"tab_number",9,
+                  "region",[-1,25,-3,-4])
+      setpar(n,20,"objID","subtopicLabel",
+                  "color",[0,0,255],
+                  "region",[-1,24,4,-4])
+      setpar(n,21,"objID","subtopicObj",
+                  "tab_number",10,
+                  "region",[-1,24,4,-4])
+      setpar(n,22,"objID","helpFileLabel",
+                  "color",[0,0,255],
+                  "region",[24,25,4,-4])
+      setpar(n,23,"objID","helpFileObj",
+                  "tab_number",11,
+                  "region",[24,25,4,-4])
+      setpar(n,24,"objID","listDivider",
+                  "region",[-1,-2,4,-4],
+                  "limits",["100","280"])
+      setpar(n,25,"objID","windowDivider",
+                  "limits",["320","ww*0.5"])
+      setpar(n,26,"objID","htmlObj",
+                  "region",[25,-2,-3,-4])
+      setpar(n,30,"objID","statusObj")
+
+     # Set other window parameters
+endproc(n)
+
+

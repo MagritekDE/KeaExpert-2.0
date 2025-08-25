@@ -1,0 +1,56 @@
+###############################################################
+# Generates an E field vector plot for two identical charges
+###############################################################
+
+procedure(vector_test)
+
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+
+   Ex = matrix(100,100)
+   Ey = matrix(100,100)
+   
+   x1 = 33; y1 = 50
+   x2 = 66; y2 = 50
+   
+   for(ym = 0 to 99)
+      for(xm = 0 to 99)
+         dx1 = xm-x1
+         dy1 = ym-y1
+         r12 = dx1*dx1 + dy1*dy1
+         dx2 = xm-x2
+         dy2 = ym-y2
+         r22 = dx2*dx2 + dy2*dy2
+         if(r12 > 10  & r22 > 10 )
+            Ex[xm,ym] = dx1/r12
+            Ey[xm,ym] = dy1/r12
+         endif
+      next(xm)
+   next(ym)
+   
+   for(ym = 0 to 99)
+      for(xm = 0 to 99)
+         dx1 = xm-x1
+         dy1 = ym-y1
+         r12 = dx1*dx1 + dy1*dy1
+         dx2 = xm-x2
+         dy2 = ym-y2
+         r22 = dx2*dx2 + dy2*dy2
+         if(r22 > 10 & r12 > 10 )
+            Ex[xm,ym] = Ex[xm,ym] + dx2/r22
+            Ey[xm,ym] = Ey[xm,ym] + dy2/r22
+         endif
+      next(xm)
+   next(ym)
+   
+   vectorplot(Ex,Ey,25,3,3)
+   title("E field")
+   Et = sqrt(Ex^2 + Ey^2)
+   assign("Ex",Ex,"global")
+   assign("Ey",Ey,"global")
+
+endproc()
+
+

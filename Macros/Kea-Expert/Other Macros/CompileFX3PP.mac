@@ -1,0 +1,187 @@
+####################################################################
+# Generate an FX3 event table for the specified protocol. This will 
+# be saved in the pulse program folder subfolder FX3.
+# The parameters are taken from the defaults and factory file
+# but some parameters are arbitrary since it is assumed that 
+# an update table will be applied to correct both the startcode
+# and pulse program parameters when actually running an experiment
+#####################################################################
+
+procedure(compileFX3PP, path, protocol, ppInfo)
+
+# Some experiments use these parameters in the relationships table
+# The exact values are unimportant as the parameters will be updated
+# before running the experiment
+   windowvar(wvSpecType,wvPPMOffset1H,wvPPMOffset7Li,wvPPMOffset19F,
+             wvPPMOffset13C,wvPPMOffset23Na,wvPPMOffset29Si,wvPPMOffset31P)
+   wvPPMOffset1H = 4.74
+   wvPPMOffset7Li = 0
+   wvPPMOffset19F = 0
+   wvPPMOffset13C = 0
+   wvPPMOffset23Na = 0
+   wvPPMOffset29Si = 0
+   wvPPMOffset31P = 0
+   xshim = 1 # Shouldn't zero as is used to normalize
+   yshim = 1
+   zshim = 1
+   oshim = 1
+   pgo = 5
+   dwellTime = 1
+   acqTime = 100
+   rxLat = 0
+
+# Make sure we are are using the fx3 commands
+   dspCurPort = dspsetport()
+   fx3CurPort = fx3setport()
+   try
+      usedll("fx3PPRun.dll")
+   catch
+      usedll("fx3PPDebug.dll")
+   endtry
+   dspsetport(dspCurPort)
+   fx3setport(fx3CurPort)
+
+# Generate full update table
+   updatemode("full")
+
+# Generate a dummy dsp parameter block
+   gFX3->dspParameters = struct()
+   gFX3->dspParameters->Jitter_1H = 60
+   gFX3->dspParameters->Jitter_X = 60
+   gFX3->dspParameters->HardwareCap1 = 167935
+
+# Initialise the wvFX3Info variable
+   gFX3->initFX3Info()
+   wvFX3Info->dir = path
+   protocolPath = "$path$\\$protocol$"
+   wvFX3Info->exptBaseName = protocol
+   wvSpecType = "Spinsolve"
+
+# Make a backup of the _pp file
+   cd(protocolPath)
+   copyfile("$protocol$_pp.mac","$protocol$_pp.mac.bak")
+
+# Replace the _pp.mac procedure arguments if neeed and make a backup of the original
+   escapechar("false")
+   txt = load("$protocol$_pp.mac")
+   escapechar("true")
+   txt = replacestr(txt,"procedure(pulse_program,dir,mode)","procedure(pulse_program,dir,mode,pars);if(nrArgs == 3);assignlist(pars);endif;")
+   txt = replacestr(txt,"pulse(mode","pulse(1")
+   txt = replacestr(txt,"txon(mode","txon(1")
+   txt = replacestr(txt,"txoff(mode","txoff(1")
+   txt = replacestr(txt,"endpp(mode)","endpp(0)")
+   save("$protocol$_pp.mac",txt)
+
+# Load the various parameters lists for the protocol
+   wvFX3Info->phaseList = ppInfo->phaseList
+   wvFX3Info->ppVariables = struct()
+   wvFX3Info->ppList = ppInfo->lst
+
+   sz = size(ppInfo->lst)
+# Generate some reasonable pulse program variables
+   ppVariables = null
+   for(k = 0 to sz-1)
+      varName = ppInfo->lst[k]
+      if(varName[0] == "n")
+         ppVariables = ppVariables + ["$varName$ = 2"]
+      elseif(varName[0] == "d")
+         ppVariables = ppVariables + ["$varName$ = 10"] 
+      elseif(varName[0] == "w")
+         ppVariables = ppVariables + ["$varName$ = 10"]   
+      elseif(varName[0] == "f")
+         ppVariables = ppVariables + ["$varName$ = 60"]   
+      elseif(varName[0] == "b")
+         ppVariables = ppVariables + ["$varName$ = 1"]  
+      elseif(varName[0] == "a")
+         ppVariables = ppVariables + ["$varName$ = -85"] 
+      elseif(varName[0] == "p")
+         ppVariables = ppVariables + ["$varName$ = 0"] 
+      elseif(varName[0] == "t")
+         ppVariables = ppVariables + ["$varName$ = [1,5]"] 
+      endif
+   next(k)
+
+# Check if special parameters which affect the start code or ppVariables are needed
+   flatFilter = "yes"
+   wobbleMode = "no"
+   cd(protocolPath)
+   if(isfile("special.par"))
+      specialPar = load("special.par")
+      assignlist(specialPar)
+      ppVariables = mergelists(specialPar,ppVariables)
+   endif
+
+# Load the startcode into wvFX3Info - only the flatFilter and wobbleMode parameters are important
+# All others can be updated from the startcode table
+   if(not(isvar("wobbleMode")))
+      wobbleMode = "none"
+   endif
+   gFX3->loadTRexStartCode(freqCh1=10 ,freqCh2=10, freqRx=10, flatFilter=flatFilter, 
+                           channel="1H", rxGain=40, dwellTime=1, rxPhase=0, wobbleMode=wobbleMode)
+
+# Run the pulse program to generate the event table
+   cd(protocolPath)
+   gFX3->useUpdateTable = 1
+   gFX3->generatePulseProgram(["pgo = 5"]+ppVariables)
+
+# Print out the event table for protocol into the eventTable.txt file
+   cd(protocolPath)
+   mkdir("FX3")
+   cd("FX3")
+   printtofile("EventTable.txt")
+   ps = wvFX3Info->ps
+   sz = size(wvFX3Info->ps)
+  # print("\n        Line       Clocks        Arg1        Arg2\n\n")
+   for(k = 0 to sz-3 step 3)
+      tm = ps[k]
+      arg1 = ps[k+1]
+      arg2 = ps[k+2]
+      print("$k/3,4d$:    $tm,10d$     $arg1,08X$     $arg2,08X$\n")
+   next(y)
+   closeprint()
+
+# Print out the fixed update table for protocol into the updateTable.txt file
+   printtofile("FixedUpdateTable.txt")
+   ut = wvFX3Info->fixedUpdateTable
+  (w,h) = size(ut)
+   for(k = 0 to h-1)
+      isSpecial = ut[0,k]
+      whichVar  = ut[1,k]
+      adrs      = ut[2,k]
+      value     = ut[3,k]        
+      print("$isSpecial,7d$ $whichVar,7d$ $adrs,7d$ $value,7d$\n")
+   next(k)
+   closeprint()
+
+
+# Print out the variable update table for protocol into the updateTable.txt file
+   printtofile("VariableUpdateTable.txt")
+   ut = wvFX3Info->updateTable
+  (w,h) = size(ut)
+   for(k = 0 to h-1)
+      isPhase  = ut[0,k]
+      whichVar = ut[1,k]
+      adrs     = ut[2,k]
+      value    = ut[3,k]        
+      print("$isPhase,7d$ $whichVar,7d$ $adrs,7d$ $value,7d$\n")
+   next(k)
+   closeprint()
+
+# Write the parameter list to file
+   printtofile("FixedParameters.txt")
+   ppList = wvFX3Info->ppList
+   w = size(ppList)
+   for(k = 0 to w-1)       
+      print("$ppList[k]$\n")
+   next(k)
+   closeprint()
+
+# Restore the _pp file
+   cd(protocolPath)
+ #  copyfile("$protocol$_pp.mac.bak","$protocol$_pp.mac")
+
+# Revert to minimal update table generation
+ #  updatemode("minimal")
+ #  pr "\n\nFinished\n"
+
+endproc()

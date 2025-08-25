@@ -1,0 +1,334 @@
+#################################################################
+# A macro to simulate 1D T2 relaxation spectra and the
+# corresponding data set. Multiple peaks can be generated
+# with Gaussian, cosine and rectangular profiles. The height
+# width and position of each peak can be controlled. A variable
+# amount of white noise can be added to the final data set.
+# The data spacing can be logarithmic or linear.
+#
+# Author: C Eccles
+# Version: 1.0
+# Date: 13 October 2013
+#
+# Copyright Magritek Ltd 2013
+#
+#################################################################
+
+procedure(1DRelaxationSpectrumSimulator)
+
+   n = :windowdefinition()
+   windowvar(wvNrCtrl)
+   wvNrCtrl = 27
+   assignctrls(n)
+   :loadPar()
+   setwindowpar(n,"show_menu","false")
+   showwindow(n)
+
+endproc()
+
+#################################################################
+# Generate the user interface
+#################################################################
+
+procedure(windowdefinition)
+
+   n = window("1D Relaxation Spectrum Simulator (V1.0)", -1, -1, 429, 441)
+
+      # Define all controls with basic parameters
+      textmenu(1, 150, 40, 52, 200,
+         :makeControls();)
+      statictext(2, 141, 43, "right", "Number of peaks")
+      textbox(3, 341, 129, 51)
+      statictext(4, 330, 133, "right", "Noise level (%)")
+      button(5, 20, 199, 51, 32, "Generate",
+         :generate();)
+      button(6, 350, 199, 51, 32, "Exit",
+         :savePar();
+         closewindow(0);)
+      button(7, 86, 199, 51, 32, "Auto fill",
+         :autoFill();)
+      groupbox(8, "Spectral peaks", 11, 239, 400, 181)
+      groupbox(9, "Simulated data", 230, 10, 181, 181)
+      textbox(10, 151, 69, 50)
+      statictext(11, 141, 73, "right", "Points in spectrum")
+      textbox(12, 341, 40, 51)
+      statictext(13, 331, 43, "right", "Points in data set")
+      textbox(14, 151, 99, 50)
+      statictext(15, 141, 103, "right", "Min. relaxation time (ms)")
+      textbox(16, 151, 130, 50)
+      statictext(17, 141, 133, "right", "Max. relaxaxtion time (ms)")
+      textbox(18, 341, 70, 51)
+      statictext(19, 331, 73, "right", "Min. time (ms)")
+      textbox(20, 341, 100, 51)
+      statictext(21, 331, 103, "right", "Max. time (ms)")
+      groupbox(22, "Spectrum", 11, 10, 210, 181)
+      button(23, 284, 199, 51, 32, "Help",
+         help("Macros\\NNLS","Simulate1DRelaxationSpectrum.htm");)
+      textmenu(24, 340, 160, 53, 200)
+      statictext(25, 330, 163, "right", "Data spacing")
+      button(26, 152, 199, 51, 32, "Load",
+         :loadParFromFile();)
+      button(27, 218, 199, 51, 32, "Save",
+         :saveParToFile();)
+     # Set other control parameters
+      setpar(n,1,"objID","numberPeaksObj",
+                  "valueID","numberPeaks",
+                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+      setpar(n,3,"objID","noiseLevelObj",
+                  "valueID","noiseLevel")
+      setpar(n,10,"valueID","nrPntsSpec")
+      setpar(n,12,"valueID","nrPntsData")
+      setpar(n,14,"valueID","minRelaxTime")
+      setpar(n,16,"valueID","maxRelaxTime")
+      setpar(n,18,"valueID","minTime")
+      setpar(n,20,"valueID","maxTime")
+      setpar(n,24,"objID","spacingObj",
+                  "valueID","spacing",
+                  "menu",["log","lin"])
+
+endproc(n)
+
+procedure(getPosition, N, ctrlNr)
+
+   strPos = getpar(0,ctrlNr,"text")
+
+   if(strPos[-1] == "s")
+      lst = getctrlvalues(0)
+      assignlist(lst)
+   endif
+
+endproc(eval(strPos)*N)
+
+#################################################################
+# Generate the spectrum and corresponding simulated data set
+#################################################################
+
+procedure(generate)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   N = nrPntsSpec
+
+   n = eval(numberPeaksObj->text)
+   position = matrix(n)
+   amplitude = matrix(n)
+   width = matrix(n)
+   type = list(n)
+   for(k = 1 to n*9 step 9)
+      p = (k-1)/9
+      position[p] = :getPosition(N,k+wvNrCtrl+2)
+      amplitude[p] = getpar(0,k+wvNrCtrl+4,"value")
+      width[p] = N*getpar(0,k+wvNrCtrl+6,"value")
+      type[p] = getpar(0,k+wvNrCtrl+8,"text")
+   next(k)
+
+# Generate model relaxation time axes
+   xSpec = logspace(minRelaxTime,maxRelaxTime,N)
+
+# Generate model data set
+   A = [0:N-1]
+   ySpec = matrix(N)  
+   for(k = 0 to n-1)
+      if(type[k] == "gauss")
+         ySpec = ySpec + amplitude[k]*exp(-(A-position[k])^2/width[k]^2)
+      elseif(type[k] == "rect")
+         shape = matrix(N)
+         shape[round(position[k]-width[k]/2):round(position[k]+width[k]/2)] = 1
+         ySpec = ySpec + amplitude[k]*shape
+      elseif(type[k] == "cos")
+         shape = matrix(N)
+         left = round(-width[k]/2)
+         right = round(+width[k]/2)
+         z = [left:right]+round(position[k])
+         shape[z] = cos([left:right]*pi/2/(round(width[k]/2)))
+         ySpec = ySpec + amplitude[k]*shape
+      endif
+   next(k)
+
+# Display the spectrum
+   multiplot("1d",2,1)
+   curplot("1d",1,1)
+   draw1d("false")
+   plot(xSpec,ySpec)
+   axes("xmapping","log")
+   xlabel("Relaxation time (ms)")
+   ylabel("Amplitude")
+   title("Simulated relaxation spectrum")
+   draw1d("true")
+
+# Generate data time axis
+   M = nrPntsData
+   ns = noiseLevel/100
+
+   if(spacing == "lin")
+      xData = linspace(minTime,maxTime,M)
+   else
+      xData = logspace(minTime,maxTime,M)
+   endif
+
+# Generate kernel
+   K = exp(-(1/xSpec)'*xData)
+
+# Generate data with noise
+   yData = ySpec*K
+   yData = yData + ns*max(yData)*(noise(M)+i*noise(M))
+
+# Display the simulated data
+   curplot("1d",2,1)
+   draw1d("false")
+   plot(xData,yData)
+   xlabel("Time (ms)")
+   ylabel("Amplitude")
+   axes("xmapping",spacing)
+   title("Simulated relaxation data")
+   draw1d("true")
+
+
+endproc()
+
+#################################################################
+# Fill all text boxes with default values
+#################################################################
+
+procedure(autoFill)
+
+   n = eval(numberPeaksObj->text)
+   for(k = 1 to n*9 step 9)
+      setpar(0,k+wvNrCtrl+2,"text","$(k+8)/(9*(n+1))$")
+      setpar(0,k+wvNrCtrl+4,"text","1")
+      setpar(0,k+wvNrCtrl+6,"text","0.04")
+      setpar(0,k+wvNrCtrl+8,"text","gauss")
+   next(k)
+
+   setpar(0,10,"text","100")
+   setpar(0,14,"text","0.1")
+   setpar(0,16,"text","1000")
+   setpar(0,12,"text","20000")
+   setpar(0,18,"text","0.1")
+   setpar(0,20,"text","1000")
+   setpar(0,3,"text","1")
+   setpar(0,24,"text","lin")
+
+endproc()
+
+#################################################################
+# Make all the user controls as defined by the number of 
+# spectral peaks requested.
+#################################################################
+
+procedure(makeControls)
+
+# Remove old control
+   lst = getobj(0)->ctrllist()
+   for(k = wvNrCtrl+1 to size(lst))
+     rmobj(0,k)
+   next(k)
+
+# Add new controls
+   gn = guiwinnr()
+   n = eval(numberPeaksObj->text)
+   seteditwin(gn)
+   x = 60
+   y = 270
+   dx1 = 30
+   dx2 = 35
+   dx = 80
+   dy = 25
+   w = 40
+   for(k = 1 to n*9 step 9)
+      statictext(k+wvNrCtrl,x,y,"right","Peak $(k-1)/9+1$:")
+      statictext(k+wvNrCtrl+1,x+dx1,y,"right","Pos:")
+      textbox(k+wvNrCtrl+2,x+dx2,y-4,w)
+      setpar(0,k+wvNrCtrl+2,"name","ctrl$k+wvNrCtrl+2$")
+      statictext(k+wvNrCtrl+3,x+dx1+dx,y,"right","Amp:")
+      textbox(k+wvNrCtrl+4,x+dx2+dx,y-4,w)
+      setpar(0,k+wvNrCtrl+4,"name","ctrl$k+wvNrCtrl+4$")
+      statictext(k+wvNrCtrl+5,x+dx1+2*dx+5,y,"right","Width:")
+      textbox(k+wvNrCtrl+6,x+dx2+2*dx+5,y-4,w)
+      setpar(0,k+wvNrCtrl+6,"name","ctrl$k+wvNrCtrl+6$")
+      statictext(k+wvNrCtrl+7,x+dx1+3*dx+5,y,"right","Type:")
+      textmenu(k+wvNrCtrl+8,x+dx2+3*dx+5,y-4,w+20,200)
+      setpar(0,k+wvNrCtrl+8,"name","ctrl$k+wvNrCtrl+8$")
+      setpar(0,k+wvNrCtrl+8,"menu",["gauss","cos","rect"])
+      y = y + dy
+   next(k)
+   setpar(0,8,"height",n*dy+40) # Resize group box
+   seteditwin(-gn) # Finish editing
+   setwindowpar(0,"height",y + 30) # Resize main window
+
+endproc()
+
+#################################################################
+# Load the last set of parameters used from the default location
+#################################################################
+
+procedure(loadPar)
+
+   cd(prefdir)
+   if(isdir("Other Macros"))
+      cd("Other Macros")
+      if(isfile("1DRelaxationSimulation.par"))
+         lst = load("1DRelaxationSimulation.par")
+         assignlist(lst)
+         numberPeaksObj->text(numberPeaks)
+         :makeControls()         
+         setctrlvalues(0,lst)
+      else
+         numberPeaksObj->text("2")
+         :makeControls()         
+      endif
+   else
+      numberPeaksObj->text("2")
+      :makeControls()         
+   endif
+
+
+endproc()
+
+#################################################################
+# Save the current set of parameters to the default location
+#################################################################
+
+procedure(savePar)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   lst = getctrlvalues(0)
+   save("1DRelaxationSimulation.par",lst)
+
+endproc()
+
+#################################################################
+# Load a set of parameters from a file
+#################################################################
+
+procedure(loadParFromFile)
+
+   file = getfilename("Open","Load parameter file", "par file","par")
+   if(file != "cancel")
+      lst = load(file)
+      assignlist(lst)
+      if(isvar("numberPeaks"))
+         numberPeaksObj->text(numberPeaks)
+         :makeControls()         
+         setctrlvalues(0,lst)      
+      endif
+   endif
+
+endproc()
+
+#################################################################
+# Save the current set of parameters to a file
+#################################################################
+
+procedure(saveParToFile)
+
+   file = getfilename("Save","Save parameter file", "par file","par")
+   if(file != "cancel")
+      lst = getctrlvalues(0)
+      save(file,lst) 
+  endif
+
+endproc()

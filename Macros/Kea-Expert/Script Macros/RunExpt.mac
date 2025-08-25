@@ -1,0 +1,76 @@
+##################################################
+# Run the experiment 'exptName'. This involves
+# finding the pulse parameters and modifying them
+# if necessary using the modList argument. You can
+# override certain parameters by supplying them 
+# in uiPar if it is present.
+# The plot layout is then updated, the interface
+# prepared to run an experiment, and the experiment
+# is run. If run from a menu then it will be run
+# in a separate thread, if run from the experiment
+# list it will already be in a separate thread.
+###################################################
+
+procedure(RunExpt, exptName, modList=null, uiPar=null, updateUI=1)
+
+   bak = getcwd()
+   srcDir = gData->findPP(exptName) # Returns a string
+   guipar = gData->getDefaultParameters(exptName, srcDir) # Returns struct
+   guipar = gData->mergeWithFactoryPar(guipar,exptName,srcDir) # Returns a list
+
+# Add the data directory to guipar
+   dataDirectory = gData->curExpt->dataParentPath
+   fullExptName = getbasedir(gData->curExpt->dataPath)
+   guipar = mergelists(["dataDirectory = \"$dataDirectory$\"","expName = \"$fullExptName$\""],guipar) 
+
+# Add uiPar and modList to guipar
+   if(uiPar != null)
+      if(vartype(uiPar) == "structure")
+         guipar = mergelists(list(uiPar),guipar)
+      else
+         guipar = mergelists(uiPar,guipar)
+      endif
+      guipar = rmfromlist(guipar,"sampleNames") 
+   endif
+   if(modList != null)
+      if(vartype(modList) == "structure")
+         guipar = mergelists(list(modList),guipar)
+      else
+         guipar = mergelists(modList,guipar)
+      endif
+   endif
+
+# Update the common parameters after user parameters
+   guipar = gData->mergeWithCommonPar(guipar) # Returns a list
+
+# Fix the BW and acqtime parameters and update the acqu.par file
+   if(updateUI)
+      guipar = gParam->updateBWandAcq(guipar)
+      ucsFiles:saveAcquPar(guipar)
+   endif
+
+# Update the timing if a controlTiming procedure is defined
+#   if(isproc(gData->curExpt->ppPath,gData->curExpt->protocol,"controlTiming"))
+#      proc = "$gData->curExpt->protocol$:controlTiming"
+#      proc()
+#   endif
+
+# Record the start delay (it is set by checktiming proc)
+  useStartDelay = gData->curExpt->parameters->useStartDelay
+
+# Run the experiment via the backdoor
+   cd(srcDir)
+   proc = "$exptName$:backdoor"
+   result = proc(guipar) 
+
+# Wait for the repetition time to complete
+   status = "continue"
+   if(wvExpStatus == "running")
+      status = ucsRun:checkTiming(guipar,-1000,null)
+   endif
+
+# Reset the start delay
+   gData->curExpt->parameters->useStartDelay = useStartDelay
+   cd(bak)
+
+endproc(result, struct(guipar), status)

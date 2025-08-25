@@ -1,0 +1,36 @@
+# 0.1138 sec no thread
+# 0.08 sec with thread (0 ms wait)
+# 3.04 s with thread (1 ms wait)
+# 29.6 s with thread (10 ms wait)
+procedure(testThreads)
+
+time(0)
+  assign("finisheda",0,"global")
+  assign("finishedb",0,"global")
+  assign("finishedc",0,"global")
+ :testit("a")
+  :testit("b")
+  #ida = thread(":testit","a")
+ # idb = thread(":testit","b")
+ # idc = thread(":testit","c")
+#:testit()
+pr "end thread\n"
+ # threadwait(ida)
+
+pr "finished time = $time()$\n"
+
+endproc()
+
+
+procedure(testit,name)
+
+for(k = 0 to 1000000)
+ # pr "thread $name$ k = $k$\n"
+next(k)
+
+  #assign("finished$name$",1,"global")
+pr time()
+
+endproc()
+
+   

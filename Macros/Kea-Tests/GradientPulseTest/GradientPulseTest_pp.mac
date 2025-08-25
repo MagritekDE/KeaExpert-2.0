@@ -1,0 +1,99 @@
+############################################################
+#
+# Pulses all gradient outputs 
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["b1FreqCh1",       "B1 Frequency (MHz)",      "tb", "freq";
+               "90AmplitudeCh1",  "Pulse amplitude (dB)",    "tb", "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",       "tb", "pulselength";
+               "gradAmp",         "Gradient amplitude",      "tb", "float,[-32768,32767]";
+               "gradDur",         "Gradient duration (us)",  "tb", "sdelay";
+               "repTime",         "Repetition time (ms)",    "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["aRF       = 90AmplitudeCh1",
+                    "nPos      = gradAmp",
+                    "nNeg      = -gradAmp",
+                    "dGrad     = gradDur"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+            
+   initpp(dir)
+      
+    pulse(mode, aRF, 0, 10)
+    delay(10)
+    
+    ttlon(0x01)
+    gradon("x",nPos)
+    delay(dGrad)
+    gradoff("x")
+    delay(dGrad)
+    gradon("x",nNeg)
+    delay(dGrad)
+    gradoff("x")
+    ttloff(0x01)
+
+    gradon("y",nPos)
+    delay(dGrad)
+    gradoff("y")
+    delay(dGrad)
+    gradon("y",nNeg)
+    delay(dGrad)
+    gradoff("y")
+    
+    gradon("z",nPos)
+    delay(dGrad)
+    gradoff("z")
+    delay(dGrad)
+    gradon("z",nNeg)
+    delay(dGrad)
+    gradoff("z")
+
+    gradon("o",nPos)
+    delay(dGrad)
+    gradoff("o")
+    delay(dGrad)
+    gradon("o",nNeg)
+    delay(dGrad)
+    gradoff("o")
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)

@@ -1,0 +1,19 @@
+# Remove any linear trend and offset from a data set
+
+procedure(removeLinearTrend)
+
+    plt = curplot("1d")
+   plt->draw("false")
+   (x,y) = plt->getdata()
+   trc = curtrace()
+   (m,c) = linfit:fit(x,y)
+   offset = m*x+c
+   lpar = plotProc:getLabels(plt)
+   tpar = plotProc:getTracePar(plt,trc->id)
+   plot(x,y-offset)
+   plotProc:setLabels(lpar,plt)
+   plotProc:setTracePar(tpar,plt)
+   plt->title("Linear trend removed")
+   plt->draw("true")
+
+endproc()

@@ -1,0 +1,41 @@
+procedure(bordercolor_test1,verbose,delay)
+
+####  1D
+
+clear1d()
+multiplot("1d",2,1)
+curplot("1d",1,1)
+plot(noise(10))
+curplot("1d",2,1)
+plot(noise(100))
+for m = 0 to 10
+  curplot("1d", (m % 2) + 1, 1)
+  bordercolor([255-m*25,m*25,255*(m*25)])
+  pause(0.2)
+next(m)
+
+# clean up
+multiplot("1d",1,1)
+curplot("1d",1,1)
+bordercolor([127,127,127])
+
+####  2D
+
+clear2d()
+multiplot("2d",2,1)
+curplot("2d",1,1)
+image(noise(100))
+curplot("2d",2,1)
+image(noise(100,100))
+for m = 0 to 10
+  curplot("2d", (m % 2) + 1, 1)
+  bordercolor([255-m*25,m*25,255*(m*25)])
+  pause(0.2)
+next(m)
+
+# clean up
+multiplot("2d",1,1)
+curplot("2d",1,1)
+bordercolor([127,127,127])
+
+endproc(1,"")

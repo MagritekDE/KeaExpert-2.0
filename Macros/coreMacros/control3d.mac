@@ -1,0 +1,115 @@
+######################################################
+# 3D control macro
+#
+# Allows user to set:
+#    3D background colour
+#    Depth cueing range
+#    
+######################################################
+
+
+
+procedure(control3db)
+
+   n = :windowdefinition()
+
+   (xorigin,yorigin,zorigin) = shift3d("getargs")
+   setpar(n,13,"text",-xorigin)
+   setpar(n,14,"text",-yorigin)
+   setpar(n,15,"text",-zorigin)
+   (start,end) = fogrange("getargs")
+   setpar(n,5,"text",-start)
+   setpar(n,6,"text",-end)
+   setpar(n,1,"text",antialias3d("getargs"))
+   setpar(n,9,"text",depthcue("getargs"))
+   c = bkgcolor3d("getargs")*255
+   setpar(0,23,"color",c)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("3D Preferences", -1, -1, 376, 227)
+
+      # Define all controls with basic parameters
+       checkbox(1, 222, 180, "off,on", "off")
+       statictext(2, 212, 179, "right", "Enable")
+       statictext(3, 92, 64, "right", "Depth cue start")
+       statictext(4, 90, 100, "right", "Depth cue end")
+       textbox(5, 98, 67, 40)
+       textbox(6, 98, 101, 40)
+       button(7, 294, 15, 53, 30, "Apply",
+          :apply();)
+       button(8, 294, 114, 53, 30, "Exit",
+          closewindow(0);)
+       checkbox(9, 108, 42, "off,on", "off",
+            :toggle_depth_cueing();)
+       statictext(10, 102, 41, "right", "Depth cueing")
+       groupbox(11, "Depth Cueing", 6, 9, 149, 135)
+       groupbox(12, "Rotation Origin", 163, 9, 106, 135)
+       textbox(13, 215, 39, 40)
+       textbox(14, 215, 69, 40)
+       textbox(15, 215, 99, 40)
+       statictext(16, -579, 74, "right", "text")
+       statictext(17, 209, 43, "right", "x-origin")
+       statictext(18, 209, 103, "right", "z-origin")
+       statictext(19, 209, 73, "right", "y-origin")
+       statictext(20, 82, 78, "right", "(brightest)")
+       statictext(21, 81, 113, "right", "(darkest)")
+       groupbox(22, "Background colour", 6, 151, 149, 63)
+       colorbox(23, 23, 176, 23, 23, [0,0,0],:select_color();)
+       groupbox(24, "Anti-alias lines", 163, 151, 106, 63)
+       button(25, 294, 52, 53, 30, "Help",
+          :get_help();)
+
+     # Set other control parameters
+endproc(n)
+
+procedure(apply)
+
+   start = getpar(0,5,"value")
+   end   = getpar(0,6,"value")
+   xorigin = getpar(0,13,"value")
+   yorigin = getpar(0,14,"value")
+   zorigin = getpar(0,15,"value")
+
+   draw3d("off")
+      fogrange(-start,-end)
+      shift3d(-xorigin,-yorigin,-zorigin)
+   
+      if(getpar(0,1,"text") == "on")
+         antialias3d("on")
+      else
+         antialias3d("off")
+      endif
+   
+      if(getpar(0,9,"text") == "on")
+         depthcue("on")
+      else
+         depthcue("off")
+      endif
+   draw3d("on")
+
+endproc()
+
+procedure(toggle_depth_cueing)
+
+   mode = getpar(0,9,"text")   
+   setpar(0,5,"enable",mode)
+   setpar(0,6,"enable",mode)
+
+endproc()
+
+
+procedure(select_color)
+
+   col = getcolor(getpar(0,23,"color"))
+   if(col[0] != -1)
+      setpar(0,23,"color",col)
+      bkgcolor3d(col)
+   endif
+
+endproc()

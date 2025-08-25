@@ -1,0 +1,216 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>logspace- generate a logarithmically spaced vector</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span style='font-size:20.0pt'>pseudologbin</span></b></p>
+
+<p class=MsoNormal style='text-indent:36.0pt'><i><span lang=EN-AU
+style='font-family:"Tahoma","sans-serif"'>&nbsp;</span></i></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Take a large
+linearly spaced data set and replace it by a smaller pseudo-logarithmically
+binned one.</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Syntax</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>(xOut,yOut) = pseudologbin(xIn,
+yIn, binSize)     (eee:vvf)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>xIn ....... x axis of linear
+vector (VECTOR)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>yIn ....... y axis of linear
+vector (VECTOR)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>binSize ... number of points
+in output data set</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>xOut ...... location of bin
+centers (VECTOR)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New"'>yOut ...... log bin result
+(VECTOR)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Description</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Some NMR
+experiments can only collect data with a linearly spacing of results (e.g. CPMG
+echoes). However inverse Laplace spectral analysis works best when the data is
+logarithmically spaced. However the first few data points on a log axis will
+fall between the first points in the linearly spaced input meaning that these
+points are not unique but rather a linear combination of the first two linearly
+spaced points.</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>To fix this the
+pseudologbin command generates an axis that starts out with a linear spacing
+and morphs into logspacing. In this way each point in the binned data set comes
+from one or more different points in the linearly spaced data set. You can
+generate this axis with the command</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>xpLog =
+pseudovec(xMin,xMax,binSize)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-indent:14.2pt'><span lang=EN-AU>where xMin and
+xMax are the smallest and largest values in xIn.</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Because of the
+discrete nature of the data set the resultant xOut values are slightly
+different from xpLog.</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>Example</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>This example
+generates a biexponential decaying signal (x,y) which has been linearly
+sampled. It is then log binned to 50 points. </span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:11.0pt;font-family:"Tahoma","sans-serif"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>x = [0.1:0.1:1000]</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>y = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x/20) + </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(-x/200)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,y)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(xl,yl) = </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>pseudologbin</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(x,y,50)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(xl,yl,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;symbolshape&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;circle&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt;text-autospace:none'><span
+style='font-size:10.0pt;font-family:"Courier New";color:green'>axes</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;xmapping&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&quot;log&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>title</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;Pseudo-log binning example&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:10.0pt;font-family:"Courier New";
+color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU
+style='font-size:10.0pt;font-family:"Courier New";color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:purple'><img width=656 height=315 id="Picture 5"
+src="pseudologbin_files/image001.png"></span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span style='font-size:10.0pt;
+font-family:"Courier New";color:purple'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-AU>Note that the
+first two data points match the spacing of the linear input.</span><span
+lang=EN-AU> </span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU style='font-size:14.0pt'>See also</span></p>
+
+<p class=MsoNormal><span lang=EN-AU>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-AU><a href="logbin.htm">logbin</a>, <a
+href="pseudologvec.htm">pseudovec</a></span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,79 @@
+###################################################
+#                 reflect2d.mac
+#
+# Reflect the current 2D plot about the 
+# horizontal or vertical axis.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+###################################################
+
+
+procedure(reflect2d)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Reflect 2D", -1, -1, 208, 122)
+
+      # Define all controls with basic parameters
+       radiobuttons(1, 52, 31, 20, "vertical", "vert,horiz", "vert")
+       statictext(2, 131, 29, "right", "Vertical axis")
+       statictext(3, 143, 50, "right", "Horizontal axis")
+       button(4, 12, 88, 50, 24, "Reflect",
+          :reflect_data();)
+       groupbox(5, "Reflect about", 4, 7, 189, 70)
+       button(6, 136, 87, 50, 24, "Exit",
+          closewindow(0);)
+       button(7, 74, 87, 50, 24, "Help",
+          :show_help();)
+
+     # Set other control parameters
+       setpar(n,4,"mode","default")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","reflect2d.htm")
+endproc()
+
+
+####################################################
+# Reflect the plot
+####################################################
+
+procedure(reflect_data)
+
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+      message("Information","No 2D plot data!")
+      return
+   endif
+
+   (w,h) = size(m)
+
+   dir = getpar(0,1,"text")
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   draw2d("false")
+      image(reflect(m,dir),x,y)
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+

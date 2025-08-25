@@ -1,0 +1,83 @@
+procedure(colorbox_test1,verbose,delay)
+ 
+   n = window("Color-box test", 139, 138, 233, 231)
+   colorbox(1, 80, 67, 50, 50, [0,0,0],:setcolor();)
+   showwindow(n)
+   :boxcolor(n)
+   :movebox(n)
+ #  :growbutton(n)
+   pause(1)
+   closewindow(n)
+
+endproc(1,"")
+
+
+procedure(setcolor)
+
+   col = getpar(0,1,"color")
+   col = getcolor(col)
+   if(col[0] != -1)
+      setpar(0,1,"color",col)
+   endif
+
+endproc()
+
+procedure(boxcolor,n)
+
+   setpar(n,1,"color",[255,0,0])
+   pause(0.5)
+   setpar(n,1,"color",[255,255,0])
+   pause(0.5)
+   setpar(n,1,"color",[0,255,0])
+   pause(0.5)
+   setpar(n,1,"color",[0,255,255])
+   pause(0.5)
+   setpar(n,1,"color",[0,0,255])
+   pause(0.5)
+
+endproc()
+
+procedure(movebox,n)
+
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      drawwin(n)
+      pause(0.005)
+   next (theta)
+
+endproc()
+
+procedure(growbox,n)
+
+   setpar(n,1,"x",75);
+   setpar(n,1,"y",50);
+
+   for (w = 50 to 100)
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 100 to 50 step -1)
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 50 to 100)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(0.005)
+  next (w)
+
+   for (w = 100 to 50 step -1)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(0.005)
+  next (w)
+endproc()
+
+ 

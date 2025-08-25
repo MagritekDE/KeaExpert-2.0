@@ -1,0 +1,200 @@
+####################################################################
+# Setup code for making ramped RF pulses
+#
+# rampedrfsetup(channel, ampdB, [frequency], [shape])
+#
+#   channel: 1/2
+#   amplitude: desired maximum amplitude in dB
+#   frequency: optional frequency in MHz
+#   shape: pulse ends shape - "ramp"/"gauss"/"sinebell","sinebell2"
+#
+#   Duration is 50 us
+####################################################################
+
+procedure(rampedrfsetup, channel, ampdB, frequency=0, shape="ramp")
+
+   if(wvFX3Info->mode == "run")
+
+     # Select the parameters according to the channel
+      if(channel == "1" | channel == 1)
+         gateTTL      = 0x04000
+         gateAndRFTTL = 0x04008
+         FPGA_DDS_Pro0 = 0x118E
+         FPGA_DDS_Pro1 = 0x118F
+         FPGA_DDS_Pro2 = 0x1190
+         FPGA_DDS_FTW  = 0x1187
+         FPGA_DDS_ASF  = 0x1189
+         FPGA_DDS_RR   = 0x1196
+        elseif (channel == "2" | channel == 2)
+         gateTTL = 0x00100
+         gateAndRFTTL = 0x00102
+         FPGA_DDS_Pro0 = 0x128E
+         FPGA_DDS_Pro1 = 0x128F
+         FPGA_DDS_Pro2 = 0x1290
+         FPGA_DDS_FTW  = 0x1287
+         FPGA_DDS_ASF  = 0x1289
+         FPGA_DDS_RR   = 0x1296
+      else
+         throw("Invalid RF pulse channel $channel$ (should be one of: 1/2/nb1/nb2)")
+      endif
+      FPGA_Sync = 0x80
+
+      # Ramp shape
+      amplitude = ucsRun:convertTxGain(ampdB)
+      if(shape == "ramp")
+         amp = double(round(linspace(0,amplitude,17)))*4 # Pushed to MSB
+      elseif(shape == "gaussian" | shape == "gauss")
+         x = [0:16]/7 
+         amp = reflect(exp(-x^2))*amplitude*4
+      elseif(shape == "sinebell")
+         x = linspace(0,pi/2,17)
+         amp = sin(x)*amplitude*4
+      elseif(shape == "sinebell2")
+         x = linspace(0,pi/2,17)
+         amp = sin(x)^2*amplitude*4
+      endif
+     # pr sum(amp) # Can use this to normalise the pulse tip angle
+
+      if(frequency == 0)
+         frequency = eval("wvFX3Info->b1FreqTxCh$channel$")
+      endif
+
+      # Pulse frequency 
+      DDSFword = round((frequency * 2^32) / 1000.0)
+      txFreq1 = (DDSFword & 0xFFFF0000) / (2^16)  # AD9910 Tx frequency
+      txFreq2 = (DDSFword & 0x0000FFFF)
+
+      # Optimal delays for writing to DDS RAM
+      d1 = 31d
+      d2 = 32d
+
+      # This delay goes on the last command to make it last a total of 50 us
+      endDelay = 5000 - ((300+45)*4 + (200+15)*2 + 45 + 30 + (31+32)*37)
+
+      # Generate the event table
+      ps = [15d,     FPGA_DDS_Pro0, 0x0000000,         # Set up start and end address to write the whole data to RAM
+            15d,     FPGA_DDS_Pro0, 0x0002009,         # Step rate 32 (128ns), endAddr 36
+            15d,     FPGA_DDS_Pro0, 0x0000000,         # Start addr 0
+            300d,    FPGA_DDS_Pro0, 0x0000001,         # Ramp mode
+          # Write ramp up to DDS ramp register
+            d1,      FPGA_DDS_RR,   amp[0],            
+            d2,      FPGA_DDS_RR,   0x00000000,        
+            d1,      FPGA_DDS_RR,   amp[1],            
+            d2,      FPGA_DDS_RR,   0x00000000,       
+            d1,      FPGA_DDS_RR,   amp[2],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[3],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[4],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[5],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[6],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[7],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[8],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[9],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[10],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[11],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[12],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[13],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[14],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[15],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+          # Write constant levels to DDS ramp register
+            d1,      FPGA_DDS_RR,   amp[16],                      
+            d2,      FPGA_DDS_RR,   0x00000000,
+            d1,      FPGA_DDS_RR,   amp[16],            
+            d2,      FPGA_DDS_RR,   0x00000000,
+            d1,      FPGA_DDS_RR,   amp[16],            
+            d2,      FPGA_DDS_RR,   0x00000000,
+            d1,      FPGA_DDS_RR,   amp[16],            
+            d2,      FPGA_DDS_RR,   0x00000000,
+            d1,      FPGA_DDS_RR,   amp[16],            
+            d2,      FPGA_DDS_RR,   0x00000000,
+          # Write ramp down to DDS ramp register
+            d1,      FPGA_DDS_RR,   amp[15],             
+            d2,      FPGA_DDS_RR,   0x00000000,        
+            d1,      FPGA_DDS_RR,   amp[14],            
+            d2,      FPGA_DDS_RR,   0x00000000,       
+            d1,      FPGA_DDS_RR,   amp[13],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[12],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[11],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[10],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[9],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[8],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[7],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[6],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[5],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[4],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[3],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[2],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[1],            
+            d2,      FPGA_DDS_RR,   0x00000000, 
+            d1,      FPGA_DDS_RR,   amp[0],            
+            d2,      FPGA_DDS_RR,   0x00000000,
+          # Resync 
+            15d,     FPGA_Sync,     0x0000010,     
+            15d,     FPGA_Sync,     0x0000000,  
+          # Profile 0   
+            15d,     FPGA_DDS_Pro0, 0x0000000,         # Set up start and end address to write the whole data to RAM
+            15d,     FPGA_DDS_Pro0, 0x0002003,         # Step rate 32 (128ns), endAddr 15
+            15d,     FPGA_DDS_Pro0, 0x000c000,         # Start addr 0
+            300d,    FPGA_DDS_Pro0, 0x0000001,         # Ramp mode
+          # Profile 1   
+            15d,     FPGA_DDS_Pro1, 0x0000013,         # Set up start and end address to write the whole data to RAM
+            15d,     FPGA_DDS_Pro1, 0x0008805,         # step rate for 100us pulse (0x1388=0d5000)*20ns, endAddr 20
+            15d,     FPGA_DDS_Pro1, 0x0000004,         # Start addr 16
+            300d,    FPGA_DDS_Pro1, 0x0000001,         # Ramp mode
+          # Profile 2   
+            15d,     FPGA_DDS_Pro2, 0x0000000,         # Set up start and end address to write the whole data to RAM
+            15d,     FPGA_DDS_Pro2, 0x0002009,         # Step rate 32 (128ns), endAddr 15
+            15d,     FPGA_DDS_Pro2, 0x0000005,         # Start addr 0
+            300d,    FPGA_DDS_Pro2, 0x0004001,         # Ramp mode
+          # Set frequency
+            15d,     FPGA_DDS_FTW,  txFreq1,     
+            200d,    FPGA_DDS_FTW,  txFreq2,  
+          # Set amplitude
+            15d,     FPGA_DDS_ASF, 0x0000000,     
+            200d,    FPGA_DDS_ASF, 0x0000000, 
+          # Restore profile 0 for normal pulses   
+            15d,     FPGA_DDS_Pro0, 0x0000000,         # Set amplitude
+            15d,     FPGA_DDS_Pro0, 0x0000000,         # Set phase
+            15d,     FPGA_DDS_Pro0, txFreq1,           # Set frequency high word (TODO)
+            endDelay,FPGA_DDS_Pro0, txFreq2]           # Set frequency low word - delay to make 50 us
+         
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 50
+      gSeq->psInfo->command = gSeq->psInfo->command + ["rampedrfsetup,$channel$,$ampdB$,$frequency$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(channel, ampdB, frequency)
+
+   endif
+
+endproc()

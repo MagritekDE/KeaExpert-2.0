@@ -1,0 +1,305 @@
+#############################################################
+# Allow the user to calibrate a spectrum by selecting a point
+# on the frequency axis and specifying a ppm value.
+# In local mode this will change the center ppm frequency.
+# In global mode it will do the same but also change the 
+# B1 frequency by the same amount so next time an experiment
+# is run it will have the same center frequency.
+#############################################################
+
+procedure(calibrateXAxis)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Ensure we are in ppm mode
+   if(curplot("1d")->axes->xppmscale == "false")
+      togglePPM_Hz()
+   endif
+
+   parent = guiwinnr()
+   center = :getCenterFreq()
+   if(center == null)
+     return
+   endif
+   n = :windowdefinition()
+   windowvar(wvOrigCenter,wvParent)
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   wvOrigCenter = center
+   wvParent = parent
+   assignctrls(n)
+   :initialise(center)
+   showwindow(n)
+
+endproc()
+
+#############################################################
+# Define the window interface
+#############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calibrate 1D spectrum", -1, -1, 343, 137)
+
+      # Define all controls with basic parameters
+      button(1, 260, 11, 67, 34, "Select peak to calibrate",
+         :selectPeak();)
+      button(2, 260, 56, 67, 34, "Reset\noffset",
+         ppmOffsetCtrl->text(0);
+         refPPMCtrl->text(0);
+         :updatePlot())
+      button(3, 260, 102, 67, 28, "Close",
+          closewindow(0))
+
+      textbox(4, 135, 30, 50)
+      statictext(5, 211, 33, "right", "ppm")
+      statictext(6, 85, 27, 90, 28, "center", "New frequency for selected peak")
+      statictext(7, 122, 64, "right", "Origin offset")
+      textbox(8, 135, 60, 50)
+      statictext(9, 211, 63, "right", "ppm")
+      button(10, 10, 102, 101, 28, "Save locally",
+         :saveToProcPar();)
+      button(11, 140, 102, 101, 28, "Save globally",
+         :saveGlobally();)
+      groupbox(12, "Parameters", 10, 9, 231, 83)
+
+     # Set other control parameters
+      setpar(n,4,"objID","refPPMCtrl",
+                  "valueID","refPPM",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,8,"objID","ppmOffsetCtrl",
+                  "valueID","ppmOffset",
+                  "type","float",
+                  "range",[-1000,1000])
+
+endproc(n)
+
+#############################################################
+# Get the NMR (B1) frequency from the UI
+#############################################################
+
+procedure(getNMRFrequency)
+
+   try
+      assignlist(getctrlvalues(wvParent))
+      f = eval("b1Freq$nucleus$")
+   catch
+      f = gData->commonPar->b1Freq1H
+   endtry
+
+endproc(f)
+
+#############################################################
+# Returns the central frequency in ppm of the current plot
+# If the plot is in Hz mode then convert to ppm first
+#############################################################
+
+procedure(getCenterFreq)
+
+   cp = curplot("1d")
+
+   if((cp->axes->xppmscale == "false"))
+      togglePPM_Hz()
+   endif
+
+   obj = cp->parent
+   s = obj->uservar
+
+   #assignlist(getctrlvalues(0))
+
+   (x,y) = cp->getdata()
+
+   oldXCenter = (x[-1]+x[1])/2 # Central frequency
+
+endproc(oldXCenter)
+
+#############################################################
+# Intialise the window interface
+#############################################################
+
+procedure(initialise,oldXCenter)
+
+   ppmOffsetCtrl->text(oldXCenter)
+   ppmOffsetCtrl->enable("false")
+   refPPMCtrl->text("0")
+
+endproc()
+
+
+#############################################################
+# Get the current nuclei based on the experiment parameters
+#############################################################
+
+procedure(getNucleus)
+
+   lst = getctrlvalues(wvParent)
+   idx = getlistindex(lst,"b1Freq")
+   if(idx == -1)
+      nucleus = "1H"
+   else
+      nucleus = lst[idx]
+   endif
+
+endproc(nucleus)
+
+
+#############################################################
+# Select a peak, calculate the new offset and update the plot
+#############################################################
+
+procedure(selectPeak)
+
+   if(checkcontrols(0) == "error")
+      return
+   endif
+   xOff = ppmOffsetCtrl->value()
+   xSelect = getx()
+   refPPM = refPPMCtrl->value()
+   newXCenter = xOff+(refPPM-xSelect)
+   ppmOffsetCtrl->text(newXCenter)
+
+   :updatePlot()
+
+endproc()
+
+#############################################################
+# Redraw the plot with the new central frequency
+#############################################################
+
+procedure(updatePlot)
+
+   newXCenter = ppmOffsetCtrl->value
+
+   cp = curplot("1d")
+   obj = cp->parent
+   s = obj->uservar
+
+   (x,y) = cp->trace(0)->getdata()
+   oldXCenter = (x[-1]+x[1])/2 # Central frequency
+
+   sz = size(x)
+   xr = cp->axes->xrange()
+   ylab = cp->ylabel->text
+   tl = cp->title->text
+   (x1,x2,y1,y2) = cp->zoom()
+   
+   s->modified = 1
+   obj->uservar(s)
+
+   x1 = x1+(newXCenter-oldXCenter)
+   x2 = x2+(newXCenter-oldXCenter)
+   x  = x+(newXCenter-oldXCenter)
+   cp->draw("false")
+   cp->rmtrace(0)
+   cp->hold("on")
+   cp->plot(x,y)
+
+   cp->xlabel("Frequency f1 (ppm)")
+
+   cp->zoom(x1,x2,y1,y2)
+   cp->title(tl)
+   cp->ylabel(ylab)
+   cp->hold("off")
+   cp->draw("true")  
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par
+#############################################################
+
+procedure(saveToProcPar)
+
+   xOff = ppmOffsetCtrl->value()
+   :saveReference(xOff,"local")
+   sendmessage("Macro","offset update")
+# Flag the change in the data set
+   cp = curplot("1d")
+   var = cp->parent->uservar
+   var->modified = 1
+   cp->parent->uservar(var)
+   closewindow(0)
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par and ucsNMR.par
+#############################################################
+
+procedure(saveGlobally)
+
+   xOff = ppmOffsetCtrl->value()
+   :saveReference(xOff,"global")
+   sendmessage("Macro","offset update")
+# Flag the change in the data set
+   cp = curplot("1d")
+   var = cp->parent->uservar
+   var->modified = 1
+   cp->parent->uservar(var)
+   closewindow(0)
+
+endproc()
+
+#############################################################
+# Save the new central frequency to proc.par and also 
+# ucsNMR.par if saveMode is global.
+#############################################################
+
+procedure(saveReference, ref, saveMode)
+
+   nucleus = :getNucleus()
+
+   bak = getcwd()
+
+   if(saveMode == "global")
+      b1Freq = :getNMRFrequency()
+      b1Freq = b1Freq + (wvOrigCenter-ref)*b1Freq/1e6
+      b1FreqGlobal = ["b1Freq$nucleus$ = $b1Freq$"]
+     # Update common parameter file with the new frequency
+      dir = "$prefdir$\\SpinsolveParameters\\Common"
+      if(isdir(dir))
+         cd(dir)
+         file = "$gData->specID$Common.par"
+         if(isfile(file))
+            par = load(file)
+            newlst = mergelists(b1FreqGlobal,par)
+            save(file,sortlist(newlst))
+         else
+            print("\n   Missing common parameter file '$file$'\n")
+            return
+         endif
+      endif
+   endif
+
+# Save to procpar temp list
+   calparLocal = ["ppmOffset = $ref$"]
+   path = curplot("1d")->filepath
+   if(isdir(path))
+      cd(path)
+      if(isfile("proc_temp.par"))
+         file = "proc_temp.par"
+         par = load(file)
+      elseif(isfile("proc.par"))
+         file = "proc.par"
+         par = load(file)
+      else
+         file = "proc_temp.par"
+         par = calparLocal
+      endif  
+
+     newlst = mergelists(calparLocal,par)
+     save("proc_temp.par",sortlist(newlst))
+   endif
+
+   cd(bak)
+
+endproc()
+
+
+

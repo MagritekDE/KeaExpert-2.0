@@ -1,0 +1,391 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>acquire</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAcetate, li.MsoAcetate, div.MsoAcetate
+	{mso-style-link:"Balloon Text Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:8.0pt;
+	font-family:"Tahoma","sans-serif";}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, div.MsoListParagraphCxSpFirst
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, div.MsoListParagraphCxSpMiddle
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, div.MsoListParagraphCxSpLast
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.BalloonTextChar
+	{mso-style-name:"Balloon Text Char";
+	mso-style-link:"Balloon Text";
+	font-family:"Tahoma","sans-serif";}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1>gradramp16</h1>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>Generate a ramped gradient/shim pulse for
+the UCS 16 channel shim controller</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>Syntax</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>gradramp16(channel,
+start, end, nSteps, stepDuration)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>This calculates shim values on the fly
+according to the (integer) equation</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New"'>g</span></i><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New"'> = <i>n</i>*(<i>end</i>-<i>start</i>)/(<i>nSteps</i>-1) + <i>start</i>.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>where <i>n</i> takes the values 0 to <i>nSteps</i>-1.</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>Arguments</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>channel........ </span><span
+lang=EN-GB>which shim to send value to. Can be an integer with value 0 ... 15.
+Alternatively can be a variable of the form “</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>nx</span><span lang=EN-GB>”
+where </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>x</span><span
+lang=EN-GB> is an integer greater than 0.</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>start<sup>1</sup>
+......... </span><span lang=EN-GB>the initial shim amplitude. Can be any
+integer should be between -32767 and 32768 (shim resolution is 16 bits).
+Alternatively can be a numeric variable of the form “</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>nx</span><span lang=EN-GB>”,
+or a table variable with the form &quot;tx&quot; where </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>x</span><span lang=EN-GB> is
+an integer greater than 0.</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>end<sup>1</sup>
+........... </span><span lang=EN-GB>the final shim amplitude. Can be any
+integer should be between -32767 and 32768 (shim resolution is 16 bits).
+Alternatively can be a numeric variable of the form “</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>nx</span><span lang=EN-GB>”,
+or a table variable with the form &quot;tx&quot; where </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>x</span><span lang=EN-GB> is
+an integer greater than 0</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>nSteps<sup>2&nbsp;</sup>
+.......</span><span lang=EN-GB>&nbsp;&nbsp; the number steps in the ramp
+between start and end</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New"'>.</span><span lang=EN-GB> Should be a positive
+integer greater than zero or have the variable form “</span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>nx</span><span lang=EN-GB>”
+where </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>x</span><span
+lang=EN-GB> is an integer greater than 0.</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>stepDuration<sup>3</sup>
+..</span><span lang=EN-GB>&nbsp; the duration of each step in the table. Duration
+units should be microseconds and can be a floating point number in these units
+or can take the variable form “dx” where x is an integer greater than 0. </span></p>
+
+<p class=MsoNormal style='margin-left:99.25pt;text-indent:-99.25pt'><span
+lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:32.2pt;text-indent:-18.0pt'><span
+lang=EN-GB>1.</span><span lang=EN-GB style='font-size:7.0pt'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span lang=EN-GB>The shim values should be between -32767 and 32768.
+(Waveform resolution is 16 bits). </span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:32.2pt;text-indent:-18.0pt'><span
+lang=EN-GB>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span lang=EN-GB>Because of the 24 bit integer architecture of
+the DSP there is a limit to the product: (nSteps-1)*(end-start). This number
+should be less than or equal to 2<sup>23</sup></span><span lang=EN-US>. This means
+that if you are going to use the full range of </span><span lang=EN-GB>shim values
+(16 bits) you must use 129 steps or less.</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:32.2pt;text-indent:-18.0pt'><span
+lang=EN-GB>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span lang=EN-GB>The stepDuration value may range from 2 </span><span
+lang=EN-US style='font-size:11.0pt;font-family:Symbol'>m</span><span
+lang=EN-GB>s to 327,670 </span><span lang=EN-US>u</span><span lang=EN-GB>s.</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoListParagraph><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:32.2pt;text-indent:-18.0pt'><span
+lang=EN-GB>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span lang=EN-GB>The first output will occur 3.5 </span><span
+lang=EN-US style='font-size:11.0pt;font-family:Symbol'>m</span><span
+lang=EN-GB>s after the start of the command. The last change will occur (stepDuration-2
+</span><span lang=EN-US style='font-size:11.0pt;font-family:Symbol'>m</span><span
+lang=EN-GB>s) after the end of the command.</span></p>
+
+<p class=MsoNormal style='margin-left:14.2pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>Examples</span></i></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>&nbsp;</span></i></p>
+
+<p class=MsoNormal>This first pulse sequence demonstrates the timing</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>ttlon</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(0x01)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>   </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>gradramp16</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(2,30000,0,5,2) </span><span
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># 5 step 30k
+to 0 ramp. Each step 2 us. Output channel 2.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   </span><span style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>ttloff</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(0x01)</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>After the start of the command (very close to the beginning
+of the TTL pulse) there is a 3.5 <span lang=EN-US style='font-size:11.0pt;
+font-family:Symbol'>m</span>s delay before the initial ramp value is visible.
+Part of this delay is due to the complexity of this command and part is the 2 <span
+lang=EN-US style='font-size:11.0pt;font-family:Symbol'>m</span>s propagation
+delay between the DSP and the shim controller. In this example the last step
+occurs at the end of the command because the step duration is 2 us which is the
+minimum possible. The slow rise and fall times of the shim pulse are caused by
+the limited bandwidth of the shim controller electronics.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><img width=264
+height=215 id="Picture 3" src="gradramp16_files/image001.jpg"
+alt="Description: I:\ALL0012\F0012TEK.BMP"></i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><i><span lang=EN-GB
+style='font-size:11.0pt'>TTL pulse (top), shim controller output (bottom)</span></i></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>The next example demonstrates the sort of
+waveforms which are possible by using a table to control the initial or final
+values:</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New"'>  
+relationships = [...<span style='color:black'>  </span></span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>                    </span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;t1 = [1000:2000:20000]&quot;</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>,</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>                    ...]</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   ...</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>setindex</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(t1,0)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>   </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>loop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(l1,10)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>gradramp16</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(2,0,t1,10,5)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(100)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>gradramp16</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(2,t1,0,10,5)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>delay</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(20)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>      </span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>incindex</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(t1)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>   endloop</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(l1)</span></p>
+
+<p class=MsoNormal><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#780078'>...</span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:black'>&nbsp;&nbsp; </span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt'><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:gray'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>This produces the following waveform on
+channel 2:</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='margin-left:18.0pt;text-align:center'><img
+width=261 height=227 id="Picture 2" src="gradramp16_files/image002.jpg"
+alt="Description: I:\ALL0005\F0005TEK.BMP"></p>
+
+<p class=MsoNormal align=center style='margin-left:18.0pt;text-align:center'><i><span
+lang=EN-GB style='font-size:11.0pt'>Shim controller output current</span></i></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-GB>See also:</span></i><span lang=EN-GB> </span><a
+href="shim16.htm"><span lang=EN-US>shim16</span></a><span lang=EN-US>.</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:35.45pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,455 @@
+############################################################################################################
+# The parabolic class
+#
+# Provides functions and variables to support a parabolic search for an optimal
+# shim.
+############################################################################################################
+
+
+############################################################################################################
+# The constructor for the Parabolic class
+############################################################################################################
+
+procedure(init, self)
+
+   self->Search            = "parabolic:Search"
+   self->Search2           = "parabolic:Search2"
+   self->Search3           = "parabolic:Search3"
+   self->GetShimsToModify  = "parabolic:GetShimsToModify"
+   self->ExtractShimValues = "parabolic:ExtractShimValues"
+   self->FindShimIndex     = "parabolic:FindShimIndex"
+   self->PrintInfo         = "parabolic:PrintInfo"
+   self->PrintShims        = "parabolic:PrintShims"
+   self->WaitRepTime       = "parabolic:WaitRepTime"
+
+   self->iteration       = 0
+   self->nrShims         = 15+1
+   self->shimCurrents    = matrix(self->nrShims)
+   self->shimDeltas      = matrix(self->nrShims)
+   self->shimsToOptimise = matrix(self->nrShims)
+   self->bestCurrents    = null
+
+   self->shortShimNames       = ["","x","y","z",
+                                 "z2","zx","zy","xy","x2y2",
+                                  "z3","z2x","z2y","zxy","zx2y2","x3","y3"]
+   self->shimNames            = ["","xshim","yshim","zshim",
+                                 "z2shim","zxshim","zyshim","xyshim","x2y2shim",
+                                 "z3shim","z2xshim","z2yshim","zxyshim","zx2y2shim","x3shim","y3shim"]
+   self->shimDeltaNames       = ["","delxshim","delyshim","delzshim",
+                                 "delz2shim","delzxshim","delzyshim","delxyshim","delx2y2shim",
+                                 "delz3shim","delz2xshim","delz2yshim","delzxyshim","delzx2y2shim","delx3shim","dely3shim"]
+   self->shimsToOptimiseNames = ["","xgo","ygo","zgo",
+                                "z2go","zxgo","zygo","xygo","x2y2go",
+                                "z3go","z2xgo","z2ygo","zxygo","zx2y2go","x3go","y3go"]
+
+   self->lw0.55  = null
+   self->lw50    = null
+   self->verbose = 1
+   self->lastTime = 0
+   self->startTime = 0
+   self->repTime = 2.1
+   self->started = 0
+
+endproc()
+
+############################################################################################################
+# Copy the shims we are modifying back to the full list
+############################################################################################################
+
+procedure(ExtractShimValues, self, bestShims,shimIndices)
+
+   for(k = 0 to size(shimIndices)-1)
+      self->shimCurrents[shimIndices[k]] = round(bestShims[k])
+   next(k)
+
+endproc()
+
+############################################################################################################
+# Given a shim name find the shim index
+############################################################################################################
+
+procedure(FindShimIndex, self, name)
+
+   sz = size(self->shortShimNames)
+
+   for(k = 1 to sz-1)
+      if(name == self->shortShimNames[k])
+         return(k)
+      endif
+   next(k)
+
+endproc(0)
+
+############################################################################################################
+# Reduce the shim current vectors to just contain those shimvalues we are modifying
+############################################################################################################
+
+procedure(GetShimsToModify,self, shimCurrents,shimDeltas,shimsToUse)
+
+   shimCurrentsToUse = [0]
+   shimDeltasToUse   = [0]
+   shimIndicesToUse  = [0]
+
+   nrShims = size(shimCurrents)
+   for(k = 1 to nrShims-1)
+      if(shimsToUse[k]) 
+         shimCurrentsToUse = join(shimCurrentsToUse, [shimCurrents[k]])
+         shimDeltasToUse = join(shimDeltasToUse, [shimDeltas[k]])
+         shimIndicesToUse = join(shimIndicesToUse, [k])
+      endif
+   next(k)
+
+endproc(shimCurrentsToUse,shimDeltasToUse,shimIndicesToUse)
+
+# Perform a parabolic interpolation on 3 points to find the minimum x value
+procedure(interpolate, x, y)
+
+   x1 = double(x[0])
+   x2 = double(x[1])
+   x3 = double(x[2])
+
+   y1 = double(y[0])
+   y2 = double(y[1])
+   y3 = double(y[2])
+
+   denom = (x1 - x2)*(x1 - x3)*(x2 - x3)
+   A = (x3*(y2 - y1) + x2*(y1 - y3) + x1*(y3 - y2))/denom;
+   B = (x3^2*(y1 - y2) + x2^2*(y3 - y1) + x1^2*(y2 - y3))/denom;
+   C = (x2*x3*(x2 - x3)*y1 + x3*x1*(x3 - x1)*y2 + x1*x2*(x1 - x2)*y3) / denom;
+   Ca = y1-A*x1^2-B*x1
+   Cb = y2-A*x2^2-B*x2
+   Cc = y3-A*x3^2-B*x3
+   
+   if(abs(A) < 1e-10)
+      x0 = x2
+      offset = y2
+      a = 0
+   else
+      x0 = -B/(2*A)
+      offset = C - B^2/(4*A)
+      a = A
+   endif
+
+#   pr(x1,x2,x3)
+#   pr(y1,y2,y3)
+#   pr(1/y1,1/y2,1/y3)
+#
+#   pr A*x1^2+B*x1+C
+#   pr A*x2^2+B*x2+C
+#   pr A*x3^2+B*x3+C
+#   pr A*x0^2+B*x0+C
+#
+#   pr A,B,C
+
+endproc(single(x0), a ,B ,C)
+
+# Print text if in verbose mode 
+procedure(PrintInfo, self, text)
+
+   if(self->verbose)
+      pr("$text$")
+   endif
+
+endproc()
+
+# Print out all the shim currents 
+procedure(PrintShims,self, label, currents, names, shimsToUse)
+
+   szCur = size(currents)
+   szToUse = size(shimsToUse)
+   print("   $label$ [")
+   found = 0
+   for(k = 1 to szCur-1)
+      for(m = 0 to szToUse-1)
+         if(names[k] = shimsToUse[m])
+            if(found == 1)
+               print(",")
+            endif
+            print("I$names[k]$=$currents[k]$")
+            found = 1
+         endif
+      next(k)
+   next(k)
+   print("]\n")
+
+endproc()
+
+############################################################################################################
+# The shim algorithm. 
+############################################################################################################
+
+procedure(Search, self)
+
+   try
+      shimDeltas = self->shimDeltas
+      shimsToUse = self->shimsToOptimise
+      nrShims = size(shimsToUse)
+      lwf = null
+      minLW = 1e6 # Records the best linewidth found during the search
+      
+     # Local shim currents
+      shimCurrents = self->shimCurrents #[0:nrShims]
+      self->bestCurrents = shimCurrents
+
+      self->PrintShims("Start currents:",shimCurrents,self->shortShimNames,shimsToUse)
+     # Loop over the shims to adjust
+      for(k = 0 to nrShims-1)
+
+         name = shimsToUse[k]
+         idx = self->FindShimIndex(name)
+         Ic =  shimCurrents[idx] # Start current
+         dI = shimDeltas[k] # Current delta
+         self->PrintInfo("   Adjusting '$name$' shim: I = $Ic$\n")
+         experimentLabelCtrl->label("Shimming: adjusting '$name$' shim")
+         self->currentShim = struct()
+         self->currentShim->name = name
+         self->currentShim->values  = [Ic]
+         self->currentShim->fit = null
+
+       # Measure center value
+         if(k == 0)
+            self->currentShim->first = 1
+            self->WaitRepTime()
+            (tc,lwc) = self->checkShimQuality(shimCurrents)
+            self->PrintInfo("   Start linewidths (50%,0.55%) ($lwc->lw50,1.2f$,$lwc->lw0.55,1.1f$) Hz\n")
+            minLW = lwc->lw50 
+         else
+            self->currentShim->first = 0
+            tc = tLast
+         endif
+
+         tp = tc
+         tm = tc
+
+        # Adjust the plus and minus current until the target 
+        # function is more than 5% different from the center value
+
+         self->PrintInfo("      Step size is $dI$\n")
+        # Measure shim quality at Ic + dI
+         Ip = Ic + dI
+         shimCurrents[idx] = Ip
+         self->currentShim->values  = join(self->currentShim->values,[Ip])
+         self->WaitRepTime()
+         (tp,lwp) = self->checkShimQuality(shimCurrents)
+
+        # Measure shim quality at Ic - dI
+         Im = Ic - dI  
+         shimCurrents[idx] = Im
+         self->currentShim->values  = join(self->currentShim->values,[Im])
+         self->WaitRepTime()
+         (tm,lwm) = self->checkShimQuality(shimCurrents)
+
+        # See if we need to move sideways to find the best shim
+         if(tc < tm & tc < tp)
+
+          # No need to move sideways
+            self->PrintInfo("   Calculate minimum\n")
+
+         else
+
+            pc = tp-tc 
+            mc = tm-tc 
+
+            if(abs(pc) > abs(mc)) # Shape is -/ or -\
+
+               if(pc < 0) # Need to move in positive direction -\
+               
+                  while(1) # Case 1 - Search to positive
+                     Im = Ic
+                     Ic = Ip
+                     tm = tc
+                     tc = tp
+                     Ip = Ip + dI
+                     self->PrintInfo("      (1) Increasing shim to $Ip$\n")
+                     shimCurrents[idx] = Ip
+                     self->currentShim->values  = join(self->currentShim->values,[Ip])
+                     self->WaitRepTime()
+                     (tp,lwp) = self->checkShimQuality(shimCurrents)
+                     if((tp-tc)/tc >= 0)
+                        exitwhile
+                     endif
+                  endwhile
+
+               else # Need to move in negative direction -/
+
+                  while(1) # Case 2 - Search to negative
+                     Ip = Ic
+                     Ic = Im
+                     tp = tc
+                     tc = tm
+                     Im = Im - dI
+                     self->PrintInfo("      (2) Decreasing shim to $Im$\n")
+                     shimCurrents[idx] = Im
+                     self->currentShim->values  = join(self->currentShim->values,[Im])
+                     self->WaitRepTime()
+                     (tm,lwm) = self->checkShimQuality(shimCurrents)
+                     if((tm-tc)/tc >= 0)
+                        exitwhile
+                     endif
+                  endwhile
+
+               endif
+
+            else # Shape is \- or /-
+
+               if(mc < 0) # Need to move in negative direction /-
+               
+                  while(1) # Case 3 - Search to negative
+                     Ip = Ic
+                     Ic = Im
+                     tp = tc
+                     tc = tm
+                     Im = Im - dI
+                     self->PrintInfo("      (3) Decreasing shim to $Im$\n")
+                     shimCurrents[idx] = Im
+                     self->currentShim->values  = join(self->currentShim->values,[Im])
+                     self->WaitRepTime()
+                     (tm,lwm) = self->checkShimQuality(shimCurrents)
+                     if((tm-tc)/tc >= 0)
+                        exitwhile
+                     endif
+                  endwhile
+
+               else # Need to move in positive direction \-
+
+                  while(1) # Case 4 - Search to positive
+                     Im = Ic
+                     Ic = Ip
+                     tm = tc
+                     tc = tp
+                     Ip = Ip + dI
+                     self->PrintInfo("      (4) Increasing shim to $Ip$\n")
+                     shimCurrents[idx] = Ip
+                     self->currentShim->values  = join(self->currentShim->values,[Ip])
+                     self->WaitRepTime()
+                     (tp,lwp) = self->checkShimQuality(shimCurrents)
+                     if((tp-tc)/tc >= 0)
+                        exitwhile
+                     endif
+                  endwhile
+
+               endif
+
+            endif
+
+         endif
+
+        # Find the best shim by parabolic interpolation and test
+         (Inc, A, B, C) = :interpolate([Im,Ic,Ip],[tm,tc,tp])
+         self->currentShim->fit = [A, B, C]
+         shimCurrents[idx] = round(Inc)
+         self->currentShim->values  = join(self->currentShim->values,[round(Inc)])
+         self->WaitRepTime()
+         (tc,lwf) = self->checkShimQuality(shimCurrents)
+
+         Ic = round(Inc)
+         tLast = tc 
+         self->PrintInfo("      Minimum found at shim value $round(Ic)$ LW = $lwf->lw50$ Hz\n")
+         shimCurrents[idx] = round(Ic)
+
+        # See if this is a better shim if so update best currents
+         if(lwf->lw50 < minLW)
+            minLW = lwf->lw50
+            self->PrintInfo("   Improvement found $minLW$ Hz\n")
+            self->bestCurrents = shimCurrents
+         endif
+
+      next(k)
+
+   # Print out final values
+     self->PrintShims("Best currents:",self->bestCurrents,self->shortShimNames,shimsToUse)
+
+     pr ("   Final linewidths (50%,0.55%) ($lwf->lw50,1.2f$,$lwf->lw0.55,1.2f$) Hz\n")
+
+   catch
+
+      err = lasterror()
+      if(err->type != "Throw")
+         pr err
+         return(null)
+      else 
+         if(err->description == "Abort pressed")          
+            pr "\n   Shimming aborted\n"
+            return(null)
+         else
+            pr "\n   Shimming finishing\n"
+            self->WaitRepTime()
+           (tc,lwf) = self->checkShimQuality(self->bestCurrents)
+            assignlock("wvExpStatus","finish","window")
+            self->PrintShims("Finish currents:",self->bestCurrents,self->shortShimNames,shimsToUse)
+            pr ("   Final linewidths (50%,0.55%) ($lwf->lw50,1.2f$,$lwf->lw0.55,1.2f$) Hz\n")
+         endif
+      endif
+
+   endtry 
+
+ #  experimentLabelCtrl->label("StandbyShim")
+
+# Copy to main shim array
+   self->shimCurrents = self->bestCurrents
+
+endproc(lwf)
+
+# Do a grid search to show the shapes of the shim quality function
+procedure(Search2, self)
+
+   shimDeltas = self->shimDeltas
+   shimsToUse = self->shimsToOptimise
+   nrShims = size(shimsToUse)
+   shimCurrents = self->shimCurrents[0:nrShims-1]
+
+   for(k = 4 to 8)    
+      lwa = matrix(41)
+      cnt = 0
+      for(xshim = -10000 to 10000 step 500)
+         shimCurrents[k] = xshim
+         (result,lw) = self->checkShimQuality(shimCurrents)
+         lwa[cnt] = result
+         cnt = cnt + 1
+         pr "   shim = $xshim$ RMS = $result$\n"
+      next(xshim)
+      (val,pos) = min(lwa)
+      shimCurrents[k] = -10000 + pos*500
+      pr shimCurrents
+   next(k)
+
+   self->checkShimQuality(shimCurrents)
+
+   self->shimCurrents[0:nrShims-1] = shimCurrents   
+
+endproc(self->shimCurrents)
+
+############################################################################################################
+# Swap variables a and b
+############################################################################################################
+procedure(Swap, self, a, b)
+
+endproc(b, a)
+
+############################################################################################################
+# Ensure experiments are equally spaced
+############################################################################################################
+procedure(WaitRepTime, self, init=0)
+
+   if(init == 1)
+      self->startTime = time()
+      self->lastTime = self->startTime
+      return
+   endif
+
+   if(time()-self->lastTime >= self->repTime)
+      print("Increase repetition time to > $time()-self->lastTime,2.2f$ s\n")
+   else   
+      while(time()-self->lastTime < self->repTime)
+         pause(0.001)
+      endwhile
+   endif
+
+   oldTime = self->lastTime
+   self->lastTime = time()
+
+   elapsed = self->lastTime-oldTime
+
+ #  print("Elapsed time = $elapsed,2.2f$ s\n")
+
+endproc()

@@ -1,0 +1,30 @@
+###############################################################
+# A message has been received by Expert to say that another
+# instance is running a batch process. Update the history list
+# and batch list to reflect the progress if not connected and
+# the same SPA number
+###############################################################
+
+procedure(batchInfo, ID, protocol, pos)
+
+   if(gData->connected == 0 & ID == gData->specParameters->SystemID)
+      if(protocol = "Starting")
+         print("\n ----- Batch experiments starting\n")
+         gView->batch->zindex(pos)
+         gBatch->remoteBatchRunning = 1
+         gBatch->remoteBatchIndex = pos
+      elseif(protocol = "Finished")
+         print("\n ----- Batch experiments finished\n")
+         gBatch->remoteBatchRunning = 0
+         gBatch->remoteBatchIndex = 0
+      elseif(protocol == "")
+         gView->batch->zindex(pos)
+         gBatch->remoteBatchIndex = pos
+         print("\n   Batch experiment $ID$ $protocol$ #$pos$ starting\n")
+      else
+         print("\n   Batch experiment $ID$ $protocol$ #$pos$ finished\n")
+      endif
+      gView->loadHistoryList()
+   endif
+
+endproc()

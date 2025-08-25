@@ -1,0 +1,155 @@
+#####################################################################
+# Import the last shim found by the standard software then find and 
+# engage the lock, find the B1 frequency and then calibrate
+#####################################################################
+
+procedure(ImportStandardShim, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   elseif(iskeypressed("control"))
+      lst = gView->batch->list + "ImportStandardShim|"
+      gBatch->displayBatchList(lst)
+      gView->batch->index(size(lst))    
+   else
+      if(parameters == null)
+         parameters = ["refPeakPPM=4.74","lockAndCal=\"yes\""]
+      endif
+      gExpt->addExperiment(getmacropath(),"ImportStandardShim", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# Add the ImportStandardShim command to the batch list
+###########################################################
+
+procedure(addCommand)
+   
+endproc("ImportStandardShim|")
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["lockAndCal","Lock and calibrate","cb","string","no,yes",
+                 "refPeakPPM","Reference freq. (ppm)","tm","float","[\"4.74\",\"7.26\"]"]
+   callback = struct(parameter="refPeakPPM",proc="LockAndCalibrate:paramCallback")
+   plotLayout = listto2d(["pt2"])
+
+endproc(ctrlLayout, plotLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt2","spectrum.pt1"]
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   InitScript(getmacropath(),getmacroname())
+
+   pr("\n----- Import Standard Shim ------\n")
+
+   experimentLabelCtrl->label("Importing Standard Shim and Calibration")
+   try
+      shimLst = setupUtilities:importSpinsolveShims()
+      if(shimLst != null)
+         tempShims = :addLockShims(shimLst)
+         RunExpt("updateShims",tempShims)
+         :fixPreferences(shimLst)
+         InitPlot(["pt1";"pt2"])
+         if(lockAndCal == "yes")
+            gLock->findLock()
+            pr("\n   Finding B1 frequency and calibrating to $refPeakPPM$ ppm ...\n")
+            experimentLabelCtrl->label("Finding f0 and calibrating")
+            RunExpt("FindF0-H",["findFromDefaults = \"yes\"","dwellTime = 1","nrPnts = 8192",
+                                "peakPositionPPM = $refPeakPPM$", "saveData=\"false\"","verbose = 0","filter=\"yes\""])
+            result = RunExpt("FindF0-H",["dwellTime = 200","nrPnts = 16384","saveData=\"false\"",
+                                         "peakPositionPPM = $refPeakPPM$", "verbose = 1","filter=\"no\""])
+            experimentLabelCtrl->label("Standard shim imported, lock and calibration applied, now measuring linewidth ...")
+         else
+            shimLst = setlistvalue(shimLst,"peakPositionPPM","4.74")
+            setupUtilities:calibrate(struct(shimLst))
+            experimentLabelCtrl->label("Standard shim imported, calibration applied, now measuring linewidth ...")
+         endif
+         pr("   Measuring the linewidth ...")
+         result = RunExpt("Proton",["saveData = \"true\"","usePPMScale = \"yes\"","zf=4"],list(parameters))
+         (txt,width1,width2) = setupUtilities:calcLineWidth(result)
+       # Save the shims locally
+         fileName = "$gData->specID$Shim.par"
+         setupUtilities:saveShims(fileName,shimLst,width1)
+         pr("\n----------------- Finished -----------------\n")
+      endif
+   catch
+      pr lasterror()
+      throw("abort")
+   endtry
+
+   EndScript()
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   duration = 18 # Empirically determined
+
+endproc(duration)
+
+########################################################
+# If there are shim offsets for the lock add them to 
+# the shim list since we are setting the shims while 
+# the lock is running.
+########################################################
+
+procedure(addLockShims, shimPar)
+
+   dspPar = gData->specParameters
+   if((dspPar->HardwareCap1 & 2d^27) != 0)
+      assignlist(shimPar)
+      shimPar = setlistvalue(shimPar,"xshim","$xshim+dspPar->xShimLock$")
+      shimPar = setlistvalue(shimPar,"yshim","$yshim+dspPar->yShimLock$")
+      shimPar = setlistvalue(shimPar,"zshim","$zshim+dspPar->zShimLock$")
+   endif
+
+endproc(shimPar)
+
+########################################################
+# Update shims changes the x,y,z shims in the 
+# preferences ot the wrong values. This corrects them
+########################################################
+
+procedure(fixPreferences, shimPar)
+
+   assignlist(shimPar)
+   pref = ucsFiles:loadPref()
+   pref = setlistvalue(pref,"xshim","$xshim$")
+   pref = setlistvalue(pref,"yshim","$yshim$")
+   pref = setlistvalue(pref,"zshim","$zshim$")
+   ucsFiles:savePref(pref)
+   gData->preferences = struct(pref)
+
+endproc()
+

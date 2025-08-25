@@ -1,0 +1,69 @@
+
+###################################################
+#            stats2d.mac
+#
+# Calculate the average and standard
+# deviation and integral of current 2D data
+# Two options are possible:
+#
+# 1. If a rectangle is present analyse the region 
+#    bounded by the rectangle.
+# 2. If no rectangle present use the currently
+#     visible region.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek 2005-2024
+###################################################
+
+procedure(stats2d)
+
+# Check for 2D plot data
+   m = getplotdata("2d")
+   if(m == null)
+      message("Information","No 2D plot data!")
+      return
+   endif
+
+# Check for rectangle
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      ms = m[[x1:x2],[y1:y2]]
+   else
+      (x1,x2,y1,y2) = zoom2d("getargs")
+      ms = m[[x1:x2],[y1:y2]]
+   endif
+
+# Analyse the data
+   :info(ms,x1,y1)
+
+endproc()
+
+##########################################
+# Calculate the average and standard
+# deviation of the matrix m
+##########################################
+
+procedure(info,m,xd,yd)
+
+   (w,h) = size(m)
+   N = w*h
+   s = sum(m)
+   avg = s/N
+   
+   sd = sqrt(sum((m-avg)^2)/(N-1))
+
+   (mx,x,y) = max(real(m))
+   (mn,x,y) = min(real(m))
+
+   pr("\n\n   Statistics for visible 2D data set\n")
+   pr("\n   Location   = ($xd$, $yd$)")
+   pr("\n   Dimension  = $w$ by $h$")
+   pr("\n   Points     = $N$")
+   pr("\n   s.d.       = $sd,2.4g$")
+   pr("\n   average    = $avg,2.3g$")
+   pr("\n   integral   = $s,2.3g$")
+   pr("\n   max (real) = $mx,2.3g$")
+   pr("\n   min (real) = $mn,2.3g$\n")
+
+endproc(avg,sd)

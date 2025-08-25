@@ -1,0 +1,1514 @@
+###############################################################
+#
+# Diffusion Analysis module
+#
+# Version 1.2 for Spinsolve
+# Works in expert mode from the currently
+# selected 1D plot data
+#
+# Copyright 2012-2020 Magritek Ltd
+#
+# Author: C Eccles
+###############################################################
+
+
+procedure(AnalyseDiffusionPlot)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Remember the current plot
+   plt = curplot("1d")
+
+# Define the window and window variables
+   n = :windowdefinition()
+
+   windowvar(wvParentPar,wvWinNr,wvE0,wvDataSymbolColor,
+             wvDataSymbolShape,wvFitCurveCol,wvSpectrumCol,
+             wvCalcDone,wvSaved,wvOldTitle,wvCurPlot,wvPPMK,wvCurTrace)
+   assignctrls(n)
+
+   wvCurPlot = plt
+   wvOldTitle = plt->title->text()
+
+# Intialise some window variables so we can get the parameters
+   wvWinNr = n
+   wvE0 = 0
+   wvCalcDone = 0
+   wvSaved = 0
+   wvPPMK = ""
+   wvCurTrace = 0
+
+# Clear plot data
+   :clearData()
+
+# Load extra colors from plot preferences
+   try
+      par = ucsFiles:loadPref()
+      assignlist(par)
+      wvDataSymbolColor = dataSymbolColor 
+      wvDataSymbolShape = dataSymbolShape
+      wvFitCurveCol  = fitColor 
+      wvSpectrumCol  = spectrumColor 
+   catch
+      wvDataSymbolColor = [255,0,0] 
+      wvDataSymbolShape = "opensquare"
+      wvFitCurveCol  = [0,0,255] 
+      wvSpectrumCol  = [0,128,0] 
+   endtry
+
+# Make NNLS load faster
+   cd("$appdir$\\Macros\\coreMacros")
+   cachemacro("LHInvert.mac","window")
+   cacheproc("true")
+
+# Initialise the GUI parameters and setup
+   :loadParameters()
+   :chooseAlgorithm()
+   :chooseExperiment()
+
+# No edit menu
+   setwindowpar(n,"show_menu","false")
+
+# Set size limits, some window parameters and show the window
+   setwindowpar(n,"sizelimits",[1155,10000,570,10000])
+   setwindowpar(n,"statusbox",50,
+                   "menubar",[71:74],
+                   "show_menu","false",
+                   "titleupdate","false",
+                   "exit_procedure",":exitProcedure()")
+   setwindowpar(n,"focus",1)
+   setpar(n,1,"statusbox",50)
+
+# Disable logbin and weightbin checks
+   setpar(n,76,"enable","false")
+   setpar(n,77,"enable","false")
+   setpar(n,78,"enable","false")
+   setpar(n,79,"enable","false")
+
+   showwindow(n)
+
+   curplot(plt)
+
+endproc(n)
+
+##################################################################
+# Define the window
+##################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("AnalysePGSEPlot (1D NNLS inversion of diffusion data)", -1, -1, 1160, 628, "resizable")
+
+      # Define all controls with basic parameters
+      plot1d(1, 10, 10, "ww-20", "wh*0.5-80")
+      groupbox(2, "Method", 10, "wh-143", 110, 107)
+      statictext(3, 29, "wh-114", "center", "L&&H")
+      statictext(4, 79, "wh-114", "center", "Lexus")
+      radiobuttons(5, 43, "wh-114", 55, "horizontal", "LH,Lexus", "LH",
+           :chooseAlgorithm();)
+      groupbox(6, "Diffusion spectrum parameters", 430, "wh-142", 161, 106)
+      statictext(7, 514, "wh-113", "right", "Min. D (m^2/s)")
+      textbox(8, 523, "wh-118", 56)
+      statictext(9, 514, "wh-89", "right", "Max. D (m^2/s)")
+      textbox(10, 523, "wh-93", 56)
+      statictext(11, 514, "wh-64", "right", "Diffusion steps")
+      textbox(12, 523, "wh-67", 56)
+      groupbox(13, "Analysis Parameters", 600, "wh-142", 131, 106)
+      statictext(14, 661, "wh-113", "right", "Smoothing")
+      statictext(15, 660, "wh-100", "right", "parameter")
+      textbox(16, 673, "wh-110", 44)
+      statictext(17, 658, "wh-79", "right", "Points to ")
+      statictext(18, 654, "wh-66", "right", "analyze")
+      textbox(19, 673, "wh-74", 44)
+      groupbox(20, "Select smoothing parameter", 740, "wh-142", 221, 106)
+      statictext(21, 804, "wh-114", "right", "Minimum")
+      textbox(22, 815, "wh-119", 46)
+      statictext(23, 803, "wh-90", "right", "Maximum")
+      textbox(24, 815, "wh-93", 46)
+      statictext(25, 804, "wh-64", "right", "Nr steps")
+      textbox(26, 815, "wh-67", 46)
+      button(27, 882, "wh-122", 59, 45, "Calculate smoothing curve",
+         :alphaLoop();)
+
+      groupbox(28, "Analysis Parameters", 600, "wh-142", 361, 106)
+      statictext(29, 629, "wh-121", "left", "Target")
+      statictext(30, 646, "wh-99", "right", "Weight")
+      radiobuttons(31, 653, "wh-98", 20, "vertical", "weight,noise", "noise",
+           :lexusTargetChanged();)
+      statictext(32, 646, "wh-78", "right", "SNR")
+      statictext(33, 702, "wh-103", "center", "Weight")
+      statictext(34, 702, "wh-74", "center", "Tolerance")
+      textbox(35, 732, "wh-107", 44)
+      textbox(36, 733, "wh-77", 44)
+      statictext(37, 906, "wh-121", "left", "Algorithm")
+      statictext(38, 932, "wh-98", "right", "URF")
+      statictext(39, 932, "wh-79", "right", "Asymp")
+      radiobuttons(40, 939, "wh-98", 20, "vertical", "urf,asym", "asym")
+      statictext(41, 813, "wh-81", "center", "Points to ")
+      textbox(42, 845, "wh-77", 44)
+      statictext(43, 813, "wh-67", "center", "analyze")
+      statictext(44, 813, "wh-103", "center", "RSig")
+      textbox(45, 845, "wh-107", 44)
+
+      button(46, "ww-74", "wh-140", 61, 32, "Calculate Spectrum",
+         :processData();)
+      button(47, "ww-74", "wh-66", 61, 32, "Close",
+         :exitProcedure();)
+      button(48, "ww-144", "wh-103", 61, 32, "Load data",
+         :loadSpectralData();)
+      button(49, "ww-144", "wh-140", 61, 32, "Save data",
+         :saveSpectralData();)
+      statusbox(50)
+      button(51, "ww-144", "wh-66", 61, 32, "Clear data",
+         :clearData();)
+      plot1d(52, 10, "wh*0.5-70", "ww*0.6667-10", "wh*0.5-85")
+      groupbox(53, "PGSE parameters", 300, "wh-142", 121, 106)
+      textbox(54, 370, "wh-118", 40)
+      plot1d(55, "ww*0.66667", "wh*0.5-70", "ww*0.3333-10", "wh*0.5-85")
+      button(56, "ww-74", "wh-103", 61, 32, "Help",
+         help("Macros\\NNLS","AnalysePGSEPlot.htm");)
+      progressbar(57, 970, "wh-136", 16, 100, "vertical")
+      textbox(58, 370, "wh-93", 40)
+      textbox(59, 370, "wh-67", 40)
+      statictext(60, 365, "wh-115", "right", "DELTA (ms)")
+      statictext(61, 365, "wh-90", "right", "delta (ms)")
+      statictext(62, 365, "wh-64", "right", "ramp (ms)")
+      groupbox(63, "Variable", 210, "wh-143", 81, 107)
+      statictext(64, 260, "wh-119", "right", "All")
+      statictext(65, 260, "wh-99", "right", "Gradient")
+      radiobuttons(66, 265, "wh-120", 20, "vertical", "All,Gradient,DELTA,delta", "All",
+           :chooseVariable();)
+      statictext(67, 260, "wh-80", "right", "DELTA")
+      statictext(68, 260, "wh-61", "right", "delta")
+      menu(69, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+                "Reduce vertical\tShift+down", func1d("reduce vertical"),
+                "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+                "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+      menu(70, "Move", "Move up\tCtrl+up", func1d("move up"),
+                "Move down\tCtrl+down", func1d("move down"),
+                "Move right\tCtrl+right", func1d("move right"),
+                "Move left\tCtrl+left", func1d("move left"))
+      menu(71, "Edit", "Copy Plot\tCtrl+C", func1d("copy plot"),
+                "Copy all plots as image\tShift+C", :copyAllPlots())
+      menu(72, "View", "Show &data under cursor\tCtrl+D", func1d("display data"),
+                "&Select a rectangular region\tCtrl+R", func1d("select region"),
+                "&Move plot\tCtrl+M", func1d("drag plot"),
+                "Separator", ,
+                "&Zoom a region\tCtrl+Z", func1d("zoom region"),
+                "Show &last region\tCtrl+L", func1d("last region"),
+                "Display &all data\tCtrl+A", func1d("full region"),
+                "Separator", ,
+                "Pull_right", 69,
+                "Pull_right", 70)
+      menu(73, "Calculate", "Integrate peak\tCtrl+P", :integrateRegion())
+      menu(74, "Help", "PGSE Analysis help\tCtrl+H", help("Macros\\NNLS","AnalysePGSEPlot.htm"))
+      menu(75, "&BkgMenu", "Log/linear display", :toggleLogLinX(plot2))
+      checkbox(76, 92, "wh-88", "no,yes", "yes",
+           :logbinCallBack();)
+      statictext(77, 85, "wh-88", "right", "Log-bin data")
+      checkbox(78, 92, "wh-64", "no,yes", "yes")
+      statictext(79, 57, "wh-64", 60, 16, "center", "Weight bins")
+      textbox(80, 370, "wh-119", 40)
+      statictext(81, 365, "wh-115", "right", "Grad (T/m)")
+      statictext(82, 903, "wh-64", "right", "Slope")
+      textbox(83, 908, "wh-67", 32)
+      groupbox(84, "Experiment", 130, "wh-143", 70, 107)
+      radiobuttons(85, 177, "wh-120", 20, "vertical", "PGSE,SGSE,SGSTE", "PGSE",
+           :chooseExperiment();)
+      statictext(86, 172, "wh-119", "right", "PGSE")
+      statictext(87, 172, "wh-99", "right", "SGSE")
+      statictext(88, 172, "wh-80", "right", "SGSTE")
+
+     # Set other control parameters
+      setpar(n,1,"objID","plot1",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,5,"valueID","fitMode")
+      setpar(n,8,"valueID","x_minimum",
+                  "type","float")
+      setpar(n,10,"valueID","x_maximum",
+                  "type","float")
+      setpar(n,12,"valueID","x_steps",
+                  "type","integer",
+                  "range",[10,512])
+      setpar(n,16,"valueID","alpha",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,19,"valueID","nrPnts",
+                  "type","integer",
+                  "range",[10,10000])
+      setpar(n,22,"valueID","alpha_loop_start",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,24,"valueID","alpha_loop_end",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,26,"valueID","alpha_loop_steps",
+                  "type","integer",
+                  "range",[2,100])
+      setpar(n,31,"valueID","target")
+      setpar(n,35,"valueID","weight",
+                  "type","float",
+                  "range",[1e-006,1000])
+      setpar(n,36,"valueID","tolerance",
+                  "type","float",
+                  "range",[1e-009,1])
+      setpar(n,40,"valueID","algorithm")
+      setpar(n,42,"valueID","nrPntsLexus")
+      setpar(n,45,"valueID","rsig",
+                  "type","float",
+                  "range",[0.01,10])
+      setpar(n,50,"objID","statusCtrl")
+      setpar(n,52,"objID","plot2",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,54,"objID","bigDeltaCtrl",
+                  "valueID","bigDelta",
+                  "type","float")
+      setpar(n,55,"objID","plot3",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,57,"objID","progressCtrl",
+                  "type","float",
+                  "range",[0,100])
+      setpar(n,58,"objID","smallDeltaCtrl",
+                  "valueID","smallDelta",
+                  "type","float")
+      setpar(n,59,"objID","rampTimeCtrl",
+                  "valueID","rampTime",
+                  "type","float")
+      setpar(n,60,"objID","bigDeltaTxtCtrl",
+                  "type","float")
+      setpar(n,61,"objID","smallDeltaTxtCtrl",
+                  "type","float")
+      setpar(n,62,"objID","rampTimeTxtCtrl")
+      setpar(n,64,"objID","allParVarTxtCtrl")
+      setpar(n,65,"objID","gradientVarTxtCtrl")
+      setpar(n,67,"objID","bigDeltaVarTxtCtrl")
+      setpar(n,68,"objID","smallDeltaVarTxtCtrl")
+      setpar(n,66,"objID","exptVariableCtrl",
+                  "valueID","exptVariable")
+      setpar(n,76,"objID","logBinCtrl",
+                  "valueID","logBin")
+      setpar(n,78,"objID","weightBinCtrl",
+                  "valueID","weightBins")
+      setpar(n,79,"objID","weightBinTextCtrl")
+      setpar(n,80,"objID","gradientCtrl",
+                  "valueID","gradient",
+                  "type","float")
+      setpar(n,81,"objID","gradientTxtCtrl",
+                  "type","float")
+      setpar(n,83,"valueID","alpha_loop_slope",
+                  "type","float",
+                  "range",[0,1])
+      setpar(n,85,"objID","experimentCtrl",
+                  "valueID","experiment")
+
+endproc(n)
+
+##################################################################
+# Come here when window is closed
+##################################################################
+
+procedure(exitProcedure)
+
+   if(wvCalcDone == 1 & wvSaved == 0)
+      if(query("Warning","Spectral data has not been saved.\rDo you want to save it?") == "yes")
+         :saveSpectralData()
+      endif
+   endif
+
+   :saveParameters()
+   closewindow(0)
+
+endproc()
+
+##################################################################
+# Read the raw PGSE data set (trace has a name consisting 
+# of a ppm value and raw/fit)
+##################################################################
+
+procedure(getCurrentTraceData, mode)
+
+   plt = wvCurPlot
+   trcLst = plt->tracelist
+   stl = size(trcLst)
+   if(stl == 0)
+      message("Error","No data to invert - select plot trace","error")
+      return(null,null)
+   endif
+   try
+      traceName = curtrace()->name
+      (ppm, type, label) = scanstr(traceName,"%1 %2 '%3'")
+      for(k = 0 to stl-1)
+         trc = trcLst[k]
+         (ppmK, typeK, labelK) = scanstr(plt->trace(trc)->name,"%1 %2 '%3'")
+         if(ppmK == ppm)
+           if(typeK == "fit")
+              if(mode == "Remove old fit")
+                 plt->rmtrace(trc)
+                 plt->rmtext(labelK)
+              endif
+           else
+              (xAxis,yData) = plt->trace(trc)->getdata() 
+               wvPPMK = ppmK 
+               wvCurTrace  = trc
+           endif
+         endif
+      next(k)
+   catch
+    #  pr lasterror()
+    #  message("Error","Incorrectly named PGSE traces","error")
+     (xAxis,yData) = curtrace()->getdata() 
+
+   endtry
+   
+endproc(xAxis,yData)
+
+##################################################################
+# Choose inversion algorithm
+##################################################################
+
+procedure(chooseAlgorithm)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   if(fitMode == "LH")
+      for(k = 28 to 45)
+         setpar(0,k,"visible","false")
+      next(k)
+      for(k = 13 to 27)
+         setpar(0,k,"visible","true")
+      next(k)
+      for(k = 82 to 83)
+         setpar(0,k,"visible","true")
+      next(k)
+   elseif(fitMode == "Lexus")
+      for(k = 13 to 27)
+         setpar(0,k,"visible","false")
+      next(k)
+      for(k = 82 to 83)
+         setpar(0,k,"visible","false")
+      next(k)
+      for(k = 28 to 45)
+         setpar(0,k,"visible","true")
+      next(k)
+
+   endif
+
+   :lexusTargetChanged()
+
+endproc()
+
+##################################################################
+# The user has chosen an experiment - display the possible
+# parameters
+##################################################################
+
+procedure(chooseExperiment)
+
+   var = experimentCtrl->text
+   nr = exptVariableCtrl->ctrlnr
+
+   if(var == "PGSE")
+
+      exptVariableCtrl->visible("false")
+      exptVariableCtrl->options(["All","Gradient","DELTA","delta"])
+      exptVariableCtrl = getobj(0,nr)
+
+      setpar(0,allParVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-119","visible","true")
+      setpar(0,gradientVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-99","visible","true")
+      setpar(0,bigDeltaVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-80","visible","true")
+      setpar(0,smallDeltaVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-61","visible","true")
+
+   elseif(var == "SGSE")
+
+      exptVariableCtrl->visible("false")
+      exptVariableCtrl->options(["All","DELTA","delta"])
+      exptVariableCtrl = getobj(0,nr)
+
+      setpar(0,allParVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-119","visible","true")
+      setpar(0,gradientVarTxtCtrl->ctrlnr,"visible","false")
+      setpar(0,bigDeltaVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-99","visible","true")
+      setpar(0,smallDeltaVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-80","visible","true")
+  
+   elseif(var == "SGSTE")
+
+      exptVariableCtrl->visible("false")
+      exptVariableCtrl->options(["All","delta"])
+      exptVariableCtrl = getobj(0,nr)
+
+      setpar(0,allParVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-119","visible","true")
+      setpar(0,gradientVarTxtCtrl->ctrlnr,"visible","false")
+      setpar(0,bigDeltaVarTxtCtrl->ctrlnr,"visible","false")
+      setpar(0,smallDeltaVarTxtCtrl->ctrlnr,"visible","false","yexp","wh-99","visible","true")
+ 
+   endif
+
+   :chooseVariable()
+
+endproc()
+
+##################################################################
+# Choose the experiment variable
+##################################################################
+
+procedure(chooseVariable)
+
+   var = exptVariableCtrl->text
+
+   if(var == "Gradient")
+
+      gradientTxtCtrl->visible("false")
+      bigDeltaTxtCtrl->visible("true")
+      smallDeltaTxtCtrl->visible("true")
+      rampTimeTxtCtrl->visible("true")
+      gradientCtrl->visible("false")
+      bigDeltaCtrl->visible("true")
+      bigDeltaTxtCtrl->yexp("wh-115")
+      bigDeltaCtrl->yexp("wh-119")
+      smallDeltaCtrl->visible("true")
+      rampTimeCtrl->visible("true")
+
+   elseif(var == "DELTA")
+
+      gradientTxtCtrl->visible("true")
+      bigDeltaTxtCtrl->visible("false")
+      smallDeltaTxtCtrl->visible("true")
+      rampTimeTxtCtrl->visible("true")
+      gradientCtrl->visible("true")
+      bigDeltaCtrl->visible("false")
+      smallDeltaCtrl->visible("true")
+      rampTimeCtrl->visible("true")
+
+   elseif(var == "delta")
+
+      gradientTxtCtrl->visible("true")
+      gradientCtrl->visible("true")
+      bigDeltaTxtCtrl->visible("true")
+      bigDeltaCtrl->visible("true")
+      smallDeltaTxtCtrl->visible("false")
+      smallDeltaCtrl->visible("false")
+      bigDeltaTxtCtrl->yexp("wh-90")
+      bigDeltaCtrl->yexp("wh-93")
+      rampTimeCtrl->visible("true")
+      rampTimeTxtCtrl->visible("true")
+
+   else
+
+      gradientTxtCtrl->visible("false")
+      bigDeltaTxtCtrl->visible("false")
+      smallDeltaTxtCtrl->visible("false")
+      gradientCtrl->visible("false")
+      bigDeltaCtrl->visible("false")
+      smallDeltaCtrl->visible("false")
+      rampTimeCtrl->visible("false")
+      rampTimeTxtCtrl->visible("false")
+
+   endif
+
+endproc()
+
+##################################################################
+# Lexus method changed
+##################################################################
+
+procedure(lexusTargetChanged)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   if(target == "weight")
+      setpar(0,44,"enable","false")
+      setpar(0,45,"enable","false")
+      setpar(0,37,"enable","false")
+      setpar(0,38,"enable","false")
+      setpar(0,39,"enable","false")
+      setpar(0,40,"enable","false")
+   else
+      setpar(0,44,"enable","true")
+      setpar(0,45,"enable","true")
+      setpar(0,37,"enable","true")
+      setpar(0,38,"enable","true")
+      setpar(0,39,"enable","true")
+      setpar(0,40,"enable","true")
+   endif
+
+endproc()
+
+##################################################################
+# Only used for original design
+##################################################################
+
+procedure(moveControls)
+
+   wh = getwindowpar(0,"height")
+   for(k = 28 to 45)
+      y = getpar(0,k,"y")
+      setpar(0,k,"y_exp","wh-$wh-y-188$")
+   next(k)
+
+endproc()
+
+##################################################################
+# Callback for the calculate button
+##################################################################
+
+procedure(processData)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   try
+     t = wvCurPlot->title
+   catch
+      wvCurPlot = curplot("1d")
+   endtry
+
+   progressCtrl->value(0)
+
+   if(fitMode == "LH")
+      D = :processLH()
+   elseif(fitMode == "Lexus")
+      D = processLexus()
+   elseif(fitMode == "Biexp")
+      :biexpFit()
+   elseif(fitMode == "Exp")
+      :expFit()
+   endif
+
+
+endproc(D)
+
+#########################################################
+# Perform L&H NNLS IL for a particular alpha value
+#########################################################
+
+procedure(processLH)
+
+   wvCalcDone = 0
+
+   time(0)
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+# Invert alpha and reduce range by taking log
+   alpha = 10^(8-log10(alpha))
+
+   lst = lst + ["exp_type = \"exp(-t*T)\"",
+                "designMat = \"exp(-xData'*xSpec)\"", 
+                "alpha = $alpha$",
+                "weightBins = \"no\"",
+                "logBin = \"no\""]
+
+   :saveParameters()
+
+# Read the raw PGSE data set
+   (xAxis,yData) = :getCurrentTraceData("Remove old fit")
+   if(xAxis == null)
+      return
+   endif
+
+   origGrad = xAxis
+
+# Check for zero in xaxis
+   if(xAxis[0] == 0)
+      firstElementZero = 1
+      xAxis[0] = xAxis[1]/1e6
+   else
+      firstElementZero = 0
+   endif
+
+# Set up x-axis
+   origY = yData
+   origSz = size(xAxis)
+   yData = real(yData)
+   DELTA = bigDelta
+   delta = smallDelta+rampTime
+   if(experiment == "PGSE")
+      if(exptVariable == "Gradient")
+         qAxis = (xAxis*delta*1e-3*gamma)^2*(DELTA-delta/3)*1e-3
+      elseif(exptVariable == "delta")
+         qAxis = (gradient*xAxis*1e-3*gamma)^2.*(DELTA-xAxis/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2*(xAxis-delta/3)*1e-3
+      else
+         qAxis = xAxis*1e9
+      endif
+   elseif(experiment == "SGSE")
+      if(exptVariable == "delta")
+         qAxis = 2/3*(gradient*gamma)^2*(xAxis*1e-3)^3
+      else
+         qAxis = xAxis*1e9
+      endif
+   elseif(experiment == "SGSTE")
+      if(exptVariable == "delta")
+         qAxis = (gradient*xAxis*1e-3*gamma)^2.*(DELTA+2*xAxis/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2.*(xAxis+2*delta/3)*1e-3
+      else
+         qAxis = xAxis*1e9
+      endif
+   endif
+
+   timeSize = size(qAxis)
+
+   if(min(qAxis) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return()
+   endif
+
+# Calculate the relaxation spectrum
+   tl = getwindowpar(0,"title")
+   setwindowpar(0,"title","$tl$ - L&H calculating ...")
+   (specX,specY,fit,chisq) = LHInvert(qAxis,yData,lst)
+   setwindowpar(0,"title",tl)
+
+# Calculate the best fit curve from the spectrum 
+  (fit,chisq) = LHInvert:calcFit("exp(-t*T)",specX,specY,qAxis,yData)
+
+   if(specY == null)
+      print("Inversion failed - try modifying parameters\n")
+      return(null)
+   endif
+
+   D = :plotData(origGrad,origY,specX,specY,fit,"L&H",firstElementZero)
+
+   curplot(wvCurPlot)
+
+   wvCalcDone = 1
+
+endproc(D)
+
+#########################################################
+# Perform lexus-BRD 
+#########################################################
+
+procedure(processLexus)
+
+   wvCalcDone = 0
+
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   if(target == "weight")
+      d = lexus_sqr("S","TARG",0)
+   elseif(target == "noise")
+      d = lexus_sqr("S","TARG",1)
+   endif
+
+   d = lexus_sqr("S","WEIG",weight)
+   d = lexus_sqr("S","TOL",tolerance)
+
+# Nopid algorithm (1) URF (2) Asym
+# d=lexus_sqc("S","NALG","A")can be used
+   if(algorithm == "urf")
+      d = lexus_sqr("S","NALG",1)
+   elseif(algorithm =="asym")
+      d = lexus_sqr("S","NALG",2)
+   endif
+
+# Set rSig
+   d = lexus_sqr("S","RSIG",rsig)
+
+# Max iterations (10-20 is usually fine)
+   d = lexus_sqr("S","MAXI",50)
+
+# Prune (0) None (1) Log  (2) Linear
+   d = lexus_sqr("S","PRMO",1)
+   if(nrPntsLexus > 200)
+      d = lexus_sqr("S","PRPO",200)
+   else
+      d = lexus_sqr("S","PRPO",nrPntsLexus)
+   endif
+
+# Get the data
+   plt = wvCurPlot
+   trcLst = plt->tracelist
+   if(size(trcLst) > 0)
+      (dataX,dataY) = plt->trace(trcLst[0])->getdata
+   else
+      message("Error","No data to invert - select plot","error")
+      return
+   endif
+
+   origX = dataX
+
+# Check for zero in xaxis
+   if(dataX[0] == 0)
+      firstElementZero = 1
+      dataX[0] = dataX[1]/1e6
+   else
+      firstElementZero = 0
+   endif
+
+# Set up q-axis
+   origY = dataY
+   origSz = size(dataX)
+   dataY = real(dataY)
+   DELTA = bigDelta
+   delta = smallDelta+rampTime
+
+   if(experiment == "PGSE")
+      if(exptVariable == "Gradient")
+         qAxis = (dataX*delta*1e-3*gamma)^2*(DELTA-delta/3)*1e-3
+      elseif(exptVariable == "delta")
+         qAxis = (gradient*dataX*1e-3*gamma)^2.*(DELTA-dataX/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2*(dataX-delta/3)*1e-3
+      else
+         qAxis = dataX*1e9
+      endif
+   elseif(experiment == "SGSE")
+      if(exptVariable == "delta")
+         qAxis = 2/3*(gradient*gamma)^2*(dataX*1e-3)^3
+      else
+         qAxis = dataX*1e9
+      endif
+   elseif(experiment == "SGSTE")
+      if(exptVariable == "delta")
+         qAxis = (gradient*dataX*1e-3*gamma)^2.*(DELTA+2*dataX/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2.*(dataX+2*delta/3)*1e-3
+      else
+         qAxis = dataX*1e9
+      endif
+   endif
+
+   specX = logspace(x_minimum,x_maximum,x_steps)
+
+   if(min(qAxis) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return()
+   endif
+
+# Make the Kernel matrix (K * spec = data)
+   K = exp(-qAxis'*specX)
+
+# Invert to find spectrum 
+   tl = getwindowpar(0,"title")
+   setwindowpar(0,"title","$tl$ - Lexus calculating ...")
+   try
+      specY = (lexus(K,dataY'))'
+   catch
+      setwindowpar(0,"title",tl)
+      message("Error","Error in Lexus analysis see CLI for details.\rTry modifying the parameters.","error")
+      pr lasterror()
+      return
+   endtry
+
+# Calculate the best fit curve from the spectrum
+  (fit,chisq) = LHInvert:calcFit("exp(-t*T)",specX,specY,qAxis,dataY)
+
+   D =:plotData(origX,origY,specX,specY,fit,"Lexus",firstElementZero)
+
+   setwindowpar(0,"title",tl)
+   curplot(plt)
+
+   wvCalcDone = 1
+
+endproc(D)
+
+#########################################################
+# Save window parameters to preferences file
+#########################################################
+
+procedure(saveParameters)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   mkdir("NNLS")
+   cd("NNLS")
+   save("AnalysePGSEPlot.par",getctrlvalues(0))
+
+endproc()
+
+#########################################################
+# Load window parameters from preferences file
+#########################################################
+
+procedure(loadParameters)
+
+   loaded = 0
+   dir = "$prefdir$\\Other Macros\\NNLS"
+   if(isdir(dir))
+      cd(dir)
+      if(isfile("AnalysePGSEPlot.par"))
+         lst = load("AnalysePGSEPlot.par")
+         setctrlvalues(0,lst)
+         loaded = 1
+      endif
+   endif
+
+   if(loaded == 0)
+      fitMode = "LH"
+      bigDelta = 20
+      smallDelta = 2
+      rampTime = 1
+      x_minimum = 1e-11
+      x_maximum = 1e-8
+      x_steps = 100
+      alpha = 1
+      nrPnts = 100
+      alpha_loop_start = 0.01
+      alpha_loop_end = 10
+      alpha_loop_steps = 10
+      alpha_loop_slope = 0.1
+      weight = 1
+      tolerance = 1e-6
+      rsig = 1.02
+      nrPntsLexus = 100
+      algorithm = "asym"
+      weightBins = "no"
+      logBin = "no"
+      gradient = 0.5
+      setctrlvalues(0,mkparlist())
+   endif
+
+endproc()
+
+
+#########################################################
+# Divide the input data (xIn,yIn) into approx N bins
+# sum the results in each bin and return.
+#########################################################
+
+procedure(linearBin, xIn, yIn, N, minN)
+
+   sz = size(xIn)
+
+   if(N > sz)
+      message("Error","Reduce number of points")
+      abort("")
+   endif
+
+   gs = trunc(sz/N)
+
+   if(gs <= 1)
+      message("Error","Reduce number of points")
+      abort("")
+   endif
+
+   if(N < minN)
+      message("Error","Increase number of points")
+      abort("")
+   endif
+
+   xOut = matrix(N)
+   yOut = matrix(N)
+
+   for(k = 0 to N-1)
+      xOut[k] = sum(xIn[k*gs:(k+1)*gs-1])/gs
+      yOut[k] = sum(yIn[k*gs:(k+1)*gs-1])/gs
+   next(k)
+
+endproc(xOut,yOut)
+
+#########################################################
+# Step smoothing value and determine chisquared in each
+# case. From this we can pick a suitable alpha value 
+#########################################################
+
+procedure(alphaLoop)
+
+   wvCalcDone = 0
+
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   lst = lst + ["exp_type = \"exp(-t*T)\"",
+                "designMat = \"exp(-xData'*xSpec)\"",
+                "weightBins = \"no\"",
+                "logBin = \"no\""]
+
+   time(0)
+
+   progressCtrl->value(0)
+
+# Read the raw PGSE data set
+   (xAxis,yData) = :getCurrentTraceData("Keep old fit")
+   if(xAxis == null)
+      return
+   endif
+
+# Check for zero in xaxis
+   if(xAxis[0] == 0)
+      firstElementZero = 1
+      xAxis[0] = xAxis[1]/1e6
+   else
+      firstElementZero = 0
+   endif
+
+# Data set originals 
+   origX = xAxis
+   origY = yData
+   origSz = size(xAxis)
+
+# Just look at the real part
+   yData = real(yData)
+
+# Set up the xAxis (q-space)
+   DELTA = bigDelta
+   delta = smallDelta+rampTime
+
+   if(experiment == "PGSE")
+      if(exptVariable == "Gradient")
+         qAxis = (xAxis*delta*1e-3*gamma)^2*(DELTA-delta/3)*1e-3
+      elseif(exptVariable == "delta")
+         qAxis = (gradient*xAxis*1e-3*gamma)^2.*(DELTA-xAxis/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2*(xAxis-delta/3)*1e-3
+      else
+         qAxis = xAxis*1e9
+      endif
+   elseif(experiment == "SGSE")
+      if(exptVariable == "delta")
+         qAxis = 2/3*(gradient*gamma)^2*(xAxis*1e-3)^3
+      else
+         qAxis = xAxis*1e9
+      endif
+   elseif(experiment == "SGSTE")
+      if(exptVariable == "delta")
+         qAxis = (gradient*xAxis*1e-3*gamma)^2.*(DELTA+2*xAxis/3)*1e-3
+      elseif(exptVariable == "DELTA")
+         qAxis = (gradient*delta*1e-3*gamma)^2.*(xAxis+2*delta/3)*1e-3
+      else
+         qAxis = xAxis*1e9
+      endif
+   endif
+
+   timeSize = size(qAxis)
+
+   if(min(qAxis) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return()
+   endif
+
+# Initialization for Alpha Loop
+   ns = alpha_loop_steps
+   chsq = matrix(ns)
+   alp = logspace(alpha_loop_start,alpha_loop_end,alpha_loop_steps)
+
+ # Start alpha loop
+   tl = getwindowpar(0,"title")
+   setwindowpar(0,"title","$tl$ - L&H calculating ...")
+   for(n = 0 to ns-1)
+      alpha = 10^(8-log10(alp[n]))
+      lst = setlistvalue(lst,"alpha","$alpha$")
+      (specX,specY,fit,chisq) = LHInvert(qAxis,yData,lst)
+      (fit,chsq[n]) = LHInvert:calcFit("exp(-t*T)",specX,specY,qAxis,yData)
+      setpar(0,50,"text","step $n+1$ of $ns$, SD of residuals = $sqrt(chsq[n]),0.3g$")
+      progressCtrl->value(n*100/(ns-1))
+   next(n)
+   setwindowpar(0,"title",tl)
+
+# Calc s.d. of original data
+   iy = imag(origY)
+   ns = stats1d:getsd(iy[round(origSz/2):])
+
+# Work out knee position (10% slope default)
+   logSmth = log10(alp)
+   logChi = log10(chsq)
+   dx = diff(logSmth)
+   dy = diff(logChi)
+   slope = dy/dx
+   (kneeAlpa,kneeValue) = :findKnee(logSmth,sqrt(chsq),slope,alpha_loop_slope)
+
+# Plot the alpha curve
+   pd = plot1->subplot(1,1)
+  
+   pd->draw("false")
+
+      pd->plot(alp,sqrt(chsq),
+               "tracetype", "lines",
+               "symbolshape", wvDataSymbolShape,
+               "symbolcolor", wvDataSymbolColor,
+               "tracecolor", wvDataSymbolColor)
+
+      minx = alp[0]/timeSize
+      maxx = alp[size(alp)-1]/timeSize
+
+      pd->axes("xmapping","log")
+
+      pd->title("SD of residuals data vs. Smoothing parameter")
+      pd->xlabel("Smoothing parameter")
+      pd->ylabel("SD of residuals")
+
+      if(kneeAlpa != null)
+         symbol = wvDataSymbolShape
+         (symbol,color) = :getKneeSymbol(wvDataSymbolShape,wvDataSymbolColor)
+         pd->hold("on")
+         pd->plot([10^kneeAlpa],[kneeValue],
+               "tracetype", "none",
+               "symbolshape", symbol,
+               "symbolcolor", color)
+         pd->hold("off")
+      endif
+
+      miny = min(sqrt(chsq))
+      maxy = max(sqrt(chsq))
+      dy = maxy-miny
+
+    #  pd->zoom(alp[0],alp[-1],miny-dy/10,maxy+dy/10)
+
+   pd->draw("true")
+
+   if(kneeAlpa != null)
+      optSm = 10^kneeAlpa
+      statusCtrl->text("Time taken = $time(),2.3f$ s : Optimum smoothing = $optSm,2.3f$")
+      pr ("\n   Optimal smoothing parameters = $10^kneeAlpa,2.3f$\n")
+   else
+      optSm = -1
+      statusCtrl->text("Time taken = $time(),2.3f$ s : Optimum smoothing not found: change limits")
+   endif
+
+   curplot(wvCurPlot)
+
+endproc(optSm)
+
+##################################################
+# Save the PGSE spectral data
+##################################################
+
+procedure(saveSpectralData)
+
+   reprocessAndSave = 0
+
+   if(wvCalcDone == 0)
+      message("","No spectrum to save","info")
+      return
+   endif
+
+# Check spectral data is present
+   pd1 = plot1->subplot(1,1)
+   try
+      (x,y) = pd1->trace(0)->getdata() # Get spectrum not limits
+   catch
+      message("","No spectrum to save","info")
+      return
+   endtry
+
+# Select folder
+   folder = getfolder(".","Select folder to save spectral data in")
+   if(folder == "cancel")
+      return
+   endif
+   cd(folder)
+
+# Save the spectrum, residuals and statistics
+   plot1->save("spectrum.pt1") # Save curve as Prospa 1d plot
+   plot2->save("residuals.pt1")
+   plot3->save("statistics.pt1")
+   (x,y) = pd1->trace(0)->getdata() # Get spectrum again
+   save("spectrum.1d",x,y) # Save curve as Prospa 1d file
+   export1dpar("ab","ascii","xyrc","xydata","delimiter","comma")
+   export1d(x,y,"spectrum.csv")  # Save curve as an Excel file
+   ycs = cumsum(y)
+   export1d(x,ycs,"cumulative_spectrum.csv")  # Save curve as an Excel file
+   save("PGSEAnalysis.par",getctrlvalues(0))
+  
+# Flag that we have saved the data
+   wvSaved = 1
+
+endproc()
+
+##################################################
+# Load previously saved PGSE spectral data
+##################################################
+
+procedure(loadSpectralData)
+
+   folder = getfolder(".","Select folder which contains spectral data")
+   if(folder == "cancel")
+      return
+   endif
+   cd(folder)
+
+   if(isfile("spectrum.pt1") & isfile("residuals.pt1") & isfile("statistics.pt1"))
+      pp = getobj(wvWinNr,1)
+      plot1->draw("false")
+      plot2->draw("false")
+      plot3->draw("false")
+   
+         plot1->usedefaults("false")
+         plot1->load("spectrum.pt1")
+         plot1->subplot(1,1)->margins(70,40,15,55)
+         plot1->subplot(2,1)->margins(70,40,25,55)
+   
+         plot2->usedefaults("false")
+         plot2->load("residuals.pt1")
+         plot2->subplot(1,1)->margins(70,40,15,55)
+         plot3->usedefaults("false")
+         plot3->load("statistics.pt1")
+         plot3->subplot(1,1)->margins(70,40,25,55)
+   
+      plot1->draw("true")
+      plot2->draw("true")
+      plot3->draw("true")
+   
+      setctrlvalues(0,load("PGSEAnalysis.par"))
+   else
+     message("Error","No spectral data stored in this folder","error")
+   endif
+
+  
+endproc()
+
+##################################################
+# Clear current PGSE spectral data
+##################################################
+
+procedure(clearData)
+
+   plot1->multiplot(2,1)
+   plot2->multiplot(1,1)
+   plot3->multiplot(1,1)
+
+   rg1 = plot1->subplot(1,1)
+   rg2 = plot1->subplot(2,1)
+   rg3 = plot2->subplot(1,1)
+   rg4 = plot3->subplot(1,1)
+
+   rg1->margins(70,40,15,55)
+   rg2->margins(70,40,25,55)
+   rg3->margins(70,40,15,55)
+   rg4->margins(70,40,25,55)
+
+   rg1->clear()
+   rg2->clear()
+   rg3->clear()
+   rg4->clear()
+
+#   plt = wvCurPlot
+#   trcLst = plt->tracelist
+#   if(size(trcLst) == 2)
+#      plt->rmtrace(1)
+#   endif
+#   plt->title->text(wvOldTitle)
+
+ #  setwindowpar(0,"title","PGSE Analysis")
+
+endproc()
+
+############################################################
+# Get the full y range of two data sets
+############################################################
+
+procedure(fullrange,data1,data2)
+
+   mn1 = min(data1)
+   mx1 = max(data1)
+   mn2 = min(data2)
+   mx2 = max(data2)
+
+   if(mn1 < mn2)
+      mn = mn1
+   else
+      mn = mn2
+   endif
+
+   if(mx1 > mx2)
+      mx = mx1
+   else
+      mx = mx2
+   endif
+
+endproc([mn,mx])
+
+############################################################
+# Plot the relaxation spectrum, the cumulative sum,
+# residuals and residual statistics
+############################################################
+
+
+procedure(plotData,origGrad,origY,specX,specY,fit,fitType,firstElementZero)
+
+   origSz = size(origY)
+
+# Modify title text of corrected
+   txt1 = "Cumulative"
+   txt2 = "Relaxation spectrum"
+
+# Work out the porosity based on the cumulative sum of the spectrum
+   cumspec = cumsum(specY)
+   wvE0 = cumspec[-1]
+   scale = 1
+
+   plot1->draw("false")
+
+# Plot relaxation spectrum
+      pd = plot1->subplot(1,1)
+      pd->plot(specX,specY*scale,
+             "symbolshape","none",
+             "tracetype", "lines", 
+             "tracecolor", wvSpectrumCol,
+             "tracewidth",2) 
+      pd->hold("on")
+     # Calculate y range for PGSE limits
+      minY = min(specY*scale)
+      maxY = max(specY*scale)
+      rng = (maxY-minY)*1.2
+      minYf = (maxY+minY)/2-rng/2
+      maxYf = (maxY+minY)/2+rng/2
+      pd->title("Diffusion Spectrum")
+      pd->xlabel("Self Diffusion Coefficient (m^(2)/s)")
+      pd->ylabel("Amplitude")
+      pd->axes("xmapping","log","ymapping","lin")
+      pd->hold("off")
+
+  logMean = 10^(sum(specY/sum(specY).*log10(specX)))
+  linMean = sum(specY.*specX)/sum(specY)
+
+# Plot cumulative sum
+      pd = plot1->subplot(2,1)
+      pd->plot(specX,cumspec*scale,
+               "tracetype", "lines", 
+               "symbolshape", "none",
+               "tracecolor", wvSpectrumCol, 
+               "tracewidth", 2) 
+      pd->axes("xmapping","log")
+      pd->axes("ymapping","lin")
+      pd->ylabel("$txt1$ sum (\G(m)V)")
+      pd->title("$txt1$ sum of spectral data")
+      pd->xlabel("text","Self Diffusion Coefficient (m^(2)/s)")
+   plot1->draw("true")
+
+# Report chi^2
+   iy = imag(origY)
+   ns = stats1d:getsd(iy[round(origSz/2):])
+   res = real(fit-origY)
+   avg = sum(res)/origSz
+   chisq = sum((res-avg)^2)/(origSz-1) 
+   setpar(0,50,"text", "SD of residuals $sqrt(chisq),2.1e$")
+
+# Plot the residuals 
+   plot2->draw("false")
+      pd = plot2->subplot(1,1)
+      tc1 = pd->plot(origGrad,real(origY-fit))
+     var = exptVariableCtrl->text
+      if(var == "Gradient")
+         pd->xlabel("Gradient (T/m)")
+      elseif(var == "DELTA")
+         pd->xlabel("\G(D) (ms)")
+      elseif(var == "delta")
+         pd->xlabel("\G(d) (ms)")
+      else
+         pd->xlabel("\G(g)^(2)G^(2)\G(d)^(2)(\G(D)-\G(d)/3) (10^(9) sm^(-2))")
+      endif
+      pd->ylabel("Residuals (\G(m)V)")
+      pd->title("Residuals (Data-Fit) and data error range")
+   plot2->draw("true")
+
+# Plot the noise stats 
+   res = real(origY-fit)
+   halfIy = iy[round(origSz/2):]
+   rng = :fullrange(res,halfIy)
+
+   (xhist,yhist) = histogram(res,50,rng)
+   (xhistd,yhistd) = histogram(iy,50,rng)
+
+   plot3->draw("false")
+
+      pd = plot3->subplot(1,1)
+      pd->hold("off")
+      pd->plot(xhist,yhist)
+
+      pd->xlabel("Residual (\G(m)V)")
+      pd->ylabel("Occurence")
+      pd->title("Residual and data-noise statistics")
+
+      pd->hold("on")
+      pd->plot(xhistd,yhistd,"color",wvFitCurveCol)
+
+   plot3->draw("true")
+
+# Plot the fit back in the source plot with original data
+
+#   pdExp = wvCurPlot
+#   mapx  = pdExp->axes->xmapping()
+#   mapy  = pdExp->axes->ymapping()
+#   shape = pdExp->trace(wvCurTrace)->symbolshape()
+#   shapeSz = pdExp->trace(wvCurTrace)->symbolsize()
+#   shapeCol = pdExp->trace(wvCurTrace)->realsymbolcolor()
+#   traceCol = pdExp->trace(wvCurTrace)->realcolor()
+#
+#   pdExp->draw("false")
+#
+#      pdExp->hold("on")
+#      fitStr =  "D = $logMean$ m\178/s"
+#      trc = pdExp->plot(origGrad,fit,"tracecolor",shapeCol,"realstyle",1) 
+#      pdExp->trace(trc)->name("$wvPPMK$ fit '$fitStr$'")
+#      var = exptVariableCtrl->text
+#      if(var == "Gradient")
+#         pdExp->xlabel("Gradient (T/m)")
+#      elseif(var == "DELTA")
+#         pdExp->xlabel("\G(D) (ms)")
+#      elseif(var == "delta")
+#         pdExp->xlabel("\G(d) (ms)")
+#      else
+#         pdExp->xlabel("\G(g)^(2)G^(2)\G(d)^(2)(\G(D)-\G(d)/3) (10^(9) sm^(-2))")
+#      endif
+#      pdExp->ylabel("Echo integrals (\G(m)V)")
+#      pdExp->title("Diffusion data with $fitType$ fit")
+#      pdExp->hold("off")
+#      pdExp->axes->xmapping(mapx)
+#      pdExp->axes->ymapping(mapy)
+#      shiftMat = [-0.5,0;0,-3]
+#      xoff = 0.75*origGrad[-1]
+#      yoff = fit[round(0.75*size(fit))]
+#      pdExp->addtext([xoff,yoff],fitStr,shiftMat,"Cambria",8,0,"regular",shapeCol)
+#
+#   pdExp->draw("true")
+
+#   pr("Diffusion coefficient at $wvPPMK$ ppm (linear mean): D = $linMean$ m^2/s\n")
+   pr("Diffusion coefficient at $wvPPMK$ ppm (log mean): D = $logMean$ m^2/s\n")
+
+   setwindowpar(0,"title","Diffusion Analysis")
+
+
+endproc(logMean)
+
+##################################################################
+# Choose Log or linear display on PGSE plot
+##################################################################
+
+procedure(toggleLogLinX,ctrl)
+
+   rg = ctrl->subplot(1,1)
+
+# Make sure zero is not displayed
+   (x,y) = rg->trace(0)->getdata()
+   (x1,x2,y1,y2) = rg->zoom()
+   if(x[0] > 0)
+   
+      mapping = rg->axes->xmapping()
+      if(mapping == "log")
+         rg->axes->xmapping("lin")
+      else
+         rg->axes->xmapping("log")
+         if(x1 <= 0)
+           rg->zoom(x[0],x2,y1,y2)
+         endif
+      endif
+
+   else
+     message("Error","Data set x-axis contains point <= 0.","error")
+   endif
+
+endproc()
+
+###########################################################
+# Integrate a region around a peak
+###########################################################
+
+procedure(integrateRegion)
+
+  assignlist(getctrlvalues(0))
+
+  (x1,y1,x2,y2) = getrect()
+   if(x1 == -1)
+      message("Error","Select a region about a peak first","error")
+      return()
+   endif
+
+# Extract the data from the plot
+  rg = plot1->subplot(1,1)
+  (x,y) = rg->trace(0)->getdata()
+   if(x == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+
+   rg = plot1->subplot(2,1)
+   (xc,yc) = rg->trace(0)->getdata()
+    ylab = rg->ylabel()
+    units = scanstr(ylab->text,"*(%1)")
+    if(units != "%")
+      units = " uV"
+    endif
+   (indx1,indx2) = findindex(x,x1,x2)
+
+   submx = y[[indx1:indx2]]
+   result = sum(submx)
+
+   xlog = logvec(x_minimum,x_maximum,x_steps)
+   xc = xlog[round((indx1+indx2)/2)]
+   frc = result/sum(y)
+   txt = "Center at $xc,1.2g$   Integral = $frc*yc[-1],2.3g$$units$ ($frc*100,2.1f$%)"
+   pr "$txt$"
+   statusCtrl->text(txt)
+
+endproc()
+
+
+###########################################################
+# Copy all plots to the clipboard
+###########################################################
+
+procedure(copyAllPlots)
+
+   y = plot2->y() + plot2->height() + 10
+   savewindow(0,"clipboard",[0,0,0,y],"noframe")
+
+endproc()
+
+###########################################################
+# Get the symbol for the knee point in the alpha curve
+###########################################################
+
+procedure(getKneeSymbol,wvDataSymbolShape,wvDataSymbolColor)
+
+   ss = wvDataSymbolShape
+   sc = wvDataSymbolColor
+   if(ss == "none")
+      symbol = "square"
+      color = [255,0,0]
+   elseif(ss[0:3] == "open")
+      symbol = ss[4:-1]
+      color = sc
+   elseif(ss == "square" | ss == "circle" | ss == "triangle" | ss == "invtriangle" | ss == "diamond")
+      symbol = "open" + ss
+      color = sc
+   else
+      symbol = "square"
+      color = [255,0,0] 
+   endif 
+
+endproc(symbol,color)
+
+#######################################################
+# Find the point in the array slope where the slope
+# is 0.1. Use this position to return the log of the
+# smoothing factor at this point and the standard
+# deviation of the residual at this pooint
+#######################################################
+
+procedure(findKnee, logSmth, stdDev, slope, optimum)
+
+   N = size(slope)
+   for(k = 1 to N-1)
+      if(slope[k] > optimum)
+         frc = (optimum-slope[k-1])/(slope[k] - slope[k-1])
+         xpos = frc*(logSmth[k]-logSmth[k-1])+logSmth[k-1]
+         ypos = frc*(stdDev[k]-stdDev[k-1])+stdDev[k-1]
+         return(xpos,ypos)
+      endif
+   next(k)
+
+endproc(null,null)

@@ -1,0 +1,48 @@
+# Apply a composite PI pulse to channel ch
+procedure(PI, ch, a1, a2, a3, p1, p2, p3, d1, d2, d3, separation=1)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      totDur = d1 + d2 + d3 + 3*pgo + 2*separation
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + totDur
+      gSeq->psInfo->command = gSeq->psInfo->command + ["composite,$ch$,180,$totDur$"]
+
+   endif
+
+endproc()
+
+# Apply a composite PI pulse to channel 1 and 2 simultaneously
+procedure(DualPI, ch1, a11, a12, a13, p11, p12, p13, f1,
+                  ch2, a21, a22, a23, p21, p22, p23, f2, dPulse, separation=1)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      totDur = 3*(dPulse + pgo) + 2*separation
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + totDur
+      gSeq->psInfo->command = gSeq->psInfo->command + ["composite,1+2,180,$totDur$"]
+
+   endif
+
+endproc()
+
+# Apply a composite PI pulse to channel ch
+procedure(PI_2, ch, a1, a2, a3, p1, p2, p3, d1, d2, d3, separation=1)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      totDur = d1 + d2 + d3 + 3*pgo + 2*separation
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + totDur
+      gSeq->psInfo->command = gSeq->psInfo->command + ["composite,$ch$,90,$totDur$"]
+
+   endif
+
+endproc()

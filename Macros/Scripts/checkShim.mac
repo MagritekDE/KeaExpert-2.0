@@ -1,0 +1,118 @@
+#####################################################################
+# Load the last best shim found then find and engage the lock, find
+# the B1 frequency and then calibrate
+#####################################################################
+
+procedure(CheckShim, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return 
+   else
+      parameters = ["longFID=\"no\"","dwellTime = 200"] 
+      gExpt->addExperiment(getmacropath(),"CheckShim", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["longFID","Long acquire time?","cb","string","no,yes",
+                 "dwellTime","Dwell time (us)","tm","float","$gData->dwellTimeMenu$"]
+
+   plotLayout = ["pt1";"pt2"]
+
+   procLayout = struct(buttonLabel = "SNR",     plotName = "pt1", macroToRun = "snrSpectrum()";
+                       buttonLabel = "Phase",   plotName = "pt2", macroToRun = "manualPhase1DSpecial()";
+                       buttonLabel = "SNR",     plotName = "pt2", macroToRun = "snrSpectrum()";
+                       buttonLabel = "ppm/Hz",  plotName = "pt2", macroToRun = "togglePPM_Hz(1)")
+
+
+endproc(ctrlLayout, plotLayout, procLayout)
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo, plotRegion)
+
+   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, guipar)
+
+   InitScript(getmacropath(),getmacroname())
+   try
+      pr("\n------ Check Current Shim ------\n")
+      experimentLabelCtrl->label("Check Shim")
+      (p1,p2) = InitPlot(["pt1";"pt2"])
+      if(guipar->longFID == "yes")
+         nrPnts = 65536
+      else
+         nrPnts = 32768
+      endif
+      dwellTime = guipar->dwellTime
+      result = RunExpt("Proton",["saveData = \"false\"","usePPMScale = \"yes\"","nrPnts = $nrPnts$","zf = 4","dwellTime = $dwellTime$","centerFreqPPM = 4.74"])
+      if(wvExpStatus != "abort")     
+         lwTxt = setupUtilities:calcLineWidth(result)
+         p2->title(lwTxt)
+         result->par->saveData = "true"
+         result->par->wvSaveDataFiles = "yes"
+         ucsFiles:savePlot(p1,"fid.pt1",list(result->par))
+         ucsFiles:savePlot(p2,"spectrum.pt1",list(result->par),"simpleReport")
+         # Correct for loss of first point
+         (x,y) = p1->getdata()
+         gData->refFIDxAxis = x
+         gData->refFIDyAxis = y
+         pr("\n------------------- Finished -------------------\n")
+      endif
+   catch
+      pr lasterror()
+      throw("abort")
+   endtry
+   EndScript()
+
+endproc()
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   if(guipar->longFID == "yes") # Empirically determined
+       duration = 14 
+   else
+       duration = 7
+   endif
+
+   if(guipar->useStartDelay)
+      duration = duration + 10 # Default reptime for Proton
+   endif
+
+   if(guipar->useEndDelay & guipar->longFID == "no")
+      duration = duration + 3 # Default reptime for Proton
+   endif
+
+endproc(duration)
+

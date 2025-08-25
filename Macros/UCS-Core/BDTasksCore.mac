@@ -1,0 +1,45 @@
+procedure(cache,macDir,mac)
+
+# Cache macros
+   ucsCtrl:initCache(getmacropath(),"BDTasksCore.mac")
+   cd("$appdir$\\Macros\\$macDir$")
+   cachemacro(mac,"local")
+
+endproc(macDir,mac)
+
+
+procedure(savePar,guipar,dataDir,macDir,mac)
+
+# Move to preferences directory
+   macParDir = "$prefdir$\\SpinsolveParameters\\Experiments\\$macDir$\\$mac$"
+   mkdir(macParDir)
+   cd(macParDir)
+
+# Save the parameters so the window matches the experiment
+   guipar = setlistvalue(guipar,"windowSize","\"large\"")
+   guipar = setlistvalue(guipar,"position","[10,10]")
+
+   if(isfile("$mac$LastExp.par"))
+      parold = load("$mac$LastExp.par")
+      parnew = mergelists(guipar,parold)
+      save("$mac$LastExp.par",parnew)
+   else
+      save("$mac$LastExp.par",guipar)
+   endif
+
+# Run the macro to get a window image
+   assignlist(guipar)
+   bak = guiwinnr()
+   cd("$appdir$\\Macros\\$macDir$")
+   n = mac()
+   savewindow(n,"$dataDir$\\$expName$\\1\\window.emf")
+   closewindow(n)
+   guiwinnr(bak)
+
+# Restore parameters
+   cd(macParDir)
+   if(isvar("parold"))
+      save("$mac$LastExp.par",parold)
+   endif
+
+endproc()

@@ -1,0 +1,188 @@
+procedure(SaveExpertPlotPreferences,dim)
+
+   curplot(dim)
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Save plot preferences", -1, -1, 338, 70)
+
+      # Define all controls with basic parameters
+       button(1, 10, 10, 81, 51, "Save to\rdefault\rlocation",:saveToDefaultLoc())
+       button(2, 100, 10, 81, 51, "Save to\rselected\rlocation",:saveToSelectedLoc())
+       button(3, 190, 10, 60, 51, "Help",message("Info","No help yet","info"))
+       button(4, 260, 10, 60, 51, "Close",closewindow(0))
+
+endproc(n)
+
+procedure(saveToDefaultLoc)
+
+   dir = getcwd()
+   mkdir("$prefdir$\\SpinsolveParameters\\Core Macros")
+   cd("$prefdir$\\SpinsolveParameters\\Core Macros")
+   :savePref()
+   cd(dir)
+
+endproc()
+
+procedure(saveToSelectedLoc)
+
+   bak = getcwd()
+   dir = getfolder(".","Save plot preferences")
+   if(dir != "cancel")
+       cd(dir)
+      :savePref()
+   endif
+   cd(bak)
+
+
+endproc()
+
+procedure(savePref)
+
+   rg = curplot("1d")
+
+   printtofile("plotPreferences.mac")
+   
+   pr("plotpref(\"antialiasing1d\",\"$rg->antialiasing1d$\")\n")
+   pr("plotpref(\"bordercolor\",$rg->bordercolor$)\n")
+   pr("plotpref(\"bkgcolor\",$rg->bkgcolor$)\n")
+   pr("plotpref(\"axescolor\",$rg->axes->axescolor$)\n")
+   plotpref("antialiasing1d", rg->antialiasing1d)
+   plotpref("bordercolor",rg->bordercolor)
+   plotpref("bkgcolor",rg->bkgcolor)
+   plotpref("axescolor",rg->axes->axescolor)
+
+   pr("plotpref(\"axesfontcolor\",$rg->axes->axescolor$)\n")
+   pr("plotpref(\"axesfontname\",\"$rg->axes->fontname$\")\n")
+   pr("plotpref(\"axesfontcolor\",$rg->axes->fontcolor$)\n")
+   pr("plotpref(\"axesfontsize\",$rg->axes->fontsize$)\n")
+   pr("plotpref(\"axesfontstyle\",\"$rg->axes->fontstyle$\")\n")
+   pr("plotpref(\"axestype\",\"$rg->axes->type$\")\n")
+   pr("plotpref(\"finegridcolor\",$rg->grid->finecolor$)\n")
+   pr("plotpref(\"gridcolor\",$rg->grid->color$)\n")
+   pr("plotpref(\"labelcolor\",$rg->xlabel->color$)\n")
+   pr("plotpref(\"labelfontname\",\"$rg->xlabel->font$\")\n")
+   pr("plotpref(\"labelfontsize\",$rg->xlabel->size$)\n")
+   pr("plotpref(\"labelfontstyle\",\"$rg->xlabel->style$\")\n")
+   pr("plotpref(\"titlecolor\",$rg->title->color$)\n")
+   pr("plotpref(\"titlefontname\",\"$rg->title->font$\")\n")
+   pr("plotpref(\"titlefontsize\",$rg->title->size$)\n")
+   pr("plotpref(\"titlefontstyle\",\"$rg->title->style$\")\n")
+   pr("plotpref(\"zoomrectmode\",\"$rg->zoomrectmode$\")\n")
+   pr("plotpref(\"zoombkgcolor\",$rg->zoombkgcolor$)\n")
+   pr("plotpref(\"zoombordercolor\",$rg->zoombordercolor$)\n")
+
+   plotpref("axesfontcolor",rg->axes->axescolor)
+   plotpref("axesfontname",rg->axes->fontname)
+   plotpref("axesfontcolor",rg->axes->fontcolor)
+   plotpref("axesfontsize",abs(rg->axes->fontsize))
+   plotpref("axesfontstyle",rg->axes->fontstyle)
+   plotpref("axestype",rg->axes->type)
+   plotpref("finegridcolor",rg->grid->finegridcolor)
+   plotpref("gridcolor",rg->grid->gridcolor)
+   plotpref("labelcolor",rg->xlabel->color)
+   plotpref("labelfontname",rg->xlabel->font)
+   plotpref("labelfontsize",abs(rg->xlabel->size))
+   plotpref("labelfontstyle",rg->xlabel->style)
+   plotpref("titlecolor",rg->title->color)
+   plotpref("titlefontname",rg->title->font)
+   plotpref("titlefontsize",abs(rg->title->size))
+   plotpref("titlefontstyle",rg->title->style)
+   plotpref("zoomrectmode",rg->zoomrectmode)
+   plotpref("zoombkgcolor",rg->zoombkgcolor)
+   plotpref("zoombordercolor",rg->zoombordercolor)
+
+   pr("plotpref(\"minorticklength\",$rg->axes->smticksize$)\n")
+   pr("plotpref(\"majorticklength\",$rg->axes->lgticksize$)\n")
+
+   plotpref("minorticklength",rg->axes->smticksize)
+   plotpref("majorticklength",rg->axes->lgticksize)
+
+   closeprint()
+
+   printtofile("marginPreferences1D.mac")
+   try
+      curplot("1d")
+     (left,right,top,base) = windowmargins()   
+      marginspref(1,left,right,top,base)
+    #  pr("curplot(\"1d\")\n")
+      pr("marginspref(1,$left$,$right$,$top$,$base$)\n")
+   catch
+   endtry
+   closeprint()
+
+   printtofile("marginPreferences2D.mac")
+   try
+      curplot("2d")
+     (left,right,top,base) = windowmargins()  
+      marginspref(2,left,right,top,base) 
+    #  pr("curplot(\"2d\")\n")
+      pr("marginspref(2,$left$,$right$,$top$,$base$)\n")
+   catch
+   endtry
+   closeprint()
+
+   printtofile("tracePreferences.mac")
+
+   try
+      trc = curtrace()
+      pr("plotpref(\"symbolshape\",\"$trc->symbolshape$\")\n")
+      pr("plotpref(\"realsymbolcolor\",$trc->realsymbolcolor $)\n")
+      pr("plotpref(\"imagsymbolcolor\",$trc->imagsymbolcolor $)\n")
+      pr("plotpref(\"symbolsize\",$trc->symbolsize$)\n")
+      pr("plotpref(\"tracetype\",\"$trc->tracetype$\")\n")
+      pr("plotpref(\"realcolor\",$trc->realcolor$)\n")
+      pr("plotpref(\"imagcolor\",$trc->imagcolor$)\n")
+      pr("plotpref(\"tracewidth\",$trc->tracewidth$)\n")
+      pr("plotpref(\"realstyle\",$trc->realstyle$)\n")
+      pr("plotpref(\"imagstyle\",$trc->imagstyle$)\n")
+      pr("plotpref(\"errbarcolor\",$trc->ebarcolor$)\n")
+      pr("plotpref(\"errbarfixed\",\"$trc->ebarfixed$\")\n")
+      pr("plotpref(\"errbarsize\",$trc->ebarsize$)\n")
+      pr("plotpref(\"errbarshow\",\"false\")\n") 
+
+      plotpref("symbolshape",trc->symbolshape)
+      plotpref("realsymbolcolor",trc->realsymbolcolor)
+      plotpref("imagsymbolcolor",trc->imagsymbolcolor)
+      plotpref("symbolsize",trc->symbolsize)
+      plotpref("tracetype",trc->tracetype)
+      plotpref("realcolor",trc->realcolor)
+      plotpref("imagcolor",trc->imagcolor)
+      plotpref("tracewidth",trc->tracewidth)
+      plotpref("realstyle",trc->realstyle)
+      plotpref("imagstyle",trc->imagstyle)
+      plotpref("errbarcolor",trc->ebarcolor)
+      plotpref("errbarfixed",trc->ebarfixed)
+      plotpref("errbarsize",trc->ebarsize)
+      plotpref("errbarshow","false") 
+
+      tracepref("symbolshape",trc->symbolshape)
+      tracepref("realsymbolcolor",trc->realsymbolcolor)
+      tracepref("imagsymbolcolor",trc->imagsymbolcolor)
+      tracepref("symbolsize",trc->symbolsize)
+      tracepref("tracetype",trc->tracetype)
+      tracepref("realcolor",trc->realcolor)
+      tracepref("imagcolor",trc->imagcolor)
+      tracepref("tracewidth",trc->tracewidth)
+      tracepref("realstyle",trc->realstyle)
+      tracepref("imagstyle",trc->imagstyle)
+      tracepref("errbarcolor",trc->ebarcolor)
+      tracepref("errbarfixed",trc->ebarfixed)
+      tracepref("errbarsize",trc->ebarsize)
+      tracepref("errbarshow","false") 
+
+   catch
+   endtry
+
+   closeprint()
+   
+
+   message("Information","Plot preferences saved to\r$getcwd()$","info")
+
+endproc()

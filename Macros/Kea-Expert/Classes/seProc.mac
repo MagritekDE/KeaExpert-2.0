@@ -1,0 +1,377 @@
+##############################################
+# Post processing class for SpinsolveExpert
+#
+# V2.xx.xx
+##############################################
+
+
+##############################################
+# Initialiser for the class
+##############################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="   
+   self->default1DControls       = "seProc:default1DControls"
+   self->default2DControls       = "seProc:default2DControls"
+   self->showProcessingControls  = "seProc:showProcessingControls"
+
+
+   self->variableList = "============================================="
+   self->procCtrlStart      = 700      # First post-processing control
+   self->procCtrlEnd        = 899      # Last post-processing control
+   self->procUserCtrlStart  = 800      # First user defined control
+   self->curProcList        = null     # Current list of postprocessing procedures
+  
+endproc()
+
+
+##################################################################
+# Show the processing controls; either 1D or 2D
+##################################################################
+
+procedure(showProcessingControls, self, dim)
+
+   if(nrArgs == 2)
+      if(dim == 0)
+         return
+      endif
+   endif
+
+   wn = gView->wn
+
+# If dim is not given infer it from current visible plot
+   if(nrArgs == 1)
+      if(curplot("1d")->parent->visible() == "true")
+         dim = 1
+      elseif(curplot("2d")->parent->visible() == "true")
+         dim = 2
+      else
+         return
+      endif
+   endif
+
+   wvCurDim = dim
+   gPlot->curDim = dim
+
+   if(dim == 1)
+      dimTxt = "1D"
+   else
+      dimTxt = "2D"
+   endif
+
+# Reset the panel scrollbar position to 0
+   gView->postProcessingPanel->panelset(0)
+
+# Remove any existing controls from the panel
+   for(k = self->procCtrlStart to self->procCtrlEnd) 
+      if(isobj(0,k))
+         rmobj(0,k)
+      endif
+   next(k)
+
+# Load default 1D or 2D controls
+# Key parameters are:
+# buttonLabel: text to go on button
+# tooltip: tool tip for button
+# macroToRun: callback procedure/macro
+# iconFile: icon filename for button
+   if(dim == 1)
+      defaultCtrls = self->default1DControls()
+   else
+      defaultCtrls = self->default2DControls()
+   endif
+   (nrCols,nrRows) = size(defaultCtrls)
+
+# Start adding controls
+   seteditwin(wn,"fast")
+
+    try
+      ctrlNr = self->procCtrlStart
+      tabNr = self->procCtrlStart
+      cnt = 0
+      buttonWidth = 44
+      buttonHeight = 27
+      yPos = 5
+      xPos = 5
+      for(k = 0 to nrRows-1)
+         plotName = "" # Initialise parameters
+         buttonLabel = ""
+         toolTip = ""
+         macroToRun = ""
+         macroFolder = gData->pexDir
+         iconFile = ""
+         assignlist(defaultCtrls[~,k]) # Get parameters for this button
+         macroToRun = "cd(\"$macroFolder$\");" + macroToRun
+         button(ctrlNr+cnt,xPos,yPos,buttonWidth,buttonHeight,buttonLabel) # Button
+         setpar(wn,ctrlNr+cnt,"procedure",macroToRun, # Callback
+                             "tooltip",toolTip,      # Tooltip
+                             "tab_number",tabNr)     # Tab number
+
+         if(buttonLabel != "Save" & buttonLabel != "Export")
+             setpar(wn,ctrlNr+cnt,"active","true")
+             setpar(wn,ctrlNr+cnt,"enable","true")
+         else
+            if(wvExpStatus == "idle")
+               setpar(wn,ctrlNr+cnt,"enable","true")
+            else
+               setpar(wn,ctrlNr+cnt,"enable","false")
+            endif
+         endif
+
+        bak = getcwd()
+         dir = "$gData->pexDir$\\Other Macros\\Bitmaps"
+         if(isdir(dir))
+            cd(dir)
+            if(isfile(iconFile))  
+               setpar(wn,ctrlNr+cnt,"icon",iconFile) # Icon
+            endif
+            cd(bak)
+         endif
+         yPos = yPos + 35
+         cnt = cnt + 1
+         tabNr = tabNr + 1
+      next(k)
+
+   # Check for user defined processing controls
+   # Key parameters are:
+   # plotName: pt1, pt2, ... pt6, ...im1, im2 .. im4
+   # buttonLabel: text to go on button
+   # tooltip: tool tip for button
+   # macroToRun: callback procedure/macro
+   # iconFile: icon filename for button
+
+      if(self->curProcList != null)
+         ctrlNr = self->procUserCtrlStart
+         curPlotID = gPlot->getPlotID(curplot(dimTxt)) # Could be simplified
+
+         if(vartype(self->curProcList) == "list2d")
+            (nrCols,nrRows) = size(self->curProcList)
+            divider(ctrlNr,xPos,yPos,40,3,"horiz") 
+            setpar(wn,ctrlNr,"enable","false")
+            yPos = yPos + 12
+            cnt = 0
+            for(k = 0 to nrRows-1)
+               plotName = "" # Initialise parameters
+               buttonLabel = ""
+               toolTip = ""
+               macroToRun = ""
+               macroFolder = gData->pexDir
+
+               iconFile = ""
+               active = "false"
+               assignlist(self->curProcList[~,k]) # Get parameters for this button
+
+               macroToRun = "cd(\"$macroFolder$\");" + macroToRun
+               if((plotName == curPlotID)) # Only make button if matching plot is displayed
+                  button(ctrlNr+cnt+1,xPos,yPos,buttonWidth,buttonHeight,buttonLabel) # Button
+                  setpar(wn,ctrlNr+cnt+1,"procedure",macroToRun, # Callback
+                                        "tooltip",toolTip, # Tooltip
+                                        "tab_number",tabNr) # Tab number
+                  if(active == "true")
+                      setpar(wn,ctrlNr+cnt+1,"active","true")
+                      setpar(wn,ctrlNr+cnt+1,"enable","true")
+                  else
+                     if(wvExpStatus == "idle")
+                        setpar(wn,ctrlNr+cnt+1,"enable","true")
+                     else
+                        setpar(wn,ctrlNr+cnt+1,"enable","false")
+                     endif
+                  endif
+  
+                  bak = getcwd()
+                  dir = "$gData->pexDir$\\Other Macros\\Bitmaps"
+                  if(isdir(dir))
+                     cd(dir)
+                     if(isfile(iconFile))  
+                        setpar(wn,ctrlNr+cnt+1,"icon",iconFile) # Icon
+                     endif
+                     cd(bak)
+                  endif
+                  yPos = yPos + 35
+                  cnt = cnt + 1
+                  tabNr = tabNr + 1
+               endif
+            next(k)
+
+         elseif(vartype(self->curProcList) == "structure_array")
+
+            divider(ctrlNr,xPos,yPos,40,3,"horiz") 
+            setpar(wn,ctrlNr,"enable","false")
+            yPos = yPos + 12
+            cnt = 0
+            for(k = 0 to size(self->curProcList)-1)
+
+               plotName = "" # Initialise parameters
+               buttonLabel = ""
+               toolTip = ""
+               macroToRun = ""
+               macroFolder = gData->pexDir
+               iconFile = ""
+               active = "false"
+
+               sArray = self->curProcList # Extract the new parameters for this button
+               sItem = sArray[k]
+
+               if(size(sItem) > 0)
+
+                  assignstruct(sItem) 
+                  macroToRun = "cd(\"$macroFolder$\");" + macroToRun
+                  if((plotName == curPlotID)) # Only make button if matching plot is displayed
+                     button(ctrlNr+cnt+1,xPos,yPos,buttonWidth,buttonHeight,buttonLabel) # Button
+                     setpar(wn,ctrlNr+cnt+1,"procedure",macroToRun, # Callback
+                                           "tooltip",toolTip, # Tooltip
+                                           "tab_number",tabNr) # Tab number
+                     if(active == "true")
+                         setpar(wn,ctrlNr+cnt+1,"active","true")
+                         setpar(wn,ctrlNr+cnt+1,"enable","true")
+                     else
+                        if(wvExpStatus == "idle")
+                           setpar(wn,ctrlNr+cnt+1,"enable","true")
+                        else
+                           setpar(wn,ctrlNr+cnt+1,"enable","false")
+                        endif
+                     endif
+     
+                     bak = getcwd()
+                     dir = "$gData->pexDir$\\Other Macros\\Bitmaps"
+                     if(isdir(dir))
+                        cd(dir)
+                        if(isfile(iconFile))  
+                           setpar(wn,ctrlNr+cnt+1,"icon",iconFile) # Icon
+                        endif
+                        cd(bak)
+                     endif
+                     yPos = yPos + 35
+                     cnt = cnt + 1
+                     tabNr = tabNr + 1
+                  endif
+
+               endif
+   
+            next(k)
+
+
+         endif
+      endif
+   catch
+      pr lasterror()
+   endtry
+
+# Stop editing panel controls
+  seteditwin(-wn,"fast")
+
+# Add all processing controls to panel
+   for(k = self->procCtrlStart to self->procCtrlEnd) # Add to panel
+      if(isobj(wn,k))
+         setpar(wn,k,"panelparent",gView->postProcessingPanel->ctrlNr)
+      endif
+   next(k)
+# Make them visible
+   for(k = self->procCtrlStart to self->procCtrlEnd) # Make them visible
+      if(isobj(wn,k))
+         setpar(wn,k,"visible","true")
+      endif
+   next(k)
+# Update the panel limits
+   gView->postProcessingPanel->panelupdate("")
+   gView->postProcessingPanel->visible("true")
+
+endproc()
+
+#########################################################
+# Default controls for 1D plots in KeaExpert
+#########################################################
+
+procedure(default1DControls, self)
+
+   layout = ["buttonLabel = \"cursor\"", 
+                "macroToRun = \"func1d(\\\"display data\\\")\"", 
+                "toolTip = \"Cursor will display data point location and value.\"",
+                "iconFile = \"data_select.png\"";
+             "buttonLabel = \"region\"",
+                "macroToRun = \"func1d(\\\"select region\\\")\"",
+                "toolTip = \"Cursor will allow region selection and zooming.\"",
+                "iconFile = \"region_select.png\"";
+             "buttonLabel = \"drag\"",
+                "macroToRun = \"func1d(\\\"drag plot\\\")\"",
+                "toolTip = \"Cursor will allow data set to be dragged.\"",
+                "iconFile = \"drag_plot.png\"";
+             "buttonLabel = \"zoom\"",
+                "macroToRun = \"func1d(\\\"zoom region\\\")\"",
+                "toolTip = \"Zoom the selected area.\"",
+                "iconFile = \"zoom_plot.png\"";
+             "buttonLabel = \"unzoom\"",
+                "macroToRun = \"func1d(\\\"last region\\\")\"",
+                "toolTip = \"Display last region.\"",
+                "iconFile = \"unzoom_plot.png\"";
+             "buttonLabel = \"unzoom\"",
+                "macroToRun = \"DisplayAllData:1D()\"",
+                "toolTip = \"Display all data. Hold down Alt key to force full display\"",
+                "iconFile = \"showall_plot.png\"";
+             "buttonLabel = \"plotwindow\"",
+                "macroToRun = \"1DPlotAnalyser()\"",
+                "toolTip = \"Display the 1D plot in a new window for further analysis or comparison\"",
+                "iconFile = \"plotViewer.png\"";
+             "buttonLabel = \"R/C\"",
+                "toolTip = \"Toggle display between real and complex data.\"",
+                "macroToRun = \"func1d(\\\"toggle imaginary\\\")\"";
+             "buttonLabel = \"Save\"",
+                "toolTip = \"Save the current plot.\"",
+                "macroToRun = \"gPlot->savePlotData()\"";
+             "buttonLabel = \"Export\"",
+                "toolTip = \"Export data in current plot.\"",
+                "macroToRun = \"exportData(\\\"1d\\\")\""]
+
+endproc(layout)
+
+#########################################################
+# Default controls for 2D plots in KeaExpert
+#########################################################
+
+procedure(default2DControls, self)
+
+   layout = ["buttonLabel = \"cursor\"", 
+                "macroToRun = \"func2d(\\\"display data\\\")\"", 
+                "toolTip = \"Cursor will display data point location and value.\"",
+                "iconFile = \"data_select.png\"";
+             "buttonLabel = \"region\"",
+                "macroToRun = \"func2d(\\\"select region\\\")\"",
+                "toolTip = \"Cursor will allow region selection and zooming.\"",
+                "iconFile = \"region_select.png\"";
+             "buttonLabel = \"drag\"",
+                "macroToRun = \"func2d(\\\"drag plot\\\")\"",
+                "toolTip = \"Cursor will allow data set to be dragged.\"",
+                "iconFile = \"drag_plot.png\"";
+             "buttonLabel = \"Zoom\"",
+                "macroToRun = \"func2d(\\\"zoom region\\\")\"",
+                "toolTip = \"Zoom the selected area.\"",
+                "iconFile = \"zoom_plot.png\"";
+             "buttonLabel = \"Last Zoom\"",
+                "macroToRun = \"func2d(\\\"last region\\\")\"",
+                "toolTip = \"Restore the last selected area.\"",
+                "iconFile = \"unzoom_plot.png\"";
+             "buttonLabel = \"Show All\"",
+                "macroToRun = \"DisplayAllData:2D()\"",
+                "toolTip = \"Display all data. Hold down Alt key to force full display\"",
+                "iconFile = \"showall_plot.png\"";
+             "buttonLabel = \"colorscale\"",
+                "macroToRun = \"func2d(\\\"toggle colorbar\\\")\"", 
+                "toolTip = \"Toggle a colorscale.\"",
+                "iconFile = \"colorscale.png\"";
+             "buttonLabel = \"display\"",
+                "macroToRun = \"2DDisplayControls()\"", 
+                "toolTip = \"Modify the display mode.\"",
+                "iconFile = \"contour.png\"";
+             "buttonLabel = \"copyToViewer\"",
+                "macroToRun = \"2DPlotViewer()\"", 
+                "toolTip = \"Display rows and columns or waterfall plot.\"",
+                "iconFile = \"imageViewer.png\"";
+             "buttonLabel = \"Save\"",
+                "toolTip = \"Save the current image.\"",
+                "macroToRun = \"gPlot->savePlotData()\"";
+             "buttonLabel = \"Export\"",
+                "toolTip = \"Export data in current image.\"",
+                "macroToRun = \"exportData(curplot())\""]
+
+endproc(layout)

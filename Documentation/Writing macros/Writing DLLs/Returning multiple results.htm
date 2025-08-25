@@ -1,0 +1,191 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>Returning multiple results</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>Returning multiple results</span></b></p>
+
+<p class=MsoNormal><b><span lang=EN-NZ>&nbsp;</span></b></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Occasionally you
+may wish to write a command which returns multiple results. The following
+example (also found in exampleRun.dll) converts a number from cartesian to
+polar coordinates, returning the magnitude and phase values:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>/*********************************************************************************</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp; This procedure converted a number in cartesian
+coordinates (x,y) </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;&nbsp; into polar coordinates (r,theta)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>*********************************************************************************/</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:blue'>short</span><span style='font-size:9.0pt;font-family:"Courier New"'>
+CartesianToPolar(<span style='color:blue'>char</span> *parameters)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>{</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>short</span> nrArgs;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>float</span> x,y;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>float</span> mag,theta;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Extract arguments</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>if</span>((nrArgs =
+ArgScan(parameters,2,&quot;x,y&quot;,&quot;ee&quot;,&quot;ff&quot;,&amp;x,&amp;y))
+&lt; 0)</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
+<span style='color:blue'>return</span>(nrArgs);&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Calculate polar</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+mag = sqrt(x*x + y*y);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+theta = atan(y/x);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New";
+color:green'>// Return result to Prospa</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+returnVar[1].MakeAndSetFloat(mag);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+returnVar[2].MakeAndSetFloat(theta);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+NumberReturnedValues(2);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+<span style='color:blue'>return</span>(OK);</span></p>
+
+<p class=MsoNormal><span style='font-size:9.0pt;font-family:"Courier New"'>}</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>To use this command you can type:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&gt; </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:#780078'>ctop</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'>(3,4)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   5   0.927295</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>or</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:teal'>&gt;</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> (m,t) = </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:#780078'>ctop</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>(3,4)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>&gt; </span><span style='font-size:10.0pt;
+font-family:"Courier New";color:green'>pr</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'> (</span><span style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;mag = $m$, theta = $t$\n&quot;</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-autospace:none'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>       </span><span style='font-size:
+10.0pt;font-family:"Courier New";color:green'>mag</span><span style='font-size:
+10.0pt;font-family:"Courier New";color:black'> = 5, theta = 0.927295</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-NZ>The only difference between this example
+and the previous one is that the results are stored in the Prospa global
+variables returnVar[1] and returnVar[2] instead of <i>ans</i>. If you wish to
+return more than 2 variables, simply increase the index number i.e. <i>1</i>, <i>2</i>,
+<i>3</i> ... (note that it is 1 based not zero as usually the case in C). Up to
+50 variables can be returned from a single command.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

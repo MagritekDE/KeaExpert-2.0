@@ -1,0 +1,305 @@
+####################################################
+#                  integrate2dStrip.mac
+#
+# Integrate a full vertical or horizontal strip
+# in the 2D plot region
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek April 2012
+#
+#####################################################
+
+
+####################################################
+# Integrate a region of the current 2D data set
+####################################################
+
+procedure(integrate2dstrip)
+
+   n = :windowdefinition()
+   :update_gui()
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Integrate 2D Strip", -1, -1, 336, 124)
+
+      # Define all controls with basic parameters
+       statictext(1, 148, 43, "left", "Left")
+       button(2, 254, 90, 52, 24, "Exit",
+          closewindow(0);)
+       textbox(3, 178, 39, 38)
+       button(4, 101, 90, 63, 24, "Use limits",
+          :useLimits();)
+       groupbox(5, "Strip location", 135, 4, 185, 78)
+       button(6, 183, 90, 52, 24, "Help",
+          :show_help();)
+       statictext(7, 90, 30, "right", "Integrate rows")
+       statictext(8, 89, 49, "right", "Integrate cols")
+       radiobuttons(9, 94, 32, 20, "vertical", "rows,columns", "rows",
+            :update_gui();)
+       button(10, 19, 90, 63, 24, "Use mouse",
+          :useMouse();)
+       groupbox(11, "Strip direction", 10, 4, 114, 78)
+       statictext(12, 261, 43, "right", "Width")
+       textbox(13, 268, 39, 39)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",6)
+       setpar(n,3,"tab_number",1)
+       setpar(n,4,"tab_number",3)
+       setpar(n,6,"tab_number",5)
+       setpar(n,10,"tab_number",4)
+       setpar(n,13,"tab_number",2)
+
+endproc(n)
+
+ 
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","integrate2dStrip.htm")
+endproc()
+
+####################################################
+# Update gui based on direction
+####################################################
+
+procedure(update_gui)
+
+   dir = getpar(0,9,"text")
+   if(dir == "rows")
+      setpar(0,1,"text","Left")
+      setpar(0,12,"text","Width")
+   else
+      setpar(0,1,"text","Base")
+      setpar(0,12,"text","Height")
+   endif
+
+endproc()
+
+####################################################
+# Allow the user to integrate the data set
+# by selecting the limits with the mouse
+####################################################
+
+procedure(useMouse)
+
+# Extract the data from the plot
+   (mIn,xr,yr) = getplotdata("2d")
+   if(mIn == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(mIn)
+   type = vartype(mIn)
+
+# Get strip direction   
+   dir = getpar(0,9,"text")
+
+# Record plot parameters
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+
+# Integrate rows ###################
+   if(dir == "rows")
+
+      x = [0:1:w-1]
+      title("Select left side of region")
+      x1 = getxy("vert")
+      title("Select right side of region")
+      x2 = getxy("vert")
+      title("Processing ...")
+
+   # Swap if chosen in wrong order
+      if (x1 > x2)
+         swapvar(x1,x2)
+      endif
+
+   # Update GUI
+      setpar(0,3,"text",x1)
+      setpar(0,13,"text",x2-x1+1)
+
+   # Integrate the data
+      if(type = "cmatrix2d")
+         mOut = cmatrix(h)
+         for(y = 0 to h-1)
+            mOut[y] = integvector(x,real(mIn[~,y]),x1,x2)+i*integvector(x,imag(mIn[~,y]),x1,x2)
+         next(y)
+      else
+         mOut = matrix(h)
+         for(y = 0 to h-1)
+            mOut[y] = integvector(x,mIn[~,y],x1,x2)
+         next(y)
+      endif
+
+   else
+
+      y = [0:1:h-1]
+      title("Select top side of region")
+      y1 = getxy("horiz")
+      title("Select bottom side of region")
+      y2 = getxy("horiz")
+      title("Processing ...")
+
+   # Swap if chosen in wrong order
+      if (y1 > y2)
+         swapvar(y1,y2)
+      endif
+
+   # Update GUI
+      setpar(0,3,"text",y1)
+      setpar(0,13,"text",y2-y1+1)
+
+   # Integrate the data
+      if(type = "cmatrix2d")
+         mOut = cmatrix(w)
+         for(x = 0 to w-1)
+            mOut[x] = integvector(y,real(mIn[x,~]'),y1,y2) + i*integvector(y,imag(mIn[x,~]'),y1,y2)
+         next(x)
+      else
+         mOut = matrix(w)
+         for(x = 0 to w-1)
+            mOut[x] = integvector(y,mIn[x,~]',y1,y2)
+         next(x)
+      endif
+ 
+   endif
+
+# Restore 2D title
+   curplot("2d")
+   title(txt)
+
+# Make x axis
+   if(dir == "columns")
+     x = linspace(xr[0],xr[1],w)
+   else
+     x = linspace(yr[0],yr[1],h)
+   endif
+
+# Display integrated data
+   draw1d("false")
+      plot(x,mOut)  
+      title("integrated data")
+      if(dir == "rows")
+         xlabel(ly)
+      else
+         xlabel(lx)
+      endif
+      ylabel("Integral")
+   draw1d("true")
+
+endproc()
+
+
+####################################################
+# Allow the user to integrate the data set
+# by selecting the limits manually
+####################################################
+
+procedure(useLimits)
+
+# Extract the data from the plot
+   (mIn,xr,yr) = getplotdata("2d")
+   if(mIn == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+   (w,h) = size(mIn)
+   type = vartype(mIn)
+
+# Get strip direction   
+   dir = getpar(0,9,"text")
+
+# Get strip dimensions
+   v1 = getpar(0,3,"text")
+   v2 = getpar(0,13,"text")
+   if(v1 == "" | v2 == "")
+     message("Error","Strip location undefined","error")
+     return()
+   endif
+
+# Record plot parameters
+   (txt,lx,ly,nc,mode) = 2dpar:get()
+
+# Integrate rows ###################
+   if(dir == "rows")
+
+      x = [0:1:w-1]
+      x1 = eval(v1)
+      x2 = x1 + eval(v2)-1
+      title("Processing ...")
+
+   # Integrate the data
+      if(type = "cmatrix2d")
+         mOut = cmatrix(h)
+         for(y = 0 to h-1)
+            mOut[y] = integvector(x,real(mIn[~,y]),x1,x2) + i*integvector(x,imag(mIn[~,y]),x1,x2)
+         next(y)
+      else
+         mOut = matrix(h)
+         for(y = 0 to h-1)
+            mOut[y] = integvector(x,mIn[~,y],x1,x2)
+         next(y)
+      endif
+
+# Integrate coumns ###################
+   else
+
+      y = [0:1:h-1]
+      y1 = eval(v1)
+      y2 = y1 + eval(v2)-1
+      title("Processing ...")
+
+   # Integrate the data
+      if(type = "cmatrix2d")
+         mOut = cmatrix(w)
+         for(x = 0 to w-1)
+            mOut[x] = integvector(y,real(mIn[x,~]'),y1,y2) + i*integvector(y,imag(mIn[x,~]'),y1,y2)
+         next(x)
+      else
+         mOut = matrix(w)
+         for(x = 0 to w-1)
+            mOut[x] = integvector(y,mIn[x,~]',y1,y2)
+         next(x)
+      endif
+ 
+   endif
+
+# Restore 2D title
+   curplot("2d")
+   title(txt)
+
+# Make x axis
+   if(dir == "columns")
+     x = linspace(xr[0],xr[1],w)
+   else
+     x = linspace(yr[0],yr[1],h)
+   endif
+
+# Display integrated data
+   draw1d("false")
+      plot(x,mOut)  
+      title("integrated data")
+      if(dir == "rows")
+         xlabel(ly)
+      else
+         xlabel(lx)
+      endif
+      ylabel("Integral")
+   draw1d("true")
+
+
+endproc()
+

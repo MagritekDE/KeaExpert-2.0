@@ -1,0 +1,32 @@
+
+###############################################
+# Display a 2D plot. Arguments are:
+# 
+# plt ... plot region (object)
+# mat ... image to display (matrix)
+# xaxis . x axis (vector)
+# yaxis . y axis (vector)
+# xlab .. xlabel (string)
+# ylab .. ylabel (string)
+# titl .. title (string)
+#
+###############################################
+
+procedure(ImageMatrix, im, mat, xaxis, yaxis, xlab, ylab, titl)
+
+ #  selecteditline(getcurrentline("parent"))
+ #  im = plt->subplot(1,1)
+   if(nrArgs == 2)
+      im->image(mat)
+   elseif(nrArgs == 7)
+      im->draw("false")
+      im->image(mat,[xaxis[0],xaxis[-1]],[yaxis[0],yaxis[-1]])
+      im->title(titl)
+      im->xlabel(xlab)
+      im->ylabel(ylab)
+      im->draw("true")
+   else
+      pr("Expecting 7 arguments: plot, matrix, xaxis, yaxis, xlabel, ylabel, title\n")
+   endif
+
+endproc()

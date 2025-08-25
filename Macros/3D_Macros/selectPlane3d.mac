@@ -1,0 +1,239 @@
+####################################################
+#                 selectPlane3d.mac
+#
+# Select a plane from the 3D plot for display in the
+# 2D window.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+####################################################
+
+
+procedure(selectPlane3d)
+
+   n = :windowdefinition()
+   :update_menu(n)
+   :load_parameters()
+   showwindow(n)
+
+   setwindowpar(n,"exit_procedure",":exit_procedure()")
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Move plane", -1, -1, 276, 175)
+
+      # Define all controls with basic parameters
+       windowvar(name)
+       slider(1, 59, 96, 115, 20, "horizontal",
+            :move_plane();)
+       textmenu(2, 56, 23, 109, 200,
+          :init_parameters();)
+       statictext(3, 52, 91, "right", "Plane")
+       statictext(4, 58, 104, "right", "position")
+       statictext(5, 40, 20, "right", "3D")
+       radiobuttons(6, 49, 62, 40, "horizontal", "off,xy,xz,yz", "off",
+            :init_parameters();)
+       colorbox(7, 64, 133, 22, 22, [255,0,0],
+          :select_color();)
+       statictext(8, 51, 130, "right", "Plane")
+       statictext(9, 44, 61, "right", "OFF")
+       statictext(10, 84, 61, "right", "XY")
+       statictext(11, 164, 61, "right", "YZ")
+       textmenu(12, 146, 134, 40, 200,
+          :move_plane();)
+       statictext(13, 138, 130, "right", "Plane")
+       statictext(14, 52, 143, "right", "colour")
+       button(15, 211, 66, 48, 28, "Exit",
+          :exit_procedure();
+          closewindow(0);)
+       button(16, 211, 21, 48, 28, "Help",
+          :showHelp();)
+       groupbox(17, "", 7, 3, 192, 167)
+       statictext(18, 137, 143, "right", "alpha")
+       statictext(19, 124, 61, "right", "XZ")
+       statictext(20, 48, 34, "right", "matrix")
+       button(21, 171, 24, 17, 20, "U",
+            :update_menu(0))
+
+     # Set other control parameters
+
+       setpar(n,7,"name","color")
+       setpar(n,12,"name","alpha",
+                   "menu",[0:0.1:1])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+   help("Macros\\3D","selectPlane3D.htm")
+endproc()
+
+####################################################
+# Initialise the matrix menu
+####################################################
+
+procedure(update_menu,n)
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(n,2,"menu",menu3d)
+      setpar(n,2,"text",menu3d[0])
+      name = menu3d[0]
+      setpar(n,12,"menu",[0:0.1:1])
+      setpar(n,12,"text",0.4)
+      :init_parameters()
+   endif
+endproc()
+
+####################################################
+# When exiting the macro turn off clipping
+####################################################
+
+procedure(exit_procedure)
+
+   :save_parameters()
+   plane3d("off",0,0,0,0,0,[0,0,0])
+
+endproc()
+
+####################################################
+# Initialize plane parameters
+####################################################
+
+procedure(init_parameters)
+
+  if(name == "")
+     return
+  endif
+  m3d = alias(name,"eval")
+  dir = getpar(0,6,"text")
+  (w,h,d) = size(m3d)
+
+  if(dir == "xy")
+     setpar(0,1,"range",[0,d-1])
+  elseif(dir == "xz")
+     setpar(0,1,"range",[0,h-1])
+  elseif(dir == "yz")
+     setpar(0,1,"range",[0,w-1])
+  else
+     plane3d("off",0,0,0,0,0,[0,0,0])
+  endif
+
+  :move_plane()
+
+endproc()
+
+####################################################
+# Move plane using the slider
+####################################################
+
+procedure(move_plane)
+
+   name = getpar(0,2,"text")
+   if(name == "")
+      return
+   endif
+   m3d = alias(name,"eval")
+   dir = getpar(0,6,"text")
+   pos = getpar(0,1,"value")
+   (w,h,d) = size(m3d)
+   col = getpar(0,7,"color")/255
+   col[3] = getpar(0,12,"value")
+
+   (xmin,xmax,ymin,ymax,zmin,zmax) = datarange3d("getargs")
+
+   (nl,mode) = contour("getargs")
+
+   if(dir == "xy")
+      posz = pos/(d-1)*(zmax-zmin) + zmin
+      plane3d(dir,posz,xmin,xmax,ymin,ymax,col)
+      draw2d("false")
+         image(m3d[~,~,pos])
+         contour(nl,mode)
+         xlabel("x")
+         ylabel("y")
+         title("$name$ (xy plane: $pos$)")
+      draw2d("true")
+   elseif(dir == "xz")
+      posy = pos/(h-1)*(ymax-ymin) + ymin
+      plane3d(dir,posy,xmin,xmax,zmin,zmax,col)
+      draw2d("false")
+         image(m3d[~,pos,~])
+         contour(nl,mode)
+         xlabel("x")
+         ylabel("z")
+         title("$name$ (xz plane: $pos$)")
+      draw2d("true")
+   elseif(dir == "yz")
+      posx = pos/(w-1)*(xmax-xmin) + xmin
+      plane3d(dir,posx,ymin,ymax,zmin,zmax,col)
+      draw2d("false")
+         image(reflect(m3d[pos,~,~]'))
+         contour(nl,mode)
+         xlabel("z")
+         ylabel("y")
+         title("$name$ (yz plane: $pos$)")
+      draw2d("true")
+
+   endif
+
+endproc()
+
+####################################################
+# Select the plane colour
+####################################################
+
+procedure(select_color)
+
+   col = getcolor(getpar(0,7,"color"))
+   if(col[0] != -1)
+      setpar(0,7,"color",col)
+   endif
+   :move_plane()
+
+endproc()
+
+
+#########################################################
+# Save window parameters to preferences file
+#########################################################
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   dir = getcwd()
+   cd("$prefdir$\Other Macros")
+   save("selectPlane.par",lst)
+   cd(dir)
+
+endproc()
+
+#########################################################
+# Load window parameters from preferences file
+#########################################################
+
+procedure(load_parameters)
+
+   dir = getcwd()
+   cd("$prefdir$\Other Macros")
+   if(isfile("selectPlane.par"))
+      lst = load("selectPlane.par")
+      setctrlvalues(0,lst)
+      assignlist(lst)
+   endif
+   cd(dir)
+
+endproc()
+

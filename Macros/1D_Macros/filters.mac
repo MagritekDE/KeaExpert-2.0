@@ -1,0 +1,560 @@
+#####################################################################
+#                            filters.mac
+#
+# Displays an apodization filter window which allows
+# the development and testing of a list of filters.
+#
+# This list and the filters functions can then be accessed from 
+# other programs using the following functions:
+#
+# lst = filters:get_menu() ... gets current filter menu as a list
+# vec = filters:get_filter(name,type,N) ... get filter as a vector
+#       name ... name of filter (STR)
+#       type ... FTFid or FTEcho
+#       N ...... number of data points in filter
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(filter_designer)
+
+   n = :windowdefinition()
+   :load_parameters()    
+   showwindow(n)
+
+endproc(n)
+
+#####################################################################
+# Define the filter definition window
+#####################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Filter Designer", -1, -1, 697, 311,"resizable")
+
+      # Define all controls with basic parameters
+      windowvar(fpar,menu,len)
+      groupbox(1, "Filter menu", 10, 4, 202, "wh-154")
+      listbox(2, 19, 29, 128, "wh-195",
+         if(getpar(0,2,"event") == "single_click_down");
+         :copy_details();
+         endif;)
+      button(3, 226, 48, 45, 25, "Save",
+         :save_parameters();)
+      button(4, 154, 39, 45, 25, "Delete",
+         :delete_filter();)
+      button(5, 226, 15, 45, 25, "Restore",
+         :load_parameters();)
+      groupbox(6, "Filter description", 10, "wh-139", 271, 129)
+      statictext(7, 34, "wh-124", "left", "name")
+      textbox(8, 17, "wh-109", 76)
+      statictext(9, 135, "wh-124", "left", "filter equation")
+      textbox(10, 100, "wh-109", 172)
+      statictext(11, 65, "wh-81", "left", "p1")
+      statictext(12, 100, "wh-81", "left", "p2")
+      statictext(13, 140, "wh-81", "left", "p3")
+      statictext(14, 30, "wh-59", "left", "FID")
+      textbox(15, 54, "wh-65", 35)
+      textbox(16, 91, "wh-65", 35)
+      textbox(17, 128, "wh-65", 35)
+      statictext(18, 22, "wh-37", "left", "Echo")
+      textbox(19, 54, "wh-40", 35)
+      textbox(20, 91, "wh-40", 35)
+      textbox(21, 128, "wh-40", 35)
+      button(22, 168, "wh-64", 34, 21, "Test",
+         :draw_fid_filter();)
+      button(23, 216, "wh-55", 45, 25, "Update",
+         :update_menu();)
+      button(24, 168, "wh-39", 34, 21, "Test",
+         :draw_echo_filter();)
+      button(25, 154, 72, 45, 25, "Up",
+         :move_filter_up();)
+      button(26, 154, 106, 45, 25, "Down",
+         :move_filter_down();)
+      plot1d(27, 290, 8, "ww-300", "wh-18")
+      button(28, 226, 123, 45, 25, "Close",
+         closewindow(0);)
+      button(30, 226, 90, 45, 25, "Help",
+         :load_help();)
+
+     # Set other control parameters
+      setpar(n,27,"objID","plotCtrl")
+
+     # Set other window parameters
+endproc(n)
+
+#####################################################################
+# Display help info for this macro
+#####################################################################
+
+procedure(load_help)
+   help("Macros\\1D","filters.htm")
+endproc()
+
+#####################################################################
+# Load the filter information from the file 'filter_parameters.lst'
+#####################################################################
+
+procedure(load_parameters)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   dir = rmext(getmacroname())
+   mkdir(dir)
+   cd(dir)
+   if(isfile("filter_parameters.lst"))
+      fpar = load("filter_parameters.lst")
+      len = size(fpar)
+      menu = list(len/8)
+      for(in = 0 to len/8-1)
+         menu[in] = fpar[in*8]
+      next(in)
+      setpar(0,2,"list",menu)
+   endif
+   cd(bkdir)
+endproc()
+
+#####################################################################
+# Copy the filter information from the parameter list to the gui
+#####################################################################
+
+procedure(copy_details)
+
+   filter = getpar(0,2,"text")
+
+   for(in = 0 to len/8-1)
+      if(menu[in] == filter)
+         setpar(0,8,"text",filter)
+         setpar(0,10,"text",fpar[in*8+1])
+         setpar(0,15,"text",fpar[in*8+2])
+         setpar(0,16,"text",fpar[in*8+3])
+         setpar(0,17,"text",fpar[in*8+4])
+         setpar(0,19,"text",fpar[in*8+5])
+         setpar(0,20,"text",fpar[in*8+6])
+         setpar(0,21,"text",fpar[in*8+7])
+      endif   
+   next(in)
+
+endproc()
+
+#####################################################################
+# Plot the current filter details
+#####################################################################
+
+procedure(clear_details)
+
+   setpar(0,8,"text","")
+   setpar(0,10,"text","")
+   setpar(0,15,"text","")
+   setpar(0,16,"text","")
+   setpar(0,17,"text","")
+   setpar(0,19,"text","")
+   setpar(0,20,"text","")
+   setpar(0,21,"text","")
+
+endproc()
+
+#####################################################################
+# Plot the current fid filter in the 1D window
+#####################################################################
+
+procedure(draw_fid_filter)
+
+  N = 512
+  x = [0:1:N-1]
+  filter = getpar(0,10,"text")
+  if(filter == "")
+     return
+  endif
+  p1 = getpar(0,15,"text")
+  p2 = getpar(0,16,"text")
+  p3 = getpar(0,17,"text")
+  if(p1 != "-" | p1 != " ")
+    p1 = eval(p1)
+  endif
+  if(p2 != "-" | p2 != " ")
+    p2 = eval(p2)
+  endif
+  if(p3 != "-" | p3 != " ")
+    p3 = eval(p3)
+  endif
+  if(filter != "")
+     y = eval(filter)
+     plt = plotCtrl->subplot(1,1)
+     plt->draw("false")
+     plt->plot(x,y)
+     plt->title("FID filter")
+     plt->xlabel("Index")
+     plt->ylabel("Amplitude")
+     plt->draw("true")
+  endif
+
+endproc
+
+#####################################################################
+# Plot the current echo filter in the 1D window
+#####################################################################
+
+procedure(draw_echo_filter)
+
+  N = 512
+  x = [0:1:N-1]
+  filter = getpar(0,10,"text")
+  if(filter == "")
+     return
+  endif
+  p1 = getpar(0,19,"text")
+  p2 = getpar(0,20,"text")
+  p3 = getpar(0,21,"text")
+  if(p1 != "-" | p1 != " ")
+    p1 = eval(p1)
+  endif
+  if(p2 != "-" | p2 != " ")
+    p2 = eval(p2)
+  endif
+  if(p3 != "-" | p3 != " ")
+    p3 = eval(p3)
+  endif
+  if(filter != "")
+     y = eval(filter)
+     plt = plotCtrl->subplot(1,1)
+     plt->draw("false")
+     plt->plot(x,y)
+     plt->title("Echo filter")
+     plt->xlabel("Index")
+     plt->ylabel("Amplitude")
+     plt->draw("true")
+  endif
+
+endproc
+
+#####################################################################
+# Remove a filter from the menu and parameter structures
+#####################################################################
+
+procedure(delete_filter)
+
+   filter = getpar(0,2,"text")
+   if(filter == null)
+      return
+   endif
+
+   menuOld = menu
+   fparOld = fpar
+
+# Check for empty menu
+   if(len/8-1 <= 0)
+      setpar(0,2,"list",[""])
+      :clear_details()
+      len = 0
+      return
+   endif
+
+   menu = list(len/8-1)
+   fpar = list(len-8)
+
+# Copy filter menu
+   n = 0
+   for(in = 0 to len/8-1)
+      if(menuOld[in] != filter)
+         menu[n] = menuOld[in]
+         n = n + 1
+      endif
+   next(in)
+
+# Copy parameter menu
+   n = 0
+   for(in = 0 to len-1 step 8)
+      if(fparOld[in] != filter)
+         fpar[n] = fparOld[in]
+         fpar[n+1] = fparOld[in+1]
+         fpar[n+2] = fparOld[in+2]
+         fpar[n+3] = fparOld[in+3]
+         fpar[n+4] = fparOld[in+4]
+         fpar[n+5] = fparOld[in+5]
+         fpar[n+6] = fparOld[in+6]
+         fpar[n+7] = fparOld[in+7]
+         n = n + 8
+      endif
+   next(in)
+
+   len = len-8
+   setpar(0,2,"list",menu)
+   :clear_details()
+
+endproc
+
+#####################################################################
+# Copy the new filter details into the menu and parameter structures
+#####################################################################
+
+procedure(update_menu)
+
+# Read filter name to update
+   filter = getpar(0,8,"text")
+   if(filter == "")
+     return
+   endif
+
+# Search for filter in menu
+   for(in = 0 to len/8-1)
+      if(menu[in] == filter)
+         fpar[in*8+1] = getpar(0,10,"text")
+         fpar[in*8+2] = getpar(0,15,"text")
+         fpar[in*8+3] = getpar(0,16,"text")
+         fpar[in*8+4] = getpar(0,17,"text")
+         fpar[in*8+5] = getpar(0,19,"text")
+         fpar[in*8+6] = getpar(0,20,"text")
+         fpar[in*8+7] = getpar(0,21,"text")
+         return     
+      endif
+   next(in)
+
+# Must be a new filter - add to end
+   fparOld = fpar
+   menuOld = menu
+   menu = list(len/8+1)
+   fpar = list(len+8)
+
+ 
+# Copy existing filter menu
+   for(in = 0 to len/8-1)
+      menu[in] = menuOld[in]
+   next(in)
+
+# Add new menu item
+  menu[len/8] = getpar(0,8,"text")
+
+# Copy existing parameter menu
+   for(n = 0 to len-1 step 8)
+      fpar[n] = fparOld[n]
+      fpar[n+1] = fparOld[n+1]
+      fpar[n+2] = fparOld[n+2]
+      fpar[n+3] = fparOld[n+3]
+      fpar[n+4] = fparOld[n+4]
+      fpar[n+5] = fparOld[n+5]
+      fpar[n+6] = fparOld[n+6]
+      fpar[n+7] = fparOld[n+7]
+   next(in)
+
+ # Add new filter info 
+   fpar[len+0] = getpar(0,8,"text")
+   fpar[len+1] = getpar(0,10,"text")
+   fpar[len+2] = getpar(0,15,"text")
+   fpar[len+3] = getpar(0,16,"text")
+   fpar[len+4] = getpar(0,17,"text")
+   fpar[len+5] = getpar(0,19,"text")
+   fpar[len+6] = getpar(0,20,"text")
+   fpar[len+7] = getpar(0,21,"text")
+
+   len = len + 8
+
+# Update the filter list
+   setpar(0,2,"list",menu)
+
+endproc
+
+#####################################################################
+# Save filter parameters to the file 'filter_parameters.lst'
+#####################################################################
+
+procedure(save_parameters)
+
+   for(in = 0 to len-1)
+      if(fpar[in] = "")
+         fpar[in] = "-"
+      endif
+   next(in)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   dir = rmext(getmacroname())
+   mkdir(dir)
+   cd(dir)
+   save("filter_parameters.lst",fpar)
+   cd(bkdir)
+   message("Information","Filter parameters saved")
+
+endproc
+
+#####################################################################
+# Swap two filter parameters (much easier if I had a 2D list!)
+#####################################################################
+
+procedure(swap_parameters,n,m)
+
+   n = n * 8
+   m = m * 8
+   temppar = list(8)
+
+   k = 0
+   for(in = n to n+7)
+      temppar[k] = fpar[in]
+      k = k + 1
+   next(in)
+
+   k = m
+   for(in = n to n+7)
+      fpar[in] = fpar[k]
+      k = k + 1
+   next(in)
+
+   k = 0
+   for(in = m to m+7)
+      fpar[in] = temppar[k]
+      k = k + 1
+   next(in)
+
+   for(in = 0 to len/8-1)
+      menu[in] = fpar[in*8]
+   next(in)
+   setpar(0,2,"list",menu)
+
+endproc
+
+#####################################################################
+# Move a line in the menu up and swap appropriate parameters
+#####################################################################
+
+procedure(move_filter_up)
+   in = getpar(0,2,"index")-1
+   if(in != -1 & in > 0)
+      :swap_parameters(in-1,in)
+      setpar(0,2,"index",in)
+   endif
+endproc
+
+#####################################################################
+# Move a line in the menu down and swap appropriate parameters
+#####################################################################
+
+procedure(move_filter_down)
+   in = getpar(0,2,"index")-1
+   if(in != -1 & in < size(menu)-1)
+      :swap_parameters(in,in+1)
+      setpar(0,2,"index",in+2)
+   endif
+endproc
+
+#####################################################################
+# Utility routine to get current filter menu (not used by gui)
+#####################################################################
+
+procedure(get_menu)
+
+   bkdir = getcwd()
+   cd(getmacropath())
+   cd(rmext(getmacroname()))
+   if(isfile("filter_parameters.lst"))
+      fpar = load("filter_parameters.lst")
+      len = size(fpar)
+      menu = list(len/8)
+      for(in = 0 to len/8-1)
+         menu[in] = fpar[in*8]
+      next(in)
+      cd(bkdir)
+      return(menu)
+   endif
+
+   cd(bkdir)
+
+endproc([""])
+
+#####################################################################
+# Utility routine to get current filter value
+#####################################################################
+
+procedure(get_filter,name,type,N)
+
+# Additional code to allow exponential broadening with specified linewidth
+# Syntax is exp:lw The linewidth should be in Hz and N should be the time
+# axis in seconds
+   try
+      parameters = parse(name,":")
+      if(size(parameters) == 2)
+         newName = parameters[0]
+         lineWidth = parameters[1]
+         if(newName == "exp")
+            if(vartype(N) == "matrix1d")
+               t = N
+               lw = eval(lineWidth)
+               y = exp(-pi*t*lw)
+               return(y)
+            else
+               message("Warning","Invalid time axis passed to get_filter for filter $name$")
+               return(matrix(N)+1)
+            endif
+         else
+            message("Warning","Unknown apodization filter type $name$ - ignoring")
+            throw("")
+         endif   
+      elseif(size(parameters) != 1)
+         message("Warning","Invalid apodization filter type $name$ - ignoring")
+         throw("")
+      endif 
+   catch
+      err = lasterror()
+      if(err->type != "throw")
+         message("Warning","Invalid apodization filter type $name$ - ignoring")
+         pr err
+      endif
+      if(vartype(N) == "matrix1d")
+        N = size(N)
+      endif
+      return(matrix(N)+1)
+   endtry
+ 
+# Traditional filter but time axis passed
+   if(vartype(N) == "matrix1d")
+      N = size(N)
+   endif
+   x = [0:1:N-1]
+   bkdir = getcwd()
+   cd(getmacropath())
+   cd(rmext(getmacroname()))
+
+   if(isfile("filter_parameters.lst"))
+      fpar = load("filter_parameters.lst")
+      len = size(fpar)
+
+      in = getlistindex(fpar,name)
+
+      if(in != -1)
+         func = fpar[in+1]
+         if(type == "FTFid")
+            p1 = fpar[in+2]
+            p2 = fpar[in+3]
+            p3 = fpar[in+4]
+         else
+            p1 = fpar[in+5]
+            p2 = fpar[in+6]
+            p3 = fpar[in+7]
+         endif
+
+         if(p1 != "-" | p1 != " ")
+            p1 = eval(p1)
+         endif
+         if(p2 != "-" | p2 != " ")
+            p2 = eval(p2)
+         endif
+         if(p3 != "-" | p3 != " ")
+            p3 = eval(p3)
+         endif
+
+         y = eval(func)
+         cd(bkdir)
+         return(y)     
+      endif
+   endif
+ 
+   y = matrix(N)
+   y[~] = 1
+   cd(bkdir)
+
+endproc(y)
+

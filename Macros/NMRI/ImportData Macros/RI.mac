@@ -1,0 +1,162 @@
+#####################################################
+# Procedures to load native Resonance Instruments data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# isdata:        returns 1 if RI data 0 otherwise
+# getname:       returns name of data file
+# getparameters: returns data parameter list
+# getdata:       returns data
+#
+######################################################
+
+#############################################
+# Return a list of file types supported by 
+# RI
+#############################################
+
+procedure(types)
+
+  lst = ["RI"]
+
+endproc(lst)
+
+#############################################
+# Return 1 is the type if data in the current
+# directory is RI, 0 otherwise
+#############################################
+
+procedure(isdata)
+
+  try
+     lst = getfilelist(".")
+  catch
+    return(0)
+  endtry
+  sz = size(lst)
+  for(k = 0 to sz-1)
+     ext = getext(lst[k])
+     if(ext == "RIImage" | ext == "RiDat")
+        return(1)
+     endif
+  next(k)
+
+
+endproc(0)
+
+#############################################
+# RI data can load without exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("no")
+
+#############################################
+# Returns name of RI data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+  lst = getfilelist(".")
+  sz = size(lst)
+  for(k = 0 to sz-1)
+     ext = getext(lst[k])
+     if(ext == "RIImage" | ext == "RiDat")
+        return(lst[k])
+     endif
+  next(k)
+
+endproc("")
+
+#############################################
+# Return RI file parameters
+#############################################
+
+procedure(getparameters,dataFile)
+
+
+   import1dpar("ab", "binary", "xyrc", "real",
+               "fls", "long", "machine", "littleend",
+               "fileheader",0)
+   y = import1d(dataFile,684)
+
+   version = y[1]
+   header = y[2] + y[3] + y[4] + y[5]
+
+   off = 384
+   if(version == 0) # 1D files
+      1dim = y[0+off]
+      2dim = 1
+      3dim = 1 
+      4dim = 1
+   else # nD file
+      1dim = y[266+off]
+      2dim = y[267+off]
+      3dim = y[268+off]
+      4dim = y[269+off]
+   endif
+
+   filetype = "RI"
+   dig_shift = 0
+
+   p = ["1dim = $1dim$",
+        "2dim = $2dim$",
+        "3dim = $3dim$",
+        "4dim = $4dim$",
+        "1dzf = $1dim$",
+        "2dzf = $2dim$",
+        "3dzf = $3dim$",
+        "fileType = \"$filetype$\"",
+        "matrixIn = \"\"",
+        "1dfltr = \"none\"",
+        "2dfltr = \"none\"",
+        "3dfltr = \"none\"",
+        "1dft = \"FTEcho\"",
+        "2dft = \"FTEcho\"",
+        "3dft = \"FTEcho\""
+        "digShift = $dig_shift$",
+        "nrType = \"complex\"",
+        "header = $header$"]
+
+endproc(p)
+
+
+#############################################
+# Load Prospa data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+
+# Read 1D data 
+# Data is organised as [Real (single), Imag (single), Time (double)]
+   if(1dim > 1 & 2dim == 1 & 3dim == 1)
+      import1dpar("ab", "binary", "xyrc", "real",
+                  "fls", "float", "machine", "littleend",
+                  "fileheader",header)
+      matIn = import1d(dataFile,1dim*4)
+      mat = cmatrix(1dim)
+      for(k = 0 to 1dim*4-1 step 4)
+         mat[k/4] = matIn[k] + i*matIn[k+1]
+      next(k)         
+
+# Read 2D data (note time data is ignored)
+# Data is organised as [time ... (double)], [real (single), imaginary (single) ...]
+   elseif(1dim > 1 & 2dim > 1 & 3dim == 1)
+      import2dpar("ab", "binary", "xyrc", "complex",
+                  "fls", "float", "machine", "littleend",
+                  "fileheader",header+1dim*8)
+      mat = import2d(dataFile,1dim,2dim)
+   endif
+   assign(matrixIn,mat,"global")
+   assign("curmatrix",matrixIn,"global")
+
+
+endproc()
+
+

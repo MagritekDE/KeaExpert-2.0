@@ -1,0 +1,42 @@
+################################################################################
+# Displays a dialog which prompts for two text fields and old and a new name
+# This can be used when replacing text somewhere
+# 15 March 2024 CDE
+################################################################################
+
+procedure(RenameDialog, oldNameTxt="", newNameTxt="", prompt="Enter old and new names")
+
+   origWin = guiwinnr()
+   n = :windowdefinition(prompt)
+   oldName->text(oldNameTxt)
+   newName->text(newNameTxt)
+   setwindowpar(n,"type","dialog")
+   assignctrls(n)
+   setwindowpar(n,"sizelimits",[350,-1,-1,-1])
+
+   (old,new) = showdialog(n)
+    guiwinnr(origWin)
+
+endproc(old,new)
+
+procedure(windowdefinition,prompt)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window(prompt, -1, -1, 350, 96, "resizable")
+
+      # Define all controls with basic parameters
+      oldName = textbox(1, 71, 20, "ww-150",200)
+      statictext(2, 64, 24, "right", "Old Name:")
+      newName = textbox(4, 71, 50, "ww-150")
+      statictext(5, 64, 53, "right", "New Name:")
+      button(6, "ww-60", 17, 48, 27, "OK",
+         closedialog(oldName->text,newName->text);)
+      button(7, "ww-60", 47, 48, 27, "Cancel",
+         closedialog("cancel","cancel");)
+
+     # Set other control parameters
+      setpar(n,6,"mode","default")
+
+endproc(n)
+

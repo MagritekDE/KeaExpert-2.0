@@ -1,0 +1,25 @@
+procedure(ftvsdft)
+
+N = 2^15
+(x,y) = complex(N,1,10000,0.2)
+plot(x,y)
+time(0)
+n = ft(y)
+pr time()
+time(0)
+n = :dft(y)
+pr time()
+
+endproc()
+
+
+procedure(dft,d)
+
+   N = size(d)
+   s = cmatrix(N)
+   p = [0:N-1]
+   for(k = 0 to N-1)
+      s[k] = sum(d.*exp(-2*pi*i*k*p/N))
+   next(k)
+
+endproc(s)

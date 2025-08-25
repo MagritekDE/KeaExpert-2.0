@@ -1,0 +1,29 @@
+procedure(makeqNMRInterface)
+
+
+   lst = <<name="sampleID",   label="Sample ID",   value="Ibuprofen", readonly="false",  datatype="string", ctrltype="textbox", pos=[0,0];
+           name="operatorID", label="Operator ID", value="Fred",      readonly="true",   datatype="string", ctrltype="textbox", pos=[0,1];
+           name="weight",     label="Weight",      value=2.0,         readonly="true",   datatype="double", ctrltype="textbox", pos=[1,0], units = "g">>
+
+   n = window("qNMR Test",-1,-1,400,200)
+   (w,h) = size(lst)
+   c = 0
+   delx = 150
+   dely = 30
+   offx = 10
+   offy = 10
+   for(k = 0 to h-1)
+      units = ""
+      assignlist(lst[~,k])
+      if(ctrltype == "textbox")
+         statictext(c,pos[0]*delx+offx+95,pos[1]*dely+offy+3,"right",label+":")
+         textbox(c+1,pos[0]*delx+100+offx,pos[1]*dely+offy,80)
+         statictext(c+2,pos[0]*delx+offx+185,pos[1]*dely+offy+3,"left",units)
+         setpar(n,c+1,"text",value,"name",name,"type",datatype,"readonly",readonly)
+         c = c + 3  
+      endif
+   next(k)
+   
+   showwindow(n)
+
+endproc()

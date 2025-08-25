@@ -1,0 +1,30 @@
+import1dpar("ab","binary","xyrc","complex","fls","float",
+            "machine","mac","delimiter","comma",
+            "fileheader",0)
+import2dpar("ab","binary","xyrc","complex","fls","float",
+            "machine","mac","delimiter","comma",
+            "fileheader",0)
+gamma = 2.675197e8
+varstatus("gamma","visible","readonly","permanent")
+
+# If running spinsolve expert make sure the GetShimParameters folder
+# is copied to preferences
+srcdir = "$appdir$\\Spinsolve special programs\\GetShimParameters"
+if(isdir(srcdir))
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   if(not(isdir("GetShimParameters")))
+      dstdir = "$getcwd()$\\GetShimParameters"
+      exec("xcopy","/e /i \"$srcdir$\" \"$dstdir$\"")
+   endif
+endif
+
+# Select edit render mode which minimised compile time
+# (defaults to parent)
+try
+#   seteditrendermode("current")
+#setfont("Edit font","Dejavu Sans Mono",10)
+#setfont("Control font","Calibri",8)
+catch
+endtry

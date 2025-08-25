@@ -1,0 +1,52 @@
+procedure(getfilelist_test1,verbose,delay)
+
+   cd(getmacropath())
+
+    n = 9
+
+# Write out some files
+   for(k = 1 to n)
+     m = noise(100)
+     save("data$k$.1d",m)
+   next(k)
+
+# Check they are there
+   lst = sortlist(getfilelist("."))
+   for(k = 1 to n)
+     if(lst[k-1] != "data$k$.1d")
+        return(0, "Invalid result for: getfilelist_test1() #1")
+     endif
+   next(k)
+
+# Remove the files
+   for(k = 1 to n)
+     rmfile("data$k$.1d")
+   next(k)  
+
+# Put some files in a subdirectory
+   mkdir("dir1")
+   cd("dir1")
+   for(k = 1 to n)
+     m = noise(100)
+     save("data$k$.1d",m)
+   next(k)
+   cd("..")
+
+# Check they are there
+   lst = sortlist(getfilelist("dir1"))
+   for(k = 1 to n)
+     if(lst[k-1] != "data$k$.1d")
+        return(0, "Invalid result for: getfilelist_test1() #1")
+     endif
+   next(k)
+
+  cd("dir1")
+  
+# Remove the files
+   for(k = 1 to n)
+     rmfile("data$k$.1d")
+   next(k)  
+
+   cd("..")
+
+endproc(1,"")

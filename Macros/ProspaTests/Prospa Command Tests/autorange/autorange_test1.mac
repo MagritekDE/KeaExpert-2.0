@@ -1,0 +1,39 @@
+procedure(autorange_test1,verbose,delay)
+
+   clear1d()
+   zoom1d(0,200,0,1e4)
+   autorange("on")
+   x= [0:1023]/1000
+   f = [0:1023]-512
+   y1 = 1000*exp(i*x*2*pi*100)
+   y2 = 100*exp(-i*x*2*pi*100)
+   y3 = 2*exp(-i*x*2*pi*150)
+   d = mag(ft(y1+y2+y3+1e1*noise(1024)))
+    plot(f,d)
+   for(m = 0 to 420)
+      draw1d("false")
+      zoom1d(m-290,600-m)
+      title("autorange on")
+      draw1d("true")
+   next(m)
+
+   autorange("off")
+   x= [0:1023]/1000
+   f = [0:1023]-512
+   y1 = 1000*exp(i*x*2*pi*100)
+   y2 = 100*exp(-i*x*2*pi*100)
+   y3 = 2*exp(-i*x*2*pi*150)
+   d = mag(ft(y1+y2+y3+1e1*noise(1024)))
+    plot(f,d)
+   for(m = 0 to 420)
+      draw1d("false")
+      zoom1d(m-290,600-m)
+      title("autorange off")
+      draw1d("true")
+   next(m)
+
+   pause(delay)
+
+   autorange("on")
+
+endproc(1,"")

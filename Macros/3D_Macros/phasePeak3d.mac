@@ -1,0 +1,351 @@
+####################################################
+#                   phasePeak3d.mac
+#
+# Phase each row or column in a 3D data set.
+#
+# Phasing can be done automatically or using a 
+# fixed value.
+#
+# Two autophase options are supplied:
+#
+# max which finds the maximum area under a peak
+# min which minimises the area between the baseline
+# and the peak.
+#
+#          
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+####################################################
+
+procedure(phasePeak3d)
+
+   n = :windowdefinition()
+   windowvar(reset)
+   reset = 0
+   :updateDialog()
+   showwindow(n)
+
+endproc()
+
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Phase Peak (3D)", -1, -1, 351, 255)
+
+      # Define all controls with basic parameters
+       windowvar(reset)
+       statictext(1, 28, 28, "left", "Input")
+       button(2, 279, 196, 55, 32, "Exit",
+          closewindow(0);)
+       textmenu(3, 65, 26, 153, 200,
+          :selectMatrix();)
+       button(4, 279, 25, 55, 32, "Auto phase",
+          :autoPhase();)
+       radiobuttons(5, 231, 117, 20, "vertical", "ip,op", "ip",
+            :displayPlane();)
+       button(6, 279, 139, 55, 32, "Help",
+          :showHelp();)
+       slider(7, 57, 126, 145, 20, "horizontal",
+            :displayPlane();)
+       statictext(8, 24, 128, "left", "Plane")
+       statictext(9, 226, 116, "right", "i/p")
+       groupbox(10, "Display", 4, 100, 263, 63)
+       groupbox(11, "Phase shift", 4, 168, 263, 83)
+       textmenu(12, 65, 58, 181, 200)
+       statictext(13, 20, 61, "left", "Output")
+       textbox(14, 95, 204, 37)
+       groupbox(15, "Matrices", 4, 5, 263, 91)
+       statictext(16, 22, 216, "left", "shift (degrees)")
+       statictext(17, 179, 187, "center", "Phase")
+       statictext(18, 171, 225, "right", "cols")
+       statictext(19, 171, 206, "right", "rows")
+       radiobuttons(20, 176, 207, 20, "vertical", "rows,cols", "rows")
+       statictext(21, 26, 198, "left", "Fixed phase")
+       statictext(23, 226, 135, "right", "o/p")
+       button(24, 227, 27, 17, 20, "U",
+          :updateDialog();)
+       radiobuttons(25, 231, 207, 20, "vertical", "maximise,minimise", "maximise")
+       statictext(26, 222, 206, "right", "max")
+       statictext(27, 222, 225, "right", "min")
+       statictext(28, 236, 187, "center", "Method")
+       button(29, 279, 82, 55, 32, "Fixed phase",
+          :fixedPhase();)
+
+     # Set other control parameters
+       setpar(n,3,"menu",[""])
+       setpar(n,12,"menu",[""])
+
+endproc(n)
+
+
+
+####################################################
+# Update the dialog 3D menu and slider
+####################################################
+
+procedure(updateDialog)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(0,3,"menu",menu3d)
+      setpar(0,3,"text",menu3d[0])
+      nameIn = getpar(0,3,"text")
+      setpar(0,12,"menu",menu3d)
+      setpar(0,12,"text",nameIn+"_phased")
+      mIn = alias(nameIn,"eval")
+      (w1,h1,d1) = size(mIn)
+      setpar(0,7,"range",[0,d1-1])
+   endif
+   setpar(0,14,"text","0")
+
+endproc()
+
+
+####################################################
+# A new matrix has been selected
+####################################################
+
+procedure(selectMatrix)
+
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   setpar(0,12,"text",nameIn+"_phased")
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+   setpar(0,7,"range",[0,d1-1])
+
+endproc()
+ 
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+   help("Macros\\3D","phasePeak3d.htm")
+endproc()
+
+####################################################
+# Display the first plane in the 3D data set
+####################################################
+
+procedure(displayPlane)
+
+# Check matrix name
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "" | isvar(nameIn) == 0)
+      return
+   endif
+
+# Get name of input matrix
+   if(getpar(0,5,"text") == "ip")
+      nameIn = getpar(0,3,"text")
+   else
+      nameIn = getpar(0,12,"text")
+      if(isvar(nameIn) == 0)
+         return
+      endif
+   endif
+
+# Get matrix size 
+   mIn = alias(nameIn,"eval")
+   (w1,h1,d1) = size(mIn)
+   
+# Get plane
+   plane = getpar(0,7,"value")
+
+# Display plane
+   draw2d("false")
+      if(reset == 1)
+         (txt,lx,ly,nc,mode) = 2dpar:get()
+      else
+         (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+      endif
+      image(mIn[~,~,plane])
+      2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+      title("$nameIn$ plane $plane$")
+      reset = 0
+   draw2d("true")
+
+endproc()
+
+####################################################
+# Allow the user to phase the data set
+####################################################
+
+procedure(phaseData)
+
+# Get phase mode
+   mode = getpar(0,22,"text")
+
+   if(mode == "auto")
+     :auto_phase()
+   else
+     :fixed_phase()
+   endif
+
+
+endproc()
+
+####################################################
+# Apply an autophase correction to rows or columns
+####################################################
+
+procedure(autoPhase)
+
+   setpar(0,5,"text","op")
+
+# Get name and size of input matrix
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   mIn = alias(nameIn,"eval")
+   (w,h,d) = size(mIn)
+
+# Define output matrix
+   nameOut = getpar(0,12,"text")
+
+# Make output matrix
+   mOut = cmatrix(w,h,d)
+
+# Get phasing direction
+   dir = getpar(0,20,"text")
+
+# Get phasing method
+   method = getpar(0,25,"text")
+
+# Apply phasing to row data
+   if(dir == "rows")
+
+   # Get "peak" extent ###################
+      title("Select one side of peak")
+      x1 = getxy("vert")
+      title("Select other side of peak")
+      x2 = getxy("vert")
+      title("")
+
+   # Swap if chosen in wrong order
+      if (x1 > x2)
+         swapvar(x1,x2)
+      endif
+
+   # Autophase the data
+      for(z = 0 to d-1)
+         title("Phasing plane $z$")
+         for(y = 0 to h-1)
+            p0 = autophase(mIn[~,y,z],x1,x2,method)*pi/180
+            mOut[~,y,z] = mIn[~,y,z]*exp(-i*p0)
+         next(y)
+         draw2d("false")
+           (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+            image(mOut[~,~,z])
+            2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+            title("Phasing plane $z$")
+         draw2d("true")
+      next(z)
+
+   else
+
+  # Get "peak" extent ###################
+      title("Select one side of peak")
+      y1 = getxy("horiz")
+      title("Select other side of peak")
+      y2 = getxy("horiz")
+      title("")
+
+   # Swap if chosen in wrong order
+      if (y1 > y2)
+         swapvar(y1,y2)
+      endif
+
+   # Autophase the data
+      for(z = 0 to d-1)
+         title("Phasing plane $z$")
+         for(x = 0 to w-1)
+            p0 = autophase(mIn[x,~,z]',y1,y2,method)*pi/180
+            mOut[x,~,z] = mIn[x,~,z]*exp(-i*p0)
+         next(x)
+         draw2d("false")
+           (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+            image(mOut[~,~,z])
+            2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+            title("Phasing plane $z$")
+         draw2d("true")
+      next(z)
+
+  endif
+
+# Save output matrix
+   assign(nameOut,mOut,"global")
+
+
+endproc()
+
+####################################################
+# Apply an fixed phase correction to rows or columns
+####################################################
+
+procedure(fixedPhase)
+
+   setpar(0,5,"text","op")
+
+# Get name and size of input matrix
+   nameIn = getpar(0,3,"text")
+   if(nameIn == "")
+      return
+   endif
+   mIn = alias(nameIn,"eval")
+   (w,h,d) = size(mIn)
+
+# Define output matrix
+   nameOut = getpar(0,12,"text")
+
+# Make output matrix
+   mOut = cmatrix(w,h,d)
+
+# Get fixed phase shift and direction
+   p0 = getpar(0,14,"value")/180*pi
+   dir = getpar(0,20,"text")
+
+# Phase data #################
+   if(dir == "rows")
+      for(z = 0 to d-1)
+         for(y = 0 to h-1)
+            mOut[~,y,z] = mIn[~,y,z]*exp(i*p0)
+         next(y)
+         draw2d("false")
+            (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+            image(mOut[~,~,z])
+            2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+            title("Phasing plane $z$")
+         draw2d("true")
+      next(z)
+   else
+      for(z = 0 to d-1)
+         for(x = 0 to w-1)
+            mOut[x,~,z] = mIn[x,~,z]*exp(i*p0)
+         next(x)
+         draw2d("false")
+            (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+            image(mOut[~,~,z])
+            2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+            title("Phasing plane $z$")
+         draw2d("true")
+      next(z)
+   endif
+
+# Save output matrix
+   assign(nameOut,mOut,"global")
+
+
+endproc()
+

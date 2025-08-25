@@ -1,0 +1,92 @@
+############################################################
+#
+# A pulse sequence suitable for performing a
+# pulse and collect experiment used to determine
+# the NMR resonant frequency which will become a
+# common parameter.
+#
+# pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["b1FreqCh1",       "B1 Frequency (MHz)",      "tb",  "freq";
+               "90Amplitude",     "Pulse amplitude (dB)",    "tb",  "pulseamp";
+               "pulseLength",     "Pulse length (us)",       "tb",  "pulselength";
+               "acqDelay",        "Pulse acqu. delay (us)",  "tb",  "sdelay";
+               "xShim",           "x-shim",                  "tb",  "integer,[-32768,32767]";
+               "yShim",           "y-shim",                  "tb",  "integer,[-32768,32767]";
+               "zShim",           "z-shim",                  "tb",  "integer,[-32768,32767]";
+               "shimDelay",       "Shim delay (us)",         "tb",  "sdelay";
+               "repTime",         "Repetition time (ms)",    "tb",  "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts = nrPnts",
+                    "a90Amp    = 90Amplitude",
+                    "d90Dur    = pulseLength",
+                    "dShim     = shimDelay",
+                    "dAcqDelay = acqDelay",
+                    "nxShim    = xShim",
+                    "nyShim    = yShim",
+                    "nzShim    = zShim",
+                    "totPnts   = nrPnts",
+                    "totTime   = acqTime"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+ #  gradon("x",nxShim)               # Make sure the magnet is shimmed
+ #  gradon("y",nyShim)
+ #  gradon("z",nzShim)
+   delay(dShim)
+   pulse(mode,a90Amp,p1,d90Dur)        # RF pulse
+   delay(dAcqDelay)                 # Pulse - acquire delay
+   acquire("overwrite",nDataPnts)   # Acquire echo and wait
+ #  gradoff("x")
+ #  gradoff("y")
+ #  gradoff("z")
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0,1,2,3;   # Pulse phase
+                0,1,2,3]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLength    = $pulseLengthCh1$",
+          "90Amplitude    = $pulseAmplitudeCh1$",
+          "xShim          = single($xShim$)",
+          "yShim          = single($yShim$)",
+          "zShim          = single($zShim$)",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)

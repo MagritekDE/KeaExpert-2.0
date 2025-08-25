@@ -1,0 +1,1249 @@
+###############################################################
+#
+# T2 Analysis macro
+#
+# Allows inversion of the T2 relaxation data displayed in the
+# current 1D plot using a Lawson and Hanson NNLS inversion
+#
+# Copyright 2012-2024 Magritek Ltd
+#
+# Author: C Eccles
+
+# Version history
+#
+# V1.0 1. Initial version
+# V1.1 1. Addition of log-bin weighting check box
+#      2. Addition of slope selection in smoothing curve
+# V1.2 1. Modifications for SpinsolveExpert 
+# V1.3 1. Removed Lexus algorithm
+#      2. Sorted procedures alphabetically
+#      3. Adapted for use with T2Bulk experiments
+#      4. Automatically saves and loads to data folder
+#
+###############################################################
+
+
+procedure(AnalyseT2Plot, units, srcPlt=null, dstPlt=null)
+
+# Define the window and window variables
+   n = :windowdefinition()
+
+   windowvar(wvParentPar,wvWinNr,wvE0,wvDataSymbolColor,
+             wvDataSymbolShape,wvFitCurveCol,wvSpectrumCol,
+             wvCalcDone,wvSaved,wvUnits,wvPPMK,wvCurTrace,
+             wvSrcPlt, wvDstPlt)
+   assignctrls(n)
+
+   wvUnits = units
+   if(srcPlt != null)
+      wvSrcPlt = gPlot->getPlotObject(srcPlt)
+   else
+      wvSrcPlt = curplot("1d")
+   endif
+   wvDstPlt = dstPlt
+
+# Intialise some window variables so we can get the parameters
+   wvWinNr = n
+   wvE0 = 0
+   wvCalcDone = 0
+   wvSaved = 0
+   wvPPMK = ""
+   wvCurTrace = 0
+
+# Clear plot data
+   :clearData()
+
+# Load extra colors from Spinsolve preferences
+    try
+       par = ucsFiles:loadPref()
+       assignlist(par)
+       wvDataSymbolColor = dataSymbolColor 
+       wvDataSymbolShape = dataSymbolShape
+       wvFitCurveCol  = fitColor 
+       wvSpectrumCol  = spectrumColor 
+    catch
+       wvDataSymbolColor = [255,0,0] 
+       wvDataSymbolShape = "opensquare"
+       wvFitCurveCol  = [0,0,255] 
+       wvSpectrumCol  = [0,128,0] 
+    endtry
+    wvPorosityError = 0
+
+# Make LH-NNLS load faster
+   cd("$appdir$\\Macros\\coreMacros")
+   cachemacro("LHInvert.mac","window")
+   cacheproc("true")
+
+# Initialise the GUI parameters and setup
+   :loadParameters()
+   :logbinCallBack()()
+
+# No edit menu
+   setwindowpar(n,"show_menu","false")
+
+# Set size limits, some window parameters and show the window
+   setwindowpar(n,"sizelimits",[940,10000,570,10000])
+   setwindowpar(n,"statusbox",50,
+                   "menubar",[71:74],
+                   "show_menu","false",
+                   "titleupdate","false",
+                   "exit_procedure",":exitProcedure()")
+   setwindowpar(n,"focus",1)
+   setpar(n,1,"statusbox",50)
+   showwindow(n)
+
+# Restore the current plot
+   curplot(wvSrcPlt)
+
+endproc()
+
+
+
+#########################################################
+# Step smoothing value and determine chisquared in each
+# case. From this we can pick a suitable alpha value 
+#########################################################
+
+procedure(alphaLoop)
+
+   wvCalcDone = 0
+
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   lst = lst + ["exp_type = \"exp(-t/T)\"",
+                "designMat = \"exp(-xData'*(1/xSpec))\"",
+                "weightBins = \"$weightBins$\"",
+                "logBin = \"$logBin$\""]
+
+   time(0)
+
+   progressCtrl->value(0)
+
+# Read the raw T2 data set
+   (xData,yData) = :getCurrentTraceData("Keep old fit")
+   if(xData == null)
+      return
+   endif
+
+  # gP->plot(xData,yData)
+
+# Data set originals 
+   origX = xData
+   origY = yData
+   origSz = size(xData) 
+
+# Just look at the real part
+   yData = real(yData)
+
+# Reduce the size of the data set
+   if(logBin == "yes")
+      if(nrPnts <= origSz/2)
+         (xData,yData) = pseudologbin(xData,yData,nrPnts)
+   #      (xData,yData) = :linearBin(xData,yData,nrPnts,50)
+      endif
+   endif
+
+# New data set size
+   xDataSz = size(xData)
+
+# Initialization for Alpha Loop
+   ns = alpha_loop_steps
+   chsq = matrix(ns)
+   chsqA = matrix(ns)
+   alp = logspace(alpha_loop_start,alpha_loop_end,alpha_loop_steps)
+
+ # Start alpha loop
+   tl = getwindowpar(0,"title")
+   setwindowpar(0,"title","$tl$ - L&H calculating ...")
+   for(n = 0 to ns-1)
+      alpha = 10^(8-log10(alp[n]))
+      lst = setlistvalue(lst,"alpha","$alpha$")
+      (specX,specY,fit,chsqA[n]) = LHInvert(xData,yData,lst)
+      (fit,chsq[n]) = LHInvert:calcFit("exp(-t/T)",specX,specY,origX,origY)
+      setpar(0,50,"text","step $n+1$ of $ns$, S.D. of residuals = $sqrt(chsq[n]),0.3g$")
+      progressCtrl->value(n*100/(ns-1))
+   next(n)
+   setwindowpar(0,"title",tl)
+
+# Calc s.d. of original data
+   iy = imag(origY)
+   ns = stats1d:getsd(iy[round(origSz/2):])
+   if(ns == 0)
+      nsf = 1
+   else
+      nsf = ns
+   endif
+
+# Work out knee position (10% slope default)
+   logSmth = log10(alp)
+   logChi = log10(chsq)
+   dx = diff(logSmth)
+   dy = diff(logChi)
+   slope = dy/dx
+   (kneeAlpa,kneeValue) = :findKnee(logSmth,sqrt(chsq),slope,alpha_loop_slope)
+
+# Plot the alpha curve
+   pd = plot1->subplot(1,1)
+  
+   pd->draw("false")
+
+      pd->plot(alp,sqrt(chsq)/nsf,
+               "tracetype", "lines",
+               "symbolshape", wvDataSymbolShape,
+               "symbolcolor", wvDataSymbolColor,
+               "tracecolor", wvDataSymbolColor)
+
+      pd->axes("xmapping","log")   
+      if(ns == 0)
+         pd->title("Standard deviation of residuals vs. Smoothing parameter")
+         pd->ylabel("SD residuals")
+      else
+         pd->title("Normalised SD of residuals data vs. Smoothing parameter")
+         pd->ylabel("SD residuals/SD input")
+
+      endif
+      pd->xlabel("Smoothing parameter")
+
+      if(kneeAlpa != null)
+         (symbol,color) = :getKneeSymbol(wvDataSymbolShape,wvDataSymbolColor)
+         pd->hold("on")
+         pd->plot([10^kneeAlpa],[kneeValue/nsf],
+               "tracetype", "none",
+               "symbolshape", symbol,
+               "symbolcolor", color)
+         pd->hold("off")
+      endif
+
+      miny = min(sqrt(chsq))/nsf
+      maxy = max(sqrt(chsq))/nsf
+      dy = maxy-miny
+
+      pd->zoom(alp[0],alp[-1],miny-dy/10,maxy+dy/10)
+
+   pd->draw("true")
+
+   if(kneeAlpa != null)
+      statusCtrl->text("Time taken = $time(),2.3f$ s : Optimum smoothing = $10^kneeAlpa,2.3f$")
+      pr ("\n   Optimal smoothing parameters = $10^kneeAlpa,2.3f$\n")
+   else
+      statusCtrl->text("Time taken = $time(),2.3f$ s : Optimum smoothing not found: change limits")
+   endif
+
+   curplot(wvSrcPlt)
+
+endproc()
+
+
+##################################################
+# Clear current T2 spectral data
+##################################################
+
+procedure(clearData)
+
+   plot1->multiplot(2,1)
+   plot2->multiplot(1,1)
+   plot3->multiplot(1,1)
+
+   rg1 = plot1->subplot(1,1)
+   rg2 = plot1->subplot(2,1)
+   rg3 = plot2->subplot(1,1)
+   rg4 = plot3->subplot(1,1)
+
+   rg1->margins(70,40,15,55)
+   rg2->margins(70,40,25,55)
+   rg3->margins(70,40,15,55)
+   rg4->margins(70,40,25,55)
+
+   rg1->clear()
+   rg2->clear()
+   rg3->clear()
+   rg4->clear()
+
+endproc()
+
+
+##################################################################
+# Choose inversion algorithm
+##################################################################
+
+procedure(chooseAlgorithm)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+#   for(k = 28 to 45)
+#      setpar(0,k,"visible","false")
+#   next(k)
+   for(k = 13 to 27)
+      setpar(0,k,"visible","true")
+   next(k)
+   setpar(0,53,"visible","true")
+   setpar(0,54,"visible","true")
+   setpar(0,58,"visible","true")
+   setpar(0,59,"visible","true")
+   setpar(0,60,"visible","true")
+   setpar(0,61,"visible","true")
+
+
+endproc()
+
+
+###########################################################
+# Copy all plots to the clipboard
+###########################################################
+
+procedure(copyAllPlots)
+
+   y = plot2->y() + plot2->height() + 10
+   savewindow(0,"clipboard",[0,0,0,y],"noframe")
+
+endproc()
+
+
+##################################################################
+# Come here when window is closed
+##################################################################
+
+procedure(exitProcedure)
+
+   if(wvCalcDone == 1 & wvSaved == 0)
+      if(query("Warning","Spectral data has not been saved.\rDo you want to save it?") == "yes")
+         :saveSpectralData()
+      endif
+   endif
+
+   :saveParameters()
+   closewindow(0)
+
+endproc()
+
+procedure(findErrors)
+
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+   
+# Number of simulations
+   N = 100
+   time(0)
+
+   (minx,maxx,miny,maxy) = plot1->subplot(1,1)->zoom()
+
+  (origT,origY,specX,spectrum,fit) = :processLH()
+   if(origT == null)
+      message("Error","No data present or error in L&H calculation.","error")
+      return
+   endif
+   plot1->subplot(1,1)->zoom(minx,maxx,miny,maxy)
+
+   cs = cumsum(spectrum)
+   origPorosity = cs[-1]
+
+   alpha = 10^(8-log10(alpha))
+
+   lst = lst + ["designMat = \"exp(-xData'*(1/xSpec))\"",
+                "logBin = \"yes\"",
+                "weightBins = \"yes\"",
+                "alpha = $alpha$"]
+
+   origSz = size(origT)
+   
+# Get noise level from last half of original data
+   iy = imag(origY)
+   ns = stats1d:getsd(iy[round(origSz/2):])
+
+   N = 100
+   sz = size(fit)
+   porosityArray = matrix(N)
+   logMeanArray = matrix(N)
+   logMeanOrig = 10^(sum(spectrum/sum(spectrum).*log10(specX)))
+
+   if(isfile("$appdir$\\Macros\\UCS-Core\\UCSRun.mac"))
+      cachemacro("$appdir$\\Macros\\UCS-Core\\UCSRun.mac")
+   endif
+   cachemacro("$appdir$\\Macros\\coreMacros\\LHInvert.mac")
+   cacheproc("true")
+
+   for(k = 0 to N-1)
+
+      simData = fit + ns*noise(origSz)       
+      (timeDat,simData) = pseudologbin(origT,simData,nrPnts)         
+      (specX,specY) = LHInvert(timeDat,simData,lst)  
+      cs = cumsum(specY)
+      porosityArray[k] = cs[-1]         
+      progressCtrl->value(k*100/N)
+      logMeanArray[k] = 10^(sum(specY/sum(specY).*log10(specX)))
+
+   next(k)
+
+# Display final result and error
+   porosity = sum(porosityArray)/N
+   porosityErr = stats1d:getsd(porosityArray)
+   logMean = sum(logMeanArray)/N
+   logMeanErr = stats1d:getsd(logMeanArray)
+   porosityStr = errorstr(origPorosity,porosityErr)
+   logMeanStr = errorstr(logMeanOrig,logMeanErr)
+   pr "   Cumlative sum = $porosityStr$\n"
+   pr "   Log-mean = $logMeanStr$ ms\n"
+
+endproc()
+
+
+#######################################################
+# Find the point in the array slope where the slope
+# is 0.1. Use this position to return the log of the
+# smoothing factor at this point and the standard
+# deviation of the residual at this pooint
+#######################################################
+
+procedure(findKnee, logSmth, stdDev, slope, optimum)
+
+   N = size(slope)
+   for(k = 1 to N-1)
+      if(slope[k] > optimum)
+         frc = (optimum-slope[k-1])/(slope[k] - slope[k-1])
+         xpos = frc*(logSmth[k]-logSmth[k-1])+logSmth[k-1]
+         ypos = frc*(stdDev[k]-stdDev[k-1])+stdDev[k-1]
+         return(xpos,ypos)
+      endif
+   next(k)
+
+endproc(null,null)
+
+
+############################################################
+# Get the full y range of two data sets
+############################################################
+
+procedure(fullrange,data1,data2)
+
+   mn1 = min(data1)
+   mx1 = max(data1)
+   mn2 = min(data2)
+   mx2 = max(data2)
+
+   if(mn1 < mn2)
+      mn = mn1
+   else
+      mn = mn2
+   endif
+
+   if(mx1 > mx2)
+      mx = mx1
+   else
+      mx = mx2
+   endif
+
+endproc([mn,mx])
+
+##################################################################
+# Read the raw T2 data set (trace has a name consisting 
+# of a 'fit' and 'T2 = value ms')
+##################################################################
+
+procedure(getCurrentTraceData, mode)
+
+   plt = wvSrcPlt
+   trcLst = plt->tracelist
+   stl = size(trcLst)
+   if(stl == 0)
+      message("Error","No data to invert - select plot trace","error")
+      return(null,null)
+   endif
+   for(k = 0 to stl-1)
+      trc = trcLst[k]
+      match = 0
+      trcName = plt->trace(trc)->name
+
+      # Try for a T2Bulk data set
+      try
+         (type, name) = scanstr(trcName,"%1 '%2'")
+         if(type == "fit" & mode == "Remove old fit")
+            plt->rmtrace(trc)
+            plt->rmtext(name)
+         endif
+         match = 1
+      catch
+      endtry
+
+      # Try for a T2 data set
+#      if(match == 0)
+#         try
+#            (type, name) = scanstr(plt->trace(trc)->name,"%1,%2")
+#            if(name != "raw" & mode == "Remove old fit")
+#               plt->rmtrace(trc)
+#               plt->rmtext(name)
+#               match = 1
+#            elseif(name == "raw" & mode == "Keep old fit")
+#               (xAxis,yData) = plt->trace(trc)->getdata() 
+#                wvCurTrace  = plt->trace(trc)->id
+#                match = 1
+#            endif
+#         catch
+#         endtry
+#      endif
+
+      if(match == 0)
+         (xAxis,yData) = plt->trace(trc)->getdata() 
+          wvCurTrace  = plt->trace(trc)->id
+      endif
+
+   next(k)
+   mapping = plt->axes->xmapping()
+   if(wvUnits == "s")
+      xAxis = xAxis*1000
+   endif
+
+endproc(xAxis,yData,mapping)
+
+
+###########################################################
+# Get the symbol for the knee point in the alpha curve
+###########################################################
+
+procedure(getKneeSymbol,wvDataSymbolShape,wvDataSymbolColor)
+
+   ss = wvDataSymbolShape
+   sc = wvDataSymbolColor
+   if(ss == "none")
+      symbol = "square"
+      color = [255,0,0]
+   elseif(ss[0:3] == "open")
+      symbol = ss[4:-1]
+      color = sc
+   elseif(ss == "square" | ss == "circle" | ss == "triangle" | ss == "invtriangle" | ss == "diamond")
+      symbol = "open" + ss
+      color = sc
+   else
+      symbol = "square"
+      color = [255,0,0] 
+   endif 
+
+endproc(symbol,color)
+
+
+###########################################################
+# Integrate a region around a peak
+###########################################################
+
+procedure(integrateRegion)
+
+  assignlist(getctrlvalues(0))
+
+  (x1,y1,x2,y2) = getrect()
+   if(x1 == -1)
+      message("Error","Select a region about a peak first","error")
+      return()
+   endif
+
+# Extract the data from the plot
+  rg = plot1->subplot(1,1)
+  (x,y) = rg->trace(0)->getdata()
+   if(x == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+
+   rg = plot1->subplot(2,1)
+   (xc,yc) = rg->trace(0)->getdata()
+    ylab = rg->ylabel()
+    units = scanstr(ylab->text,"*(%1)")
+    if(units != "%")
+      units = " uV"
+    endif
+   (indx1,indx2) = findindex(x,x1,x2)
+
+   submx = y[[indx1:indx2]]
+   result = sum(submx)
+
+   xlog = logvec(x_minimum,x_maximum,x_steps)
+   xc = xlog[round((indx1+indx2)/2)]
+   frc = result/sum(y)
+   txt = "Center at $xc,1.2g$   Integral = $frc*yc[-1],2.3g$$units$ ($frc*100,2.1f$%)"
+   pr "$txt$"
+   statusCtrl->text(txt)
+
+endproc()
+
+
+#########################################################
+# Divide the input data (xIn,yIn) into approx N bins
+# sum the results in each bin and return.
+#########################################################
+
+procedure(linearBin, xIn, yIn, N, minN)
+
+   sz = size(xIn)
+
+   if(N > sz)
+      message("Error","Reduce number of points")
+      abort("")
+   endif
+
+   gs = trunc(sz/N)
+
+   if(gs <= 1)
+      message("Error","Reduce number of points")
+      abort("")
+   endif
+
+   if(N < minN)
+      message("Error","Increase number of points")
+      abort("")
+   endif
+
+   xOut = matrix(N)
+   yOut = matrix(N)
+
+   for(k = 0 to N-1)
+      xOut[k] = sum(xIn[k*gs:(k+1)*gs-1])/gs
+      yOut[k] = sum(yIn[k*gs:(k+1)*gs-1])/gs
+   next(k)
+
+endproc(xOut,yOut)
+
+
+#########################################################
+# Load window parameters from preferences file
+#########################################################
+
+procedure(loadParameters)
+
+   loaded = 0
+   dir = "$prefdir$\\Other Macros\\NNLS"
+   if(isdir(dir))
+      cd(dir)
+      if(isfile("AnalyseT2Plot.par"))
+         lst = load("AnalyseT2Plot.par")
+         setctrlvalues(0,lst)
+         loaded = 1
+      endif
+   endif
+
+   if(loaded == 0)
+      fitMode = "LH"
+      x_minimum = 0.1
+      x_maximum = 1000
+      x_steps = 100
+      alpha = 1
+      nrPnts = 100
+      alpha_loop_start = 0.01
+      alpha_loop_end = 10
+      alpha_loop_steps = 20
+      alpha_loop_slope = 0.1
+      weight = 1
+      tolerance = 1e-6
+      rsig = 1.02
+      nrPntsLexus = 100
+      algorithm = "asym"
+      weightBins = "yes"
+      logBin = "yes"
+      setctrlvalues(0,mkparlist())
+   endif
+
+endproc()
+
+
+##################################################
+# Load previously saved T2 spectral data
+##################################################
+
+procedure(loadSpectralData)
+
+   folder = gData->curExpt->dataPath + "\T2 Analysis"
+   if(isdir(folder) == 0)
+      return
+   endif
+   cd(folder)
+
+   if(isfile("spectrum.pt1") & isfile("residuals.pt1") & isfile("statistics.pt1"))
+      pp = getobj(wvWinNr,1)
+      plot1->draw("false")
+      plot2->draw("false")
+      plot3->draw("false")
+   
+         plot1->usedefaults("false")
+         plot1->load("spectrum.pt1")
+         plot1->subplot(1,1)->margins(70,40,15,55)
+         plot1->subplot(2,1)->margins(70,40,25,55)
+   
+         plot2->usedefaults("false")
+         plot2->load("residuals.pt1")
+         plot2->subplot(1,1)->margins(70,40,15,55)
+         plot3->usedefaults("false")
+         plot3->load("statistics.pt1")
+         plot3->subplot(1,1)->margins(70,40,25,55)
+   
+      plot1->draw("true")
+      plot2->draw("true")
+      plot3->draw("true")
+   
+      setctrlvalues(0,load("T2Analysis.par"))
+   else
+     message("Error","No spectral data stored in this folder","error")
+   endif
+
+  
+endproc()
+
+##################################################################
+# Toggle the visibility of the controls when log-bin option
+# is selected
+##################################################################
+
+procedure(logbinCallBack)
+
+   if(logBinCtrl->text == "no")
+      weightBinCtrl->visible("false")
+      weightBinTextCtrl->visible("false")
+      nrPntsTxt1Ctrl->visible("false")
+      nrPntsTxt2Ctrl->visible("false")
+      nrPntsCtrl->visible("false")
+   else
+      weightBinCtrl->visible("true")
+      weightBinTextCtrl->visible("true")
+      nrPntsTxt1Ctrl->visible("true")
+      nrPntsTxt2Ctrl->visible("true")
+      nrPntsCtrl->visible("true")
+   endif
+
+endproc()
+
+
+############################################################
+# Plot the relaxation spectrum, the cumulative sum,
+# residuals and residual statistics
+############################################################
+
+procedure(plotData,origT,origY,specX,specY,fit,fitType)
+
+   origSz = size(origY)
+
+# Modify title text of corrected
+   txt1 = "Cumulative"
+   txt2 = "Relaxation spectrum"
+
+# Work out the porosity based on the cumulative sum of the spectrum
+   cumspec = cumsum(specY)
+   wvE0 = cumspec[-1]
+   scale = 1
+
+   plot1->draw("false")
+
+   # Plot relaxation spectrum
+      pd = plot1->subplot(1,1)
+      pd->plot(specX,specY*scale,
+             "symbolshape","none",
+             "tracetype", "lines", 
+             "tracecolor", wvSpectrumCol,
+             "tracewidth",2) 
+      pd->hold("on")
+     # Calculate y range for T2 limits
+      minY = min(specY*scale)
+      maxY = max(specY*scale)
+      rng = (maxY-minY)*1.2
+      minYf = (maxY+minY)/2-rng/2
+      maxYf = (maxY+minY)/2+rng/2
+     # Plot T2 limits 
+      t2Min = origT[0]
+      t2Max = origT[-1]
+      pd->plot([t2Min,t2Min],[minYf,maxYf],"color",wvFitCurveCol)
+      pd->plot([t2Max,t2Max],[minYf,maxYf],"color",wvFitCurveCol)
+      pd->zoom(specX[0],specX[-1],minYf,maxYf)
+      pd->title(txt2)
+      pd->xlabel("Relaxation time (ms)")
+      pd->ylabel("Amplitude")
+      pd->axes("xmapping","log","ymapping","lin")
+      pd->hold("off")
+   
+      if(wvUnits == "s")
+         logMean = 10^(sum(specY/sum(specY).*log10(specX)))/1000
+      else
+         logMean = 10^(sum(specY/sum(specY).*log10(specX)))
+      endif
+   
+   # Plot cumulative sum
+      pd = plot1->subplot(2,1)
+      pd->plot(specX,cumspec*scale,
+               "tracetype", "lines", 
+               "symbolshape", "none",
+               "tracecolor", wvSpectrumCol, 
+               "tracewidth", 2) 
+      pd->axes("xmapping","log")
+      pd->axes("ymapping","lin")
+      pd->ylabel("$txt1$ sum (\G(m)V)")
+      pd->title("$txt1$ sum of spectral data")
+      pd->xlabel("Relaxation time (ms)")
+
+   plot1->draw("true")
+
+# Report chi^2
+   iy = imag(origY)
+   ns = stats1d:getsd(iy[round(origSz/2):])
+   res = real(fit-origY)
+   avg = sum(res)/origSz
+   chisq = sum((res-avg)^2)/(origSz-1) 
+   if(ns == 0)
+      setpar(0,50,"text", "S.D. of residuals  = $sqrt(chisq),2.1e$")
+   else
+      setpar(0,50,"text", "S.D. of residuals  = $sqrt(chisq),2.1e$ cf ideal $ns,2.1e$")
+   endif
+
+# Plot the residuals 
+   plot2->draw("false")
+      pd = plot2->subplot(1,1)
+      tc1 = pd->plot(origT,real(origY-fit))
+      pd->hold("on")
+      if(ns > 0)
+         tc2 = pd->plot([origT[0],origT[-1]],[2.5*ns,2.5*ns],"color",wvFitCurveCol)
+         tc3 = pd->plot([origT[0],origT[-1]],[-2.5*ns,-2.5*ns],"color",wvFitCurveCol)
+      endif
+      pd->xlabel("Relaxation time (ms)")
+      pd->ylabel("Residuals (\G(m)V)")
+      pd->title("Residuals (Data-Fit) and data error range")
+      pd->axes("xmapping","log")
+      pd->hold("off")
+   plot2->draw("true")
+
+# Plot the noise stats 
+   res = real(origY-fit)
+   halfIy = iy[round(origSz/2):]
+   rng = :fullrange(res,halfIy)
+
+   (xhist,yhist) = histogram(res,50,rng)
+   (xhistd,yhistd) = histogram(iy,50,rng)
+
+   plot3->draw("false")
+
+      pd = plot3->subplot(1,1)
+      pd->hold("off")
+      pd->plot(xhist,yhist)
+
+      pd->xlabel("Residual (\G(m)V)")
+      pd->ylabel("Occurence")
+      pd->title("Residual and data-noise statistics")
+
+      pd->hold("on")
+      if(ns > 0)
+         pd->plot(xhistd,yhistd,"color",wvFitCurveCol)
+      endif
+      pd->hold("off")
+
+   plot3->draw("true")
+
+# Plot the fit back in the source plot with original data
+   pdExp = wvSrcPlt
+   map  = pdExp->axes->xmapping()
+  # wvCurTrace = pdExp->curtrace()->id
+   shape = pdExp->trace(wvCurTrace)->symbolshape()
+   shapeSz = pdExp->trace(wvCurTrace)->symbolsize()
+   shapeCol = [0,128,0]
+   traceCol = [0,255,0]
+
+   pdExp->draw("false")
+
+      pdExp->hold("on") # allow the addition of new plots
+      if(wvUnits == "s")
+         fitStr =  "T2 = $logMean$ s"
+         trc = pdExp->plot(origT/1000,fit,"tracecolor", shapeCol,"realstyle",1)
+
+      else
+         fitStr =  "T2 = $logMean$ ms"
+         trc = pdExp->plot(origT,fit,"tracecolor", shapeCol,"realstyle",1)
+      endif
+      pdExp->trace(trc)->name("fit '$fitStr$'")
+
+      pdExp->title("T2 relaxation data with $fitType$ fit")
+     # pdExp->axes->xmapping(map)
+      pdExp->hold("off")
+
+      shiftMat = [-0.5,0;0,-1]
+      if(wvUnits == "s")
+         xoff = 0.25*origT[-1]/1000
+      else
+         xoff = 0.25*origT[-1]
+      endif
+      pos = round(size(fit)*0.25)
+      yoff = fit[pos]*1.5
+      pdExp->addtext([xoff,yoff],fitStr,shiftMat,"Cambria",8,0,"regular",shapeCol)
+
+   pdExp->draw("true")
+
+# Print out the log-mean
+   if(wvUnits == "s")
+      pr("   E0 = $cumspec[-1]$, T2 Log-mean = $logMean$ s\n")
+   else
+      pr("   E0 = $cumspec[-1]$, T2 Log-mean = $logMean$ ms\n")
+   endif
+   setwindowpar(0,"title","T2 Analysis")
+
+endproc()
+
+##################################################################
+# Callback for the calculate button
+##################################################################
+
+procedure(processData)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+# Make sure data is still present
+   try
+     t = wvSrcPlt->title
+   catch
+      wvSrcPlt = curplot("1d")
+   endtry
+
+   progressCtrl->value(0)
+
+   :processLH()
+
+endproc()
+
+
+#########################################################
+# Perform L&H NNLS IL for a particular alpha value
+#########################################################
+
+procedure(processLH)
+
+   wvCalcDone = 0
+
+   time(0)
+   if(checkcontrols(0) != "ok")
+      return
+   endif
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+# Invert alpha and reduce range by taking log
+   alpha = 10^(8-log10(alpha))
+
+   lst = lst + ["exp_type = \"exp(-t/T)\"",
+                "designMat = \"exp(-xData'*(1/xSpec))\"",
+                "alpha = $alpha$",
+                "weightBins = \"$weightBins$\"",
+                "logBin = \"$logBin$\""]
+
+   :saveParameters()
+
+# Read the raw T2 data set
+   (xData,yData,mapping) = :getCurrentTraceData("Remove old fit")
+   if(xData == null)
+      return
+   endif
+
+# Data set originals 
+   origX = xData
+   origY = yData
+   origSz = size(xData)
+
+# Just look at the real part
+   yData = real(yData)
+
+# Reduce the size of the data set by log binning
+   if(mapping == "lin")
+      if(logBin == "yes")
+         if(nrPnts < origSz/2)
+           (xData,yData) = pseudologbin(xData,yData,nrPnts)
+          #  (xData,yData) = logbin(xData,yData,nrPnts)
+           # (xData,yData) = :linearBin(xData,yData,nrPnts,50)
+         endif
+      endif
+   endif
+
+# New data set size
+   xDataSz = size(xData)
+
+# Some checks
+#   if(x_steps > xDataSz)
+#      message("Error","Reduce number of steps")
+#      return()
+#   endif
+
+   if(min(xData) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return()
+   endif
+
+# Calculate the relaxation spectrum
+   tl = getwindowpar(0,"title")
+   setwindowpar(0,"title","$tl$ - L&H calculating ...")
+   (specX,specY,fit,chisq) = LHInvert(xData,yData,lst)
+   setwindowpar(0,"title",tl)
+
+# Calculate the best fit curve from the spectrum
+  (fit,chisq) = LHInvert:calcFit("exp(-t/T)",specX,specY,origX,origY)
+
+# Display the data
+   :plotData(origX,origY,specX,specY,fit,"L&H")
+
+   curplot(wvSrcPlt)
+
+   wvCalcDone = 1
+
+   pr "\n   Lawson and Hanson T2 inversion time taken = $time(),1.3f s$\n"
+
+endproc(origX,origY,specX,specY,fit)
+
+#########################################################
+# Save window parameters to preferences file
+#########################################################
+
+procedure(saveParameters)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   mkdir("NNLS")
+   cd("NNLS")
+   save("AnalyseT2Plot.par",getctrlvalues(0))
+
+endproc()
+
+
+
+##################################################
+# Save the T2 spectral data
+##################################################
+
+procedure(saveSpectralData)
+
+   reprocessAndSave = 0
+
+   if(wvCalcDone == 0)
+      message("","No spectrum to save","info")
+      return
+   endif
+
+# Set the image filename and path
+   proc = "$gData->curExpt->protocol$:getPlotInfo"
+   fileName = proc(wvDstPlt)
+   dstPlt = gPlot->getPlotObject(wvDstPlt)
+
+# Select folder
+   folder = gData->curExpt->dataPath + "\T2 Analysis"
+   mkdir(folder)
+   cd(folder)
+
+# Check spectral data is present
+   pd1 = plot1->subplot(1,1)
+   try
+      (x,y) = pd1->trace(0)->getdata() # Get spectrum not limits
+   catch
+      message("","No spectrum to save","info")
+      return
+   endtry
+
+# Save the spectrum, residuals and statistics
+   plot1->save("spectrum.pt1") # Save curve as Prospa 1d plot
+   plot2->save("residuals.pt1")
+   plot3->save("statistics.pt1")
+   (x,y) = pd1->trace(0)->getdata() # Get spectrum again
+   save("spectrum.1d",x,y) # Save curve as Prospa 1d file
+   export1dpar("ab","ascii","xyrc","xydata","delimiter","comma")
+   export1d(x,y,"spectrum.csv")  # Save curve as an Excel file
+   ycs = cumsum(y)
+   export1d(x,ycs,"cumulative_spectrum.csv")  # Save curve as an Excel file
+   save("T2Analysis.par",getctrlvalues(0))
+
+# Copy spectrum to destination plot
+   n = wvWinNr
+   curplot(plot1->subplot(1,1))
+   func1d("copy plot")
+   curwin(gView->wn)
+   curplot(dstPlt)
+   func1d("paste plot")
+   curplot()->filename(fileName)
+   curplot()->filepath(gData->curExpt->dataPath)
+   curwin(n)
+  
+# Flag that we have saved the data
+   wvSaved = 1
+
+endproc()
+
+##################################################################
+# Choose Log or linear x-axis on residuals plot
+##################################################################
+
+procedure(toggleLogLinX,ctrl)
+
+   rg = ctrl->subplot(1,1)
+
+# Make sure zero is not displayed
+   (x,y) = rg->trace(0)->getdata()
+   (x1,x2,y1,y2) = rg->zoom()
+   if(x[0] > 0)
+   
+      mapping = rg->axes->xmapping()
+      if(mapping == "log")
+         rg->axes->xmapping("lin")
+      else
+         rg->axes->xmapping("log")
+         if(x1 <= 0)
+           rg->zoom(x[0],x2,y1,y2)
+         endif
+      endif
+
+   else
+     message("Error","Data set x-axis contains point <= 0.","error")
+   endif
+
+endproc()
+
+
+##################################################################
+# Define the window
+##################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("T2 Analysis", -1, -1, 940, 632, "resizable")
+
+      # Define all controls with basic parameters
+      plot1d(1, 10, 10, "ww-20", "wh*0.5-80")
+      groupbox(2, "Analysis Method", 10, "wh-143", 111, 107)
+      groupbox(6, "Relaxation spectrum parameters", 130, "wh-143", 201, 107)
+      statictext(7, 245, "wh-113", "right", "Min. relax time (ms)")
+      textbox(8, 254, "wh-118", 56)
+      statictext(9, 245, "wh-89", "right", "Max. relax time (ms)")
+      textbox(10, 254, "wh-92", 56)
+      statictext(11, 245, "wh-64", "right", "Relaxation steps")
+      textbox(12, 254, "wh-66", 56)
+      groupbox(13, "Analysis Parameters", 340, "wh-143", 141, 107)
+      statictext(14, 407, "wh-112", "right", "Smoothing")
+      statictext(15, 406, "wh-99", "right", "parameter")
+      textbox(16, 420, "wh-109", 44)
+      statictext(17, 404, "wh-78", "right", "Points to ")
+      statictext(18, 400, "wh-65", "right", "analyze")
+      textbox(19, 420, "wh-73", 44)
+      groupbox(20, "Select smoothing parameter", 490, "wh-143", 231, 107)
+      statictext(21, 552, "wh-113", "right", "Minimum")
+      textbox(22, 563, "wh-118", 46)
+      statictext(23, 551, "wh-89", "right", "Maximum")
+      textbox(24, 563, "wh-92", 46)
+      statictext(25, 552, "wh-64", "right", "Nr steps")
+      textbox(26, 563, "wh-66", 46)
+      button(27, 643, "wh-121", 59, 45, "Calculate smoothing curve",
+         :alphaLoop();)
+      button(46, "ww-74", "wh-139", 61, 32, "Calculate Spectrum",
+         :processData();)
+      button(47, "ww-74", "wh-65", 61, 32, "Close",
+         :exitProcedure();)
+      button(48, "ww-144", "wh-102", 61, 32, "Load data",
+         :loadSpectralData();)
+      button(49, "ww-144", "wh-139", 61, 32, "Save data",
+         :saveSpectralData();)
+      statusbox(50,"ww/3","ww*0.6667","ww-40","-1")
+      button(51, "ww-144", "wh-65", 61, 32, "Clear data",
+         :clearData();)
+      plot1d(52, 10, "wh*0.5-70", "ww*0.6667-10", "wh*0.5-85")
+      checkbox(53, 92, "wh-108", "no,yes", "yes",:logbinCallBack())
+      statictext(54, 85, "wh-108", "right", "Log-bin data")
+      plot1d(55, "ww*0.66667", "wh*0.5-70", "ww*0.3333-10", "wh*0.5-85")
+      button(56, "ww-74", "wh-102", 61, 32, "Errors",
+         :findErrors();)
+      progressbar(57, 742, "wh-136", 16, 100, "vertical")
+      statictext(58, 659, "wh-64", "right", "Slope")
+      textbox(59, 668, "wh-67", 32)
+      checkbox(60, 92, "wh-83", "no,yes", "yes")
+      statictext(61, 57, "wh-84", 60, 16, "center", "Weight bins")
+      menu(69, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+                "Reduce vertical\tShift+down", func1d("reduce vertical"),
+                "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+                "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+      menu(70, "Move", "Move up\tCtrl+up", func1d("move up"),
+                "Move down\tCtrl+down", func1d("move down"),
+                "Move right\tCtrl+right", func1d("move right"),
+                "Move left\tCtrl+left", func1d("move left"))
+      menu(71, "Edit", "Copy Plot\tCtrl+C", func1d("copy plot"),
+                "Copy all plots as image\tShift+C", :copyAllPlots())
+      menu(72, "View", "Show &data under cursor\tCtrl+D", func1d("display data"),
+                "&Select a rectangular region\tCtrl+R", func1d("select region"),
+                "&Move plot\tCtrl+M", func1d("drag plot"),
+                "Separator", ,
+                "&Zoom a region\tCtrl+Z", func1d("zoom region"),
+                "Show &last region\tCtrl+L", func1d("last region"),
+                "Display &all data\tCtrl+A", func1d("full region"),
+                "Separator", ,
+                "Pull_right", 69,
+                "Pull_right", 70)
+      menu(73, "Calculate", "Integrate peak\tCtrl+P", :integrateRegion())
+      menu(74, "Help", "T2 Analysis help\tCtrl+H", help("Macros\NNLS","AnalyseT2Plot.htm"))
+      menu(75, "&BkgMenu", "Log/linear x-axis", :toggleLogLinX(plot2))
+
+     # Set other control parameters
+      setpar(n,1,"objID","plot1",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,8,"valueID","x_minimum",
+                  "type","float",
+                  "range",[0.0001,50000])
+      setpar(n,10,"valueID","x_maximum",
+                  "type","float",
+                  "range",[0.0001,50000])
+      setpar(n,12,"valueID","x_steps",
+                  "type","integer",
+                  "range",[10,512])
+      setpar(n,16,"valueID","alpha",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,17,"objID","nrPntsTxt1Ctrl")
+      setpar(n,18,"objID","nrPntsTxt2Ctrl")
+      setpar(n,19,"valueID","nrPnts",
+                  "objID","nrPntsCtrl",
+                  "type","integer",
+                  "range",[10,10000])
+      setpar(n,22,"valueID","alpha_loop_start",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,24,"valueID","alpha_loop_end",
+                  "type","float",
+                  "range",[1e-008,100000])
+      setpar(n,26,"valueID","alpha_loop_steps",
+                  "type","integer",
+                  "range",[2,100])
+#      setpar(n,31,"valueID","target")
+#      setpar(n,35,"valueID","weight",
+#                  "type","float",
+#                  "range",[1e-006,1000])
+#      setpar(n,36,"valueID","tolerance",
+#                  "type","float",
+#                  "range",[1e-009,1])
+#      setpar(n,40,"valueID","algorithm")
+#      setpar(n,42,"valueID","nrPntsLexus")
+#      setpar(n,45,"valueID","rsig",
+#                  "type","float",
+#                  "range",[0.01,10])
+      setpar(n,50,"objID","statusCtrl")
+      setpar(n,52,"objID","plot2",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,53,"objID","logBinCtrl",
+                  "valueID","logBin")
+      setpar(n,55,"objID","plot3",
+                  "statusbox",50,
+                  "menubar",[71,72,73,74])
+      setpar(n,57,"objID","progressCtrl",
+                  "type","float",
+                  "range",[0,100])
+      setpar(n,59,"valueID","alpha_loop_slope",
+                  "type","float",
+                  "range",[0,1])
+      setpar(n,60,"objID","weightBinCtrl",
+                  "valueID","weightBins")
+      setpar(n,61,"objID","weightBinTextCtrl")
+
+     # Set other window parameters
+endproc(n)
+

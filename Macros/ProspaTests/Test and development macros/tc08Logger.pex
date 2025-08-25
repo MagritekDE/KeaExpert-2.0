@@ -1,0 +1,487 @@
+procedure(tc08Logger)
+
+   :loadPlotPref()
+   n = :windowdefinition()
+   setwindowpar(n,"sizelimits",[600,-1,322,-1])
+ #  setwindowpar(n,"showmenu","false")
+   setwindowpar(n,"menubar",[102:106])
+   setwindowpar(n,"exit_procedure",":exitProc")
+
+   windowvar(logging,gx1,gx2,gy1,gy2,colors,names)
+   gx1 = -1
+   gx2 = -1
+   gy1 = -1
+   gy2 = -1
+   logging = 0
+
+   :loadPar()
+   :enableNames()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("TC08 Temperature Logger", -1, -1, 600, 322, "resizable")
+
+      # Define all controls with basic parameters
+      groupbox(1, "Log temperatures", 10, 9, 281, 122)
+      statictext(2, 101, 39, "right", "Thermocouples")
+      thermoCoupleCtrl = textbox(3, 110, 35, 101)
+      statictext(4, 101, 73, "right", "Sampling interval")
+      samplingTimeCtrl = textbox(5, 110, 70, 51)
+      statictext(6, 101, 104, "right", "Sampling status")
+      logBoxCtrl = colorbox(7, 110, 103, 16, 16, [0,0,0])
+      statictext(8, 165, 74, "left", "second(s)")
+      timeCtrl = statictext(9, 140, 104, "left", "Time: 0.0 s")
+      startButton = button(10, 232, 30, 48, 32, "Start",
+         :startLogging();)
+      button(11, 232, 70, 48, 32, "Stop",
+         :stopLogging();)
+      groupbox(12, "Zoom", 10, 140, 281, 151)
+      statictext(13, 90, 174, "right", "Start time")
+      startTimeCtrl = textbox(14, 100, 170, 51)
+      statictext(15, 90, 201, "right", "End time")
+      endTimeCtrl = textbox(16, 100, 197, 51)
+      statictext(17, 90, 228, "right", "Min. temp")
+      minTempCtrl = textbox(18, 100, 224, 51)
+      statictext(19, 90, 255, "right", "Max. temp")
+      maxTempCtrl = textbox(20, 100, 251, 51)
+      button(21, 189, 176, 81, 32, "Select range",
+         :zoomRegion();)
+      button(22, 189, 231, 81, 32, "Show all",
+         :showAll();)
+      groupbox(23, "Channel names", 10, 299, 281, 282)
+      statictext(24, 91, 334, "right", "Channel 1:")
+      textbox(25, 100, 330, 100)
+      checkbox(26, 209, 334, "no,yes", "no")
+      statictext(27, 91, 364, "right", "Channel 2:")
+      textbox(28, 100, 360, 100)
+      checkbox(29, 209, 364, "no,yes", "no")
+      statictext(30, 91, 394, "right", "Channel 3:")
+      textbox(31, 100, 390, 100)
+      checkbox(32, 209, 394, "no,yes", "no")
+      statictext(33, 91, 424, "right", "Channel 4:")
+      textbox(34, 100, 420, 100)
+      checkbox(35, 209, 424, "no,yes", "no")
+      statictext(36, 91, 454, "right", "Channel 5:")
+      textbox(37, 100, 450, 100)
+      checkbox(38, 209, 454, "no,yes", "no")
+      statictext(39, 91, 484, "right", "Channel 6:")
+      textbox(40, 100, 480, 100)
+      checkbox(41, 209, 484, "no,yes", "no")
+      statictext(42, 91, 514, "right", "Channel 7:")
+      textbox(43, 100, 510, 100)
+      checkbox(44, 209, 514, "no,yes", "no")
+      statictext(45, 91, 544, "right", "Channel 8:")
+      textbox(46, 100, 540, 100)
+      checkbox(47, 209, 544, "no,yes", "no")
+
+      logPlot = plot1d(48, 300, 10, "ww-310", "wh-45")
+      statictext(49, 340, "wh-22", "right", "Log file:")
+      logFileCtrl = textbox(50, 345, "wh-25","ww-380")
+      logFileBut = button(51, "ww-30", "wh-26", 23, 23, "...",:selectLogFile())
+
+      statictext(60, 230, 334, "left", "--")
+      statictext(61, 230, 364, "left", "--")
+      statictext(62, 230, 394, "left", "--")
+      statictext(63, 230, 424, "left", "--")
+      statictext(64, 230, 454, "left", "--")
+      statictext(65, 230, 484, "left", "--")
+      statictext(66, 230, 514, "left", "--")
+      statictext(67, 230, 544, "left", "--")
+
+      menu(100, "Scale", "Enlarge vertical\tShift+up", func1d("enlarge vertical"),
+                "Reduce vertical\tShift+down", func1d("reduce vertical"),
+                "Enlarge horizontal\tShift+right", func1d("enlarge horizontal"),
+                "Reduce horizontal\tShift+left", func1d("reduce horizontal"))
+      menu(101, "Move", "Move up\tup", func1d("move up"),
+                "Move down\tdown", func1d("move down"),
+                "Move right\tright", func1d("move left"),
+                "Move left\tleft", func1d("move right"))
+      menu(102, "&File", "&Open Plot ...\tCtrl+O", func1d("load plot"),
+                "&Save Plot ...\tCtrl+S", func1d("save plot"),
+                "Save as &Image ...\tCtrl+I", func1d("save as image"),
+                "&Print Plot ...\tCtrl+P", func1d("print plot"))
+      menu(103, "&Edit", "Copy plot\tCtrl+C", func1d("copy plot"),
+                "Delete plot", func1d("delete all plots"))
+      menu(104, "&View", "Show &data under cursor\tCtrl+D", func1d("display data"),
+                "&Select a rectangular region\tCtrl+R", func1d("select region"),
+                "&Move plot\tCtrl+M", func1d("drag plot"),
+                "Separator", ,
+                "&Zoom a region\tCtrl+Z", func1d("zoom region"),
+                "Show &previous region\tCtrl+P", func1d("last region"),
+                "Display full dataset\tCtrl+F", func1d("full region"),
+                "Separator", ,
+                "Display &border\tCtrl+B", func1d("toggle border"),
+                "Separator", ,
+                "Antialiasin&g\tCtrl+G", func1d("toggle antialiasing"),
+                "Show legend\tCtrl+L", :toggleLegend(),
+                "Separator", ,
+                "Pull_right", 100,
+                "Pull_right", 101)
+      menu(105, "&Pref", "Tick &spacing ...", PlotParameters("Ticks"),
+                "&Mapping ...", PlotParameters("Mapping"),
+                "&Grid ...", PlotParameters("Grid"),
+                "Axes &range ...", PlotParameters("Range"),
+                "Plot margi&ns ...", PlotParameters("Margins"),
+                "Separator", ,
+                "&Title text and font ...", PlotParameters("Title"),
+                "X and Y &labels and font ...", PlotParameters("Labels"),
+                "&Axes font ...", PlotParameters("Axes"),
+                "Separator", ,
+                "Plot &colours ...", PlotParameters("Colors"),
+                "&Trace settings ...", modifyTraceParameters(),
+                "Make plot &black and white", makePlotBlackAndWhite("1d"),
+                "Separator", ,
+                "Load plot preferences ...", loadPlotPreferences("1d"),
+                "Save plot preferences ...", savePlotPreferences("1d"))
+      menu(106, "&Help", "Window &help", help("Macros\\TC08Logger","tc08Logger.htm"))
+
+endproc(n)
+
+
+procedure(savePar)
+
+   if(not(isdir("$prefdir$\\Other Macros")))
+     cd(prefdir)
+     mkdir("Other Macros")
+   endif
+   :getNames()
+   cd("$prefdir$\\Other Macros")
+   par = ["thermocoupleNames = $names$",
+         "thermocoupleTypes = \"$thermoCoupleCtrl->text$\"",
+         "samplingInterval = $samplingTimeCtrl->text$",
+         "startTime = $startTimeCtrl->text$",
+         "endTime = $endTimeCtrl->text$",
+         "minTemperature = $minTempCtrl->text$",
+         "maxTemperature = $maxTempCtrl->text$",
+         "logFile = \"$logFileCtrl->text$\""]
+   save("tc08Logger.par",par)
+
+endproc()
+
+procedure(loadPlotPref)
+
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      if(isfile("plotPreferences.mac"))
+         plotPreferences() 
+      endif
+      if(isfile("tracePreferences.mac"))
+         tracePreferences()
+      endif 
+      if(isfile("marginPreferences.mac"))
+         marginPreferences() 
+      endif
+   catch
+      pr lasterror()
+   endtry
+   cd(bak)
+
+endproc()
+
+procedure(loadPar)
+
+   colors = [0xe4,0x1a,0x1c;
+             0x37,0x7e,0xb8;
+             0x4d,0xaf,0x4a;
+             0x98,0x4e,0xa3;
+             0xff,0x7f,0x00;
+             0xA0,0xA0,0x33;
+             0xa6,0x56,0x28;
+             0xf7,0x81,0xbf]
+
+  # logPlot->bkgcolor([255,255,255])
+
+   thermocoupleNames = ["Cold junction",
+                        "Sample top",
+                        "Sample bottom",
+                        "-",
+                        "-",
+                        "-",
+                        "-",
+                        "-"]
+
+   thermocoupleTypes = "TTT"
+   samplingInterval = 1
+   startTime = 0
+   endTime = 1000
+   minTemperature = 0
+   maxTemperature = 100
+   logFile = "$desktop$\\tc08Log.txt"
+
+   cd("$prefdir$\\Other Macros")
+   if(isfile("tc08Logger.par"))
+      par = load("tc08Logger.par")
+      assignlist(par)
+   endif
+
+   thermoCoupleCtrl->text(thermocoupleTypes)
+   samplingTimeCtrl->text(samplingInterval)
+   startTimeCtrl->text(startTime)
+   endTimeCtrl->text(endTime)
+   minTempCtrl->text(minTemperature)
+   maxTempCtrl->text(maxTemperature)
+   logFileCtrl->text(logFile)
+
+   :initChannelNames(thermocoupleNames)
+
+endproc()
+
+procedure(exitProc)
+
+  if(logging == 1)
+      message("Error","Please stop logging before exiting the window.","error")
+      return("cancel")   
+   endif
+   :savePar()
+ #  exit()
+
+endproc()
+
+procedure(initChannelNames,nameList)
+
+   names = nameList
+   for(k = 24 to 45 step 3)
+      setpar(0,k,"color",colors[~,(k-24)/3])
+      setpar(0,k+1,"text",names[(k-24)/3])
+   next(k)
+
+endproc()
+
+procedure(getNames)
+
+   for(k = 25 to 46 step 3)
+      names[(k-25)/3] = getpar(0,k,"text")
+   next(k)
+
+endproc()
+
+procedure(enableNames)
+
+   tc = thermoCoupleCtrl->text
+   for(k = 0 to size(tc)-1)     
+      setpar(0,24+k*3,"enable","true")
+      setpar(0,25+k*3,"enable","true")
+      setpar(0,26+k*3,"enable","true")
+      setpar(0,26+k*3,"text","yes")
+   next(k)
+
+   for(k = size(tc) to 7)     
+      setpar(0,24+k*3,"enable","false")
+      setpar(0,25+k*3,"enable","false")
+      setpar(0,26+k*3,"enable","false")
+      setpar(0,26+k*3,"text","no")
+   next(k)
+
+# Disable thermocouple type update
+   setpar(0,3,"enable","false")
+# Disable cold junction display
+   setpar(0,26,"text","no")
+   setpar(0,25,"enable","false")
+   setpar(0,26,"enable","false")
+
+endproc()
+
+procedure(zoomRegion)
+
+   gx1 = startTimeCtrl->value
+   gx2 = endTimeCtrl->value
+   gy1 = minTempCtrl->value
+   gy2 = maxTempCtrl->value
+
+   if(gx1 > gx2)
+      message("Error","End time must be > start time","error")
+      return
+   endif
+
+endproc()
+
+procedure(showAll)
+
+   gx1 = -1
+   gx2 = -1
+   gy1 = -1
+   gy2 = -1
+
+endproc()
+
+procedure(startLogging)
+
+   startButton->enable("false")
+   logging = 1
+   thread(":monitorTC08")
+
+endproc()
+
+procedure(stopLogging)
+
+   logging = 0
+
+endproc()
+
+procedure(monitorTC08)
+
+   try
+
+      :getNames()
+      :enableNames()
+      logging = 1
+      N = 10000 # Maximum number of samples
+      delTime = samplingTimeCtrl->value        
+      temps = matrix(8,N)
+      tm = linspace(0,(N-1)*delTime,N)
+      nrTC = size(thermoCoupleCtrl->text)
+
+   # Open the logger
+      opentc08(thermoCoupleCtrl->text) 
+
+   # Plot reference
+      plt = logPlot->subplot(1,1)
+
+   # Disable controls
+      :enableControls("false") 
+
+   # Loop over samples
+      startTime = time()
+      for(k = 0 to size(temps,2)-1)
+      
+      #   logBoxCtrl->color([0,255,0])
+      
+         curTemp = gettc08()
+
+         plt->draw("false")
+         cnt = 0
+         for(q = 0 to 7)
+            temps[q,k] = curTemp[q]
+           if(curTemp[q] != nan & getpar(0,26+q*3,"text") == "yes")
+              setpar(0,60+q,"text","$curTemp[q],2.2f$ \176C")
+              tc = plt->plot(tm[0:k],temps[q,0:k]',"tracecolor",colors[~,q])
+              if(cnt == 0)
+                plt->hold("on")
+                cnt = cnt + 1
+              endif
+              plt->trace(tc)->name("$names[q]$")
+        #      plt->showlegend("true")
+           else
+              setpar(0,60+q,"text","--")
+           endif
+         next(q)
+         plt->xlabel("Time (s)")
+         plt->ylabel("Temperature (\176C)")
+         plt->title("Temperature Log")
+         plt->hold("off")
+   
+   
+         if(gx1 != -1 & gx2 > gx1)
+            curplot()->rmlines()
+            if(gy2 > gy1)
+               curplot()->zoom(gx1,gx2,gy1,gy2)
+            else
+               curplot()->zoom(gx1,gx2)
+            endif
+         endif
+   
+         plt->draw("true")
+   
+         if(logging == 0)
+            exitfor()
+         endif
+        
+         logBoxCtrl->color([255,255,0])
+
+         if((time()-startTime) > (k+1)*delTime)
+            message("Error","Increase sampling interval","error")
+            exitfor
+         endif
+         while((time()-startTime) < (k+1)*delTime)
+            pause(0.01)
+         endwhile
+
+         curTime = time()-startTime
+         timeCtrl->text("Time: $curTime,1.1f$ s")
+
+         out = join([tm[k]],temps[0:nrTC-1,k])
+         :saveData(out, k==0)
+
+      next(k)
+
+      k = k # Fixes next-catch bug
+
+   catch
+
+      message("Error","$lasterror()->description$","error")
+
+   endtry
+
+   hold("off")
+   
+   logBoxCtrl->color([0,0,0])
+
+# Close connection
+   closetc08()
+
+# Enable controls
+   :enableControls("true")
+
+endproc()
+
+# Enable/disable controls
+
+procedure(enableControls, enabled)
+
+   logPlot->enable(enabled)
+   for(k = 100 to 106)
+     setpar(0,k,"enable",enabled)
+   next(k)
+   thermoCoupleCtrl->enable(enabled)
+   samplingTimeCtrl->enable(enabled)
+   startButton->enable(enabled)
+   logFileCtrl->enable(enabled)
+   logFileBut->enable(enabled)
+
+endproc()
+
+procedure(toggleLegend)
+
+   if(logPlot->subplot(1,1)->showlegend() == "true")
+      logPlot->subplot(1,1)->showlegend("false")
+   else
+      logPlot->subplot(1,1)->showlegend("true")
+   endif
+
+endproc()
+
+procedure(selectLogFile)
+
+   fileName = logFileCtrl->text
+   dir = getbasepath(fileName)
+   if(isdir(dir))
+     fileName = getfilename("Save","Select log file name","Text files","txt",fileName)
+   else
+     fileName = getfilename("Save","Select log file name","Text files","txt")
+   endif
+
+   if(fileName != "cancel")
+      logFileCtrl->text("$getcwd()$\\$fileName$")
+   endif
+
+endproc()
+
+procedure(saveData, data, first)
+
+   fileName = logFileCtrl->text
+   if(first)
+      export2dpar("ab","ascii","xyrc","real","delimiter","comma","mode","overwrite")
+   else
+      export2dpar("ab","ascii","xyrc","real","delimiter","comma","mode","append")
+   endif
+   export2d(data,fileName)
+
+endproc()
+
+

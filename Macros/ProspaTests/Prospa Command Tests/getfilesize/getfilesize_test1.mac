@@ -1,0 +1,66 @@
+procedure(getfilesize_test1,verbose,delay)
+
+
+   cd(getmacropath())
+
+   m = noise(10)
+   save("data.1d",m)
+
+   (w,h,d) = getfilesize("data.1d")
+
+   if(w != 10 | h != 1 | d != 1)
+      return(0, "Invalid result for: getfilesize_test1() #1")
+   endif
+
+   m = noise(10,20)
+   save("data.2d",m)
+
+   (w,h,d) = getfilesize("data.2d")
+
+   if(w != 10 | h != 20 | d != 1)
+      return(0, "Invalid result for: getfilesize_test1() #2")
+   endif
+
+   m = noise(10,20,30)
+   save("data.3d",m)
+
+   (w,h,d) = getfilesize("data.3d")
+
+   if(w != 10 | h != 20 | d != 30)
+      return(0, "Invalid result for: getfilesize_test1() #3")
+   endif
+
+# Complex data
+
+   m = noise(10) + i
+   save("data.1d",m)
+
+   (w,h,d) = getfilesize("data.1d")
+
+   if(w != 10 | h != 1 | d != 1)
+      return(0, "Invalid result for: getfilesize_test1() #1")
+   endif
+
+   m = noise(10,20) + i
+   save("data.2d",m)
+
+   (w,h,d) = getfilesize("data.2d")
+
+   if(w != 10 | h != 20 | d != 1)
+      return(0, "Invalid result for: getfilesize_test1() #2")
+   endif
+
+   m = noise(10,20,30) + i
+   save("data.3d",m)
+
+   (w,h,d) = getfilesize("data.3d")
+
+   if(w != 10 | h != 20 | d != 30)
+      return(0, "Invalid result for: getfilesize_test1() #3")
+   endif
+
+   rmfile("data.1d")
+   rmfile("data.2d")
+   rmfile("data.3d")
+ 
+endproc(1,"")

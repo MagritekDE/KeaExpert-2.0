@@ -1,0 +1,508 @@
+# Main demonstration - run from menu not from macro!
+
+procedure(main_demo)
+
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+
+   folder = "$appdir$\\Example Data\\Demos"
+   p = 2 # Pause between demos  
+   M = 10
+ #  assign("gamma",2.6752e+008,"global")
+
+   times = matrix(M)
+   for(k = 0 to M-1)
+      :init()
+      pr "\n\n *** Main memo - press Escape key to quit **********\n\n"
+      times[k] = memory()
+      (f,dat) = :fid_demo(folder);
+      pause(p)
+      :fid_apodize(f,dat)
+      pause(p)
+      :polyfit_demo(folder)
+      pause(p)
+      :nnls1D_demo(folder)
+      pause(p)
+      :ft2d_demo(folder) 
+      pause(p)
+      :ft_velmap_demo(folder)
+      pause(p)
+      :3d_demos(folder)
+      pause(p)
+
+      pr "   Demo finished.\n"
+  next(k)
+
+  plot(times)
+
+endproc()
+
+procedure(init)
+
+   pr "\n\n********* Prospa Demos **********\n\n"
+
+   clear("cli")
+   clear1d()
+   clear2d()
+   clear3d()
+
+endproc()
+
+procedure(polyfit_demo,folder)
+
+   red = [255,0,0]
+   yellow = [255,255,0]
+   green = [0,255,0]
+# Generate some data
+   pr "Polynomial Fitting\n"
+   pr "   Generating some data:\n"
+
+   pr "     y = 1e4 + x - 10*x^2 + 0.11*x^3 + noise(101)*1e3\n"
+   x = [0:1:100]
+   y = 1e4 + x - 10*x^2 + 0.11*x^3 + noise(101)*1e3
+   draw1d("false") 
+   hold("off")
+   axes("xmapping","lin")
+   plot(x,y,"tracetype","none","symbolshape","circle","symbolcolor",red)
+   title "Generating some noisy data ..."
+   draw1d("true") 
+   pause(2)
+   pr "   Doing a polynomial fit ...\n"
+   title "Doing the fit ..."
+   pause(2)
+   (v,p1,p2,p3) = polyfit(x,y,3,1)
+   draw1d("false")
+   hold("on")
+   plot(x,v,"tracetype","lines","tracecolor",green,"symbolshape","none")
+   title("Data with best fit")
+   hold("off")
+   draw1d("true") 
+endproc()   
+   
+procedure(fid_demo,folder)
+
+# Import some 1D data
+   cd(folder)
+   dat = load("fid.1d")
+   tim = [0:1:8191]/8192
+   pr "1D Fourier transform\n"
+   pr "   Loading and phasing 1D data ...\n"
+# Display the data
+   draw1d("false")
+   plot(tim,dat)
+   axes("xmapping","lin")
+   title ("FID")
+   draw1d("true")
+   pause(2)
+# FT the data
+   y = ft(dat)
+   f =[0:8191]-4096
+   plot(f,y)
+# Phase the data
+   for(p = 0 to 50 step 0.5)
+      draw1d("false")
+      plot(f,real(y*exp(-i*2*pi*p/180)))
+      title("Phasing the peaks ...")
+      pause(0.03)
+      draw1d("true")
+   next(p)
+   y = real(y*exp(-i*2*pi*p/180))
+# Zooming in on data
+   pr "   Zooming in on peaks ...\n"
+   c = -1160
+   for(z = 1000 to 128 step -1)
+      draw1d("false")
+      plot(f,y)
+      zoom1d(c-z,c+z)
+      title("Zooming in on peaks ...")
+      draw1d("true")
+   next(p)  
+
+   (xf1,xf2) = zoom1d("getargs")
+   (x1,x2) = findindex(f,xf1,xf2)
+
+   sm = submatrix(y,x1,x2-1)
+   w = size(sm)
+   f = [xf1:(xf2-xf1)/w:xf2-1]
+
+endproc(f,sm)
+
+# Apply apodization to a small region of the passed spectrum
+procedure(fid_apodize,f,dat)
+
+   N = size(dat)
+   x = [0:1:N-1]
+   flt = "exp((x-p1)*p3-(x-p1)^2*p2^2)"
+
+   p1 = 0
+   p3 = 0
+
+   pr "1D apodization\n"
+
+   pr ("   Line broadening ...\n")
+   for(p2 = 0 to 0.024 step 0.001)
+      fltDat = eval(flt)
+      yft = ift(ftshift((dat)))
+      yFlt = yft.*fltDat
+      draw1d("false")
+      plot(f,real(ftshift(ft(yFlt))))
+      title ("   Line broadening ...")
+      draw1d("true")
+      pause(0.05)
+   next(p1)
+
+   pr ("   Line narrowing ...\n")
+   for(p3 = 0 to 0.08 step 0.001)
+      fltDat = eval(flt)
+      yft = ift(ftshift((dat)))
+      yFlt = yft.*fltDat
+      draw1d("false")
+      plot(f,real(ftshift(ft(yFlt))))
+      title ("   Line narrowing ...")
+      draw1d("true")
+      pause(0.05)
+   next(p1)
+
+endproc()
+
+procedure(nnls1D_demo,folder)
+
+   pr "\n1D Non-negative least squares fitting\n"
+   pr "   Loading time domain data ...\n"
+   cd("$folder$\\NNLS")
+   x = load("nnls1d_x.1d")
+   y = load("nnls1d_y.1d")
+   x_size = size(x)
+   draw1d("false")
+   plot(x,y)
+
+   axes("xmapping","log")
+   title("Multiexponential time domain data")
+   draw1d("true")
+
+   pause(2)
+   pr "   Performing nnls fit ...\n"
+
+   x_max = 5
+   x_min = 0.005
+   x_steps = 200 
+   alpha = 0.12
+   alpha = 10^(8-log10(alpha))
+
+   lst = ["designMat = \"exp(-xData'*(1/xSpec))\"",
+          "x_minimum = $x_min$",
+          "x_maximum = $x_max$",
+          "x_steps = $x_steps$",
+          "logBin = \"no\"",
+          "weightBins = \"no\"",
+          "alpha = $alpha$"]
+
+   (specX,specY) = LHInvert(x,y,lst)
+
+   draw1d("false")
+   plot(specX,specY)
+   axes("xmapping","log")
+   trace("tracetype", "lines", "symbolshape", "none",
+         "tracecolor", [255,0,0]) 
+   title("NNLS best fit")
+   draw1d("true")
+
+endproc
+
+procedure(ft2d_demo,folder)
+
+   cd(folder)
+   kdata = load("kumquat.2d")
+   pr "Loading and displaying k-space data ...\n"
+   draw2d("no")
+   image(kdata)
+   title("k-space data for kumquat")
+   autorange("off")
+   imagerange(0,1e3)
+   showcmap3d("no")
+   showcmap("yes")
+   cmap(hotandcold)
+   draw2d("yes")
+   pause(2)
+   pr "   Displaying as 3D surface plot ...\n"
+   draw3d("no")
+   clear3d()
+   d = submatrix(real(kdata),128-32,128+32,128-32,128+32)
+   (w,h) = size(d)
+   rng = (max(d)-min(d))
+   surf2d(d , spectrum, [min(d),max(d)],[0,max(d)])
+   shift3d(-w/2,-h/2,0)
+   scale3d(1,1,100)
+   rotate3d(51,0,0)
+   draw3d("yes")
+   for(twist = 0 to 360 step 1)
+      rotate3d(51,20*sin(twist/360*2*pi),twist)
+   next(twist)
+
+   pr "   Transforming the data ...\n"
+   im = mag(fft_local:2d(kdata))
+   draw2d("no")
+   autorange("on")
+   image(im)
+   title("Kumquat image after FT")
+   cmap(rainbow)
+   draw2d("yes")
+   showcmap3d("no")
+   pr "   Displaying as 3D surface plot and\n"
+   pr "   displaying as a contour plot ...\n"
+
+   rng = max(im)-min(im)
+
+# Zoom into centre (114,138)
+
+   for(s = 100 to 25 step -2)
+      draw3d("no")
+      clear3d() 
+      d = submatrix(im,114-s,114+s,138-s,138+s)
+      (w,h) = size(d)
+      surf2d(d , rainbow, [min(im),max(im)],[min(im)-0.1*rng,max(im)-0.3*rng])
+      shift3d(-w/2,-h/2,0)
+      scale3d(1,1,15)
+      rotate3d(38,-6,225)
+      draw3d("yes")
+      draw2d("no")
+      image(d)
+      title("Kumquat image after FT")
+      contour(12,2)
+      draw2d("yes")
+      pause((100-s)/500)
+   next(s)
+
+# Move to corner location
+
+   axispar3d(w/50,w/30,8*w/100,5*w/80)
+
+   for(s = 0 to 50)
+      draw3d("false")
+      clear3d()
+      d = submatrix(im,114-25-s,114+25-s,138-25-s,138+25-s)
+      (w,h) = size(d)
+      surf2d(d , rainbow, [min(im),max(im)],[min(im)-0.1*rng,max(im)-0.3*rng])
+      shift3d(-w/2,-h/2,0)
+      scale3d(1,1,15)
+      rotate3d(38,0,225)
+      draw3d("true")
+      draw2d("false")
+      image(d)
+      title("Kumquat image after FT")
+      contour(12,2)
+      draw2d("true")
+      pause(0.05)
+   next(s)
+
+   axis3d("x",[0,w],0,0)
+   axis3d("y",[0,h],0,0)
+
+   for(twist = 0 to 100 step .1)
+      rotate3d(38,0,twist+255)
+   next(twist)
+
+   cmap3d(rainbow,[min(im),max(im)])
+   showcmap3d("yes")
+
+endproc()
+
+procedure(ft_velmap_demo,folder)
+
+pr "Velocity mapping ...\n"
+pr "   Loading data\n"
+cd("$folder$\\Flow3D")
+setdataformat("AMX")
+dat = import3d("ser",128,128,8)
+out = cmatrix(128,128,8)
+(w,h,d) = size(out)
+cmap(hotandcold)
+pr "   Fourier transforming planes\n"
+# Fourier transforming planes
+for(z = 0 to d-1)
+   out[~,~,z] = fft_local:2d(dat[~,~,z])
+   draw2d("false")
+   image(out[~,~,z])
+   title("Processing couette velocity data")
+   draw2d("true")
+next z
+
+vel = matrix(w,h)
+showcmap("yes")
+pr "   Calculating velocity\n"
+# Determine velocity 
+threshold = 200e3
+N = 128
+sdel = 0.002
+ldel = 0.006
+G = 0.35
+factor = -1000*2*pi*(d-1)/(N*gamma*sdel*ldel*G)
+for(x = 0 to w-1)
+   for(y = 0 to h-1)
+      v = out[x,y,~]
+      if(mag(v[0]) > threshold)
+         v = mag(ft(zerofill(v,N,"end")))
+         (m,peak) = max(v)
+          vel[x,y] = (peak-N/2)*factor
+      endif
+   next(y)
+   draw2d("false")
+   image(vel)
+   title("Processing colum $x$")
+   draw2d("true")
+next(x)
+
+title("Couette Velocity Map (mm/s)")
+
+   pr "   Displaying as 3D surface plot ...\n"
+   draw3d("false")
+   clear3d()
+   (w,h) = size(vel)
+   rng = max(vel)-min(vel)
+   surf2d(vel , spectrum, [min(vel),max(vel)],[0,max(vel)])
+   shift3d(-w/2,-h/2,0)
+   scale3d(1,1,40)
+   rotate3d(38,0,255)
+   cmap3d(spectrum,[0,max(vel)])
+   showcmap3d("yes")
+   draw3d("true")
+
+   for(twist = 0 to 360 step .5)
+      rotate3d(38,0,twist+255)
+   next(twist)
+
+endproc()
+
+procedure(3d_demos,folder)
+
+pr "3D display\n"
+cd("$folder$\\Capsicum3D")
+# Load the 3D Capsicum data
+pr "   Loading 3D Capsicum data...\n"
+
+data = load("capsicum.3d")
+(w,h,d) = size(data)
+mx = max(data)
+mn = min(data)
+
+# Scan through the planes
+pr "   Scanning through planes ...\n"
+cmap(rainbow)
+showcmap3d("no")
+axispar3d(w/50,w/30,
+          5*w/100,
+          8*w/80)
+showcmap("yes")
+dd = mx-mn
+for(z = 0 to d-1)
+   
+   draw2d("false")
+   image(data[~,~,z])
+   title("Displaying plane $z$")
+   draw2d("true")
+   draw3d("false")
+   clear3d()
+   surf2d(data[~,~,z],rainbow,[mn,mx],[mn,mx]-dd*0.2)
+     viewdistance(2.1*w)
+      scale3d(1,1,10)
+      shift3d(-w/2,-h/2,0)
+      rotate3d(32,10,23)
+      color3d([0,1,0])
+      axis3d("x",[0,w],0,0)
+      axis3d("y",[0,h],0,0)
+   draw3d("true")
+   pause(0.1)
+next(z)
+
+clear3d()
+
+# Display the capsicum data in 3D
+
+pr "   Displaying 3D surface plot ...\n"
+draw3d("false")
+
+clip3dstatus("on")
+(xmn,xmx,ymn,ymx,zmn,zmx) = isosurf(data,1.75e4,[0.8,0.3,0],[0,w,0,h,0,d])
+clip3dstatus("off")
+
+ cx = (xmx+xmn)/2
+ cy = (ymx+ymn)/2
+ cz = (zmx+zmn)/2
+color3d([1,1,0])
+axispar3d(w/60,w/30,w/30,w/20)
+scale3d(1,1,1)
+shift3d(-cx,-cy,-cz)
+rotate3d(-30,320,0)
+axis3d("x",[0,w],0,0)
+axis3d("y",[0,h],0,0)
+axis3d("z",[0,d],0,0)
+draw3d("true")
+
+pr "   Rotating plot ...\n"
+for(az = 0 to 360 step 0.5)
+   rotate3d(-30,az+320,0)
+next(az)
+
+pr "   Displaying planes ...\n"
+autorange("off")
+imagerange(0,5e4)
+for(z = 0 to d-1)
+   plane3d("xy",z,0,w,0,h,[0,1,0,0.4])
+   draw2d("false")
+      image(data[~,~,z])
+      xlabel("x")
+      ylabel("y")
+      title("Capsicum (xy plane: $z$)")
+   draw2d("true")
+   pause(0.1)
+next(z)
+
+for(x = 0 to w-1)
+   plane3d("yz",x,0,h,0,d,[0,1,0,0.4])
+   draw2d("false")
+      image(data[x,~,~])
+      xlabel("z")
+      ylabel("y")
+      title("Capsicum (zy plane: $x$)")
+   draw2d("true")
+   pause(0.1)
+next(x)
+
+for(y = 0 to h-1)
+   plane3d("xz",y,0,w,0,d,[0,1,0,0.4])
+   draw2d("false")
+      image(data[y,~,~])
+      xlabel("x")
+      ylabel("z")
+      title("Capsicum (xz plane: $y$)")
+   draw2d("true")
+   pause(0.1)
+next(y)
+autorange("on")
+plane3d("off",0,0,0,0,0,[0,0,0])
+
+pr "   Zooming in ...\n"
+for(dis = 200 to 100 step -1)
+   viewdistance(dis)
+   pause(0.05)
+next(dis)
+
+pr "   Clipping data to show hidden detail ...\n"
+for(z = d-1 to 1 step -1)
+   clip3d(1,-z,"xy","minus")
+   pause(0.1)
+next(z)
+
+for(z = 1 to d-1)
+   clip3d(1,-z,"xy","minus")
+   pause(0.1)
+next(z)
+
+clip3d(1,0,"off","minus")
+
+
+endproc()
+
+  

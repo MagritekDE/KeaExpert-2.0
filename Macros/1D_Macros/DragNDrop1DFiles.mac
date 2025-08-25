@@ -1,0 +1,65 @@
+procedure(DragNDrop1Dfiles )
+
+   n = :windowdefinition()
+   showwindow(n)
+
+   setwindowpar(n,"dragndropproc",":importFile")
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Drag and drop 1D file", -1, -1, 320, 159, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(dataTypeCtrl)
+      button(1, 243, 107, 51, 30, "Close",
+         closewindow(0);)
+      statictext(2, 16, 12, 186, 27, "left", "Drag and drop an Excel CSV or a Prospa 1D file onto this window")
+      radiobuttons(3, 140, 84, 20, "vertical", "real,complex", "complex")
+      statictext(4, 135, 83, "right", "Real data")
+      statictext(5, 135, 103, "right", "Complex data")
+      groupbox(6, "Expected data type", 17, 56, 210, 82)
+
+     # Set other control parameters
+      setpar(n,3,"objID","dataTypeCtrl")
+
+endproc(n)
+
+procedure(importFile,path,file,ext)
+
+   cd(path)
+
+   if(ext == "csv")
+      import1dpar("ab","ascii","xyrc","real")
+      y = import1d(file)
+      sz = size(y)
+
+      type = dataTypeCtrl->text
+      if(sz%3==0 & type == "complex")
+         m = reshape(y,3,sz/3)
+         x = m[0,~]'
+         y = (m[1,~] + i*m[2,~])'
+         plot(x,y)
+      elseif(sz%2==0 & type == "real")
+         m = reshape(y,2,sz/2)
+         x = m[0,~]'
+         y = m[1,~]'
+         plot(x,y)
+      else
+         message("Error","Data set is not compatible with type selection","error")
+         return
+      endif
+   elseif(ext == "pt1")
+      load(file)
+   elseif(ext == "1d")
+      (x,y) = load(file)
+      plot(x,y)
+   else
+      message("Error","File type '$ext$' not supported by this macro","error")
+   endif
+
+
+endproc()

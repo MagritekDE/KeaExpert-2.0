@@ -1,0 +1,24 @@
+#########################################################
+# Measures the duration of the waltzdecsetup command 
+# Used by DrawPulseSequence and GetPulseProgramDuration.
+#########################################################
+
+procedure(waltzdecsetup, ch, aDec, freq=0)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      duration = 10000 # Guess only
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+      if(freq == 0)
+         gSeq->psInfo->command = gSeq->psInfo->command + ["waltzdecsetup,$ch$,$aDec$"]
+      else
+         gSeq->psInfo->command = gSeq->psInfo->command + ["waltzdecsetup,$ch$,$aDec$,$freq$"]
+      endif
+
+   endif
+
+endproc()
+

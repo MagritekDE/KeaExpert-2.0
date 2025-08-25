@@ -1,0 +1,67 @@
+procedure(laplace_cpmgintfit)
+
+   n = window("Laplace CPMG-Int-Fit", -1, -1, 573, 130)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+      # Define all controls with basic parameters
+       groupbox(1, "", 10, 5, 92, 103)
+       statictext(2, 72, 24, "right", "Real-time fit")
+       statictext(3, 72, 42, "right", "Manual fit")
+       radiobuttons(4, 78, 25, 20, "vertical", "realTime,manual", "manual")
+       button(5, 26, 66, 59, 32, "Apply fit",
+          :applyFit();)
+       groupbox(6, "", 111, 5, 87, 103)
+       statictext(7, 145, 23, "center", "Auto-phase")
+       checkbox(8, 177, 24, "no,yes", "no")
+       statictext(9, 147, 47, "center", "Minimize")
+       statictext(10, 145, 60, "center", "imag. range")
+       checkbox(11, 177, 54, "maxreal,minimag", "maxreal")
+       statictext(12, 145, 83, "center", "Normalize")
+       checkbox(13, 177, 84, "no,yes", "no")
+       groupbox(14, "", 207, 5, 139, 103)
+       statictext(15, 308, 24, "right", "Exponential fit")
+       statictext(16, 308, 42, "right", "Bi-exponential fit")
+       statictext(17, 308, 60, "right", "Inverse Laplace fit")
+       statictext(18, 308, 78, "right", "No fit")
+       radiobuttons(19, 313, 26, 18, "vertical", "exp,biexp,nnls,none", "exp",
+            fn = findobj(0,"name","fitType");
+            ucsCtrl:enableControls(fn+1,fn+9,fn,3);)
+       groupbox(20, "", 357, 5, 191, 103)
+       statictext(21, 420, 20, "center", "Relaxation range (ms)")
+       statictext(22, 413, 46, "right", "Minimum")
+       statictext(23, 413, 71, "right", "Maximum")
+       textbox(24, 420, 41, 43)
+       textbox(25, 420, 68, 43)
+       statictext(26, 532, 30, "right", "Smoothing")
+       statictext(27, 531, 44, "right", "parameter")
+       textbox(28, 486, 63, 44)
+
+     # Set other control parameters
+       setpar(n,4,"valueID","fitMode")
+       setpar(n,8,"valueID","autoPhase")
+       setpar(n,11,"valueID","phaseMethod")
+       setpar(n,13,"valueID","normalize")
+       setpar(n,19,"valueID","fitType")
+       setpar(n,24,"valueID","x_minimum")
+       setpar(n,25,"valueID","x_maximum")
+       setpar(n,28,"valueID","alpha")
+
+endproc(28, "processing+display")
+
+
+##########################################################
+# Procedure to update state GUI based on certain variables
+# this will appear as part of the tab button procedure
+##########################################################
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","fitType");
+   ucsCtrl:enableControls(fn+1,fn+9,fn,3);
+
+endproc()

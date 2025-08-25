@@ -1,0 +1,37 @@
+procedure(func3d_test1,verbose,delay)
+# Just runs all the non-interactive "plot3d" commands in a random order.
+func3d_commands = ["scale x up","scale x down","scale y up","scale y down","scale z up","scale z down","rotate cw elevation","rotate ccw elevation","rotate cw azimuth","rotate ccw azimuth","rotate cw twist","rotate ccw twist","move left","move right","move up","move down","smooth shading","specular lighting","reset parameters","copy to clipboard","clear plot"]
+	clear3d()
+	draw3d("false")
+	rotate3d(36,-60,8)
+	viewdistance(500)
+	for(z = -60 to 60 step 20)
+		for(y = -60 to 60 step 20)
+			for(x = -60 to 60 step 20)
+				sphere([x,y,z],8,[1,0,0],16)
+			next(x)
+		next(y)
+	next(z)
+	draw3d("true")
+
+for (m = 1 to 20)
+  shuffled = shuffle(func3d_commands)
+  for (n = 0 to size(shuffled) - 1)
+    func3d(shuffled[n])
+    if (shuffled[n] = "clear plot")
+		clear3d()
+		draw3d("false")
+		rotate3d(36,-60,8)
+		viewdistance(500)
+		for(z = -60 to 60 step 20)
+			for(y = -60 to 60 step 20)
+				for(x = -60 to 60 step 20)
+					sphere([x,y,z],8,[1,0,0],16)
+				next(x)
+			next(y)
+		next(z)
+		draw3d("true")
+	endif    
+  next n
+next m
+endproc(1,"")

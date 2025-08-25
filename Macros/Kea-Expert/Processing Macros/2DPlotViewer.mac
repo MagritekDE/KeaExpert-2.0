@@ -1,0 +1,967 @@
+###########################################################
+# Display a 2D plot viewer. Options are:
+# Intensity/contour/waterfall plot.
+#
+# 1D plot options:
+#   
+#    Pilot 1D spectrum display
+#    Rows and columns under 2D cursor
+#    Skyline projections
+#
+# Author: C Eccles
+# Copyright Magritek 2015-2022
+#
+###########################################################
+
+procedure(2DPlotViewer)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   parentWinNr = guiwinnr()
+   cur1d = curplot("1d")
+   cur2d = curplot("2d")
+   func2d("copy plot")
+   (x,y,w,h) = :loadwinpos()
+   n = :windowdefinition()
+   windowvar(wvMode,wv3dOff,wv3dScale,wv3dRot,wv3dDistance,wv3dPlotted,
+             wvRow,wvCol,wvCur1D,wvCur2D,wvParent,wvPilot,wvPilotDir)
+   wvMode = "Sum Projections"
+   wv3dPlotted = 0
+   wvCur1D = cur1d
+   wvCur2D = cur2d
+   wvParent = parentWinNr
+   wvPilot = "spectrum.pt1"
+   dataPath = gData->curExpt->dataPath
+   wvPilotDir = dataPath + "\PilotScan"
+   assignctrls(n)
+   :loadIcons()
+   waterFallPlot->visible("false")
+   imagePlot->visible("true")
+   imagePlot->subplot(1,1)->margins(40,40,30,30)
+   setwindowpar(n,"menubar",[50,51,58,57])
+   setwindowpar(n,"titleupdate","false")
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"exit_procedure",":exitWindow()")
+   setwindowpar(n,"sizelimits",[900,-1,550,-1])
+   setwindowpar(n,"dimensions",[x,y,w,h])
+
+   curplot(imagePlot->subplot(1,1))
+   func2d("paste plot")
+   :viewContours()
+   :viewSumProjections()
+   :adjustHorizPlotSize()
+   showwindow(n)
+
+endproc()
+
+###########################################################
+# Define a window
+###########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D Plot Viewer", -1, -1, 840, 572, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(wvMode,waterFallPlot,valueStrObj,yStrObj,xStrObj,vertPlot,horizPlot,imagePlot)
+#      plot2d(1, 4, 21, "rw-12", "rh-20")
+#      plot1d(2, 4, 4, "rw-12", "rh-30") # Horiz
+#      plot1d(3, 118, 21, "rw-118", "rh-20") # Vert
+
+#      statictext(5, 25, 220, "left", "x = 50")
+#      statictext(6, 25, 240, "left", "y = 50")
+#      statictext(7, 25, 260, "left", "value = -0.4")
+#      groupbox(8, "", 8, 200, 94, 80)
+      plot2d(1, 201, 21, "ww-210", "wh-135")
+      plot1d(2, 201, "wh-115", "ww-210", 83)
+      plot1d(3, 118, 21, 83, "wh-135")
+
+      statictext(5, 25, "wh-100", "left", "x = 50")
+      statictext(6, 25, "wh-80", "left", "y = 50")
+      statictext(7, 25, "wh-60", "left", "value = -0.4")
+      groupbox(8, "", 5, "wh-115", 190, 77)
+      statusbox(10,"ww/3","ww*0.6667","ww-45","-1")
+
+      plot3d(13, 118, 21, "ww-140", "wh-60")
+      button(14, 13, 20, 88, 32, "Plot parameters",
+         :viewContours();
+         2DDisplayControls("noSave");)
+      button(15, 13, 20, 88, 32, "Plot parameters",
+         :viewWaterfall();
+         waterfallPlot();)
+      button(16, 13, 80, 40, 31, "Cursor",func2d("display data"))
+      button(17, 61, 80, 40, 31, "Region",func2d("select region"))
+      button(18, 13, 120, 40, 31, "Drag",func2d("drag plot"))
+      button(19, 61, 120, 40, 31, "Zoom",func2d("zoom region"))
+      button(20, 13, 80, 40, 31, "Zoom",func3d("scale z up"))
+      button(21, 61, 80, 40, 31, "Zoom",func3d("scale z down"))
+      textmenu(22, 60, 120, 40, 100,:selectZoomFactor())
+      statictext(23, 13, 123, "left", "Zoom by:")
+      button(24, 61, 160, 40, 31, "Restore",func2d("last region"))
+      button(25, 13, 160, 40, 31, "Full",DisplayAllData:2D())
+
+#      divider(40, "ww-200", 21, 5, "rh-20", "vertical")
+#      divider(41, 4, "rh", "wh-150", 5, "horizontal")
+
+#      setpar(n,40,"objID","vertDivider",
+#                  "region",[-1,-2,-3,41],
+#                  "limits",["200","350"])
+
+#      setpar(n,41,"objID","horizDivider",
+#                 "region",[40,-2,-3,-4],
+#                  "limits",["wh-250","wh-114"])
+
+       menu(48, "Scale", "Enlarge vertical\tShift+up", func2d("enlarge vertical"),
+                 "Reduce vertical\tShift+down", func2d("reduce vertical"),
+                 "Enlarge horizontal\tShift+right", func2d("enlarge horizontal"),
+                 "Reduce horizontal\tShift+left", func2d("reduce horizontal"))
+       menu(49, "Move", "Move up\tup", func2d("move up"),
+                 "Move down\tdown", func2d("move down"),
+                 "Move right\tright", func2d("move right"),
+                 "Move left\tleft", func2d("move left"))
+
+       menu(50, "&Edit", 
+                 "Copy all plots\tCtrl+Shift+C", :copyAllPlots2D(),
+                 "Copy current plot\tCtrl+C", func2d("copy plot"))
+       menu(51,"&View", 
+                 "Show &data under cursor\tCtrl+D",  func2d("display data"),
+                 "&Select a rectangular region\tCtrl+R",   func2d("select region"),
+                 "Move plot\tCtrl+M",   func2d("drag plot"),
+                 "Separator", ,
+                 "&Select a region and zoom\tCtrl+drag", nop,
+                 "&Zoom a region\tCtrl+Z",  func2d("zoom region"),
+                 "Show &last region\tCtrl+L",   func2d("last region"),
+                 "Display &all data\tCtrl+A",   func2d("full region"),
+                 "Separator", ,
+                 "Pull_right",  49,
+                 "Pull_right",  48,
+                 "Separator", ,
+                 "Toggle color-bar",  :toggleColorBar(),
+                 "Make plot square",  make2DPlotSquare())
+
+
+     menu(52, "Rotate", "x ccw\tLeft", func3d("rotate cw azimuth"),
+                         "x cw\tRight", func3d("rotate ccw azimuth"),
+                         "y ccw\tUp", func3d("rotate ccw elevation"),
+                         "y cw\tDown", func3d("rotate cw elevation"),
+                         "z ccw\tShift+Left", func3d("rotate cw twist"),
+                         "z cw\tShift+Right", func3d("rotate ccw twist"))
+
+     menu(53, "Move", "left\tCtrl+Right", func3d("move left"),
+                      "right\tCtrl+Left", func3d("move right"),
+                      "up\tCtrl+Up", func3d("move up"),
+                      "down\tCtrl+Down", func3d("move down"))
+   
+     menu(54, "Scale", "x up\tAlt+Right", func3d("scale x up"),
+                      "x down\tAlt+Left", func3d("scale x down"),
+                      "y up\tAlt+Up", func3d("scale y up"),
+                      "y down\tAlt+Down", func3d("scale y down"),
+                      "z up\tShift+Up", func3d("scale z up"),
+                      "z down\tShift+Down", func3d("scale z down"))
+
+     menu(55, "Edit","Copy plot\tCtrl+C", func3d("copy to clipboard"))
+
+
+     menu(56, "View","Preferences ...\tCtrl+D",preferences3d(),
+                     "Pull_right",52,
+                     "Pull_right",53,
+                     "Pull_right",54)
+
+     menu(57, "Help","Show help ...\tCtrl+H",:showHelp())
+
+     menu(58, "Display","Intensity/Contour Plot\tCtrl+I", :viewContours(), 
+                        "Pilot 1D scan\tCtrl+P", :viewPilot(),
+                        "Sky-line projection\tCtrl+S", :viewSkylineProjections(),
+                        "Sum projection\tCtrl+Shift+P", :viewSumProjections(),
+                        "Rows and columns\tCtrl+Shift+R",:trackRowsAndColumns(),                      
+                        "Waterfall Plot\tCtrl+W", :viewWaterfall())
+
+      menu(59, "traceMenu", "Copy trace data to vector ...", copy1DtoMatrix(),
+                 "Copy trace data to new 1D window", :copyPlotToNewWin("vertical"))
+
+      menu(60, "traceMenu","Copy trace data to vector ...", copy1DtoMatrix(),
+                 "Copy trace data to new 1D window", :copyPlotToNewWin("horizontal"))
+
+      menu(61, "File","Close window", :exitWindow())
+
+      menu(62, "titleMenu", "Modify title ...", PlotParameters("Title"))
+
+      menu(63, "labelMenu", "Modify labels ...", PlotParameters("Labels"))
+
+      menu(64, "axesMenu", "Axes font", ImageParameters("Axes"),
+                "Axes range", ImageParameters("Range"),
+                "Tick and label spacing ...", ImageParameters("Ticks"),
+                "Log/lin mapping", ImageParameters("Mapping"),
+                "Grids", ImageParameters("Grid"))
+
+      menu(65, "bkgMenu2D", "Copy plot data to matrix ...\tCtrl+K", Copy2DToMatrix(),
+                 "Display matrix ...\tCtrl+D",displayMatrix(),
+                 "Copy image new 2D window ...\tCtrl+Shift+C", copy2DtoNewWin(),
+                 "Separator", "",
+                 "Keep this region, remove others", func2d("remove other subplots"),
+                 "Remove all data from region", func2d("remove current data"))
+
+
+      getmessage(100,:processMessage();)
+
+     # Set other control parameters
+      setpar(n,1,"objID","imagePlot",
+                 "menubar",[50,51,58,57],
+#                  "region",[40,-2,-3,41],
+                  "axesMenu",64,
+                  "titleMenu",62,
+                  "labelMenu",63,
+                  "bkgMenu",65,
+                 "statusbox",10)
+      setpar(n,2,"objID","horizPlot",
+#                  "region",[40,-2,41,-4],
+                  "bkgMenu",60,
+                  "traceMenu",60,
+                  "statusbox",10)
+      setpar(n,3,"objID","vertPlot",
+#                  "region",[-1,40,-3,41],
+                  "bkgMenu",59,
+                  "traceMenu",59,
+                  "statusbox",10)
+      setpar(n,5,"objID","xStrObj")
+      setpar(n,6,"objID","yStrObj")
+      setpar(n,7,"objID","valueStrObj")
+      setpar(n,13,"objID","waterFallPlot",
+                 "menubar",[55,56,58,57],
+                  "initialise","")
+      setpar(n,16,"objID","cursorButton")
+      setpar(n,17,"objID","regionButton")
+      setpar(n,18,"objID","dragButton")
+      setpar(n,19,"objID","zoomButton")
+      setpar(n,20,"objID","zoomUpButton")
+      setpar(n,21,"objID","zoomDownButton")
+      setpar(n,22,"objID","zoomMenu",
+                  "text","4",
+                  "menu",[1.5,2,4,8,16])
+      setpar(n,24,"objID","lastZoomButton")
+      setpar(n,25,"objID","fullZoomButton")
+
+endproc(n)
+
+###########################################################
+# Load button icons
+###########################################################
+
+procedure(loadIcons)
+
+   bak = getcwd()
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\Bitmaps")
+   cursorButton->icon("data_select.png")
+   regionButton->icon("region_select.png")
+   dragButton->icon("drag_plot.png")
+   zoomButton->icon("zoom_plot.png")
+   zoomUpButton->icon("uparrow.png")
+   zoomDownButton->icon("downarrow.png")
+   zoomDownButton->icon("downarrow.png")
+   zoomDownButton->icon("downarrow.png")
+   lastZoomButton->icon("unzoom_plot.png")
+   fullZoomButton->icon("showall_plot.png")
+
+endproc()
+
+###########################################################
+# Update current 1D view if 2D plot is modified
+###########################################################
+
+procedure(processMessage)
+
+   (src,cmd) = getpar(0,100,"text")
+   callingwin = getpar(0,100,"source")
+   parentwin = guiwinnr()
+   
+   if(src == "2D Plot" & cmd != "SelectImage" & callingwin == parentwin)
+
+      if(wvMode == "Skyline Projections")
+         :viewSkylineProjections()
+      elseif(wvMode == "Sum Projections")
+         :viewSumProjections()
+      elseif(wvMode == "Rows and Columns")
+         :viewRowCols()
+      else
+         :viewPilot()
+      endif
+
+      if(cmd == "SelectImage") 
+         :update2DStatusBoxInfo()
+      endif
+
+   endif
+
+endproc()
+
+###########################################################
+# Update status box info with matrix size and type
+###########################################################
+
+procedure(update2DStatusBoxInfo)
+
+   (w,h,complex) = imagePlot->subplot(1,1)->getinfo()
+   if(complex)
+      info = "Complex: $w$ by $h$ points"
+   else
+      info = "Real: $w$ by $h$ points"
+   endif
+   setpar(0,10,"textregion","2,$info$")
+
+endproc()
+
+###########################################################
+# Switch to contour mode and display rows and columns
+###########################################################
+
+procedure(trackRowsAndColumns)
+
+   if(wvMode != "Rows and Columns")
+      :viewContours()
+   endif
+
+   sp = imagePlot->subplot(1,1)
+   curplot(sp)
+   trackcursor("2d","cross",":viewRowCols","drag")
+
+endproc()
+
+###########################################################
+# Display rows and columns
+###########################################################
+
+procedure(viewRowCols,col,row)
+
+   wvMode = "Rows and Columns"
+
+   sp = imagePlot->subplot(1,1)
+
+   (mOrig,xa,ya) = sp->getdata("current")
+
+    m = real(mOrig)
+   (w,h) = size(m)
+   dirx = (sp->axes->xdirection == "reversed")
+   diry = (sp->axes->ydirection == "reversed")
+
+   (xl,xr,yb,yt) = sp->zoom()
+   xbs = linvec(xa[0],xa[1],w)
+   ybs = linvec(ya[0],ya[1],h)
+
+   if(nrArgs == 0)
+     col = round((xr-xl)/2+xl)
+     row = round((yt-yb)/2+yb)
+   endif
+
+   wvRow = row
+   wvCol = col
+
+   vertPlot->draw("false")
+   vp = vertPlot->subplot(1,1)
+
+   y = m[col-xl,~]'
+
+   vp->plot(y,ybs)
+   vp->title("")
+   vp->hold("on")
+   xi = [y[row-yb]]
+   yi = [(row-yb)/(yt-yb)*(ya[1]-ya[0])+ya[0]]
+   yPos = yi
+   vp->plot(xi,yi,"symbolcolor",[0,128,0],"symbolshape","circle")
+
+   vp->hold("off")
+   rg = (max(y)-min(y))
+   if(rg == 0)
+      vp->zoom(-1,1,ya[0],ya[1])
+   else
+      vp->zoom(min(y)-0.1*rg,max(y)+0.1*rg,ya[0],ya[1])
+   endif
+   vp->indicatorsize(18)
+
+   vp->bkgcolor([255,255,255])
+   vp->bordercolor([230,230,230])
+   vp->xlabel("")
+   vp->ylabel("")
+   vp->axes->type("none")
+   vp->margins(15,45,5,55)
+   if(diry)
+      vp->axes->ydirection("reversed")
+   endif
+   vertPlot->draw("true")
+
+   horizPlot->draw("false")
+   hp = horizPlot->subplot(1,1)
+   y = m[~,row-yb]
+   hp->plot(xbs,y)
+   hp->title("")
+   hp->hold("on")
+   xi = [(col-xl)/(xr-xl)*(xa[1]-xa[0])+xa[0]]
+   xPos = xi
+   yi = [y[col-xl]]
+   hp->plot(xi,yi,"symbolcolor",[0,128,0],"symbolshape","circle")
+   hp->hold("off")
+   rg = (max(y)-min(y))
+   if(rg == 0)
+      hp->zoom(xa[0],xa[1],-1,1)
+   else
+      hp->zoom(xa[0],xa[1],min(y)-0.1*rg,max(y)+0.1*rg)
+   endif
+   hp->margins(70,5,45,15)
+   hp->indicatorsize(18)
+   hp->bkgcolor([255,255,255])
+   hp->bordercolor([230,230,230])
+   hp->xlabel("")
+   hp->ylabel("")
+   hp->axes->type("none")
+   if(dirx)
+      hp->axes->xdirection("reversed")
+   endif
+   horizPlot->draw("true")
+
+   xStrObj->text("x = $xPos[0]$")
+   yStrObj->text("y = $yPos[0]$")
+   valueStrObj->text("value = $mOrig[col-xl,row-yb],1.3g$")
+   setwindowpar(0,"menu",1)
+   :update2DStatusBoxInfo()
+   :setWindowTitle()
+
+endproc()
+
+###########################################################  
+# Display a pilot scan
+###########################################################
+
+procedure(viewPilot)
+
+   wvMode = "Pilot plot"
+
+   if(isdir(wvPilotDir))
+      cd(wvPilotDir)
+   endif
+
+   if(isfile(wvPilot) == 0)
+      cd(gData->curExpt->dataPath)
+      wvPilot = getfilename("open","Select f2 spectrum","1D files","pt1","spectrum.pt1")
+      wvPilotDir = getcwd()
+   endif
+
+   sp = imagePlot->subplot(1,1)
+   (m,xa,ya) = sp->getdata("current")
+   (w,h) = size(m)
+   dirx = (sp->axes->xdirection == "reversed")
+   diry = (sp->axes->ydirection == "reversed")
+
+   vertPlot->draw("false")
+
+   var = getctrlvalues(2,"struct","list",["nucleus"])
+   s = var->nucleus
+   (n1,n2) = scanstr(s,"%1-%2")
+   if(n1 == n2) # Plot pilot in both dimensions if 
+      vertPlot->load(wvPilot)
+      vp = vertPlot->subplot(1,1)
+      vp->indicatorsize(18)
+      (x,y) = vp->getdata()
+      y = real(y)
+      vp->filtertrace("false")
+      vp->plot(y,x)
+      rng = max(y)-min(y)
+      vp->zoom(min(y)-0.1*rng,max(y)+0.1*rng,ya[0],ya[1])
+   else
+      projX = matrix(w)
+      for(k = 0 to w-1)
+        projX[k] = max(real(m[k,~]))
+      next(k)
+      projY = matrix(h)
+      for(k = 0 to h-1)
+        projY[k] = max(real(m[~,k]))
+      next(k)
+      vp = vertPlot->subplot(1,1)
+      ybs = linvec(ya[0],ya[1],h)
+      vp->plot(projY,ybs)
+      rg = (max(projY)-min(projY))
+      vp->zoom(min(projY)-0.1*rg,max(projY)+0.1*rg,ya[0],ya[1])
+   endif
+
+   vp->title("")
+   if(diry)
+      vp->axes->ydirection("reversed")
+   endif
+   vp->axes->xdirection("reversed")
+   vp->grid->ygrid("on")
+   vp->grid->fineygrid("on")
+   vp->bkgcolor([255,255,255])
+   vp->bordercolor([230,230,230])
+   vp->xlabel("")
+   vp->ylabel("")
+   vp->axes->type("none")
+   vp->margins(15,45,5,55)
+   vertPlot->draw("true")
+
+   horizPlot->draw("false")
+   horizPlot->load(wvPilot)
+   hp = horizPlot->subplot(1,1)
+   (x,y) = hp->getdata()
+   y = real(y)
+   rng = max(y)-min(y)
+   hp->title("")
+   hp->zoom(xa[0],xa[1],min(y)-0.1*rng,max(y)+0.1*rng)
+   if(dirx)
+      hp->axes->xdirection("reversed")
+   endif
+   hp->indicatorsize(18)
+   hp->margins(70,5,45,15)
+   hp->bkgcolor([255,255,255])
+   hp->bordercolor([230,230,230])
+   hp->xlabel("")
+   hp->ylabel("")
+   hp->grid->xgrid("on")
+   hp->grid->finexgrid("on")
+   hp->axes->type("none")
+   horizPlot->draw("true")
+
+   :update2DStatusBoxInfo()
+
+   :setWindowTitle()
+
+
+endproc()
+ 
+###########################################################  
+# Display skyline projections
+###########################################################
+
+procedure(viewSkylineProjections)
+
+   if(wvMode == "Waterfall Plot")
+      :viewContours()
+   endif
+
+   wvMode = "Skyline Projections"
+   wv3dPlotted = 0
+
+   sp = imagePlot->subplot(1,1)
+   (m,xa,ya) = sp->getdata("current")
+   dirx = (sp->axes->xdirection == "reversed")
+   diry = (sp->axes->ydirection == "reversed")
+
+   (w,h) = size(m)
+   xbs = linvec(xa[0],xa[1],w)
+   ybs = linvec(ya[0],ya[1],h)
+   vertPlot->draw("false")
+   vp = vertPlot->subplot(1,1)
+   vp->margins(30,40,5,30)
+   vp->indicatorsize(18)
+
+   projX = matrix(w)
+   for(k = 0 to w-1)
+     projX[k] = max(real(m[k,~]))
+   next(k)
+ 
+   projY = matrix(h)
+   for(k = 0 to h-1)
+     projY[k] = max(real(m[~,k]))
+   next(k)
+    
+   vp->plot(projY,ybs)
+   vp->title("")
+
+   rg = (max(projY)-min(projY))
+   vp->zoom(min(projY)-0.1*rg,max(projY)+0.1*rg,ya[0],ya[1])
+   if(diry)
+      vp->axes->ydirection("reversed")
+   endif
+   vp->axes->xdirection("reversed")
+
+
+   vp->bkgcolor([255,255,255])
+   vp->bordercolor([230,230,230])
+   vp->xlabel("")
+   vp->ylabel("")
+   vp->axes->type("none")
+   vp->margins(15,45,5,55)
+   vp->grid->ygrid("on")
+   vp->grid->fineygrid("on")
+   vertPlot->draw("true")
+
+   horizPlot->draw("false")
+   hp = horizPlot->subplot(1,1)
+   hp->plot(xbs,projX)
+   hp->title("")
+
+   rg = (max(projX)-min(projX))
+   hp->zoom(xa[0],xa[1],min(projX)-0.1*rg,max(projX)+0.1*rg)
+   if(dirx)
+      hp->axes->xdirection("reversed")
+   endif
+
+   hp->margins(40,5,30,30)
+   hp->indicatorsize(18)
+
+   hp->margins(70,5,45,15)
+   hp->bkgcolor([255,255,255])
+   hp->bordercolor([230,230,230])
+   hp->xlabel("")
+   hp->ylabel("")
+   hp->axes->type("none")
+   hp->grid->xgrid("on")
+   hp->grid->finexgrid("on")
+
+   horizPlot->draw("true")
+
+   :update2DStatusBoxInfo()
+
+   :setWindowTitle()
+
+endproc()
+
+###########################################################  
+# Display sum projections
+###########################################################
+
+procedure(viewSumProjections)
+
+   if(wvMode == "Waterfall Plot")
+      :viewContours()
+   endif
+
+   wvMode = "Sum Projections"
+   wv3dPlotted = 0
+
+   sp = imagePlot->subplot(1,1)
+   (m,xa,ya) = sp->getdata("current")
+   dirx = (sp->axes->xdirection == "reversed")
+   diry = (sp->axes->ydirection == "reversed")
+  
+   (w,h) = size(m)
+   xbs = linvec(xa[0],xa[1],w)
+   ybs = linvec(ya[0],ya[1],h)
+   vertPlot->draw("false")
+   vp = vertPlot->subplot(1,1)
+   vp->margins(30,40,5,30)
+   vp->indicatorsize(18)
+
+   projX = sum(real(m),"y")
+   projY = sum(real(m),"x")
+
+   vp->plot(projY',ybs)
+   vp->title("")
+
+   rg = (max(projY)-min(projY))
+   vp->zoom(min(projY)-0.1*rg,max(projY)+0.1*rg,ya[0],ya[1])
+   if(diry)
+      vp->axes->ydirection("reversed")
+   endif
+   vp->axes->xdirection("reversed")
+
+   vp->bkgcolor([255,255,255])
+   vp->bordercolor([230,230,230])
+   vp->xlabel("")
+   vp->ylabel("")
+   vp->axes->type("none")
+   vp->grid->ygrid("on")
+   vp->grid->fineygrid("on")
+   vp->margins(15,45,5,55)
+   vertPlot->draw("true")
+
+   horizPlot->draw("false")
+   hp = horizPlot->subplot(1,1)
+   hp->plot(xbs,projX)
+   hp->title("")
+
+   rg = (max(projX)-min(projX))
+   hp->zoom(xa[0],xa[1],min(projX)-0.1*rg,max(projX)+0.1*rg)
+   if(dirx)
+      hp->axes->xdirection("reversed")
+   endif
+   hp->indicatorsize(18)
+   hp->margins(70,5,45,15)
+   hp->bkgcolor([255,255,255])
+   hp->bordercolor([230,230,230])
+   hp->grid->xgrid("on")
+   hp->grid->finexgrid("on")
+   hp->xlabel("")
+   hp->ylabel("")
+   hp->axes->type("none")
+   horizPlot->draw("true")
+
+   :update2DStatusBoxInfo()
+
+   :setWindowTitle()
+
+endproc()
+
+###########################################################
+# Display contours or intensity plot
+###########################################################
+
+procedure(viewContours)
+
+   wv3dPlotted = 0
+
+   wvMode = "Contours"
+
+   waterFallPlot->visible("false")
+   setpar(0,20,"visible","false")
+   setpar(0,21,"visible","false")
+   setpar(0,22,"visible","false")
+   setpar(0,23,"visible","false")
+   setpar(0,15,"visible","false")
+   imagePlot->visible("true")
+   vertPlot->visible("true")
+   horizPlot->visible("true")
+   setpar(0,5,"visible","true")
+   setpar(0,6,"visible","true")
+   setpar(0,7,"visible","true")
+   setpar(0,8,"visible","true")
+   setpar(0,16,"visible","true")
+   setpar(0,17,"visible","true")
+   setpar(0,18,"visible","true")
+   setpar(0,19,"visible","true")
+   setpar(0,14,"visible","true")
+   setpar(0,24,"visible","true")
+   setpar(0,25,"visible","true")
+
+   setwindowpar(0,"menu",1)
+
+ #  par = 2DDisplayControls:getViewParameters(wvCur2D->filepath)
+ #  par = par + "wv_minv = null"
+ #  2DDisplayControls:backdoor(par)
+   :setWindowTitle()
+
+endproc()
+
+###########################################################
+# Display waterfall plot
+###########################################################
+
+procedure(viewWaterfall)
+
+   wvMode = "Waterfall Plot"
+
+   imagePlot->visible("false")
+   vertPlot->visible("false")
+   horizPlot->visible("false")
+   setpar(0,14,"visible","false")
+   setpar(0,16,"visible","false")
+   setpar(0,17,"visible","false")
+   setpar(0,18,"visible","false")
+   setpar(0,19,"visible","false")
+   waterFallPlot->visible("true")
+   setpar(0,5,"visible","false")
+   setpar(0,6,"visible","false")
+   setpar(0,7,"visible","false")
+   setpar(0,8,"visible","false")
+   setpar(0,20,"visible","true")
+   setpar(0,21,"visible","true")
+   setpar(0,22,"visible","true")
+   setpar(0,23,"visible","true")
+   setpar(0,15,"visible","true")
+   setpar(0,24,"visible","false")
+   setpar(0,25,"visible","false")
+
+   if(wv3dPlotted)
+      (xoff,yoff,zoff) = shift3d()
+      wv3dOff = [xoff,yoff,zoff]
+      (xangle,yangle,zangle) = rotate3d()
+      wv3dRot = [xangle,yangle,zangle]
+      (xscale,yscale,zscale) = scale3d()
+      wv3dScale = [xscale,yscale,zscale]
+      wv3dDistance = viewdistance()
+   else
+      wv3dOff = null
+   endif
+
+   if(wv3dOff == null)
+      waterFallPlot:plot_data()
+   else
+      waterFallPlot:plot_data(wv3dOff,wv3dScale,wv3dRot,wv3dDistance)
+   endif
+
+   setwindowpar(0,"menu",13)
+
+   wv3dPlotted = 1
+   :setWindowTitle()
+
+endproc()
+
+
+procedure(selectZoomFactor)
+
+   factor = zoomMenu->value
+   (rot,shiftxyz,scale,dist) = pref3d()
+   pref3d(rot,shiftxyz,factor,dist)
+
+endproc()
+
+###########################################################
+# Show or hide the 2D colorscale
+###########################################################
+
+procedure(toggleColorBar)
+
+   func2d("toggle colorbar")
+   :adjustHorizPlotSize()
+
+endproc()
+
+###########################################################
+# Set the size of the horizontal 1D plot based
+# on presence or otherwise of colorscale
+###########################################################
+
+procedure(adjustHorizPlotSize)
+
+   state = imagePlot->subplot(1,1)->showcmap()
+
+   getobj(0)->draw("false")
+
+   if(state == "false")
+     horizPlot->width("ww-210")
+   else
+     horizPlot->width("ww*0.9-189") # Colorbar is 1/10 of plotwidth
+   endif
+   adjustctrls(0)
+   getobj(0)->draw("true")
+
+endproc()
+
+###########################################################
+# Copy all plots to the clipboard
+###########################################################
+
+procedure(copyAllPlots2D)
+
+   x = vertPlot->x()
+   w = vertPlot->width()+imagePlot->width()
+   y = imagePlot->y()
+   h = imagePlot->height()+horizPlot->height
+   setpar(0,8,"visible","false")
+   savewindow(0,"clipboard",[x,y,x+w,y+h],"noframe")
+   setpar(0,8,"visible","true")
+
+endproc()
+
+###########################################################
+# Make sure the title reflects the display mode
+###########################################################
+
+procedure(setWindowTitle)
+
+   setwindowpar(0,"title","2D Plot Viewer - $wvMode$")
+
+endproc()
+
+###########################################################
+# Copy 1D plots to a new window - restore direction and
+# margins
+###########################################################
+
+procedure(copyPlotToNewWin, dir)
+
+   nr = guiwinnr()
+   (ml,mt,mr,mb) = imagePlot->subplot(1,1)->margins
+
+   xlabOrig = imagePlot->subplot(1,1)->xlabel->text
+   ylabOrig = imagePlot->subplot(1,1)->ylabel->text
+   if(dir == "horizontal")
+      if(wvMode == "Skyline Projections")
+        tl = "Row skyline projection"
+        ylab = "Projection amplitude"
+      elseif(wvMode == "Sum Projections")
+        tl = "Row sum projection"
+        ylab = "Projection amplitude"
+      elseif(wvMode == "Rows and Columns")
+        tl = "Row $wvRow$"
+        ylab = "Row amplitude"
+      endif
+   else
+      if(wvMode == "Skyline Projections")
+        tl = "Column skyline projection"
+        ylab = "Projection amplitude"
+      elseif(wvMode == "Sum Projections")
+        tl = "Colum sum projection"
+        ylab = "Projection amplitude"
+      elseif(wvMode == "Rows and Columns")
+        tl = "Column $wvCol$"
+        ylab = "Column amplitude"
+      endif
+   endif
+   func1d("copy plot")
+   plot1dwin()
+   func1d("paste plot")
+   sendmessage("1D Plot","SelectPlot")
+   curplot("1d")->draw("false")
+   curplot("1d")->margins(70,55,45,55)
+   if(dir == "vertical")
+      (x,y) = getplotdata("1d")
+      plot(y,x)
+      xlabel(ylabOrig)
+      curplot("1d")->axes->ydirection("forward")
+   else
+      xlabel(xlabOrig)
+   endif
+   title(tl)
+   ylabel(ylab)
+   axes("type","corner")
+   func1d("full region")
+   curplot("1d")->draw("true")
+   guiwinnr(nr)
+   imagePlot->subplot(1,1)->margins(ml,mt,mr,mb)
+
+endproc()
+
+###########################################################
+# Make sure the current plots are reset
+###########################################################
+
+procedure(exitWindow)
+
+   try
+      curplot(wvCur1D)
+      curplot(wvCur2D)
+   catch
+   endtry
+
+   :savewinpos()
+
+endproc()
+
+#################################################
+# Save the current window position
+#################################################
+
+procedure(savewinpos)
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   m = getwindowpar(0,"dimensions")
+   lst = ["x = $m[0]$",
+          "y = $m[1]$",
+          "w = $m[2]$",
+          "h = $m[3]$"]
+   save("2PlotViewer.par",lst)
+
+endproc()
+
+#################################################
+# Load the last window position
+#################################################
+
+procedure(loadwinpos)
+
+   x = -1; y = -1
+   w = 840; h = 572
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("2PlotViewer.par"))
+      lst = load("2PlotViewer.par")
+      assignlist(lst)
+   endif
+
+endproc(x,y,w,h)

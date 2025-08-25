@@ -1,0 +1,94 @@
+procedure(MakeSquare)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Make square", -1, -1, 259, 155, "resizable")
+
+      # Define all controls with basic parameters
+       button(1, 150, 39, 52, 25, "Width",
+          :makeItSquare("width");)
+       button(2, 150, 70, 52, 25, "Height",
+          :makeItSquare("height");)
+       statictext(3, 217, 20, "right", "Keep constant:")
+       radiobuttons(4, 93, 45, 30, "vertical", "window,pixels", "window")
+       statictext(5, 89, 43, "right", "Window:")
+       statictext(6, 89, 73, "right", "Pixels:")
+       button(7, 50, 119, 56, 25, "Help",
+          help("Macros\\Core","MakeSquare.htm"))
+       button(8, 149, 119, 56, 25, "Close",
+          closewindow(0);)
+       statictext(9, 131, 19, "right", "What to make square:")
+       groupbox(10, "", 10, 4, 231, 107)
+
+     # Set other control parameters
+endproc(n)
+
+procedure(makeItSquare, keepConstant)
+
+   mode = getpar(0,4,"text")
+
+   if(mode == "window")
+      :makeWindowSquare(keepConstant)
+   else
+      :makePixelsSquare(keepConstant)
+   endif
+
+endproc()
+
+procedure(makeWindowSquare,keepConstant)
+
+  plt = curplot("2d")
+  pw = plt->parent->parent
+
+  pww = pw->width
+  pwh = pw->height
+  pltw = plt->width
+  plth = plt->height
+
+  pw->draw("false")
+  if(keepConstant == "width")
+    pw->height(pwh-(plth-pltw))
+  else
+    pw->width(pww-(pltw-plth))
+  endif
+  adjustctrls(pw->nr)
+  pw->draw("true")
+
+endproc()
+
+procedure(makePixelsSquare,keepConstant)
+
+  plt = curplot("2d")
+  pw = plt->parent->parent
+  m = getplotdata("2d")
+  (wi,hi) = size(m)
+  pww = pw->width
+  pwh = pw->height
+  pltw = plt->width
+  plth = plt->height
+  pxw = pltw/wi # points per pixel
+  pxh = plth/hi
+
+# Assume width is to remain 
+  plthn = pxw/pxh*plth
+  pwhn = pwh + (plthn-plth)
+     pw->height(pwhn)  
+
+# Assume height is to remain 
+  pltwn = pxh/pxw*pltw
+  pwwn = pww + (pltwn-pltw)
+
+  if(keepConstant == "width")
+     pw->height(pwhn)  
+  else
+     pw->width(pwwn)
+  endif
+
+endproc()

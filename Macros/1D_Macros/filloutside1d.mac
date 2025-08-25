@@ -1,0 +1,155 @@
+##########################################################
+#             fillOutside1d.mac
+#
+# Add a constant vector to the start or end of the
+# current 1D data set.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(fillOutside1d)
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y)
+   :initialise()
+   setpar(0,6,"text","0")
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Fill outside 1D plot", -1, -1, 260, 135)
+
+      # Define all controls with basic parameters
+       radiobuttons(1, 31, 28, 20, "vertical", "start,end,both", "end")
+       statictext(2, 52, 27, "left", "Start")
+       statictext(3, 52, 47, "left", "End")
+       button(4, 6, 100, 43, 25, "Fill",
+          :fill();)
+       button(5, 202, 100, 43, 25, "Exit",
+          closewindow(0);)
+       textbox(6, 176, 55, 55)
+       statictext(7, 144, 58, "left", "Value")
+       button(8, 153, 100, 43, 25, "Help",
+          :showhelp();)
+       button(9, 104, 100, 43, 25, "Undo",
+          :undo();)
+       textmenu(10, 176, 28, 55, 200)
+       statictext(11, 128, 32, "left", "New size")
+       button(12, 55, 100, 43, 25, "Update",
+          :initialise();)
+       statictext(13, 52, 67, "left", "Both")
+       groupbox(14, "Fill size and value", 113, 5, 131, 84)
+       groupbox(15, "Fill method", 9, 5, 95, 84)
+
+     # Set other control parameters
+       setpar(n,4,"tab_number",3,"mode","default")
+       setpar(n,5,"tab_number",5)
+       setpar(n,8,"tab_number",4)
+       setpar(n,10,"tab_number",1,
+                   "menu",["64","128","256","512","1024","2048","4096","8192","16384","32768","65536"])
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","fillOutside1d.htm")
+endproc()
+
+####################################################
+# Initialise the GUI interface
+####################################################
+
+procedure(initialise)
+
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+
+    w = size(x)
+    setpar(0,10,"text",w)
+
+endproc()
+
+####################################################
+# Extract the data from the selected region
+####################################################
+
+procedure(fill)
+
+# Get the 1D data
+  (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Save the vectors for undo operation
+   wv_x = x
+   wv_y = y
+
+# Record the current 1D plot state
+   (txt,lx,ly) = 1dpar:get()
+
+# Get the GUI parameters
+   method = getpar(0,1,"text")
+   newsize = getpar(0,10,"value")
+   value = eval(getpar(0,6,"text"))
+
+# Check for errors
+   if(varType(y) == "matrix1d" & imag(value) != 0)
+      message("Warning","Imaginary part of fill value\rwill be ignored since data is real","warning")
+   endif
+
+   if(newsize < w)
+      message("Can't complete operation","Zerofill size must be larger than original","error")
+      return()
+   endif
+
+# Do the fill
+   draw1d("false")  
+      if(method == "end") # Add zeros to end
+         plot(fill(y,newsize,"end",value))
+      elseif(method == "start") # Add zeros to start
+         plot(fill(y,newsize,"start",value))
+      elseif(method == "both") # Add zeros to both ends
+         plot(fill(y,newsize,"sides",value))
+      endif
+      1dpar:set(txt,lx,ly)
+   draw1d("true")
+   title("filled data")
+
+endproc()
+
+
+####################################################
+# Restore the vector stored before last correction
+####################################################
+
+procedure(undo)
+
+   if(wv_x != null)
+      (txt,lx,ly) = 2dpar:get()
+      draw1d("false")
+         plot(wv_x,wv_y)
+         1dpar:set(txt,lx,ly)
+      draw1d("true")
+   endif
+
+endproc()

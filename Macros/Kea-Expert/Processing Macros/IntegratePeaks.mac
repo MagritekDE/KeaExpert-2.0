@@ -1,0 +1,573 @@
+###############################################
+# Select a region for integration
+# Either called from the current experiment
+# or from a postprocessing button.
+# The information needed is stored in the
+# global variable gShared.
+###############################################
+
+procedure(AddIntegral, function="None")
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Update the shared data if not present
+   if(isvar("gShared") == 0)
+      :createSharedInfo()
+   endif
+
+# If no data return
+   if(gShared->dataPresent == 0)
+      print("\n   No spectral data present\n")
+      return
+   endif
+   
+# Get the color for the integral region
+   col = :getNextColor()
+
+# Get plot regions
+   pt1 = gView->g2->subplot(1,1)
+
+# Select the integral regions
+   gView->statusCtrl->text("Select one side of peak")
+   pos1 = getx("value")
+
+   pt1->addline(pos1,-inf,pos1,inf,col,2,"solid")
+   gView->statusCtrl->text("Select other side of peak")
+   pos2 = getx("value")
+   pt1->addline(pos2,-inf,pos2,inf,col,2,"solid")
+   if(pos1 > pos2)
+      swapvar(pos1,pos2)
+   endif
+   avgPPM = (pos1+pos2)/2
+   gView->statusCtrl->text("")
+
+# Add the integral region to a shared array
+   ir = gShared->integralRegions
+   if(ir == null)
+      ir = join([pos1,pos2],col)
+   else
+      ir = join(ir,join([pos1,pos2],col),"horiz")
+   endif
+   gShared->integralRegions = ir
+
+# Update the display with the new integral
+   :drawIntegrals(pt1,avgPPM)
+
+# Note that this color has been used
+   :setColorUsed(col,1)
+
+endproc()
+
+###############################################
+# Get the next free color otherwise start again
+###############################################
+
+procedure(getNextColor)
+
+# Search for the first free color
+   (w,h) = size(gShared->colorScale)
+
+   col = null
+   for(k = 0 to h-1)
+      if(gShared->colorsUsed[k] == 0)
+         col = gShared->colorScale[~,k]
+         exitfor
+      endif
+   next(k)
+
+# All colors have been used so start again
+   if(col == null)
+      gShared->colorsUsed = matrix(h)
+      col = gShared->colorScale[~,0]
+   endif
+
+endproc(col)
+
+###############################################
+# Set or clear an entry in the colorsUsed array
+# which matched color 'col'
+###############################################
+
+procedure(setColorUsed, col, status)
+
+   (w,h) = size(gShared->colorScale)
+   for(k = 0 to h-1)
+      if(col == gShared->colorScale[~,k])
+         gShared->colorsUsed[k] = status
+         exitfor
+      endif
+   next(k)
+
+endproc()
+
+
+###############################################
+# Get a color table for coloring integrals
+###############################################
+
+procedure(getColorTable)
+
+#   colors = [255,0,0;
+#             255,128,0;
+#             204,204,0;
+#             153,255,51;
+#             51,255,153;
+#             51,255,255;
+#             51,153,255;
+#             51,51,255;
+#             153,51,255;
+#             255,51,255;
+#             255,51,153;
+#             160,160,160]
+
+  colors = [204,0,0;
+             255,128,0;
+             204,102,0;
+             204,204,0;
+             0,204,0;
+             0,204,204;
+             0,102,204;
+             0,0,204;
+             102,0,204;
+             204,0,204;
+             255,0,127;
+             96,96,96]
+
+endproc(colors)
+
+###############################################
+# Create the shared integral information if 
+# not present
+###############################################
+
+procedure(createSharedInfo)
+
+   assign("gShared",struct(),"global")
+
+   pt1 = gView->g2->subplot(1,1)
+
+# Get the spectral data
+   (fAxis,Spec) = pt1->getdata()
+
+# Get y axis
+   mapping = pt1->axes->ymapping
+   mn = pt1->axes->minaxisvalue
+   mx = pt1->axes->maxaxisvalue
+
+# Make the colors
+   gShared->colorScale = :getColorTable()
+   (w,h) = size(gShared->colorScale)
+   gShared->colorsUsed  = matrix(h)
+
+# Get the integral regions
+   lines = pt1->getlines()
+   if(lines != null)
+      nrLines = size(lines)
+      gShared->integralRegions = matrix(5,nrLines/2)
+
+      for(k = 0 to  nrLines-1 step 2)
+         idx = k/2
+         first = lines[k]->x0
+         second = lines[k+1]->x0
+         if(first > second)
+            swapvar(first,second)
+         endif
+         gShared->integralRegions[0,idx] = first
+         gShared->integralRegions[1,idx] = second
+         gShared->integralRegions[[2:4],idx] = lines[k]->color
+         :setColorUsed(lines[k]->color,1)
+      next(k)
+   else
+      gShared->integralRegions = null
+   endif
+
+#   # Get the integral values
+#      ids = pt2->tracelist()
+#      nrIntegrals = size(ids)/2
+#      gShared->integralValues = null
+#      for(k = 0 to size(ids)-1)
+#         name = pt2->trace(ids[k])->name()
+#         if(name != "peakIntegrals")
+#            gShared->integralValues = gShared->integralValues + ["$name$"]
+#         endif
+#      next(k)        
+  
+   # Indicate that data is present
+   gShared->dataPresent = 1
+
+   gShared->drawing = 0
+
+
+endproc()
+
+
+##########################################
+# Initialise the shared data from the 
+# experiment macro
+##########################################
+
+procedure(initSharedData,fAxis,nrPnts,nrSteps,dArray)
+
+   assign("gShared",struct(),"global")
+   gShared->integralRegions = null
+   gShared->integralValues  = null
+   gShared->integralStep    = -1
+   gShared->fAxis           = fAxis
+   gShared->nrSteps         = nrSteps
+   gShared->dArray          = dArray/1000
+   gShared->spec2d          = cmatrix(nrPnts,nrSteps)
+   gShared->drawing         = 0
+   gShared->dataPresent     = 0
+   gShared->colorScale      = :getColorTable()
+   (w,h) = size(gShared->colorScale)
+   gShared->colorsUsed      = matrix(h)
+
+endproc()
+
+
+##########################################
+# Remove an integral from the list 
+# and update the display
+##########################################
+
+procedure(RemoveIntegral, function="None")
+
+   if(isvar("gShared") == 0)
+      :createSharedInfo()
+   endif
+
+   gView->statusCtrl->text("Select point inside integral")
+   pos1 = getx("value")
+
+   regions = gShared->integralRegions
+   if(regions == null)
+      return   
+   endif
+
+   (w,h) = size(regions)
+
+   pt1 = gView->g3->subplot(1,1)
+   cnt = 0
+   newRegions = null
+   for(k = 0 to h-1)
+      region = regions[~,k]
+      if(pos1 < region[0] | pos1 > region[1])
+         if(cnt == 0)
+            newRegions = region
+         else
+            newRegions = join(newRegions, region, "horiz")
+         endif
+         cnt = cnt + 1
+      elseif(pos1 >= region[0] & pos1 <= region[1])
+         pt1->rmlines(region[0])
+         pt1->rmlines(region[1])
+         :setColorUsed(region[2:4],0)
+      endif
+   next(k)
+     
+   gShared->integralRegions = newRegions
+
+# Update the display
+   pt2 = gView->g4->subplot(1,1)
+   :drawIntegrals(pt1,pt2,function,pos1)
+
+endproc()
+
+##########################################
+# Remove all the integrals 
+# and update the display
+##########################################
+
+procedure(ClearIntegrals, function="None")
+
+   if(isvar("gShared") == 0)
+      :createSharedInfo()
+   endif
+
+   gShared->integralRegions = null
+
+# Update the display
+   pt1 = gView->g3->subplot(1,1)
+   pt2 = gView->g4->subplot(1,1)
+   pt2->rmlines()
+   (w,h) = size(gShared->colorScale)
+   gShared->colorsUsed = matrix(h)
+   :drawIntegrals(pt1,pt2,function)
+
+endproc()
+
+
+##########################################
+# Remove all the integrals 
+# and update the display
+##########################################
+
+procedure(PrintIntegrals, function="None")
+
+   if(isvar("gShared") == 0)
+      :createSharedInfo()
+   endif
+
+   sz = size(gShared->integralValues)
+   if(sz > 0)
+      if(function == "T2")
+         print("\n\n   Peak (ppm)      T2 (s)\n\n")
+      else
+         print("\n\n   Peak (ppm)      T1 (s)\n\n")
+      endif
+
+      for(k = 0 to sz-1)
+        txt = gShared->integralValues[k]
+         entry = parse(txt,",")
+         if(entry[1] != "raw")
+            position = eval(entry[0])
+            value = eval(entry[1])
+            if(value != "raw")
+               print("     $position,5.2f$         $value,5.2f$\n")
+            endif 
+         endif
+      next(k)
+
+      print("\n")
+
+   endif
+
+
+endproc()
+
+
+#######################################################################
+# Draw the integrals and fit to a T1-IR curve. Shared data structure
+# allows real time selection of integrals from a post processing
+# button. This procedure can also be called from an experiment
+#######################################################################
+
+procedure(drawIntegrals, pt1, avgPPM)
+ 
+# Only one macro can call this procedure at a time
+   if(gShared->drawing)
+      return
+   endif
+
+   gShared->drawing = 1
+
+# Make local copies of the shared data
+   gShared->dataPresent = 1
+   fAxis = gShared->fAxis
+   ir = gShared->integralRegions
+
+# Return if no integral data
+   if(ir == null)
+      gShared->drawing = 0
+      return
+   endif
+
+# Clear all integral results
+   pt1->rmtext()
+   pt1->rmlines()
+
+# Remove the integral traces
+   lst = pt1->tracelist()
+   for(k = 1 to size(lst)-1)
+      pt1->rmtrace(lst[k])
+   next(k)
+
+   pt1->hold("on")
+
+   pt1->draw("false")
+
+   (w,h) = size(ir)
+
+   for(k = 0 to h-1)
+      pos = ir[0,k]
+      txt = "$pos,1.2f$"
+
+
+      pt1->addline(pos,off,pos,off-len,fontColor,1,"solid")
+      pt1->addtext([pos,off-len],txt,[0,-0.5;1.2,0],fontName,fontSize,-90,fontStyle,fontColor)
+
+      posL = ir[3,k]
+      posR = ir[4,k]
+
+      if(posL < posR)
+
+         idx1 = findindex(x,posL)
+         idx2 = findindex(x,posR)  
+         int = ir[5,k]
+         
+      # Work out the cumulative sum and plot
+      # along with the integral value
+         ysub = y[idx1:idx2]
+         ys = cumsum(ysub)
+         xs = linspace(posL,posR,size(ys))
+         ys = max(ysub)*ys/max(ys)
+         ys = ys[-1]-ys
+         ys = ys+max(ysub)
+         pt1->plot(xs,ys,"color",integralColor,"tracewidth",lineThickness)
+         xtxt = (posL+posR)/2
+         ytxt = (max(ys)+min(ys))/2
+         pt1->addtext([xtxt,ytxt],"$int*cal,1.1f$",[-0.5,0;0,-0.5],fontName,fontSize,0,fontStyle,fontColor)
+
+      endif
+
+
+   next(k)
+
+   pt1->hold("off")
+
+   pt1->draw("true")
+
+# Get the integral values
+#   ids = pt2->tracelist()
+#   nrIntegrals = size(ids)/2
+#   gShared->integralValues = null
+#   for(k = 0 to size(ids)-1)
+#      name = pt2->trace(ids[k])->name()
+#      if(name != "peakIntegrals")
+#         gShared->integralValues = gShared->integralValues + ["$name$"]
+#      endif
+#   next(k) 
+#
+   gShared->drawing = 0
+
+
+endproc()
+
+
+#######################################################################
+# Core procedure for plotting the integral data and fit
+#######################################################################
+
+procedure(plotIntegralsCore,pt1,pt2,intNr,echoDelay,peakIntegrals,col,shape,function,integralPPM)
+
+# Fit the data
+   try
+      if(function == "T1IR")
+         (fit,Ea,Ta,errEa,errTa) = t1fit(echoDelay,peakIntegrals,"ir")
+         fitStr = "$integralPPM,6.2f$$Ta,6.2f$"
+      elseif(function == "T1SR")
+         (fit,Ea,Ta,errEa,errTa) = t1fit(echoDelay,peakIntegrals,"vd")
+         fitStr = "$integralPPM,6.2f$$Ta,6.2f$"
+      elseif(function == "T2")
+         (fit,Ea,Ta,errEa,errTa) = t2fit(echoDelay,peakIntegrals)
+         fitStr = "$integralPPM,6.2f$$Ta,6.2f$"
+      endif
+   catch
+      fit = null
+      fitStr = ""
+   endtry
+
+# Plot the raw data
+
+ 
+# Add the fitted curve
+   shiftMat = [0,0;0,(intNr+1)*1.1]
+
+   if(function != "None" & fitStr != "")
+
+      if(function == "T2")
+         pt2->addtext([-110,10],fitStr,shiftMat,"Courier New",9,0,"regular",col,"pp")
+      else
+         pt2->addtext([5,10],fitStr,shiftMat,"Courier New",9,0,"regular",col,"pp")
+      endif
+      tc = pt2->plot(echoDelay,fit,"color", col)
+      pt2->trace(tc)->name("$integralPPM,0.2f$,$Ta,0.2f$")
+   endif
+
+   pt2->hold("on")
+
+   tc = pt2->plot(echoDelay,peakIntegrals,
+             "tracetype", "none", "symbolshape", "opensquare",
+             "symbolcolor",col)
+   pt2->trace(tc)->name("$integralPPM,0.2f$,raw")
+
+   varLabel = pt1->ylabel->text
+   pt2->title("Peak integrals")
+   pt2->xlabel(varLabel)
+   pt2->ylabel("Integral")
+   pt2->axes->xmapping("linear")
+
+endproc(fitStr)
+
+
+##########################################
+# Remove an integral from the list 
+# and update the display
+##########################################
+
+procedure(TogglePlotsDisplayed)
+
+   if(wvExpStatus == "running")
+      (w,h) = size(gPlot->curPlotLayout)
+      if(w == [2,2])
+         layout = ["pt3";"pt4"]
+      elseif(w == [2,1])
+         layout = ["pt3","pt4"]
+      else
+         layout = ["pt1","pt2";"pt3","pt4"]
+      endif
+      gPlot->layoutPlots(layout,"keep")
+      gPlot->showPlots(layout)
+   else
+      if(vartype(gPlot->curPlotLayout) == "list")
+         layout = ["pt3";"pt4"]
+      else
+         layout = ["pt3","pt4"]
+      endif
+      gPlot->layoutPlots(layout,"keep")
+      gPlot->showPlots(layout)
+   endif
+
+endproc()
+
+##########################################
+# Swap between a log and linear display
+##########################################
+
+procedure(LogLinT2)
+
+   pt2 = gView->g4->subplot(1,1)
+
+   ids = pt2->tracelist()
+   nrExpts = size(ids)
+
+   if(nrExpts > 0)
+
+   # Extract the existing data
+      (x,y) = pt2->trace(ids[0])->getdata()
+      sz = size(x)
+      intData = matrix(sz,nrExpts)
+      names = null
+      for(k = 0 to size(ids)-1)
+         name = pt2->trace(ids[k])->name()
+         names = names + ["$name$"]
+         (x,intData[~,k]) = pt2->trace(ids[k])->getdata()
+      next(k) 
+
+    # Replot it in linear mode
+      pt2->clear()
+      pt2->hold("on")
+      for(k = 0 to nrExpts-1)
+         try
+            (ppm,E0,T2) = parse(names[k],",")
+             E0 = eval(E0)
+             T2 = eval(T2)
+             y0 = intData[~,k]
+             y1 = loge(-y0/E0))
+             plot(x,y1)
+         catch
+             y0 = intData[~,k]
+             y1 = loge(0.5*(1-y0/E0))
+             plot(x,y1,"symbolshape","opensquare","tracetype", "none")             
+         endtry
+      next(k)
+      pt2->hold("off")
+
+   endif
+
+
+endproc()
+

@@ -1,0 +1,43 @@
+procedure(MaxEntropyDT2)
+
+   n = window("MaxEntropyDT2", -1, -1, 573, 157)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+ 
+   # Define all controls with basic parameters
+    statictext(1, 260, 24, "centre", "T2 (s)")
+    statictext(2, 318, 24, "centre", "D (m^2/s)")
+    statictext(3, 226, 46, "right", "Minimum")
+    statictext(4, 226, 73, "right", "Maximum")
+    statictext(5, 226, 101, "right", "Steps")
+    textbox(6, 240, 41, 43)
+    textbox(7, 298, 41, 43)
+    textbox(8, 240, 70, 43)
+    textbox(9, 298, 70, 43)
+    textbox(10, 240, 97, 43)
+    textbox(11, 298, 97, 43)
+    statictext(12, 100, 68, "right", "Smoothing")
+    textbox(13, 107, 70, 35)
+    statictext(14, 91, 82, "right", "factor")
+    button(15, 359, 42, 57, 31, "Reset",:resetPar())
+    button(16, 359, 82, 57, 31, "Calculate",:maxEntropyCalc())
+    progressbar(17, 462, 44, 16, 86, "vertical")
+    statictext(18, 501, 20, "right", "Convergence")
+
+  # Set other control parameters
+    setpar(n,6,"valueID","x_minimum")
+    setpar(n,7,"valueID","y_minimum")
+    setpar(n,8,"valueID","x_maximum")
+    setpar(n,9,"valueID","y_maximum")
+    setpar(n,10,"valueID","x_steps")
+    setpar(n,11,"valueID","y_steps")
+    setpar(n,13,"valueID","rho")
+    setpar(n,17,"objID","convergObj",
+               "type","float",
+               "range",[0,100])
+
+endproc(18, "Inverse Laplace")

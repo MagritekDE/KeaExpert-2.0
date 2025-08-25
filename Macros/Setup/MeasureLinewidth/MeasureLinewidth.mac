@@ -1,0 +1,35 @@
+procedure(backdoor, guipar)
+
+   InitScript(getmacropath(),getmacroname())
+
+     (pt1,pt2) = InitPlot(["pt1";"pt2"])
+     result = RunExpt("Proton",["dwellTime = 500","nrPnts = 16384","nrScans=1","usePPMScale = \"yes\""],guipar)
+     (val,pos) = max(real(result->fData))
+     print("\n   Peak position: $result->fAxis[pos],1.3f$ ppm")
+     result->fAxis = result->fAxis*single(result->par->b1Freq1H)
+     setupUtilities:calcLineWidth(result)
+
+   EndScript()
+
+endproc()
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo,plotRegion)
+
+   info = ["pt1","fid.pt1",
+           "pt2","spectrum.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)

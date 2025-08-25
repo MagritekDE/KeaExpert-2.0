@@ -1,0 +1,12 @@
+x = [-100:0.01:100]
+fwhm = 10
+pos = -20
+amp = 10
+ns = 0.2
+y = amp/(1+((x-pos)/(fwhm/2))^2)
+y = y + noise(size(x))*ns
+plot(x,y)
+fit = lorentzianfit(x,y,0,"yes",100)
+hold("on")
+plot(x,fit,"color",[0,128,0])
+hold("off")

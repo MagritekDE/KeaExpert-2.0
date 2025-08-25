@@ -1,0 +1,32 @@
+##############################################
+# Toggle visibility of the integrals plot
+# in T1 and T2 experiments
+##############################################
+
+procedure(ToggleIntegralsLayout, layout1, layout2)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Convert passed strings to layout strings
+  layout1 = replacestr(layout1,"'","\"")
+  layout2 = replacestr(layout2,"'","\"")
+
+# Get the current layout as a string
+   curLayout = "$gPlot->curPlotLayout$"
+
+# Can't compare 2D lists so compare as strings
+   if(curLayout == "$layout1$")
+      layout = eval(layout2)
+   elseif(curLayout == "$layout2$")
+      layout = eval(layout1)
+   endif
+   gPlot->curPlotsViewed = layout
+
+# Update current layout
+   gPlot->layoutPlots(layout,"keep")
+   gPlot->showPlots(layout)
+
+endproc()

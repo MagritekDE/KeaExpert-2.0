@@ -1,0 +1,261 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>Kea pulse programming overview</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Helvetica;
+	panose-1:2 11 6 4 2 2 2 2 2 4;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:"Arial Unicode MS";
+	panose-1:2 11 6 4 2 2 2 2 2 4;}
+@font-face
+	{font-family:"\@Arial Unicode MS";
+	panose-1:2 11 6 4 2 2 2 2 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, div.MsoListParagraphCxSpFirst
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, div.MsoListParagraphCxSpMiddle
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, div.MsoListParagraphCxSpLast
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+p.Body1, li.Body1, div.Body1
+	{mso-style-name:"Body 1";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Helvetica","sans-serif";
+	color:black;}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-weight:bold;}
+.MsoChpDefault
+	{font-size:10.0pt;}
+ /* Page Definitions */
+ @page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:2.0cm 2.0cm 2.0cm 2.0cm;}
+div.WordSection1
+	{page:WordSection1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ link=blue vlink=purple>
+
+<div class=WordSection1>
+
+<h1><span lang=EN-US>Kea pulse programming introduction</span></h1>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>The Kea pulse programmer is a tool for
+making or modifying NMR pulse programs. The steps required to generate a new
+program are listed below</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=1 type=1>
+ <li class=MsoNormal><span lang=EN-US>Write the pulse program - this is a
+     command script which when executed by the spectrometer processor generates
+     all the necessary pulses at the correct times and then collects data when
+     they are available. In the Kea we often only code the innermost loop of
+     the pulse program on the spectrometer - the outer loops being executed within
+     Prospa.</span></li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=2 type=1>
+ <li class=MsoNormal><span lang=EN-US>Design a user interface. This is used for
+     entering the various parameter required to run the experiment and for
+     starting and stopping the experiment. Since many of the parameters are
+     common to all experiments, the user interface description is usually only
+     necessary for those parameters which are specific to the experiment being
+     designed.</span></li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<ol style='margin-top:0cm' start=3 type=1>
+ <li class=MsoNormal><span lang=EN-US>Design the Prospa macro procedure,
+     execpp, which runs the experiment and then collects and displays the
+     data.  This procedure also controls outer loops within the experiment. The
+     advantage of this method is that intermediate experimental results can be
+     displayed as they are available and the spectrometer processor can be less
+     complex than it would have to be if it controlled the complete experiment.</span></li>
+</ol>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-US>The user
+interface description and the pulse program definition reside in the same file </span><span
+lang=EN-US style='font-family:"Helvetica","sans-serif"'>–</span><span
+lang=EN-US> the <i>pulse program definition macro</i>. This is </span><span
+lang=EN-US style='font-family:"Helvetica","sans-serif"'>“</span><span
+lang=EN-US>compiled</span><span lang=EN-US style='font-family:"Helvetica","sans-serif"'>”</span><span
+lang=EN-US> to produce a <i>pulse program execution macro</i> which in addition
+to the code required to generate the user interface also contains the execpp
+procedure described in step 3.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Help files are provided to explain the
+various steps required to generate a pulse program execution macro; links to
+these are given below.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<ul style='margin-top:0cm' type=disc>
+ <li class=MsoNormal><span lang=EN-US><a href="Kea%20interface.htm">What does the
+     pulse program user interface looks like</a></span><span
+     class=MsoHyperlink><span lang=EN-US>?</span></span></li>
+ <li class=MsoNormal><span lang=EN-US><a href="File%20organisation.htm">How are
+     the pulse program files organized?</a></span></li>
+ <li class=MsoNormal><span lang=EN-US><a href="MakePulseProgram.htm">How to
+     make a new pulse program</a></span></li>
+ <li class=MsoNormal><span lang=EN-US><a href="Pulse%20program%20macro.htm">The
+     pulse program definition macro</a></span></li>
+ <li class=MsoNormal><span lang=EN-US>User interface details</span></li>
+ <ul style='margin-top:0cm' type=circle>
+  <li class=MsoNormal><span lang=EN-US><a href="GUI%20control%20syntax.htm">User
+      interface control syntax</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="GUI%20tabs.htm">Parameter tabs</a></span></li>
+ </ul>
+ <li class=MsoNormal><span lang=EN-US>Pulse program details</span></li>
+ <ul style='margin-top:0cm' type=circle>
+  <li class=MsoNormal><span lang=EN-US><a href="Pulse%20program%20syntax.htm">Pulse
+      program argument syntax</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="Using%20tables.htm">Using
+      tables</a></span></li>
+ </ul>
+ <li class=MsoNormal><span lang=EN-US>Relationships list details</span></li>
+ <ul style='margin-top:0cm' type=circle>
+  <li class=MsoNormal><span lang=EN-US><a href="The%20relationships%20list.htm">The
+      relationships list</a></span></li>
+ </ul>
+ <li class=MsoNormal><span lang=EN-US>The pulse program execution macro</span></li>
+ <ul style='margin-top:0cm' type=circle>
+  <li class=MsoNormal><span lang=EN-US><a href="Execution%20macro%20procedures.htm">The
+      execution macro procedures</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="Processing%20pathway.htm">The processing
+      pathway</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="The%20execpp%20procedure.htm">Understanding
+      the basic execpp procedure.</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a
+      href="Multi-dimensional%20experiments.htm">Writing multi-dimensional
+      experiments.</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="Standard%20File%20Format.htm">Saving
+      data</a></span></li>
+  <li class=MsoNormal><span lang=EN-US><a href="Helper%20macros.htm">Helper
+      macro reference</a></span></li>
+ </ul>
+ <li class=MsoNormal><span lang=EN-US><a href="Backdoor%20procedures.htm">Backdoor:
+     accessing a macro without using the user interface</a></span></li>
+ <li class=MsoNormal><span class=MsoHyperlink><span lang=EN-US><a
+     href="Writing%20your%20own%20Kea%20UI.htm">Writing your own Kea user
+     interface</a></span></span></li>
+ <li class=MsoNormal><span lang=EN-US><a href="Compile%20All%20Pulse%20Programs.htm">Compile
+     all pulse program in a folder</a></span></li>
+ <li class=MsoNormal><span lang=EN-US><a href="Updating%20Kea%20macros%20V2%20to%20V3.htm">Updating
+     Kea macros from V2 to V3</a></span></li>
+</ul>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>&nbsp;&nbsp;&nbsp;</span></p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm;
+margin-left:18.0pt;margin-right:0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'><span lang=EN-US>&nbsp;</span></p>
+
+</div>
+
+<p class=MsoNormal style='margin-left:18.0pt;text-align:justify'><i><span
+lang=EN-US>&nbsp;Correct for Prospa version 3.12,  1-August-2012</span></i></p>
+
+<p class=MsoNormal style='margin-left:18.0pt'><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US><br>
+<br clear=all style='page-break-before:always'>
+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt'>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

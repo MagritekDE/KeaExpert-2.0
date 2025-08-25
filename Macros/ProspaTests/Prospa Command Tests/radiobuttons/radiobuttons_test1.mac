@@ -1,0 +1,36 @@
+
+
+procedure(radiobuttons_test1,verbose,delay)
+
+   n = window("radiobutton test",100,100,150,80)
+   
+   radiobuttons(1,20,20,20,"horiz","1,2,3,4", "1",
+              state = getpar(0,1,"text");
+              pr ("Radiobutton state is $state$");)
+   showwindow(n)
+
+   for(k = 1 to 4)
+     setpar(n,1,"value",k)
+     s = getpar(n,1,"text")
+     if(s != "$k$")
+        return(0, "Invalid result for: radiobuttons #1")
+      endif 
+     pause(0.5)
+   next(k)
+
+   if(getpar(n,1,"option_string") != "1,2,3,4")
+     return(0, "Invalid result for: radiobuttons #2")
+   endif 
+
+   if(getpar(n,1,"option_list") != ["1","2","3","4"])
+     return(0, "Invalid result for: radiobuttons #3")
+   endif 
+
+   if(getpar(n,1,"init") != "1")
+     return(0, "Invalid result for: radiobuttons #4")
+   endif 
+
+   closewindow(n)
+
+
+endproc(1,"")

@@ -1,0 +1,38 @@
+#################################################################
+# Returns the parameters to be used for the protocol 'exptName'
+# the defaults and common parameters are taken but extraPar 
+# can also be used to override these values
+#################################################################
+
+procedure(GetParameters, exptName, extraPar=null)
+
+   bak = getcwd()
+   srcDir = gData->findPP(exptName) # Returns a string
+   if(srcDir == null)
+      extraPar = struct(type="script")
+      return(extraPar)
+   endif
+   guipar = gData->getDefaultParameters(exptName, srcDir) # Returns struct
+   guipar->type = "experiment"
+   guipar = gData->mergeWithFactoryPar(guipar,exptName,srcDir) # Returns a list
+   guipar = gData->mergeWithCommonPar(guipar) # Returns a list
+
+# Add the data directory to guipar
+   dataDirectory = gData->curExpt->dataParentPath
+   fullExptName = getbasedir(gData->curExpt->dataPath)
+   guipar = mergelists(["dataDirectory = \"$dataDirectory$\"","expName = \"$fullExptName$\""],guipar) 
+
+# Add uiPar and modList to guipar
+   if(nrArgs == 2)
+      if(vartype(extraPar) == "structure")
+         guipar = mergelists(list(extraPar),guipar)
+      else
+         guipar = mergelists(extraPar,guipar)
+      endif
+      guipar = rmfromlist(guipar,"sampleNames") 
+   endif
+
+   cd(bak)
+
+
+endproc(struct(sortlist(guipar)))

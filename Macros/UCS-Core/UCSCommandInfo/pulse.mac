@@ -1,0 +1,27 @@
+###################################################################################
+# This command simulates the real pulse command by summing the
+# duration. Argument meaning varies depending on number of arguments.
+##################################################################################
+
+procedure(pulse, a1, a2, a3, a4, a5=null, a6=null, a7=null, a8=null, a9=null)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      if(nrArgs == 4) # Single pulse (ch, amp, phase, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 1
+         gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$,$a2$,$a3$,$a4$,$args[1]$,$args[2]$,$args[3]$"]
+      elseif(nrArgs == 5) # Single pulse with frequency (ch, amp, phase, duration, freq)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.3
+         gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$,$a2$,$a3$,$a4$,$a5$,$args[1]$,$args[2]$,$args[3]$,$args[4]$"]
+      elseif(nrArgs == 9) # Dual pulse  (ch1, amp1, phase1, freq1, ch2, amp2, phase2, freq2, duration)
+         gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + a4 + pgo + 0.6
+         gSeq->psInfo->command = gSeq->psInfo->command + ["pulse,$a1$, $a2$,$a3$,$a4$,$a5$,$a6$,$a7$,$a8$,$a9$,$args[1]$,$args[2]$,$args[3]$,$args[5]$,$args[6]$,$args[7]$,$args[8]$"]
+      endif
+
+   endif
+
+endproc()
+

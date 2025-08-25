@@ -1,0 +1,415 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>Prospa macros come in two forms - simple scripts and procedures</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0mm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+h2
+	{margin-top:12.0pt;
+	margin-right:0mm;
+	margin-bottom:3.0pt;
+	margin-left:0mm;
+	page-break-after:avoid;
+	font-size:14.0pt;
+	font-family:Arial;
+	font-style:italic;}
+p.MsoToc2, li.MsoToc2, div.MsoToc2
+	{margin-top:0mm;
+	margin-right:0mm;
+	margin-bottom:0mm;
+	margin-left:12.0pt;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:595.45pt 841.7pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-US link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>Macro Procedures</span></b></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoToc2><span class=MsoHyperlink><a href="#_Toc295571955">Procedures<span
+style='color:windowtext;display:none;text-decoration:none'>. </span><span
+style='color:windowtext;display:none;text-decoration:none'>2</span></a></span></p>
+
+<p class=MsoToc2><span class=MsoHyperlink><a href="#_Toc295571956">Running
+procedures from within macros<span style='color:windowtext;display:none;
+text-decoration:none'>. </span><span
+style='color:windowtext;display:none;text-decoration:none'>3</span></a></span></p>
+
+<p class=MsoToc2><span class=MsoHyperlink><a href="#_Toc295571957">Local and
+global variables in procedures<span style='color:windowtext;display:none;
+text-decoration:none'>. </span><span
+style='color:windowtext;display:none;text-decoration:none'>4</span></a></span></p>
+
+<p class=MsoToc2><span class=MsoHyperlink><a href="#_Toc295571958">The
+predefined local variables<span style='color:windowtext;display:none;
+text-decoration:none'>. </span><span
+style='color:windowtext;display:none;text-decoration:none'>5</span></a></span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-GB>Almost all
+functions in Prospa are controlled by Macros. These are text files consisting
+of commands which are executed to perform certain functions such as generating
+windows, collecting or processing data and displaying results. Placing these
+commands in text files provides considerable flexibility in how Prospa will
+operate.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal>Prospa macros come in two forms – those containing simple
+scripts and those containing one or more procedures. A simple script is simply
+a list of commands to be run when the script is executed. The execution starts
+with the first command and steps through the list finishing with the final
+command. You execute the script by selecting the &quot;Run text&quot; (ctrl-T) menu
+option from the editor file menu or by selecting the &quot;Save and run
+text&quot; (ctrl-R) menu option. If it has already been saved to a file you can
+alternatively execute it by typing the filename from the command line interface
+(assuming the filename is unique within the search path). You can't pass
+information to and from this kind of script except via global variables.</p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse'>
+ <tr>
+  <td width=365 valign=top style='width:273.6pt;padding:0mm 5.4pt 0mm 5.4pt'>
+  <p class=MsoNormal><img width=399 height=179
+  src="Macro%20procedures_files/image001.png"></p>
+  </td>
+  <td width=203 valign=top style='width:152.5pt;padding:0mm 5.4pt 0mm 5.4pt'>
+  <p class=MsoNormal align=center style='text-align:center'><i>&nbsp;</i></p>
+  <p class=MsoNormal align=center style='text-align:center'><i>&nbsp;</i></p>
+  <p class=MsoNormal align=center style='text-align:center'><i><span
+  style='font-size:10.0pt'>An example of a simple script executed using the Run
+  text menu option</span></i></p>
+  <p class=MsoNormal align=center style='text-align:center'><i>&nbsp;</i></p>
+  <p class=MsoNormal align=center style='text-align:center'>&nbsp;</p>
+  <p class=MsoNormal>&nbsp;</p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>However
+since all variables in this script are global they can be accessed from the
+command line interface. This is useful when you are developing a macro and want
+check all the variables. To view all visible globally defined variables, type
+the command:<span class=apple-converted-space>&nbsp;</span><b>pr globals<span
+class=apple-converted-space>&nbsp;</span></b>or<span
+class=apple-converted-space>&nbsp;</span><b>pr glo<span
+class=apple-converted-space>&nbsp;</span></b>in the CLI window.</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='color:black'><img width=399 height=276
+src="Macro%20procedures_files/image002.png"></span></p>
+
+<p class=MsoNormal><i><span style='color:black'>&nbsp;</span></i></p>
+
+<p class=MsoNormal><span style='color:black'>(Note that some global variables
+are hidden – to see these type pr hidden).</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<h2><a name="_Toc295571955"></a><a name=procedures></a>Procedures</h2>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>The
+second kind of macro - and this is generally the more useful kind - consists of
+procedures. These are lists of commands bounded by the procedure() and
+endproc() commands. You access the procedure using the name of the macro file
+and then the name of the relevant procedure. These two names are separated by a
+colon. If there is only one procedure in the file then the filename alone is
+sufficient to identify the procedure. For example, in the following edit window
+are the contents of the file &quot;fid_sim.mac&quot;. It contains two
+procedures that return either a decaying cosine or sine function.</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='color:black'><img width=491 height=485
+src="Macro%20procedures_files/image003.png"></span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal>Since it is the first procedure in the file,<span
+style='color:black'> you could type the following to access the decaying cosine
+function:</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>(x,y)
+= fid_sim(<span style='color:black'>1024</span>,1,10,0.2)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal>or more explicitly</p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(x,y) = fid_sim:cosine(1024</span><span style='font-size:10.0pt;
+font-family:"Courier New"'>,1,10,0.2<span style='color:black'>)</span></span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal>while the sine function is obtained with:</p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>(x,y) = fid_sim:sine(1024</span><span style='font-size:10.0pt;
+font-family:"Courier New"'>,1,10,0.2<span style='color:black'>)</span></span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>Both
+procedures return two vectors;<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>x</span><span
+style='color:black'>, which contains 1024 numbers equally spaced between 0 and
+1, and<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>y</span><span
+style='color:black'>, a decaying cosine or sine function with 1024 points, at
+10 Hz and a T2 of 0.2 s. </span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>Commands
+run from the CLI will return their variables as globals while if called from a
+procedure the new variables will be local unless the variable is a window
+variable as previously defined using the command windowvar().</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<h2><a name="_Toc295571956"></a><a name="procs_in_macros"></a>Running
+procedures from within macros</h2>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>Within
+a macro procedure you can call other procedures. There are two ways of
+referring to these procedures. The first includes the filename of the procedure
+followed by a colon and then the procedure name. This is useful if you wish to
+access a procedure in another file. However if the procedure is in the same
+file as the call then you should leave out the filename so that it only looks
+in the current file e.g.</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:blue'>procedure</span><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>(test)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;&nbsp; x = [0:1:1023]</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;&nbsp; y =<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.5pt;font-family:"Courier New";color:teal'>:gauss</span><span
+style='font-size:10.5pt;font-family:"Courier New";color:black'>(x,100)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;&nbsp;<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.5pt;font-family:"Courier New";color:green'>plot</span><span
+style='font-size:10.5pt;font-family:"Courier New";color:black'>(x,y)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:blue'>endproc</span><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>()</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:blue'>procedure</span><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>(gauss,x,w)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;&nbsp; y =<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.5pt;font-family:"Courier New";color:green'>exp</span><span
+style='font-size:10.5pt;font-family:"Courier New";color:black'>(-x^2/w^2)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:blue'>endproc</span><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>(y)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='color:black'>Note that this even works if the
+macro has not been saved yet.</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<h2><a name="_Toc295571957"></a><a name="local_global_procs"></a>Local and
+global variables in procedures</h2>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>All
+variables in a procedure are<span class=apple-converted-space>&nbsp;</span><i>local</i>,
+that is they are not accessible from the command line interface or other
+procedures, and are deleted when the procedure ends. To communicate with the
+procedure you pass variables or constants in an argument list (</span><span
+style='font-size:10.0pt;font-family:"Courier New";color:black'>1024</span><span
+style='font-size:10.0pt;font-family:"Courier New"'>,1,10,0.2</span><span
+style='color:black'> in the above examples). These are copied to local
+variables (</span><span style='font-size:10.0pt;font-family:"Courier New";
+color:black'>N,acqTime,freq,T2</span><span style='color:black'>) which are then
+available to the procedure. To pass information back to the calling program,
+place the variables in the argument list to the<span
+class=apple-converted-space>&nbsp;</span><b>endproc</b><span
+class=apple-converted-space>&nbsp;</span>or<span class=apple-converted-space>&nbsp;</span><b>return</b><span
+class=apple-converted-space>&nbsp;</span>commands. These will be copied to the
+corresponding variables in the list to the left of the procedure call (x,y in
+these examples). Procedures can also access<span class=apple-converted-space>&nbsp;</span><i>global</i><span
+class=apple-converted-space>&nbsp;</span>variables since if the variable is not
+found in the local list the global list is then checked (but window variables
+are checked before global variables – see below)</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>You can
+define global variables from within procedures by using the assign command:</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='font-size:10.5pt;
+font-family:"Courier New";color:green'>assign</span><span style='font-size:
+10.5pt;font-family:"Courier New";color:black'>(name, expression,<span
+class=apple-converted-space>&nbsp;</span></span><span style='font-size:10.5pt;
+font-family:"Courier New";color:gray'>&quot;global&quot;</span><span
+style='font-size:10.5pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>This is
+much like typing</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='font-size:10.0pt;
+font-family:"Courier New";color:black'>name = expression</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>except
+that “name” is now a global variable and “name” can be a variable itself. (This
+facility is useful when the name of the variable is to be specified from the
+graphical user interface): e.g.</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.5pt;font-family:"Courier New";
+color:black'>a =<span class=apple-converted-space>&nbsp;</span></span><span
+style='font-size:10.5pt;font-family:"Courier New";color:gray'>&quot;m1&quot;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='font-size:10.5pt;
+font-family:"Courier New";color:green'>assign</span><span style='font-size:
+10.5pt;font-family:"Courier New";color:black'>(a,<span
+class=apple-converted-space>&nbsp;</span></span><span style='font-size:10.5pt;
+font-family:"Courier New";color:green'>noise</span><span style='font-size:10.5pt;
+font-family:"Courier New";color:black'>(100,100),<span
+class=apple-converted-space>&nbsp;</span></span><span style='font-size:10.5pt;
+font-family:"Courier New";color:gray'>&quot;global&quot;</span><span
+style='font-size:10.5pt;font-family:"Courier New";color:black'>)</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>This
+generates a 100 by 100 global matrix with the name “m1” which has been filled
+with Gaussian noise.</span></p>
+
+<p class=MsoNormal><span style='color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span style='color:black'>Variables
+can also be given<span class=apple-converted-space>&nbsp;</span><i>window</i><span
+class=apple-converted-space>&nbsp;</span>scope. This means they are accessible
+if the procedure(s) are part of the same window interface. To learn more about
+this check out the graphical user interface help file.</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<h2><a name="_Toc295571958">The predefined local variables</a></h2>
+
+<p class=MsoNormal><i><span style='font-size:14.0pt;color:black'>&nbsp;</span></i></p>
+
+<p class=MsoNormal>In addition to the variables you define in a procedure there
+will always be one called <i>nrArgs</i>. This is the number of arguments passed
+into the procedure. You can use this variable to select different actions based
+on the passed argument list. This means that the number of passed arguments can
+be less than or equal to the number of arguments in the procedure statement.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>If the procedure is a call-back procedure i.e. a procedure
+called from a control there will be an additional local variable called <i>parentCtrl</i>.
+This is an variable of type &quot;object&quot; which refers to the control
+which initiated the callback. By using this variable all data associated with
+this control can be easily obtained. In this way the same call back procedure
+can be used for a number of controls.</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><i><span style='font-size:14.0pt;color:black'>&nbsp;</span></i></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+</div>
+
+</body>
+
+</html>

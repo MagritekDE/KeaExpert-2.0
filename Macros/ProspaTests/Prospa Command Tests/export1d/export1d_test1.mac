@@ -1,0 +1,327 @@
+# Test different file formats with export and import
+
+procedure(export1d_test1,verbose=1,delay=1)
+
+   clear1d()
+
+   N = 1023
+#
+## Binary complex bigend - double
+#   y = noise(N)+i*noise(N)
+#   export1dpar("ab", "binary",  "xyrc", "complex",
+#              "fls", "double", "machine", "bigend",
+#              "fileheader",0)  
+#   export1d(y, "data")  
+#   import1dpar("ab", "binary",  "xyrc", "complex",
+#              "fls", "double", "machine", "bigend",
+#              "fileheader",0) 
+#   n = import1d("data",N)
+#
+#   if(n != y)
+#       return(0, "Invalid result for: export1d_test1 'binary-complex-double-bigend'")
+#   endif
+#   if(verbose)
+#      pr "      Valid test: : export1d_test1 'binary-complex-double-bigend'\n"  
+#   endif
+#   rmfile("data")
+#   plot(n)
+#   title("export1d/import1d example (binary,double,bigend)")
+#   pause(delay)
+
+# Binary complex bigend - float
+   y = noise(N)+i*noise(N)
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "float", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "float", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+
+   if(n != y)
+       return(0, "Invalid result for: export1d_test1 'binary-complex-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-float-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,float,bigend)")
+   pause(delay)
+
+# Binary complex bigend - long
+   y = 1e4*(noise(N)+i*noise(N))
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "long", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "long", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-complex-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-long-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,long,bigend)")
+   pause(delay)
+
+# Binary complex bigend - short
+   y = 1000*(noise(N)+i*noise(N))
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "short", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "short", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-complex-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-short-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,short,bigend)")
+   pause(delay)
+
+
+# Binary complex littleend - float
+   y = 1e4*(noise(N)+i*noise(N))
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "float", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "float", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != y)
+       return(0, "Invalid result for: export1d_test1 'binary-complex-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-float-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,float,littleend)")
+   pause(delay)
+
+# Binary complex littleend - long
+   y = 1e4*(noise(N)+i*noise(N))
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "long", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "long", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-complex-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-long-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,long,littleend)")
+   pause(delay)
+
+# Binary complex littleend - short
+   y = 1000*(noise(N)+i*noise(N))
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "short", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "short", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-complex-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-complex-short-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,short,littleend)")
+   pause(delay)
+
+
+# Binary real bigend - float
+   y = noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "float", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "float", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+
+   if(n != y)
+       return(0, "Invalid result for: export1d_test1 'binary-real-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-float-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,float,bigend)")
+   pause(delay)
+
+# Binary real bigend - long
+   y = 1e4*noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "long", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "long", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-real-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-long-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,long,bigend)")
+   pause(delay)
+
+# Binary real bigend - short
+   y = 1000*noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "short", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "short", "machine", "bigend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-real-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-short-bigend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,short,bigend)")
+   pause(delay)
+
+
+# Binary real littleend - float
+   y = noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "float", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "float", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != y)
+       return(0, "Invalid result for: export1d_test1 'binary-real-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-float-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,float,littleend)")
+   pause(delay)
+
+# Binary real littleend - long
+   y = 1e4*noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "long", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "long", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-real-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-long-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,long,littleend)")
+   pause(delay)
+
+# Binary real littleend - short
+   y = 1000*noise(N)
+   export1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "short", "machine", "littleend",
+              "fileheader",0)  
+   export1d(y, "data")  
+   import1dpar("ab", "binary",  "xyrc", "real",
+              "fls", "short", "machine", "littleend",
+              "fileheader",0) 
+   n = import1d("data",N)
+   if(n != round(y))
+       return(0, "Invalid result for: export1d_test1 'binary-real-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'binary-real-short-littleend'\n"  
+   endif
+   rmfile("data")
+   plot(n)
+   title("export1d/import1d example (binary,short,littleend)")
+   pause(delay)
+
+
+# Ascii real
+   y = noise(N)
+   export1dpar("ab", "ascii",  "xyrc", "real") 
+   export1d(y, "data") 
+   import1dpar("ab", "ascii",  "xyrc", "real") 
+   n = import1d("data",N)
+
+   if(max(abs(n - y)) > 1e-5) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export1d_test1 'ascii-real")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'ascii-real\n"  
+   endif
+   plot(n)
+   title("export1d/import1d example (ascii)")
+   pause(delay)
+
+# Ascii complex
+   y = noise(N)+i*noise(N)
+   export1dpar("ab", "ascii",  "xyrc", "complex") 
+   export1d(y, "data") 
+   import1dpar("ab", "ascii",  "xyrc", "complex") 
+   n = import1d("data",N)
+
+   if(max(abs(n - y)) > 1e-5) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export1d_test1 'ascii-complex'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'ascii-complex'\n"  
+   endif
+   plot(n)
+   title("export1d/import1d example (ascii)")
+   pause(delay)
+
+
+   rmfile("data")
+
+
+endproc(1,"")

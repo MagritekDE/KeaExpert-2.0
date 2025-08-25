@@ -1,0 +1,542 @@
+###########################################################
+#            interactivePhase1d.mac
+#
+# Apply a manual phase shift to the currently plotted
+# 1D data set. If its real then a Hilbert transform will 
+# be applied first.
+#
+# Use the pivot button to select a point in the spectrum
+# for which p1 is zero.
+#
+# The reset button restores the original spectrum
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek 2015-2020
+###########################################################
+
+
+procedure(interactivePhase1d, plt)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   parentWin = gView->wn
+# Check for an existing window
+   if(findwin("title","Phase current 1D data") >= 0)
+      return
+   endif
+
+   if(nrArgs == 0)
+      plt = curplot("1d")
+   endif
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y,wv_pivot,wv_newdata,wv_realData,wv_plt,wv_pivot_index,wv_parent,wvSpecName)
+   wvSpecName = gData->specID 
+   wv_plt = plt
+   wv_parent = parentWin
+   setwindowpar(n,"exit_procedure",":exit_proc()")
+   :initialise()
+   :loadPar()
+   setplotstate("startup")
+   :loadData()
+   setwindowpar(n,"show_menu","false")
+   setwindowpar(n,"titleupdate","false")
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Phase current 1D data", -1, -1, 468, 191)
+
+      # Define all controls with basic parameters
+      textbox(1, 90, 51, 40,
+        :update_p0_range();)
+      textbox(2, 263, 51, 40,
+        :update_p0_range();)
+      slider(3, 95, 20, 201, 30, "horizontal",
+           :phaseData();)
+      statictext(4, 299, 25, "left", "0°")
+      statictext(5, 192, 105, "left", "0")
+      button(6, 377, 151, 73, 29, "Save + Close",
+         :updateCurrentPhase();
+         :exit_proc();
+         :savePar();
+         closewindow(0);)
+      textbox(7, 384, 33, 50)
+      statictext(8, 364, 31, 28, 27, "center", "p0 (deg)")
+      statictext(9, 192, 53, "left", "0")
+      textbox(10, 90, 107, 40,
+        :update_p1_range();)
+      button(11, 93, 151, 121, 29, "Update current phase",
+         :updateCurrentPhase();)
+      statictext(12, 299, 77, "left", "0°")
+      slider(13, 95, 73, 201, 30, "horizontal",
+           :phaseData();)
+      button(14, 226, 151, 76, 29, "Reset change",
+         :loadPar();
+         :phaseData();)
+      statictext(15, 19, 77, "left", "p1 correction")
+      statictext(16, 19, 24, "left", "p0 correction")
+      button(17, 314, 151, 51, 29, "Help",
+         :showhelp();)
+      groupbox(18, "", 10, 4, 321, 137)
+      textbox(19, 263, 107, 40,
+        :update_p1_range();)
+      button(20, 11, 151, 70, 29, "Select pivot",
+         :selectPivot();)
+
+      groupbox(22, "Current phase", 340, 4, 112, 136)
+      textbox(23, 384, 67, 50)
+      statictext(24, 364, 65, 28, 27, "center", "p1 (deg)")
+      textbox(25, 384, 102, 50)
+      statictext(26, 364, 98, 30, 27, "center", "pivot (ppm)")
+
+     # Set other control parameters
+      setpar(n,2,"valueID","maxP0")
+      setpar(n,3,"type","float",
+                  "range",[-100,100],
+                  "tab_number",1)
+      setpar(n,4,"objID","sliderP0Ctrl")
+      setpar(n,12,"objID","sliderP1Ctrl")
+
+      setpar(n,6,"tab_number",8)
+      setpar(n,7,"objID","p0PhaseCtrl",
+                  "valueID","p0Phase")
+      setpar(n,10,"tab_number",3)
+      setpar(n,11,"tab_number",5)
+      setpar(n,13,"type","float",
+                  "range",[-100,100],
+                  "tab_number",2)
+      setpar(n,14,"tab_number",6)
+      setpar(n,17,"tab_number",7)
+      setpar(n,19,"tab_number",4,
+             "valueID","maxP1")
+      setpar(n,23,"objID","p1PhaseCtrl",
+                  "valueID","p1Phase")
+      setpar(n,25,"objID","p1PivotPPMCtrl",
+                  "valueID","p1PivotPPM")
+
+     # Set other window parameters
+endproc(n)
+
+########################################################
+# Display help file
+########################################################
+
+procedure(showhelp)
+   help("Macros\\1D","manualphase1d.htm")
+endproc()
+
+########################################################
+# Intialise the GUI
+########################################################
+
+procedure(initialise)
+
+   wv_pivot = 0
+   wv_newdata = 0
+   setpar(0,3,"pagestep",20)
+   setpar(0,3,"tickstep",20)
+   setpar(0,13,"pagestep",20)
+   setpar(0,13,"tickstep",20)
+   setpar(0,1,"text","-180")
+   setpar(0,2,"text","180")
+   setpar(0,10,"text","-180")
+   setpar(0,19,"text","180")
+   setpar(0,1,"enable","false")
+   setpar(0,7,"enable","false")
+   setpar(0,23,"enable","false")
+   setpar(0,25,"enable","false")
+   cd("$appdir$\\Macros\\coreMacros")
+   cachemacro("plotProc.mac")
+   cacheproc("true")
+ #  wv_plt->rmlines()
+  # wv_plt->rmtext()
+
+endproc()
+
+#######################################################
+# Update the p0 range 
+#######################################################
+
+procedure(update_p0_range)
+
+   evt = parentCtrl->event
+   if(evt == "enter" | evt == "undefined")
+      range = abs(getpar(0,2,"value"))
+      setpar(0,1,"text",-range)
+      setpar(0,2,"text",range)
+   endif
+
+endproc()
+
+#######################################################
+# Update the p1 range if the right text box is modified
+#######################################################
+
+procedure(update_p1_range)
+
+   evt = parentCtrl->event
+   if(evt == "enter" | evt == "undefined")
+      range = abs(getpar(0,19,"value"))
+      setpar(0,10,"text",-range)
+      setpar(0,19,"text",range)
+   endif
+
+endproc()
+
+
+#######################################################
+# User has pressed autophase button
+#######################################################
+
+procedure(autoPhase)
+
+   if(wv_newdata)
+     :loadData()
+     wv_newdata = 0
+   endif
+
+   p0 = autophase1d(wv_y,2)
+   yn = wv_y*exp(i*p0/180*pi)
+
+   :updatePlot(yn)
+
+endproc()
+
+#######################################################
+# Exit procedure
+#######################################################
+
+procedure(exit_proc)
+
+   try
+      wv_plt->rmlines(wv_pivot)
+      p0 = getpar(0,7,"value")
+      p1 = getpar(0,23,"value")
+      pivot = getpar(0,25,"value")
+      pr "\n\n   Phase correction: p0 = $p0$ p1 = $p1$\n"
+      pr "   Pivot point: $pivot$\n"
+   catch
+   endtry
+   
+endproc()
+
+#######################################################
+# As the slider is adjusted phase the current data set
+#######################################################
+
+procedure(phaseData)
+
+   if(wv_newdata)
+     :loadData()
+     wv_newdata = 0
+   endif
+
+   if(wv_x == null | wv_y == null)
+      return
+   endif
+
+   w = max(wv_x)-min(wv_x)
+
+# Extract the zeroth and first order phase correction
+   p0 = getpar(0,3,"value")
+   p1 = getpar(0,13,"value")
+
+   p0 = abs(getpar(0,2,"value"))*p0/100
+   p1 = abs(getpar(0,10,"value"))*p1/100
+
+# Calculate phased shifted data
+   sz = size(wv_x)
+   yn = wv_y.*exp(i*(p0+p1*(([0:sz-1]-wv_pivot_index)/sz))/180*pi)
+
+# Display the phase shifted data
+   :updatePlot(yn)
+
+# Display the phase values as numbers
+   setpar(0,4,"text","$p0$°")
+   setpar(0,12,"text","$p1$°")
+   setplotstate("olddata")
+
+endproc()
+
+########################################################
+# Draw the plot
+########################################################
+
+procedure(updatePlot, yn)
+
+   wv_plt->draw("false")
+   par = plotProc:getAllPar(wv_plt,0)
+   wv_plt->rmtrace(0)
+   wv_plt->hold("on")
+   mapx = wv_plt->axes("xmapping")
+   mapy = wv_plt->axes("ymapping")
+   if(wv_realData = "false")
+      wv_plt->plot(wv_x,yn)
+   else
+      wv_plt->plot(wv_x,real(yn))
+   endif
+   wv_plt->axes("xmapping",mapx)
+   wv_plt->axes("ymapping",mapy)
+
+   plotProc:setAllPar(par,wv_plt)
+   wv_plt->hold("off")
+
+   wv_plt->draw("true")
+
+endproc()
+
+ 
+########################################################
+# Select a point at which p1 will be zero
+########################################################
+
+procedure(selectPivot)
+
+   wv_plt->rmlines(wv_pivot)
+
+   curplot("1d")
+   (x,y) = wv_plt->trace(0)->getdata()
+   mx = max(real(y))
+   mn = min(real(y))
+   av = (mx-mn)/2
+   rg = (mx-mn)
+   if(x != null)
+      par = plotProc:getAllPar(wv_plt)
+      title("select pivot point")
+      wv_pivot = getx()
+      wv_pivot_index = findindex(x,wv_pivot)
+      (x1,x2,y1,y2) = wv_plt->zoom()
+     # wv_plt->rmlines(wv_pivot)
+      wv_plt->addline(wv_pivot,av+100*rg,wv_pivot,av-100*rg,[0,128,0],2)
+      title("")
+      plotProc:setAllPar(par,wv_plt)
+   endif
+
+endproc()
+
+########################################################
+# Load data and see if it is real or complex
+########################################################
+
+procedure(loadData)
+
+   (wv_x,wv_y) = wv_plt->trace(0)->getdata()
+
+   if(wv_x != null)
+
+      if(vartype(wv_y) = "matrix1d")
+         wv_realData = "true"
+         if(maths:ispower2(size(wv_y))) 
+
+            wv_y = hft(wv_y)
+
+         else
+            pr("Can't complete operation, 1D data set size is not a power of 2\n");
+            wv_y = null
+            return("abort")
+         endif
+      else
+         wv_realData = "false"
+      endif
+
+     # setpar(0,4,"text","0")
+      setpar(0,5,"text","0")
+      setpar(0,3,"value",0)
+      setpar(0,13,"value",0)
+
+      :updatePlot(wv_y)
+
+      (x1,x2,y1,y2) = wv_plt->zoom()
+      wv_plt->addline(wv_pivot,-inf,wv_pivot,inf,[0,128,0],2)
+
+      wv_pivot_index = findindex(wv_x,wv_pivot)
+
+   endif
+
+endproc("ok")
+
+
+##########################################################
+# Update the current phase parameters from the sliders
+##########################################################
+
+procedure(updateCurrentPhase)
+
+   p0Phase = sliderP0Ctrl->text
+   p1Phase = sliderP1Ctrl->text
+
+   p0PhaseSlider = eval(p0Phase[0:-2])
+   p1PhaseSlider = eval(p1Phase[0:-2])
+   p1PivotSlider = wv_pivot
+
+   p0PhaseCur = p0PhaseCtrl->value
+   p1PhaseCur = p1PhaseCtrl->value
+   p1PivotCur = p1PivotPPMCtrl->value
+
+   p0Tot = p0PhaseSlider+p0PhaseCur
+   p1Tot = p1PhaseSlider+p1PhaseCur
+   if(p1Tot != 0)
+      pivTot = (p1PhaseSlider*p1PivotSlider+p1PhaseCur*p1PivotCur)/p1Tot
+   else
+      pivTot = 0
+   endif
+
+   p0PhaseCtrl->text(p0Tot) 
+   p1PhaseCtrl->text(p1Tot) 
+   p1PivotPPMCtrl->text(pivTot) 
+
+   sliderP0Ctrl->text("0\176");
+   sliderP1Ctrl->text("0\176");
+   setpar(0,3,"value",0);
+   setpar(0,13,"value",0);
+
+
+# Update the receiver phase common parameter
+   try 
+#      cm = ucsFiles:loadCommonPar()
+#      val = getlistvalue(cm,"rxPhase")
+#      if(val != null)
+#         ph = eval(val)
+#         newPhase = p0PhaseSlider+ph
+#         ucsFiles:saveCommonPar(["rxPhase = $newPhase$"])
+      n = findobj(wv_parent,"name","rxPhase")
+      ph = getpar(wv_parent,n,"value")
+      newPhase = p0PhaseSlider+ph
+      if(n >= 0)
+         setpar(wv_parent,n,"text","$newPhase$")
+      endif 
+#      endif
+      ucsFiles:saveCommonPar(["rxPhase = $newPhase$"])
+   catch
+      pr lasterror()
+   endtry
+
+endproc()
+
+##########################################################
+# Load the phase limits
+##########################################################
+
+procedure(loadPar)
+
+   wv_plt->rmlines(wv_pivot)
+
+   defaults = ["p0Phase = 0",
+               "p1Phase = 0",
+               "p1Pivot = 0"]
+
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   if(isfile("manualPhase.par"))
+      lst = load("manualPhase.par")
+      setctrlvalues(0,lst)
+      :update_p0_range()
+      :update_p1_range()
+   endif
+   
+   try
+      path = wv_plt->parent->uservar->path
+      found = 0
+      if(isdir(path)) # Try using proc.par
+         cd(path)
+         if(isfile("proc_temp.par"))
+            file = "proc_temp.par"
+            procPar = load(file)
+            procPar = mergelists(procPar,defaults)
+            found = 1
+         elseif(isfile("proc.par"))
+            file = "proc.par"
+            procPar = load(file)
+            procPar = mergelists(procPar,defaults)
+            found = 1
+         endif
+      endif
+   
+      if(found == 0)
+         procPar = defaults
+      endif
+   
+      (x,y) = wv_plt->trace(0)->getdata()
+      assignlist(procPar)
+      p1PivotPPM = x[p1Pivot]
+      wv_pivot = p1PivotPPM 
+      procPar = setlistvalue(procPar,"p1PivotPPM","$p1PivotPPM$")
+      setctrlvalues(0,procPar)
+
+      sliderP0Ctrl->text("0\176");
+      sliderP1Ctrl->text("0\176");
+      setpar(0,3,"value",0);
+      setpar(0,13,"value",0);
+
+   catch
+
+      setpar(0,7,"text","0");
+      setpar(0,23,"text","0");
+      setpar(0,25,"text","0");
+
+   endtry
+
+endproc()
+
+##########################################################
+# Save the phase limits
+##########################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   guipar = getctrlvalues(0,"list","list",["maxP0","maxP1"])
+   save("manualPhase.par",guipar)
+
+   guipar = getctrlvalues(0,"list","list",["p0Phase","p1Phase","p1PivotPPM"])
+   assignlist(guipar)
+
+   (x,y) = wv_plt->getdata()
+   p1Pivot = findindex(x,p1PivotPPM)
+   guipar = rmfromlist(guipar,"p1PivotPPM")
+   guipar = setlistvalue(guipar,"p1Pivot","$p1Pivot$")
+
+# Save to data area in proc_temp.par 
+   path = wv_plt->filepath
+   if(isdir(path))
+      cd(path)
+     # guipar = getctrlvalues(0)
+      if(isfile("proc_temp.par"))
+         procPar = load("proc_temp.par")
+      elseif(isfile("proc.par"))
+         procPar = load("proc.par")
+      else
+         procPar = guipar
+      endif
+      procPar = mergelists(guipar,procPar)
+      save("proc_temp.par",sortlist(procPar))
+   endif
+   cd(bak)
+
+   sendmessage("Macro","phase update")
+
+# Flag the data set has been modified
+   var = wv_plt->parent->uservar
+   var->modified = 1
+   wv_plt->parent->uservar(var)
+
+endproc()  
+
+    

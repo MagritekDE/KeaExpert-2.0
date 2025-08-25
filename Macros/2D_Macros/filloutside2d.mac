@@ -1,0 +1,204 @@
+####################################################
+#
+# Enlarge the current 2D plot by filling with a 
+# constant to a new width and or height. 
+# The position of the original plot is optional:
+#
+# Options:
+# 1. Fill lower left of plot.
+# 2. Fill upper right of plot
+# 3. Fill all around plot 
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(fillOutside2D)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xscale,wv_yscale)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Fill region outside 2D plot", -1, -1, 241, 216)
+
+      # Define all controls with basic parameters
+       windowvar(wv_yscale,wv_xscale,wv_mat,mOrig,xscale,yscale)
+       radiobuttons(1, 113, 33, 20, "vertical", "start,end,both", "both")
+       statictext(2, 105, 32, "right", "Fill lower left")
+       statictext(3, 105, 52, "right", "Fill upper right")
+       statictext(4, 105, 72, "right", "Fill all around")
+       button(5, 179, 99, 47, 26, "Undo",
+          :undo();)
+       button(6, 178, 179, 47, 26, "Exit",
+          closewindow(0);)
+       button(7, 178, 139, 47, 26, "Help",
+          :show_help();)
+       button(8, 178, 59, 47, 26, "Update",
+          :initialise();)
+       groupbox(9, "Fill position", 5, 7, 163, 91)
+       textmenu(10, 99, 127, 52, 200)
+       statictext(11, 37, 131, "left", "New width")
+       textmenu(12, 99, 153, 52, 200)
+       statictext(13, 33, 157, "left", "New height")
+       textbox(14, 99, 180, 52)
+       statictext(15, 46, 184, "left", "Fill value")
+       groupbox(16, "Fill parameters", 5, 107, 163, 105)
+       button(17, 178, 19, 47, 26, "Fill",
+          :fill_data();)
+
+     # Set other control parameters
+       setpar(n,10,"menu",["64","128","256","512","1024","2048","4096","8192","16384"])
+       setpar(n,12,"menu",["64","128","256","512","1024","2048","4096","8192","16384"])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\2D","filloutside2d.htm")
+endproc()
+
+
+####################################################
+# Initialise new plot limits based on
+# the current plot size.
+####################################################
+
+procedure(initialise)
+
+# Get the data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Update the GUI textboxes
+   (w,h) = size(m)
+   setpar(0,10,"text",w)
+   setpar(0,12,"text",h)
+   setpar(0,14,"text",0)
+
+endproc()
+
+####################################################
+# Fill the data
+####################################################
+
+procedure(fill_data)
+
+# Get the plot data
+   (mIn,x,y) = getplotdata("2d")
+   if(mIn == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Make a backup for undo command
+   wv_mat = mIn
+   wv_xscale = x
+   wv_yscale = y
+
+# Get fill position
+   position = getpar(0,1,"text")
+
+# Save the current 2D plot view parameters
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+
+# Get old and new dimensions for plot
+   (ow,oh) = size(mIn)
+   nw = getpar(0,10,"value")
+   nh = getpar(0,12,"value")
+   value = getpar(0,14,"value")
+   offx = nw-ow
+   offy = nh-oh
+
+# Check for invalid fill value
+   if(vartype(value) == "complex" &
+      vartype(mIn) == "matrix2d")
+     message("Unable to complete operation","Fill value is complex while 2D data set is real")
+     return()
+   endif
+
+# Do the fill
+   if(vartype(mIn) == "matrix2d") # Real matrix
+      mOut = matrix(nw,nh) + value
+      if(position == "start")
+         mOut = insert(mOut,mIn,offx,offy)
+      elseif(position == "end")
+         mOut = insert(mOut,mIn,0,0)   
+      elseif(position == "both")
+         mOut = insert(mOut,mIn,offx/2,offy/2)  
+      endif
+   else # Complex matrix
+      mOut = cmatrix(nw,nh) + value
+      if(position == "start")
+         mOut = insert(mOut,mIn,offx,offy)
+      elseif(position == "end")
+         mOut = insert(mOut,mIn,0,0)     
+      elseif(position == "both")
+         mOut = insert(mOut,mIn,offx/2,offy/2)  
+      endif
+
+   endif
+
+# Work out new scale range after filling
+   dxn = nw/ow*(x[1]-x[0])
+   dyn = nh/oh*(y[1]-y[0])
+   if(position == "start")
+      x[0] = x[1]-dxn
+      y[0] = y[1]-dyn
+   elseif(position == "end")
+      x[1] = x[0]+dxn    
+      y[1] = y[0]+dyn    
+   elseif(position == "both")
+      xa = (x[0]+x[1])/2 - dxn/2 
+      xb = (x[0]+x[1])/2 + dxn/2
+      ya = (y[0]+y[1])/2 - dyn/2 
+      yb = (y[0]+y[1])/2 + dyn/2
+      x[0] = xa
+      x[1] = xb
+      y[0] = ya
+      y[1] = yb
+   endif
+
+# Draw the result
+   draw2d("false")
+   image(mOut,x,y) 
+   2dpar:set(txt,lx,ly,nc,mode)
+   draw2d("true")
+
+endproc()
+
+
+####################################################
+# Restore the matrix before last fill
+####################################################
+
+procedure(undo)
+
+   if(wv_mat != null)
+      (txt,lx,ly,nc,mode) = 2dpar:get()
+      draw2d("false")
+         image(wv_mat,wv_xscale,wv_yscale)
+         2dpar:set(txt,lx,ly,nc,mode)
+      draw2d("true")
+   endif
+
+endproc()

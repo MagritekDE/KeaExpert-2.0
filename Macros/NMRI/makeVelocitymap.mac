@@ -1,0 +1,350 @@
+####################################################
+# Generate a velocity map from a complex 2D or 3D 
+# matrix which has q space as 1 dimension
+####################################################
+
+procedure(makeVelocityMap)
+
+   n = :windowdefinition()
+   matmenu = matrixlist(4+2)
+   setpar(n,2,"menu",matmenu)
+   setpar(n,9,"menu",[8,16,32,64,128,256,512,1024])
+   setpar(n,9,"text",128)
+   showwindow(n)
+
+# If a current 3D/2D matrix is present then use it
+# otherwise just take the first matrix in the list
+   if(size(matmenu) >= 1)
+      if(isvar("curmatrix.3d") == 1)
+        :load_control_values(curmatrix.3d)
+         setpar(n,2,"text",curmatrix.3d)
+      elseif(isvar("curmatrix.2d") == 1)
+        :load_control_values(curmatrix.2d)
+         setpar(n,2,"text",curmatrix.2d)
+      else
+        :load_control_values(matmenu[0])
+         setpar(n,2,"index",1)
+      endif
+   endif
+
+endproc()
+
+####################################################
+# Define window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate velocity map", -1, -1, 291, 289)
+
+      # Define all controls with basic parameters
+       statictext(1, 42, 23, "left", "q-space matrix")
+       textmenu(2, 118, 19, 71, 200,
+          :load_control_values(getpar(0,2,"text"));)
+       statictext(3, 34, 74, "left", "2D velocity map")
+       statictext(4, 32, 101, "left", "2D intensity map")
+       textbox(5, 118, 71, 71)
+       textbox(6, 118, 98, 71)
+       statictext(7, 12, 128, "left", "Calculation threshold")
+       textbox(8, 118, 125, 71)
+       textmenu(9, 118, 152, 71, 200)
+       textbox(10, 118, 178, 71)
+       textbox(11, 118, 205, 71)
+       textbox(12, 118, 232, 71)
+       statictext(13, 76, 156, "left", "Zero fill")
+       statictext(14, 17, 181, "left", "Max. gradient (T/m)")
+       button(15, 215, 224, 57, 26, "Exit",
+          :save_control_values(getpar(0,2,"text"));
+          closewindow(0);)
+       button(16, 215, 19, 57, 26, "Calculate",
+          :save_control_values(getpar(0,2,"text"));
+          :calc();)
+       statusbox(17)
+       statictext(18, 43, 207, "left", "Large delta (s)")
+       statictext(19, 45, 235, "left", "Small delta (s)")
+       button(20, 215, 87, 57, 26, "Help",
+          :showhelp();)
+       groupbox(21, "", 5, 2, 199, 263)
+       button(23, 215, 53, 57, 26, "1D View",
+          trackcursor("2d","cross",":view1d");)
+       textmenu(24, 118, 45, 71, 200)
+       statictext(25, 54, 49, "left", "q-dimension")
+
+     # Set other control parameters
+       setpar(n,2,"name","matrixFT",
+                   "menu",[""])
+       setpar(n,5,"name","velMap")
+       setpar(n,6,"name","intensMap")
+       setpar(n,8,"name","threshold")
+       setpar(n,9,"name","qzf",
+                   "menu",["8","16","32","64","128","256","512","1024"])
+       setpar(n,10,"name","grad")
+       setpar(n,11,"name","ldel")
+       setpar(n,12,"name","sdel")
+       setpar(n,24,"name","qdim",
+                   "menu",["x","y","z"])
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\NMRI","makeVelocityMap.htm")
+endproc()
+
+####################################################
+# Calculate the relaxation and intensity matrix
+####################################################
+
+procedure(calc)
+
+   setpar(0,17,"text","Processing ...")
+
+# Get all the gui parameters
+   N = getpar(0,9,"value")
+   G = getpar(0,10,"value")
+   ldel = getpar(0,11,"value")
+   sdel = getpar(0,12,"value")
+   matrixFT = getpar(0,2,"text")
+   threshold = getpar(0,8,"value")
+   qdim = getpar(0,24,"text")
+   mat = alias(matrixFT,"eval")
+   (w,h,d) = size(mat)
+   dim = (w>1)+(h>1)+(d>1)
+
+   :backdoor(mat,qdim,ldel,sdel,G,threshold,N,1)
+
+endproc()
+
+####################################################
+# Process the q-space data stored in mat
+# Parameters are:
+#
+# mat ......... 2D or 3D q-space matrix
+# qdim ........ q-space dimension (2 or 3)
+# ldel ........ large delta - time between PGSE pulses
+# sdel ........ small delta - duration of PGSE pulses
+# G ........... maximum gradient
+# threshold ... minimum data level for calculation
+# N ........... zero fill for q-space data 
+# show ........ display results or not (1/0)
+#
+# If show = 0 it returns the velocity and intensity
+# maps. 
+####################################################
+
+procedure(backdoor,mat,qdim,ldel,sdel,G,threshold,N,show)
+
+   (w,h,d) = size(mat)
+   dim = (w>1)+(h>1)+(d>1)
+
+# Process 3D velocity data
+   if(dim == 3)
+      if(qdim == "x")
+        factor = -1000*2*pi*(w-1)/(N*gamma*sdel*ldel*G)
+        vel = matrix(h,d)
+        for(z = 0 to d-1)
+            for(y = 0 to h-1)
+               v = mat[~,y,z]
+               if(mag(v[0]) > threshold)
+                  v = mag(ft(zerofill(v,N,"end")))
+                  (m,peak) = max(v)
+                   vel[y,z] = (peak-N/2)*factor
+               endif
+            next(y)
+            if(show & (z%10 == 0))
+              setpar(0,17,"text","Processing tier $z$")
+              drawimage("false");
+              image(vel,"plusminus")
+              title("Velocity Map (mm/s)")
+              drawimage("true");
+            endif
+         next(z)
+         tmp = mag(mat[0,~,~])
+     elseif(qdim == "y")
+        factor = -1000*2*pi*(h-1)/(N*gamma*sdel*ldel*G)
+        vel = matrix(w,d)
+        for(z = 0 to d-1)
+            for(x = 0 to w-1)
+               v = mat[x,~,z]
+               if(mag(v[0]) > threshold)
+                  v = mag(ft(zerofill(v,N,"end")))
+                  (m,peakx,peaky) = max(v)
+                   vel[x,z] = (peaky-N/2)*factor
+               endif
+            next(x)
+            if(show & (z%10 == 0))
+              setpar(0,17,"text","Processing tier $z$")
+              draw2d("false");
+              image(vel,"plusminus")
+              title("Velocity Map (mm/s)")
+              draw2d("true");
+            endif
+         next(z)
+         tmp = mag(mat[~,0,~])
+      elseif(qdim == "z")
+         factor = -1000*2*pi*(d-1)/(N*gamma*sdel*ldel*G)
+         vel = matrix(w,h)
+         for(y = 0 to h-1)
+            for(x = 0 to w-1)
+               v = mat[x,y,~]
+               if(mag(v[0]) > threshold)
+                  v = mag(ft(zerofill(v,N,"end")))
+                  (m,peak) = max(v)
+                   vel[x,y] = (peak-N/2)*factor
+               endif
+            next(x)
+            if(show & (y%10 == 0))
+              setpar(0,17,"text","Processing row $y$")
+              drawimage("false");
+              image(vel,hotandcold)
+              title("Velocity Map (mm/s)")
+              drawimage("true");
+            endif
+         next(y)
+         tmp = mag(mat[~,~,0])
+      endif
+    # Display the result
+      if(show)
+         drawimage("false");
+         image(vel,hotandcold)
+         title("Velocity Map (mm/s)")
+         drawimage("true");
+         assign(getpar(0,5,"text"),vel,"global")
+         assign(getpar(0,6,"text"),tmp,"global")  
+      endif
+
+# Process 2D velocity data
+   else
+      if(qdim == "x")
+         factor = -1000*2*pi*(w-1)/(N*gamma*sdel*ldel*G)
+         vel = matrix(h)
+         for(y = 0 to h-1)
+            v = mag(ft(zerofill(mat[~,y],N,"end")))
+           (m,peakx,peaky) = max(v)
+            if(m > threshold)
+                vel[y] = (peakx-N/2)*factor
+            endif
+         next(y)
+         tmp = mag(mat[0,~])
+      elseif(qdim == "y")
+         factor = -1000*2*pi*(h-1)/(N*gamma*sdel*ldel*G)
+         vel = matrix(w)
+         for(x = 0 to w-1)
+            v = mag(ft(zerofill(mat[x,~],N,"end")))
+           (m,peakx,peaky) = max(v)
+            if(m > threshold)
+                vel[x] = (peaky-N/2)*factor
+            endif
+         next(x)
+         tmp = mag(mat[~,0])
+      endif
+
+    # Display the result
+      if(show)
+         draw1d("false")
+         plot(vel)
+         title("Velocity Map (mm/s)")
+         draw1d("true")
+         assign(getpar(0,5,"text"),vel,"global")  
+         assign(getpar(0,6,"text"),tmp,"global")
+      endif
+   endif
+ 
+   if(show)
+      setpar(0,17,"text","Finished")
+   else
+      return(vel,tmp)
+   endif
+
+endproc()
+
+####################################################
+# Draw velocity propagator for selected point in vel map
+####################################################
+
+procedure(view1d,x,y)
+
+   threshold = getpar(0,8,"value")
+   sdel      = getpar(0,12,"value")
+   ldel      = getpar(0,11,"value")
+   grad      = getpar(0,10,"value")
+   N         = getpar(0,9,"value")
+
+   matrixIn = getpar(0,2,"text")
+   m3d = alias(matrixIn,"eval");
+   (w,h,d) = size(m3d)
+
+   factor = -1000*2*pi*(d-1)/(N*gamma*sdel*ldel*grad)
+   xr = ([0:1:N-1]-N/2)*factor
+   v = m3d[x,y,~]
+   if(mag(v[0]) > threshold)
+      v = mag(ft(zerofill(v,N,"end")))
+      drawplot("false")
+      plot(xr,v)
+      (m,peak) = max(v)
+      vel = (peak-N/2)*factor 
+      title("velocity at ($x$,$y$) = $vel,2.2f$ (mm/s)")
+      xlabel("Velocity (mm/s)")
+      ylabel("Propagator")
+      drawplot("true")
+   endif
+
+endproc()
+
+
+#######################################################
+# Update the control values using a parameter list
+# or if not present use values from the current matrix
+#######################################################
+
+procedure(load_control_values,  matrixName)
+
+   parlistName = matrixName + "_pl"
+   if(isvar(parlistName))
+      parlist = eval(parlistName)
+      setctrlvalues(0,parlist)
+      assign("parlist_win", parlist, "window")
+   endif
+
+   dim = matrixdim(eval(matrixName))
+
+   if(dim == 2)
+      setpar(0,3,"text","1D velocity map")
+      setpar(0,4,"text","1D intensity map")
+      setpar(0,24,"menu",["x","y"])
+      setpar(0,24,"text","y")
+      setpar(0,23,"enable","false")
+   else
+      setpar(0,3,"text","2D velocity map")
+      setpar(0,4,"text","2D intensity map")
+      setpar(0,24,"menu",["x","y","z"])
+      setpar(0,24,"text","z")
+      setpar(0,23,"enable","true")
+   endif
+
+endproc()
+
+#######################################################
+# Save the current parameters with this data set
+#######################################################
+
+procedure(save_control_values, matrixName)
+
+# Make the current matrix the output matrix 	
+   assign("curmatrix",matrixName,"global");
+# Save the current parameters with this data set
+   parlist = getctrlvalues(0)
+   if(isvar("parlist.win"))
+      parlist = mergelists(parlist,parlist.win)
+   endif
+   assign(matrixName+"_pl",parlist, "global");
+
+endproc()
+
+

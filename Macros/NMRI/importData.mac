@@ -1,0 +1,899 @@
+#################################################################
+#  Import spectrometer data which has been saved on the local
+#  machine. This should include parameter information as well 
+#  as the raw data.
+#
+# If the parameters have been stored in the file exp.par
+# then these will be used instead 
+#
+# To use the macro without going via the gui
+# call the procedure import i.e.
+#
+# importdata:import(dir)
+#
+# Where dir is the directory with the data. The procedure
+# copies the loaded data into the global variable specified
+# by curmatrix. Note that an exp.par file must be present 
+# for this function to work.
+#
+# Last modified 3/5/07
+#
+#################################################################
+
+procedure(ImportData, dataDir)
+
+# Save user directory
+   userDir = getcwd()
+
+# Build and display the window
+   n = :windowdefinition()
+
+   # Load macro conversion file names
+      convMacs = :loadConvertMacros()
+      fileTypes = :getFileTypes(convMacs)
+      setpar(n,8,"menu",fileTypes)
+      if(isDir(workdir))
+         cd(workdir)
+         curworkdir = workdir
+         :setrootdir(curworkdir)
+      endif
+      matlist = matrixlist(7)
+      setpar(0,19,"menu",matlist)
+   showwindow(n)
+   setpar(n,10,"enable","false")
+   setpar(n,37,"enable","false")
+    
+# If the user has passed a data set path then use it 
+   if(nrArgs == 1)
+      base = getbasedir(dataDir)
+      cd(dataDir)
+      cd("..")
+      dir = getcwd()
+      :setrootdir(dir)
+      setpar(n,4,"text",base)
+      fileName = :list_single_click_callback()
+   endif
+
+   cd(userDir)
+
+endproc()
+
+#################################################################
+#  Define the window interface
+#################################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Import NMR Dataset", -1, -1, 448, 363)
+
+      # Define all controls with basic parameters
+       windowvar(fileTypes,fileName,typeIndex,convMacs,_pl,curworkdir)
+       groupbox(1, "Working directory", 5, 1, 427, 47)
+       textbox(2, 14, 17, 377,
+         :setrootdir(getpar(0,2,"text"));)
+       button(3, 398, 18, 22, 20, "...",
+          bakdir = getcwd();
+          setcwd(getpar(0,2,"text"));
+          :setrootdir(getfolder(workdir,"Select Working Directory"));
+          cd(bakdir);)
+       listbox(4, 5, 102, 118, 233,
+          event = getpar(0,4,"event");
+          if(event == "single_click_up" | event == "double_click_up" );
+             return();
+          elseif(event == "double_click_down");
+             time(0);
+             :list_double_click_callback();
+          else;
+             time(0);
+             fileName = :list_single_click_callback();
+             if(getpar(0,32,"text") == "yes");
+                datadir = curworkdir+"\\"+getpar(0,4,"text");
+                :loadfile(datadir,fileName);
+             endif;
+          endif;
+          setfocus(0,4);)
+       groupbox(5, "Input data (not present)", 129, 96, 303, 179)
+       textbox(6, 194, 114, 141)
+       statictext(7, 139, 180, "left", "Type")
+       textmenu(8, 171, 177, 97, 200)
+       statictext(9, 327, 180, "left", "Bytes")
+       textbox(10, 358, 177, 63)
+       statictext(11, 139, 246, "left", "Size")
+       textbox(12, 164, 242, 40)
+       statictext(13, 211, 246, "left", "Size")
+       textbox(14, 235, 242, 40)
+       statictext(15, 283, 246, "left", "Size")
+       textbox(16, 307, 242, 40)
+       groupbox(17, "Output data", 129, 278, 210, 57)
+       statictext(18, 136, 304, "left", "Matrix")
+       textmenu(19, 171, 301, 85, 200)
+       button(20, 350, 293, 36, 33, "Load",
+          time(0);
+          datadir = curworkdir+"\\"+getpar(0,4,"text");
+          if(:loadfile(datadir,fileName));
+          endif;)
+       checkbox(21, 314, 295, "no,yes", "yes")
+       statictext(22, 139, 144, "left", "Sequence")
+       textbox(23, 194, 141, 141)
+       statictext(24, 274, 294, "left", "Display")
+       statusbox(25)
+       statictext(26, 159, 117, "left", "Name")
+       statictext(27, 265, 312, "left", "Auto-load")
+       textbox(28, 163, 214, 40)
+       textbox(29, 234, 214, 40)
+       textbox(30, 306, 214, 40)
+       statictext(31, 135, 218, "left", "1Dim")
+       checkbox(32, 314, 313, "no,yes", "no")
+       statictext(33, 357, 246, "left", "Size")
+       checkbox(34, 306, 172, "complex,real", "complex")
+       statictext(35, 279, 218, "left", "3Dim")
+       statictext(36, 207, 218, "left", "2Dim")
+       textbox(37, 14, 65, 352)
+       groupbox(38, "Current path", 5, 48, 427, 47)
+       statictext(39, 301, 172, "right", "Real")
+       button(40, 394, 284, 36, 23, "Help",
+          :show_help();)
+       textbox(41, 381, 214, 40)
+       statictext(42, 353, 219, "left", "4Dim")
+       textbox(43, 381, 242, 40)
+       button(44, 394, 312, 36, 23, "Close",
+          closewindow(0);)
+       checkbox(45, 398, 133, "no,yes", "no")
+       statictext(46, 350, 116, "left", "Load using")
+       statictext(47, 350, 131, "left", "native")
+       statictext(48, 350, 146, "left", "parameters")
+       groupbox(49, "", 345, 107, 77, 57)
+       button(50, 375, 64, 46, 23, "Refresh",
+          :refreshDir();)
+       checkbox(51, 306, 188, "XY,Y", "Y")
+       statictext(52, 301, 186, "right", "X-Y")
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1)
+       setpar(n,4,"tab_number",3)
+       setpar(n,6,"valueID","title",
+                   "tab_number",4)
+       setpar(n,8,"valueID","fileType",
+                   "tab_number",7,
+                   "menu",["AMX","Avance","Float-BigEndian","Paravision-BigEndian","Paravision-LittleEndian","Prospa","RI","Varian"])
+       setpar(n,10,"tab_number",9)
+       setpar(n,12,"valueID","1dim",
+                   "tab_number",11)
+       setpar(n,14,"valueID","2dim",
+                   "tab_number",13)
+       setpar(n,16,"valueID","3dim",
+                   "tab_number",15)
+       setpar(n,19,"valueID","matrixIn",
+                   "tab_number",18,
+                   "menu",["mat1d","mat2d","mat1d"])
+       setpar(n,20,"tab_number",21)
+       setpar(n,21,"tab_number",19)
+       setpar(n,23,"valueID","experiment",
+                   "tab_number",5)
+       setpar(n,25,"valueID","status")
+       setpar(n,28,"valueID","1dtype",
+                   "tab_number",10)
+       setpar(n,29,"valueID","2dtype",
+                   "tab_number",12)
+       setpar(n,30,"valueID","3dtype",
+                   "tab_number",14)
+       setpar(n,32,"tab_number",20)
+       setpar(n,34,"valueID","nrTypeRC",
+                   "tab_number",8)
+       setpar(n,40,"tab_number",22)
+       setpar(n,41,"valueID","4dtype",
+                   "tab_number",16)
+       setpar(n,43,"valueID","4dim",
+                   "tab_number",17)
+       setpar(n,44,"tab_number",23)
+       setpar(n,45,"tab_number",6)
+       setpar(n,50,"tab_number",2)
+       setpar(n,52,"valueID","nrTypeXY")
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\NMRI","importData.htm")
+endproc()
+
+#################################################################
+# User has modified root directory 
+#################################################################
+
+procedure(setrootdir,folder)
+
+   if(isdir(folder))
+      assign("workdir",folder,"global")
+      setpar(0,2,"text",folder)
+      curworkdir = folder
+      dirlist = sortlist(getdirlist(folder,".."))
+      iconlist = :getdirtype(folder,dirlist)
+      setpar(0,4,"list",dirlist,"icons",iconlist)
+      dir = getpar(0,4,"text")
+      :loadparam(dir)
+      setpar(0,37,"text","")
+   endif
+
+endproc()
+
+
+#################################################################
+# User has selected a different directory 
+# Return the data filename - empty string otherwise
+# (File-list control : single-click callback)
+#################################################################
+
+procedure(list_single_click_callback)
+
+# Check for null click
+  txt = getpar(0,4,"text")
+  if(txt == null)
+     return("")
+  endif
+
+# Get the path of the currently selected folder
+   dir = curworkdir+"\\" + txt
+
+# Show this path relative to the workdir
+   setpar(0,37,"text",relpath(dir,workdir,"<>"))
+
+# Indicate if a data file is present in this folder
+# and return the filename
+   :clear_fields()
+   data = :loadparam(dir)
+
+   if(data != "")
+      setpar(0,5,"label","Input data (present)") 
+      return(data)
+   else
+      setpar(0,5,"label","Input data (not present)")
+      return("")
+   endif
+
+endproc("")
+
+
+#################################################################
+# User has double clicked on a directory name 
+# If data then load it otherwise change directories
+# (File-list control : double-click callback)
+#################################################################
+
+procedure(list_double_click_callback)
+
+# Extract selected directory from listbox
+   dir = getpar(0,4,"text")
+
+# Ignore 4 rapid clicks
+   if(dir == null)
+     return("")
+   endif
+
+# Do we want to go up one level?
+   if(dir == "..")
+      curworkdir = simplifydir(curworkdir + "\\..")
+      dirList = sortlist(getdirlist(curworkdir,".."))
+      iconlist = :getdirtype(curworkdir,dirList)
+      setpar(0,4,"list",dirList,"icons",iconlist)
+      setpar(0,37,"text",relpath(curworkdir,workdir,"<>"))
+      return("")
+   endif
+
+# Looking down a level, so construct directory name
+   dir = curworkdir + "\\" + dir
+   dirlist = sortlist(getdirlist(dir,".."))
+
+# See if the lower level has subdirectories
+   sz = size(dirlist)
+   if(sz == 1) # Only '..'
+      if(fileName != "")
+         :loadfile(dir,fileName)
+      endif
+      return(fileName)
+   else
+   # Update listbox with new directory contents
+      curworkdir = simplifydir(dir) 
+      iconlist = :getdirtype(curworkdir,dirlist)
+      setpar(0,4,"list",dirlist,"icons",iconlist)
+      return("")  
+   endif
+
+endproc(0)
+
+
+###################################################
+# Load parameters from the specified directory
+###################################################
+
+procedure(loadparam,dir)
+
+# If no directory is passed then abort
+  if(dir == null)
+     return("")
+   endif
+
+  bak = getcwd(dir)
+  cd(dir)
+
+# Figure out file type by running the type procedure
+# in each manufacturer conversion macro
+   typeIndex = :get_type(convMacs)
+
+# Figure out file name by running the getname procedure
+   data_file = ""
+   if(typeIndex != null)
+      proc = convMacs[typeIndex]+":getname"
+      data_file = proc()
+      proc = convMacs[typeIndex]+":needexppar"
+      needexppar = proc()
+   else # otherwise look for default names
+      if(isfile("fid"))
+          data_file = "fid"
+      elseif(isfile("ser"))    
+          data_file = "ser"
+      elseif(isfile("data"))    
+          data_file = "data"
+      endif
+      needexppar = "yes"
+   endif
+
+# No data file then abort
+   if(data_file == "")
+      cd(bak)
+      return("")
+   endif
+
+# Display the data file size in bytes
+   setpar(0,20,"enable","true")
+   setpar(0,10,"text",fileinfo(data_file,"length"))
+
+# Load data parameters from exp.par or native parameter file
+   usespecpar = getpar(0,45,"text")
+   if(isfile("exp.par"))
+      if(usespecpar == "no" | needexppar == "yes")
+         exppar = load("exp.par")
+         fileType = getlistvalue(exppar,"fileType")
+         typeIndex = :findTypeIndex(fileType,convMacs)
+         setpar(0,25,"text","Parameters loaded from exp.par")
+      elseif(usespecpar = "yes")
+         proc = convMacs[typeIndex] + ":getparameters"
+         exppar = proc(data_file)
+         setpar(0,25,"text","Parameters loaded from native parameter file")
+      else
+         message("Error","parameter file not available","error")
+         exppar = ["unknown = \"unknown\""] 
+      endif 
+   elseif(needexppar == "no")
+      proc = convMacs[typeIndex] + ":getparameters"
+      exppar = proc(data_file)
+      setpar(0,25,"text","Parameters loaded from native parameter file")
+   else
+      message("Error","parameter file not available","error")
+      exppar = ["unknown = \"unknown\""] 
+   endif 
+
+# Make mods to exppar if there is XY data
+  assignlist(exppar)
+
+  if(nrType == "real")
+     exppar = exppar + ["nrTypeRC = \"real\"","nrTypeXY = \"Y\""]
+  elseif(nrType == "complex")
+     exppar = exppar + ["nrTypeRC = \"complex\"","nrTypeXY = \"Y\""]
+  elseif(nrType == "xyreal")
+     exppar = exppar + ["nrTypeRC = \"real\"","nrTypeXY = \"XY\""]
+  elseif(nrType == "xycomplex")
+     exppar = exppar + ["nrTypeRC = \"complex\"","nrTypeXY = \"XY\""]
+  endif
+
+
+# If a title file is present use it load the title
+
+# Display the data parameters in the gui
+   setctrlvalues(0,exppar)
+
+# Choose filename and display
+   if(ispar(exppar,"matrixIn"))   
+ 
+      matname = getlistvalue(exppar,"matrixIn")
+      if(matname == "")
+         matname = :get_matrix_name(exppar)
+      endif
+
+      matlist = matrixlist(7)
+      if(matlist == null)
+         matlist = [matname]
+         setpar(0,19,"menu",matlist)
+      else
+         setpar(0,19,"menu",matname+matlist)
+      endif
+      setpar(0,19,"index",1)
+   endif
+
+# Make the parameter list a window variable
+   assign("_pl", exppar, "window")
+
+   cd(bak)
+
+endproc(data_file)
+
+
+
+###################################################
+# Clear all text fields in window
+###################################################
+
+procedure(clear_fields)
+
+   setpar(0,6,"text","")
+   setpar(0,25,"text","")
+   setpar(0,23,"text","")
+   setpar(0,8,"text","")
+   setpar(0,10,"text","")
+   setpar(0,28,"text","")
+   setpar(0,29,"text","")
+   setpar(0,30,"text","")
+   setpar(0,12,"text","")
+   setpar(0,14,"text","")
+   setpar(0,16,"text","")
+   setpar(0,19,"text","")
+   setpar(0,41,"text","")
+   setpar(0,43,"text","")
+
+endproc()
+
+
+###################################################
+# Load dataFile and display if desired
+###################################################
+
+procedure(loadfile,dir,dataFile)
+
+# If no data if found in current folder return
+  if(dataFile == "")
+     return(0)
+  endif
+
+# Move to the data directory
+  bakdir = getcwd()
+  cd(dir)
+
+# Make all the gui parameters visible locally
+   winlist = getctrlvalues(0)
+
+   assignlist(winlist)
+
+# Merge with existing _pl list or make new one
+   if(isvar("_pl")) 
+      _pl = mergelists(winlist,_pl)
+   else
+      assign("_pl", winlist, "window")
+   endif
+
+# Add the current data directory to _pl
+   _pl = rmfromlist(_pl,"dataDir")
+   _pl = _pl + "dataDir = \"$dir$\""
+
+# Check for a important parameters are present
+   if(matrixIn == "") 
+      message("Error","Matrix name not defined")
+      cd(bakdir)  
+      return(0)
+   elseif(1dim == "" | 2dim == "" | 3dim == "")
+      message("Error","Matrix dimensions not defined")  
+      cd(bakdir) 
+      return(0)
+   elseif(fileType == "")
+      message("Error","File-type not defined")  
+      cd(bakdir) 
+      return(0)
+   elseif(getlistindex(fileTypes,fileType) == -1)
+      message("Error","Invalid file type","error")
+      cd(bakdir) 
+      return(0)
+   endif
+   
+# Attach the (modified) spectrometer par list to the filename
+   plname = matrixIn + "_pl"
+   assign(plname,_pl,"global")
+
+# Make sure any changes are reflected in the parameters
+   assignlist(_pl)
+
+# Load the data
+   if(typeIndex == null)
+      typeIndex = :findTypeIndex(fileType,convMacs)
+   endif
+
+   proc = convMacs[typeIndex] + ":getdata"
+   proc(dataFile,_pl) 
+ 
+ # Display the data if desired
+   if(getpar(0,21,"text") == "yes")
+      :display_data(_pl)
+   endif 
+
+   setpar(0,25,"text","Load time: $time(),0.3f$s    Data stored in matrix: '$matrixIn$'")
+
+# Save the parameter file to exp.par
+   :save_parameters(_pl)
+
+   cd(bakdir) 
+
+endproc(1)
+
+
+###################################################
+# Save parameters to exp.par
+###################################################
+
+procedure(save_parameters, parList)
+
+ # Merge with existing list if it exists
+   if(isfile("exp.par"))      
+      expList = load("exp.par")
+      parList = mergelists(parList,expList)
+   endif
+
+ # Save the list
+   parList = rmfromlist(parList,"dataDir")
+   parList = rmfromlist(parList,"unknown")
+   save("exp.par",parList)
+ 
+endproc()
+
+#######################################
+# Return a unique matrix name based on
+# a data set's dimension
+#######################################
+
+procedure(get_matrix_name,par)
+
+   1dim = getlistvalue(par,"1dim")
+   2dim = getlistvalue(par,"2dim")
+   3dim = getlistvalue(par,"3dim")
+   4dim = getlistvalue(par,"4dim")
+
+   if(1dim == "not found")
+     1dim = "1"
+   endif
+   if(2dim == "not found")
+     2dim = "1"
+   endif
+   if(3dim == "not found")
+     4dim = "1"
+   endif
+   if(4dim == "not found")
+     4dim = "1"
+   endif
+
+   if(1dim != "1" & 2dim == "1" & 3dim == "1" & 4dim == "1")
+     name = "mat1d"
+   elseif(1dim == "1" & 2dim != "1" & 3dim == "1" & 4dim == "1")
+     name = "mat1d"
+   elseif(1dim != "1" & 2dim != "1" & 3dim == "1" & 4dim == "1")
+     name = "mat2d"
+   elseif(3dim != "1" & 4dim == "1")
+     name = "mat3d"
+   elseif(4dim != "1")
+     name = "mat4d"
+   endif
+
+endproc(name)
+
+
+#######################################
+# dirlist is a list of sub-directories
+# in rootdir. Return a list which 
+# identifies whether data is stored
+# in each directory.
+#######################################
+
+procedure(getdirtype,rootdir,dirlist)
+
+   bakdir = getcwd()
+   cd(rootdir)
+   n = size(dirlist)
+   iconlist = list(n)
+   iconlist[~] = "folder"
+   for(k = 0 to n-1)
+      if(dirlist[k] != "..")
+         if(:data_file_present(dirlist[k]))
+            iconlist[k] = "prospa_file"
+         endif
+      endif
+   next(k)
+   cd(bakdir)
+ 
+endproc(iconlist)
+
+#############################################
+# Load all conversion macros
+# These are separate macros stored
+# in the folder "ImportData Macro"
+# which allow the importing of different
+# types of manufacturer's files. Cache
+# these macros if possible
+#############################################
+
+procedure(loadConvertMacros)
+
+  bakdir = getcwd()
+  cd(getmacropath())
+
+  filesIn = getfilelist("ImportData Macros")
+  filesOut = null
+
+# Note the file names- record those which are macros
+  for(k = 0 to size(filesIn)-1)
+     ext = getext(filesIn[k])
+     if(ext == "mac")
+        filesOut = filesOut + ["$rmext(filesIn[k])$"]
+     endif
+  next(k)
+
+# Speed things up by caching macros 
+  cd("importData Macros")
+  for(k = 0 to size(filesOut)-1)
+     file = "$filesOut[k]$.mac"
+     cachemacro(file)
+  next(k)
+  cacheproc("true")
+  cd("..")
+  cachemacro(getmacroname()) 
+   
+  cd(bakdir)
+
+endproc(filesOut)
+
+#############################################
+# Get a list of the file types the macro
+# can handle by calling the types procedure
+# for each manufacturer
+#############################################
+
+procedure(getFileTypes,convMacs)
+
+   sz = size(convMacs)
+   types = null
+
+   for(k = 0 to sz-1)
+      proc = convMacs[k]+":types"
+      types = types + proc()
+   next k
+
+#   types = types + ["Float-BigEndian","Float-LittleEndian"]
+   types = sortlist(types)
+
+endproc(types)
+
+#############################################
+# Given a file type (AMX ...) return the 
+# corresponding conversion macro index 
+#############################################
+
+procedure(findTypeIndex,fileType,convMacs)
+
+   for(k = 0 to size(convMacs)-1)
+      proc = convMacs[k]+":types"
+      types = proc()
+      for(q = 0 to size(types)-1)
+         if(fileType == types[q])
+            return(k)
+         endif
+      next(q)
+   next(k)
+
+endproc(-1)
+
+#############################################
+# Check to see if there is a data file 
+# present in the 
+#############################################
+
+procedure(data_file_present, dir)
+
+   bak = getcwd()
+   cd(dir)
+
+# See if its one of the common file names
+   if(isfile("data") | isfile("ser") |  isfile("fid"))
+      cd(bak)
+      return(1)
+   endif
+
+# See if there is a valid data file by running
+# the :is_data procedure in each manufacturer
+# conversion macro
+   if(:get_type(convMacs) != null)
+      cd(bak)
+      return(1)
+   endif
+   cd(bak)
+
+endproc(0)
+
+procedure(display_data,par)
+
+   assignlist(par)
+   
+   if(2dim == 1)
+      try
+         load("data.pt1")
+      catch
+         if(nrTypeXY == "Y")
+            out = alias(matrixIn,"eval")
+            draw1d("false")
+            plot(out)
+            title(matrixIn)
+            draw1d("true")
+         else
+            draw1d("false")
+            x = alias(curmatrix_1dx,"eval")
+            y = alias(curmatrix_1dy,"eval")
+            plot(x,y)
+            title("$curmatrix_1dx$ vs $curmatrix_1dy$")
+            draw1d("true")
+         endif
+      endtry
+   elseif(3dim == 1)
+      try
+         load("data.pt2")
+      catch
+         out = alias(matrixIn,"eval")
+         draw2d("false")
+         image(out)
+         title(matrixIn)
+         draw2d("true")
+      endtry
+   else
+      try
+         load("data.pt2")
+      catch
+         out = alias(matrixIn,"eval")
+         draw2d("false")
+         image(out[~,~,0])
+         title("$matrixIn$ plane 0")
+         draw2d("true")
+      endtry
+   endif   
+
+endproc()
+
+#########################################################
+# Test the backdoor interface by loading and displaying
+# all the files stored in dir
+#########################################################
+
+procedure(test,dir)
+
+  if(dir == "")
+      dir = "C:\Documents and Settings\ceccles\My Documents\Projects\Prospa\Example Data\NMRI\Sasha"
+  endif
+
+# Get the list of data directories
+  lst = getdirlist(dir)
+
+  bak1 = getcwd()
+  cd(dir)
+  bak2 = getcwd()
+  time(0)
+  abortonerror("false")
+   for(k = 0 to size(lst)-1)
+      cd(lst[k])
+      (matrixIn,par) = :load(".","")
+      if(matrixIn != null)
+         :display_data(par)
+      endif
+      cd(bak2)
+   next k
+   abortonerror("true")
+   pr time()
+   cd(bak1)
+
+endproc()
+
+######################################
+# Loads the nmr data stored in dir
+# placing it in the global variable
+# specified in output
+# Returns the global matrix name
+# and its parameter list
+#######################################
+
+procedure(load,dir,output)
+
+
+   if(nrArgs == 0)
+      pr "\n\n Syntax:\n\n   importdata:load(input_directory,output_matrix_name)\n"
+      return
+   endif
+
+   bakdir = getcwd()
+
+   convMacs = :loadConvertMacros()
+
+   if(isdir(dir))
+
+      cd(dir)
+      if(isfile("exp.par")) # exp.par file
+         par = load("exp.par")
+         fileType = getlistvalue(par,"fileType")
+         typeIndex = :findTypeIndex(fileType,convMacs)
+         proc = convMacs[typeIndex]+":getname"
+         dataFile = proc()
+      else # No exp.par file
+         typeIndex = :get_type(convMacs)
+         if(typeIndex == null)
+            cd(bakdir)
+            return(null,null)
+         endif
+         proc = convMacs[typeIndex]+":getname"
+         dataFile = proc()
+         proc = convMacs[typeIndex] + ":getparameters"
+         par = proc(dataFile)
+      #   matrixIn = output
+      endif
+
+      if(output != "")
+         par = setlistvalue(par,"matrixIn","\"$output$\"")
+      endif
+      assignlist(par)
+
+      proc = convMacs[typeIndex] + ":getdata"
+      proc(dataFile,par) 
+      assign("$matrixIn$_pl",par,"global")
+   endif
+
+   cd(bakdir)
+
+endproc(matrixIn,par)
+
+
+######################################
+# Figure out file type by running the 
+# type procedure in each manufacturers
+# conversion macro
+#######################################
+
+procedure(get_type,convMacs)
+
+   typeIndex = null
+   for(k = 0 to size(convMacs)-1)
+      proc = convMacs[k]+":isdata"
+      if(proc())
+         typeIndex = k
+         exitfor()
+      endif
+   next k
+
+endproc(typeIndex)
+
+######################################
+# Refresh the directory list
+#######################################
+
+procedure(refreshDir)
+
+   dirlist = sortlist(getdirlist(curworkdir,".."))
+
+# See if the lower level has subdirectories
+   sz = size(dirlist)
+   if(sz == 1) # Only '..'
+      if(fileName != "")
+         :loadfile(dir,fileName)
+      endif
+      return(fileName)
+   else
+   # Update listbox with new directory contents
+      iconlist = :getdirtype(curworkdir,dirlist)
+      setpar(0,4,"list",dirlist,"icons",iconlist)
+      return("")  
+   endif
+
+endproc()

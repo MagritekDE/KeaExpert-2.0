@@ -1,0 +1,39 @@
+serialmode("sync")
+
+comNr = "com7"
+
+openserial(comNr,115200,8,"none","1")
+
+pr "Started\n"
+
+pr readserial(comNr,"z")
+
+writeserial(comNr,"12.1009\n")
+
+pr readserial(comNr)
+
+writeserial(comNr,"2000\n")
+
+pr readserial(comNr)
+
+writeserial(comNr,"1\n")
+
+pr readserial(comNr)
+
+writeserial(comNr,"6\n")
+
+if(readserial(comNr,"z") == "Started")
+
+sz = eval(readserial(comNr,"z"))
+
+for(k = 0 to sz-1)
+   pr readserial(comNr,"z")
+   writeserial(comNr,"ok\n")
+next(k)
+
+endif
+
+
+closeserial(comNr)
+
+pr "Finished\n"

@@ -1,0 +1,110 @@
+#####################################################
+# Procedures to load float big-endian data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# getdata:       returns data
+#
+######################################################
+
+#############################################
+# Return a list of file types supported by 
+# Prospa
+#############################################
+
+procedure(types)
+
+  lst = ["Float-BigEndian"]
+
+endproc(lst)
+
+#############################################
+# Return 1 is the type if data is present
+#############################################
+
+procedure(isdata)
+
+  if(isfile("data"))
+     return(1)
+  endif
+
+endproc(0)
+
+#############################################
+# floatbigendian data needs the exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("yes")
+
+#############################################
+# Returns name of data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+  if(isfile("data"))
+     return("data")
+  endif
+
+endproc("")
+
+#############################################
+# Return file parameters (dummy routine)
+#############################################
+
+procedure(getparameters, dataFile)
+
+# Build parameter list
+   p = ["1dim = $0$",
+        "2dim = $0$",
+        "3dim = $0$",
+        "4dim = $0$",
+        "1dzf = $0$",
+        "2dzf = $0$",
+        "3dzf = $0$",
+        "nrType = \"complex\"",
+        "fileType = \"Float-BigEndian\"",
+        "matrixIn = \"\""
+         "1dfltr = \"none\"",
+         "2dfltr = \"none\"",
+         "3dfltr = \"none\"",
+         "1dft = \"FTEcho\"",
+         "2dft = \"FTEcho\"",
+         "3dft = \"FTEcho\"",
+         "digShift = $0$"]
+
+endproc(p)
+
+
+#############################################
+# Load float data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+
+   setdataformat(fileType,nrType)
+
+   if(3dim > 1)
+      mat = import3d(dataFile,1dim,2dim,3dim)
+      assign("curmatrix_3d",matrixIn,"global")
+   elseif(2dim > 1)
+      mat = import2d(dataFile,1dim,2dim)
+      assign("curmatrix_2d",matrixIn,"global")
+   else
+      mat = import1d(dataFile,1dim)
+      assign("curmatrix_1d",matrixIn,"global")
+   endif
+   assign(matrixIn,mat,"global")
+   assign("curmatrix",matrixIn,"global")
+  
+
+endproc()
+
+

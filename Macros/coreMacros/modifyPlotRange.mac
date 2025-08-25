@@ -1,0 +1,77 @@
+procedure(modifyPlotRange,dim)
+
+   curplot(dim)
+   n = :windowdefinition()
+   assignctrls(n)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Axes Range", -1, -1, 403, 148)
+
+      # Define all controls with basic parameters
+       windowvar(minX,minY,maxX,maxY,auto)
+       groupbox(1, "Range", 10, 4, 311, 97)
+       textbox(2, 90, 30, 60)
+       textbox(3, 90, 60, 60)
+       textbox(4, 240, 30, 60)
+       textbox(5, 240, 60, 60)
+       statictext(6, 29, 33, "left", "Minimum X")
+       statictext(7, 30, 64, "left", "Minimum Y")
+       statictext(8, 178, 34, "left", "Maximum X")
+       statictext(9, 177, 64, "left", "Maximum Y")
+       button(10, 333, 61, 52, 30, "Exit",
+          closewindow(0);)
+       button(11, 138, 110, 52, 30, "Apply",
+          :apply();)
+       checkbox(12, 20, 121, "false,true", "false")
+       statictext(13, 74, 113, "center", "Auto range")
+       button(14, 332, 19, 52, 30, "Help")
+       statictext(15, 74, 128, "center", "when plotting")
+       button(16, 211, 110, 98, 30, "Apply+Exit",
+          :apply(); closewindow(0))
+
+     # Set other control parameters
+       setpar(n,2,"objID","minX")
+       setpar(n,3,"objID","minY")
+       setpar(n,4,"objID","maxX")
+       setpar(n,5,"objID","maxY")
+       setpar(n,11,"mode","default")
+       setpar(n,12,"objID","auto")
+
+endproc(n)
+
+procedure(initialise)
+
+   ax = curplot()->axes
+
+   xr = ax->xrange
+   yr = ax->yrange
+
+   minX->text(xr[0])
+   minY->text(yr[0])
+   maxX->text(xr[1])
+   maxY->text(yr[1])
+
+   auto->text(curplot()->autorange)
+
+endproc()
+
+procedure(apply)
+
+   ax = curplot()->axes
+
+   curplot()->autorange(auto->text)
+
+   xr = [minX->value, maxX->value]
+   yr = [minY->value, maxY->value]
+
+   ax->xrange(xr)
+   ax->yrange(yr)
+
+endproc()

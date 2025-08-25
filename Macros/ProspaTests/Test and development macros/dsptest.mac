@@ -1,0 +1,12 @@
+t0 = time()
+for(k = 0 to 1e6)
+pIn = round(noise(1000)*2^20)
+dspwrite("y",0x10000,pIn)
+pOut = dspread("y",0x10000,size(pIn))
+if(pIn != pOut)
+   pr "k = $k$ match = $pIn == pOut$\n"
+endif
+if(k%1000 ==0)
+   pr "k = $k$ time = $time()-t0$\n"
+endif
+next(k)

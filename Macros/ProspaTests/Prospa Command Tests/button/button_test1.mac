@@ -1,0 +1,84 @@
+# Make a window with a button in it
+# The move the button and resize it
+# Next change the title
+
+procedure(button_test1,verbose,delay)
+
+   n = :windowdefinition()
+   showwindow(n)
+   windowvar(d)
+   d = delay
+   :buttontitle(n)
+   :movebutton(n)
+   :growbutton(n)
+   closewindow(n)
+
+endproc(1,"")
+
+procedure(windowdefinition)
+
+   n = window("button test", 100, 100, 200, 200)
+       button(1, 57, 45, 60, 30, "button")
+
+endproc(n)
+
+procedure(buttontitle,n)
+
+   for (m = 10 to 0 step -1)
+      setpar(n,1,"label","$m$");
+      drawwin(n)
+      pause(d)
+   next (m)
+
+endproc()
+
+procedure(movebutton,n)
+
+   setpar(n,1,"label","On the move");
+   for (theta = 0 to 360)
+      x = 50 * cos(theta/180*pi) + 75
+      y = 50 * sin(theta/180*pi) + 75
+      setpar(n,1,"x",x);
+      setpar(n,1,"y",y);
+      drawwin(n)
+      pause(d/10)
+   next (theta)
+
+endproc()
+
+
+procedure(growbutton,n)
+
+   setpar(n,1,"x",75);
+   setpar(n,1,"y",50);
+   setpar(n,1,"label","wider!")
+
+   for (w = 50 to 100)
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(d/10)
+  next (w)
+
+   setpar(n,1,"label","narrower!")
+   for (w = 100 to 50 step -1)
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(d/10)
+  next (w)
+
+   setpar(n,1,"label","bigger!")
+   for (w = 50 to 100)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(d/10)
+  next (w)
+
+   setpar(n,1,"label","smaller!")
+   for (w = 100 to 50 step -1)
+     setpar(n,1,"height",w);
+     setpar(n,1,"width",w);
+     drawwin(n)
+     pause(d/10)
+  next (w)
+endproc()

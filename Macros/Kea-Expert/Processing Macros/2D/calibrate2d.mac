@@ -1,0 +1,286 @@
+####################################################
+#
+# Apply a user defined axes to the current 2D plot
+#
+# Axes can be:
+# 1. By range (specify min and max values)
+# 2. By selection (specify width and height and 
+#    a calibrated point and then manually select it).
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(calibrate2d)
+
+   n = :windowdefinition()
+   windowvar(wv_mat,wv_xscale,wv_yscale)
+   :updatecontrols()
+   :by_range()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calibrate 2D axes label range", -1, -1, 379, 148)
+
+      # Define all controls with basic parameters
+       windowvar(wv_mat,wv_xscale,wv_yscale)
+       groupbox(1, "", 8, 2, 171, 107)
+       statictext(2, 40, 52, "right", "X")
+       groupbox(3, "", 190, 2, 174, 107)
+       textbox(4, 55, 47, 43)
+       statictext(5, 115, 52, "right", "to")
+       textbox(6, 124, 47, 43)
+       statictext(7, 40, 79, "right", "Y")
+       textbox(8, 311, 47, 43)
+       textbox(9, 55, 75, 43)
+       statictext(10, 115, 79, "right", "to")
+       textbox(11, 124, 75, 43)
+       button(12, 214, 116, 42, 25, "Undo",
+          :undo();)
+       button(13, 269, 116, 38, 25, "Help",
+          :showhelp();)
+       button(14, 320, 116, 38, 25, "Exit",
+          closewindow(0);)
+       button(15, 13, 116, 54, 25, "Calibrate",
+          :calibrate();)
+       statictext(16, 304, 79, "right", "y0")
+       textbox(17, 244, 47, 43)
+       textbox(18, 311, 75, 43)
+       textbox(19, 245, 75, 43)
+       statictext(20, 238, 79, "right", "Height")
+       statictext(21, 304, 52, "right", "x0")
+       statictext(22, 238, 52, "right", "Width")
+       statictext(23, 261, 19, "right", "By selection")
+       checkbox(24, 70, 20, "no,yes", "yes",
+            :by_range();)
+       statictext(25, 63, 19, "right", "By range")
+       checkbox(26, 267, 20, "no,yes", "no",
+            :by_selection();)
+       button(27, 80, 116, 54, 25, "Indices",
+          :use_indices();)
+       button(28, 147, 116, 54, 25, "Update",
+          :updatecontrols();)
+#       getmessage(29,
+#         :process_message();)
+
+     # Set other control parameters
+       setpar(n,4,"tab_number",2)
+       setpar(n,6,"tab_number",3)
+       setpar(n,8,"tab_number",8)
+       setpar(n,9,"tab_number",4)
+       setpar(n,11,"tab_number",5)
+       setpar(n,12,"tab_number",12)
+       setpar(n,13,"tab_number",13)
+       setpar(n,14,"tab_number",14)
+       setpar(n,15,"mode","default",
+                   "tab_number",11)
+       setpar(n,17,"tab_number",7)
+       setpar(n,18,"tab_number",10)
+       setpar(n,19,"tab_number",9)
+       setpar(n,24,"tab_number",1)
+       setpar(n,26,"tab_number",6)
+
+endproc(n)
+
+####################################################
+# Display some help
+####################################################
+
+procedure(showhelp)
+   help("Macros\\2D","calibrate2d.htm")
+endproc()
+
+####################################################
+# Display the data with the new parameters
+####################################################
+
+procedure(calibrate)
+
+# Get the plot data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Make a backup for undo command
+   wv_mat = m
+   wv_xscale = x
+   wv_yscale = y
+
+# Save the current 2D plot view parameters
+  (txt,lx,ly,nc,md,x1v,x2v,y1v,y2v) = 2dpar:get()
+
+# Calibrate the data
+  if(getpar(0,24,"text") == "yes") # By range
+
+      x = [getpar(0,4,"value"),getpar(0,6,"value")]
+      y = [getpar(0,9,"value"),getpar(0,11,"value")]
+      draw2d("off")
+         image(m,x,y)
+         2dpar:set(txt,lx,ly,nc,md,x1v,x2v,y1v,y2v)
+      draw2d("on")
+
+   else # By selection
+
+      (w,h) = size(m)
+      userWidth = getpar(0,17,"value")
+      userHeight = getpar(0,19,"value")
+      x0 = getpar(0,8,"value")
+      y0 = getpar(0,18,"value")
+
+      title("Select calibration point")
+      (x,y) = getxy("cross")
+
+      xmin = x0-x/w*userWidth 
+      xmax = xmin + userWidth  
+
+      ymin = y0-y/h*userHeight 
+      ymax = ymin + userHeight  
+
+      draw2d("false")
+         image(m,[xmin,xmax],[ymin,ymax])
+         2dpar:set(txt,lx,ly,nc,md,x1v,x2v,y1v,y2v)
+      draw2d("true")
+
+   endif
+
+endproc()
+
+##########################################################
+# Restore default calibration (use indices)
+##########################################################
+
+procedure(use_indices)
+
+# Get the plot data
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+# Make a backup for undo command
+   wv_mat = m
+   wv_xscale = x
+   wv_yscale = y
+
+# Save the current 2D plot view parameters
+  (txt,lx,ly,nc,md,x1,x2,y1,y2) = 2dpar:get()
+
+# Update GUI text boxes
+   (w,h) = size(m)
+   setpar(0,4,"text",0)
+   setpar(0,6,"text",w) 
+   setpar(0,9,"text",0)
+   setpar(0,11,"text",h)
+
+# Redisplay the data
+   draw2d("false")
+      image(m,[0,w],[0,h])
+      2dpar:set(txt,lx,ly,nc,md,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+##########################################################
+# Update text boxes with current data set
+##########################################################
+
+procedure(updatecontrols)
+
+   (m,x,y) = getplotdata("2d")
+   if(m == null)
+     message("Error","No 2D plot","error")
+     return()
+   endif
+
+   (w,h) = size(m)
+
+   setpar(0,17,"text",w)
+   setpar(0,19,"text",h) 
+   setpar(0,8,"text",0)
+   setpar(0,18,"text",0)
+
+   setpar(0,4,"text",x[0])
+   setpar(0,6,"text",x[1]) 
+   setpar(0,9,"text",y[0])
+   setpar(0,11,"text",y[1])
+
+endproc()
+
+##########################################################
+# User has selected range option
+##########################################################
+
+procedure(by_range)
+
+   setpar(0,26,"text","no")
+   setpar(0,17,"enable","false")
+   setpar(0,8,"enable","false")
+   setpar(0,19,"enable","false")
+   setpar(0,18,"enable","false")
+   setpar(0,4,"enable","true")
+   setpar(0,6,"enable","true")
+   setpar(0,9,"enable","true")
+   setpar(0,11,"enable","true")
+
+endproc()
+
+##########################################################
+# User has selected selection option
+##########################################################
+
+procedure(by_selection)
+
+   setpar(0,24,"text","no")
+   setpar(0,17,"enable","true")
+   setpar(0,8,"enable","true")
+   setpar(0,19,"enable","true")
+   setpar(0,18,"enable","true")
+   setpar(0,4,"enable","false")
+   setpar(0,6,"enable","false")
+   setpar(0,9,"enable","false")
+   setpar(0,11,"enable","false")
+
+
+endproc()
+
+####################################################
+# Restore the matrix before last calibration
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly,nc,mode,x1,x2,y1,y2) = 2dpar:get()
+   draw2d("false")
+   image(wv_mat,wv_xscale,wv_yscale)
+   2dpar:set(txt,lx,ly,nc,mode,x1,x2,y1,y2)
+   draw2d("true")
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,29,"text")
+
+#   if(src == "2D Plot")
+#      :updatecontrols()
+#   endif
+
+endproc()

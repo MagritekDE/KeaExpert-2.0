@@ -1,0 +1,173 @@
+####################################################
+# Save NMRI parameters
+####################################################
+
+procedure(saveparameters)
+
+   n = :windowdefinition()
+   :update_window(n)
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define window
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Save Parameters", -1, -1, 295, 116)
+
+      # Define all controls with basic parameters
+       textmenu(1, 69, 36, 110, 200,
+          :display_title();)
+       textmenu(2, 16, 36, 40, 200,
+          :update_matrix_menu();)
+       button(3, 227, 46, 49, 26, "Help",
+          :show_help();)
+       button(4, 227, 10, 49, 26, "Save",
+          :save_parameters();)
+       button(5, 227, 82, 49, 26, "Close",
+          closewindow(0);)
+       textbox(6, 16, 81, 185)
+       statictext(8, 13, 16, "left", "Dimension")
+       statictext(9, 95, 16, "left", "Matrix")
+       statictext(10, 68, 63, "left", "Dataset name")
+       groupbox(11, "", 5, 3, 210, 108)
+       button(12, 185, 37, 17, 20, "U",
+          :update_window(0);)
+
+     # Set other control parameters
+       setpar(n,1,"tab_number",2,
+                   "menu",[""])
+       setpar(n,2,"tab_number",1,
+                   "menu",["1D","2D","3D","4D"])
+       setpar(n,4,"mode","default",
+                   "tab_number",5)
+       setpar(n,5,"tab_number",6)
+       setpar(n,6,"tab_number",4)
+       setpar(n,12,"tab_number",3)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\NMRI","saveparameters.htm")
+endproc()
+
+####################################################
+# Update the window controls with the current matrix
+# when the update button is pressed or the macro
+# is first started.
+####################################################
+
+procedure(update_window,n)
+
+   menudim = ["1D","2D","3D","4D"]
+   setpar(n,2,"menu",menudim)
+   if(isvar("curmatrix"))
+      matdim = matrixdim(eval(curmatrix))
+      menumat = matrixlist(2^(matdim-1))
+      setpar(n,2,"index",matdim)
+      setpar(n,1,"menu",menumat)
+      setpar(n,1,"text",curmatrix)
+      :display_title();
+   endif
+
+endproc()
+
+###################################################
+# Update the matrix list menu when the dimension
+# is changed.
+###################################################
+
+procedure(update_matrix_menu)
+
+  # Get the list of menu names for current dimension
+   matdim = getpar(0,2,"index")
+   matrixMenu = matrixlist(2^(matdim))
+
+  # Add them to the matrix menu
+   if(size(matrixMenu) > 0)
+      setpar(0,1,"menu",matrixMenu)
+      setpar(0,1,"index",1);
+      :display_title();
+   else
+      setpar(0,1,"text","");
+      setpar(0,6,"text","");
+   endif
+
+endproc()
+
+###################################################
+# Display data-set title if present
+###################################################
+
+procedure(display_title)
+
+   matrixName = getpar(0,1,"text")
+   if(isvar(matrixName+"_pl"))
+      parlist = eval(matrixName +"_pl")
+      title = getlistvalue(parlist,"title")
+      if(title == "not found")
+         setpar(0,6,"text","")
+      else
+         setpar(0,6,"text",title)
+      endif
+   else
+      setpar(0,6,"text","");
+   endif
+
+endproc()
+
+###################################################
+# Save parameters to a file
+###################################################
+
+procedure(save_parameters)
+
+   matrixName = getpar(0,1,"text")
+
+   if(isvar(matrixName+"_pl"))
+
+      dir = getcwd()
+
+    # Load the current matrix list and extract directory
+      parList = eval(matrixName+"_pl")
+      if(ispar(parList,"dataDir")) 
+         setcwd(getlistvalue(parList,"dataDir"))
+      endif
+
+      folder = getfolder()
+      setcwd(folder)
+
+      if(folder != "cancel")
+
+       # Add/modify title
+         txt = "\"$getpar(0,6,\"text\")$\""
+         parList = setlistvalue(parList,"title",txt)
+         assign(matrixName+"_pl",parList,"global")
+
+       # Merge with existing list if it exists
+         if(isfile("exp.par"))      
+            expList = load("exp.par")
+            parList = mergelists(parList,expList)
+         endif
+
+       # Save the list
+         parList = rmfromlist(parList,"dataDir")
+         save("exp.par",parList)
+         message("Info","Parameter list saved")   
+      endif
+      setcwd(dir)
+   else
+      message("Error","Parameter list cannot be found!")
+   endif
+
+endproc()
+

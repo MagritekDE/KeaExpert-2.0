@@ -1,0 +1,50 @@
+procedure(display_hz)
+
+   n = window("Display", -1, -1, 600, 160)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+
+      # Define all controls with basic parameters
+      statictext(1, 47, 14, "right", "TIME")
+      statictext(2, 95, 37, "right", "Show domain")
+      checkbox(3, 103, 38, "no,yes", "yes")
+      divider(4, 297, 10, 3, 142, "vertical")
+      statictext(5, 387, 14, "right", "FREQUENCY")
+      statictext(6, 393, 36, "right", "Show domain")
+      checkbox(7, 401, 37, "no,yes", "yes",
+           fn = findobj(0,"name","showFreqDomain");
+           ucsCtrl:enableControls(fn+1,fn+3,fn);)
+      statictext(8, 370, 94, 67, 28, "center", "Display range")
+      textbox(9, 411, 91, 59)
+      statictext(10, 476, 94, "left", "Hz")
+
+     # Set other control parameters
+      setpar(n,1,"fgcolor",[0,70,213])
+      setpar(n,3,"valueID","showTimeDomain")
+      setpar(n,4,"tag","disable")
+      setpar(n,5,"fgcolor",[0,70,213])
+      setpar(n,7,"valueID","showFreqDomain")
+      setpar(n,9,"valueID","dispRange",
+                  "type","float")
+
+     # Set other window parameters
+endproc(10,"Display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+      fnTim = findobj(0,"name","showTimeDomain");
+      fnFrq = findobj(0,"name","showFreqDomain");
+      fnFlt = findobj(0,"name","filter");
+      fnPPM = findobj(0,"name","usePPMScale");
+      ucsCtrl:enableControls(fnFrq+1,fnFrq+3,fnFrq);
+   endif;
+
+endproc()

@@ -1,0 +1,312 @@
+#####################################################
+# Procedures to load native Varian data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# isdata:        returns 1 if Varian data 0 otherwise
+# getname:       returns name of data file
+# getparameters: returns data parameter list
+# getdata:       returns data
+#
+######################################################
+
+#############################################
+# Return a list of file types supported by 
+# Varian
+#############################################
+
+procedure(types)
+
+  lst = ["Varian"]
+
+endproc(lst)
+
+#############################################
+# Return 1 is the type if data in the current
+# directory is Varian, 0 otherwise
+#############################################
+
+procedure(isdata)
+
+  is_fid     = isfile("fid")
+  is_procpar = isfile("procpar")
+  is_text    = isfile("text")
+  is_log     = isfile("log")
+
+   if(is_fid & is_procpar & is_text)
+     return(1)
+   endif
+
+endproc(0)
+
+#############################################
+# Varian data can load without exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("no")
+
+#############################################
+# Returns name of Varian data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+  if(isfile("fid"))
+     return("fid")
+  endif
+
+endproc("")
+
+#############################################
+# Return Varian parameters
+#############################################
+
+procedure(getparameters, fileName)
+
+ # Get file dimensions
+   (1dim,2dim,3dim,4dim)=:getvariandim()
+
+ # Get order of dimensions
+   pars = load("procpar","text")
+   nv = scanstr(pars,"*\nnv *\n* %1 ")
+
+   if(nv!=null)
+      nv = eval(nv)
+      if(nv==4dim)
+         orderIn = "1423"
+      elseif(nv==3dim)
+         orderIn = "1324"
+      else
+         orderIn = "1234"
+      endif
+   else
+      orderIn = "1234"
+   endif
+
+ # Get experiment type
+   experiment = scanstr(pars,"*\nseqfil*\n* \"%1\"")
+
+ # Get title (removing newlines)
+   if(isfile("text"))
+      titleText = load("text","text") 
+      titleText = replacestr(titleText,"\n"," ") 
+      titleText = replacestr(titleText,"\r","") 
+   else
+      titleText = "not found"
+   endif
+
+  # Assemble the parameter list
+      p = ["1dim = $1dim$",
+           "2dim = $2dim$",
+           "3dim = $3dim$",
+           "4dim = $4dim$"
+           "1dzf = $1dim$",
+           "2dzf = $2dim$",
+           "3dzf = $3dim$",
+           "4dzf = $4dim$",
+           "fileType = \"Varian\"",
+           "matrixIn = \"\"",
+           "orderIn = $orderIn$",
+           "experiment = \"$experiment$\""
+           "1dfltr = \"none\"",
+           "2dfltr = \"none\"",
+           "3dfltr = \"none\"",
+           "4dfltr = \"none\""
+           "1dft = \"FTEcho\"",
+           "2dft = \"FTEcho\"",
+           "3dft = \"FTEcho\"",
+           "4dft = \"FTEcho\""
+           "digShift = $0$",
+           "nrType = \"complex\"",
+           "title = \"$titleText$\""]
+
+endproc(p)
+
+
+#############################################
+# Load Varian data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+
+ # Get data size
+  (nb,nt,np,st) = :getvarianfileinfo(dataFile)
+   datasize = nb*nt*np/2;
+
+ # Evaluate dimensions
+   for(x=1 to 4)
+      xdim = getlistvalue(pl,"$x$dim")
+      if(xdim=="")
+         xdim = 1
+      else
+         xdim = eval(xdim)
+         if(xdim==0)
+            xdim = 1
+         endif
+      endif
+      assign("$x$dim",xdim,"local")
+   next
+
+ # Check if size is correct
+   xyrc = getlistvalue(pl,"nrType")
+   if(xyrc=="real")
+      datasize = datasize*2
+      np=np*2
+   endif
+
+   if(1dim*2dim*3dim*4dim!=datasize)
+      (1dim,2dim,3dim,4dim) = :getvariandim()
+   endif
+   
+ # Get data type
+   if(st&0x8)
+      fls = "float"
+   elseif(st&0x4)
+      fls = "long"
+   else
+      fls = "short"
+   endif
+
+ # Import the data
+   if((nb==1)&(nt==1))
+      import1dpar("ab", "binary", "xyrc", xyrc,
+                  "fls", fls, "machine", "bigend",
+                  "fileheader",60,"rowheader",0)
+      mat = import1d(dataFile)
+   elseif(nb==1)
+      import2dpar("ab", "binary", "xyrc", xyrc,
+                  "fls", fls, "machine", "bigend",
+                  "fileheader",60,"rowheader",0)
+      mat = import2d(dataFile,np/2,nt)
+   else
+      import2dpar("ab", "binary", "xyrc", xyrc,
+                  "fls", fls, "machine", "bigend",
+                  "fileheader",32,"rowheader",28)
+      mat = import2d(dataFile,nt*np/2,nb)
+   endif     
+
+
+ # Reshape dat and assign to global value
+   if(4dim > 1)
+      assign("curmatrix_4d",matrixIn,"global")
+      assign(matrixIn,reshape(mat,1dim,2dim,3dim,4dim),"global")
+   elseif(3dim > 1)
+      assign("curmatrix_3d",matrixIn,"global")
+      assign(matrixIn,reshape(mat,1dim,2dim,3dim),"global")
+   elseif(2dim > 1)
+      assign("curmatrix_2d",matrixIn,"global")
+      assign(matrixIn,reshape(mat,1dim,2dim),"global")
+   else
+      assign("curmatrix_1d",matrixIn,"global")
+      assign(matrixIn,mat,"global")
+   endif
+    assign("curmatrix",matrixIn,"global")
+
+endproc()
+
+#############################################
+# Procedures locally used by this macro
+#############################################
+
+#############################################
+# Return Varian file header info
+#############################################
+
+procedure(getvarianfileinfo,dataFile)
+
+   import1dpar("ab", "binary", "xyrc", "real",
+               "fls", "short", "machine", "bigend",
+               "fileheader",0)
+   y = import1d(dataFile,16)
+
+ # Make sure all data is unsigned
+   for(k = 0 to 15)
+     if(y[k] < 0) 
+        y[k] = 65536+y[k] 
+     endif
+   next(k)
+
+ # Extract parameters
+   nb = y[0]*65536 + y[1] # Number of blocks
+   nt = y[2]*65536 + y[3] # Number of traces
+   np = y[4]*65536 + y[5]
+   st = y[13] # Status
+
+endproc(nb,nt,np,st)
+
+#############################################
+# Return Varian the dimensions and compression
+#############################################
+
+procedure(getvariandim)
+
+   pars = load("procpar","text")
+
+   1dim = eval(scanstr(pars,"*\nnp *\n* %1 "))
+   nv = scanstr(pars,"*\nnv *\n* %1 ")
+
+   2dim = 1
+   3dim = 1
+   4dim = 1
+
+   (nb,nt,np,st) = :getvarianfileinfo("fid")
+
+   if(np!=1dim)
+      return(0,0,0,0,0)
+   endif
+
+   if(nv==null)
+      nv = nb*nt
+   else
+      nv = eval(nv)
+   endif
+
+ 
+# Guess dimensions from nv,nt,nb
+if(nb==1)
+    2dim = nt/nv
+    3dim = nv
+elseif((nb==nv)|(nt==nv))
+    2dim = nt
+    3dim = nb
+else
+    if(nt/nv>1)
+        2dim = nt/nv
+        4dim = nb
+    elseif(nb/nv>1)
+        2dim = nb/nv
+        4dim = nt
+    else
+        2dim = nt
+        4dim = nb
+    endif
+    3dim = nv
+endif
+
+ # Decrease dimensions if some is equal to 1
+   if(2dim==1)
+      2dim = 3dim
+      3dim = 4dim 
+      4dim = 1
+   endif
+
+   if(3dim==1)
+      3dim = 4dim 
+      4dim = 1
+   endif
+
+ # xdim is returned as real + imaginary
+   1dim = 1dim/2
+
+endproc(1dim,2dim,3dim,4dim)
+
+
+
+

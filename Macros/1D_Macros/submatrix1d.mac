@@ -1,0 +1,206 @@
+####################################################
+#                  submatrix1d.mac
+#
+# Extract a 1D submatrix defined by:
+#
+# 1. the currently visible region
+# 2. by a user defined rectangle
+# 3. by manually entered limits
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek February 2007
+#
+#####################################################
+
+procedure(submatrix1d)
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y,wv_x1,wv_x2)
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Extract 1D submatrix", -1, -1, 335, 120)
+
+      # Define all controls with basic parameters
+       windowvar(wv_y,wv_x,wv_x1,wv_x2)
+       button(4, 13, 88, 49, 24, "Extract",
+          :extract();)
+       button(5, 261, 88, 49, 24, "Exit",
+          closewindow(0);)
+       radiobuttons(7, 17, 33, 20, "vertical", "axis,indices", "indices",
+            :initialise();)
+       button(8, 199, 88, 49, 24, "Help",
+          :showhelp();)
+       textbox(9, 256, 36, 44)
+       textbox(10, 135, 36, 44)
+       statictext(11, 100, 40, "left", "left x")
+       statictext(12, 199, 40, "left", "New width")
+       statictext(13, 62, 32, "right", "x axis")
+       groupbox(14, "Submatrix range", 84, 6, 236, 73)
+       statictext(15, 69, 52, "right", "indices")
+       button(16, 75, 88, 49, 24, "Update",
+          :initialise();)
+       button(17, 137, 88, 49, 24, "Undo",
+          :undo();)
+       getmessage(18,
+         :process_message();)
+       groupbox(19, "Units", 4, 6, 75, 73)
+
+     # Set other control parameters
+       setpar(n,4,"mode","default",
+                   "tab_number",3)
+       setpar(n,5,"tab_number",5)
+       setpar(n,8,"tab_number",4)
+       setpar(n,9,"tab_number",2)
+       setpar(n,10,"tab_number",1)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","submatrix.htm")
+endproc()
+
+
+####################################################
+# Initialise the GUI boxes based on current rect.
+####################################################
+
+procedure(initialise)
+
+# Extract the data from the plot
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No 1D plot","error")
+     return()
+   endif
+
+# See if there is a rectangle drawn
+# Otherwise use current region
+   (x1,y1,x2,y2) = getrect()
+   if(x1 == -1)
+      (x1,x2) = zoom1d("getargs")
+   endif
+
+# Convert to indices if desired
+   if(getpar(0,7,"text") == "indices")
+      (x1,x2) = findindex(x,x1,x2)
+      if(x[1]>x[0])
+         setpar(0,10,"text",x1)
+         setpar(0,9,"text",x2-x1+1)
+      else
+         setpar(0,10,"text",x2)
+         setpar(0,9,"text",x1-x2+1)
+      endif
+   else
+      if(x[1]>x[0])
+         setpar(0,10,"text",x1)
+         setpar(0,9,"text",x2-x1)
+      else
+         setpar(0,10,"text",x2)
+         setpar(0,9,"text",x1-x2)
+      endif
+   endif
+
+endproc()
+
+####################################################
+# Extract the data from the selected region
+####################################################
+
+procedure(extract)
+
+# Get the 1D data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Save the vectors for undo operation
+   wv_x = x
+   wv_y = y
+   (wv_x1,wv_x2) = zoom1d("getargs")
+
+# Record the current 1D plot state
+   (txt,lx,ly) = 1dpar:get()
+
+# Extract the submatrix range
+   x1 = getpar(0,10,"text")
+   nw = getpar(0,9,"text")
+   if(x1 == "" | nw == "")
+      message("Error","Both range values must be entered")
+      return(0)
+   endif
+
+# Extract the submatrix
+   if(getpar(0,7,"text") == "axis")
+      x1 = eval(x1)
+      nw = eval(nw)
+      x2 = x1+nw
+      (x1,x2) = findindex(x,x1,x2)
+   else
+      x1 = eval(x1)
+      nw = eval(nw)
+      x2 = x1+nw-1
+   endif
+
+   if(x1 < x2)
+      vx = submatrix(x,x1,x2)
+      vy = submatrix(y,x1,x2)
+   else
+      vx = submatrix(x,x1,x2)
+      vy = submatrix(y,x1,x2)
+   endif
+
+# Draw the submatrix
+   draw1d("false")
+      rmrect()
+      plot(vx,vy)
+      1dpar:set(txt,lx,ly)
+   draw1d("true")
+ 
+endproc(1)
+
+####################################################
+# Restore the plot stored before last extraction
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly) = 1dpar:get()
+   draw1d("false")
+      plot(wv_x,wv_y)
+      1dpar:set(txt,lx,ly,wv_x1,wv_x2)
+   draw1d("true")
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,18,"text")
+
+   if(src == "1D Plot")
+      :initialise()
+   endif
+
+endproc()

@@ -1,0 +1,90 @@
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   13-10-08  09:41:37  resetLock.asm  Page 1
+
+
+
+1      
+2                          ;***************************************************************************
+717                        ;***************************************************************************
+718    
+719    
+720    
+721                        ; **************************************************************************
+722                        ;
+723       P:002000                   org     p:$002000                         ; start
+724    
+725       P:002000 605E00            move              r0,x:(r6)+              ; Save registers
+726       P:002001 615E00            move              r1,x:(r6)+
+727       P:002002 625E00            move              r2,x:(r6)+
+728       P:002003 635E00            move              r3,x:(r6)+
+729       P:002004 645E00            move              r4,x:(r6)+
+730       P:002005 655E00            move              r5,x:(r6)+
+731       P:002006 675E00            move              r7,x:(r6)+
+732       P:002007 445E00            move              x0,x:(r6)+
+733       P:002008 455E00            move              x1,x:(r6)+
+734       P:002009 465E00            move              y0,x:(r6)+
+735       P:00200A 475E00            move              y1,x:(r6)+
+736       P:00200B 515E00            move              b0,x:(r6)+
+737       P:00200C 555E00            move              b1,x:(r6)+
+738       P:00200D 535E00            move              b2,x:(r6)+
+739    
+740       P:00200E 08F4BB            movep             #$0FEFE1,x:A_BCR        ; Set up wait states, 7 for AA3
+                   0FEFE1
+741    
+742       P:002010 2C0000            move              #$000000,a1             ; Unblank RF amp
+**** 743 [resetLock.asm 33]: WARNING --- Pipeline stall reading register A written in previous instruction (X data move field)
+**** 743 [resetLock.asm 33]: WARNING --- Pipeline stall reading register written in previous instruction (X data move field)
+743       P:002011 547000            move              a1,x:FPGALOCK_TTL
+                   029000
+744       P:002013 547000            move              a1,x:FPGALOCK_DRP1_CR   ; Clear on-state flag
+                   02C081
+745       P:002015 547000            move              a1,x:FPGALOCK_ADC_CR
+                   02B081
+746       P:002017 54F400            move              #$000100,a1             ; Turn off DDS
+                   000100
+**** 747 [resetLock.asm 37]: WARNING --- Pipeline stall reading register A written in previous instruction (X data move field)
+747       P:002019 547000            move              a1,x:FPGALOCK_DDS_CR
+                   02A081
+748    
+749       P:00201B 370200            move              #2,r7                   ; Wait 2us
+750       P:00201C 0D1080            bsr     wait
+                   000011
+751    
+752       P:00201E 53FE00            move              x:-(r6),b2              ; Restore registers
+753       P:00201F 55FE00            move              x:-(r6),b1
+754       P:002020 51FE00            move              x:-(r6),b0
+755       P:002021 47FE00            move              x:-(r6),y1
+Freescale Semiconductor DSP56300 Assembler  Version 6.3.28   13-10-08  09:41:37  resetLock.asm  Page 2
+
+
+
+756       P:002022 46FE00            move              x:-(r6),y0
+757       P:002023 45FE00            move              x:-(r6),x1
+758       P:002024 44FE00            move              x:-(r6),x0
+759       P:002025 67FE00            move              x:-(r6),r7
+760       P:002026 65FE00            move              x:-(r6),r5
+761       P:002027 64FE00            move              x:-(r6),r4
+762       P:002028 63FE00            move              x:-(r6),r3
+763       P:002029 62FE00            move              x:-(r6),r2
+764       P:00202A 61FE00            move              x:-(r6),r1
+765       P:00202B 60FE00            move              x:-(r6),r0
+766       P:00202C 00000C            rts
+767    
+768    
+769    
+770                        ;
+771                        ;*************************************************************
+772                        ;        Wait n x 1us routine (100MHz clock)
+773                        ;        On entry, r7 contains "n"
+774                        ;
+775       P:00202D 065AA0  wait      rep     #90
+776       P:00202E 000000            nop
+777       P:00202F 205700            move              (r7)-
+778       P:002030 22EF00            move              r7,b
+779       P:002031 20000B            tst     b
+780       P:002032 0527DB            bne     wait
+781       P:002033 00000C            rts
+
+0    Errors
+3    Warnings
+
+

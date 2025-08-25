@@ -1,0 +1,39 @@
+procedure(mag_test1,verbose,delay)
+
+   t = [0:0.01:1]
+   
+   a = exp((i*2*pi - 1)*t*10)
+   b = mag(a)
+   plot(a)
+   trace("tracecolor",[255,255,0])
+   hold "on"
+   
+   plot(b)
+   trace("tracecolor",[255,0,0])
+   hold "off"
+   
+   if(b != exp(-t*10))
+      return(0, "Invalid result for: mag_test1 #1")
+   endif 
+
+   a = 2+3i
+   if(mag(a) != sqrt(2^2+3^2))
+      return(0, "Invalid result for: mag_test1 #2")
+   endif   
+
+   a = 3
+   if(mag(a) != 3)
+      return(0, "Invalid result for: mag_test1 #3")
+   endif  
+
+   a = 4i
+   if(mag(a) != 4)
+      return(0, "Invalid result for: mag_test1 #4")
+   endif 
+
+   a = 3+4i
+   if(mag(a) != 5)
+      return(0, "Invalid result for: mag_test1 #5")
+   endif   
+
+endproc(1,"")

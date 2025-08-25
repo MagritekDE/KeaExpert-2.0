@@ -1,0 +1,138 @@
+###########################################################
+# Command to return a sample to the sample changer rotor.
+###########################################################
+
+procedure(StartAtTime, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+     (dd,mm,yy) = scanstr(getdate("dd-mm-yy"),"%1-%2-%3")
+     prompt = "$dd$.$gettime(\"%02d.%02d.%02d\")$"  
+     parameters = ["startAtTimeValue=\"$prompt$\""] 
+     gExpt->addExperiment(getmacropath(),"StartAtTime", parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result. A string type allows
+# loop numbers like .lc1.
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["startAtTimeValue","Start time (dd.hh.mm.ss)","tb_wide","string",""]
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+###########################################################
+# Add the StartAtTime command to the batch list
+###########################################################
+
+procedure(addCommand)
+
+   assignlist(getctrlvalues(0))
+   entry = "StartAtTime|$startAtTimeValue$"
+
+endproc(entry)
+
+###########################################################
+# Rename the WaitTime value
+###########################################################
+
+procedure(renameCommand, entry)
+
+  assignlist(getctrlvalues(0))
+   entry = "StartAtTime$startAtTimeValue$"
+
+endproc(entry)
+
+###########################################################
+# The user has changed the sample name in the parameter
+# list so update the file comment to match and also the
+# acqu.par file and batch folder name.
+###########################################################
+
+procedure(parameterChanged,protocol,comment,exptNr)
+
+  assignlist(getctrlvalues(0))
+  gBatch->saveCurrentParameters(protocol,comment,exptNr)
+  gBatch->renameSingleProtocol(protocol,comment,exptNr,"$startAtTimeValue$")
+
+endproc()
+
+
+###########################################################
+# Convert a time into seconds
+###########################################################
+
+procedure(getTimeArg, hh, mm, ss)
+
+   try
+      tmSec = eval(hh)*3600 + eval(mm)*60 + eval(ss)
+   catch
+      return(null)
+   endtry
+
+endproc(tmSec)
+
+###########################################################
+# Execute the StartAtTime command
+###########################################################
+
+procedure(backdoor, s)
+
+   assignstruct(s)
+
+# Get the target time as days and seconds
+   (tgDay,tgHr,tgMin,tgSec) = scanstr(startAtTimeValue,"%1.%2.%3.%4")
+   tgSec = :getTimeArg(tgHr,tgMin,tgSec)
+
+# Compare this current time and wait until they match
+   while(1)
+      curDay = scanstr(getdate("dd-mm-yy"),"%1-%2-%3")
+      (hour,minute,second) = scanstr(gettime(),"%1:%2:%3")
+      curSec = :getTimeArg(hour,minute,second)
+      if(eval(curDay) >= eval(tgDay))
+         if(curSec >= tgSec)
+            exitwhile # Target time is past
+         endif
+      endif
+
+      if(wvExpStatus == "stop") # Check for abort
+         return
+      endif
+
+      pause(0.1) # Let other programs work
+
+   endwhile
+
+endproc()
+
+
+########################################################
+# Return expected experiment duration based on comment
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar) 
+
+   (tgDay,tgHr,tgMin,tgSec) = scanstr(startAtTimeValue,"%1.%2.%3.%4")
+   tgSec = :getTimeArg(tgHr,tgMin,tgSec)
+
+   (dd,mm,yy) = scanstr(getdate("dd-mm-yy"),"%1-%2-%3")
+    currentTime = "$dd$.$gettime(\"%02d.%02d.%02d\")$" 
+   (curDay,curHr,curMin,curSec) = scanstr(currentTime,"%1.%2.%3.%4")
+   curSec = :getTimeArg(curHr,curMin,curSec)
+
+   duration = tgSec-curSec
+   if(duration <= 0)
+      print("\n   Warning - StartAtTime parameter is in the past - ignoring\n")
+      duration = 1
+   endif
+
+endproc(duration)

@@ -1,0 +1,163 @@
+#############################################################
+# A user interface to allow editing of the SpinsolveExpert
+# common parameters for the currently connected device
+#############################################################
+
+procedure(EditCommonParameters, parentWin)
+
+   n = :windowdefinition()
+   windowvar(wvParWin)
+   wvParWin = parentWin
+   :loadPar()
+   setwindowpar(n,"sizelimits",[300,300,210,-1])
+   showwindow(n)
+
+endproc()
+
+#############################################################
+# Define the basic user interface
+#############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Common Parameters", -1, -1, 300, 260, "resizable")
+
+      # Define all controls with basic parameters
+      statictext(1, 90, 14, "center", "Parameter Name")
+      statictext(2, 190, 14, "center", "Parameter Value")
+      divider(3, 21, 29, 235, 5, "horizontal")
+
+      button(4, 10, "wh-35", 94, 22, "Factory Defaults",:loadDefaults())
+      button(5, 117, "wh-35", 80, 22, "Save Changes",:savePar())
+      button(6, 210, "wh-35", 60, 22, "Close",closewindow(0))
+ 
+      panel(1000,20,40,260,"wh-90")
+      setpar(0,1,"color",[128,0,0])           
+      setpar(0,2,"color",[128,0,0])             
+      setpar(0,3,"enable","false")
+      setpar(0,4,"tooltip","Restore common parameters to factory defaults.")
+      setpar(0,5,"tooltip","Save parameters in this window to the common parameter file.")
+      setpar(0,6,"tooltip","Close this window without saving parameters.")
+
+endproc(n)
+
+#############################################################
+# Load common parameters into interface
+#############################################################
+
+procedure(loadPar)
+
+# Load the common parameter file
+   cp = :loadCommonPar()
+   assignlist(cp)
+
+# Generate and populate the controls
+   common = sortlist(common)
+   start = 10
+   xoff = 120
+   yoff = 10
+   for(k = 0 to size(common)-1)
+      nr = start+k*2
+      statictext(nr, xoff, yoff+3, "right", common[k]+":")
+      textbox(nr+1, xoff+10, yoff, 80)
+      if(isvar(common[k]))
+         val = eval(common[k])
+         if(vartype(val) == "double")           
+            setpar(0,nr+1,"text","$val,1.8f$","type","double")
+         else
+            setpar(0,nr+1,"text",val,"type","float")
+         endif
+      endif
+      setpar(0,nr+1,"name",common[k])
+      setpar(0,nr,"panelparent",1000)
+      setpar(0,nr+1,"panelparent",1000)
+      yoff = yoff+26
+   next(k)
+
+# Update the scrollable panel
+   setpar(0,1000,"panelupdate","")
+
+endproc()
+
+#############################################################
+#  Load the common parameters for this spectrometer and 
+# return as a parameter list
+#############################################################
+
+procedure(loadCommonPar)
+
+# Get spectrometer name
+   specName = getobj(wvParWin)->winvar->wvSpecName
+
+# Load the common parameter file
+   cd(prefdir)
+   mkdir("SpinsolveParameters\\Common")
+   cd("SpinsolveParameters\\Common")
+   if(not(isfile("$specName$Common.par")))
+      return(null)
+   endif
+   cp = load("$specName$Common.par")
+
+endproc(cp)
+
+#############################################################
+# Save the common parameters to file
+#############################################################
+
+procedure(savePar)
+
+# Get spectrometer name
+   specName = getobj(wvParWin)->winvar->wvSpecName
+
+# Load the common parameter file
+   bak = getcwd()
+   cp = :loadCommonPar()
+
+# Get current control values and merge
+   lst = getctrlvalues(0)
+   if(cp != null)
+      cp = mergelists(lst,cp)
+   else
+      cp = lst
+   endif
+
+# Save new list
+   save("$specName$Common.par",cp)
+   cd(bak)
+
+# Report
+   message("Information","Parameter file '$specName$Common.par' updated","info")
+
+endproc()
+
+#############################################################
+# Load factory defaults into interface
+#############################################################
+
+procedure(loadDefaults)
+
+   if(query("Warning","This will replace the common parameters (in file and this interface)\rwith factory defaults. Do you want to proceed?") == "no")
+      return
+   endif
+
+# Restore the default common parameters
+   parNr = wvParWin
+   thisNr = winnamespace()
+   winnamespace(parNr)
+   SpinsolveExpertInterface.pex:restoreCommonPar(0,0)
+   winnamespace(thisNr)
+
+# Get spectrometer name
+   specName = getobj(wvParWin)->winvar->wvSpecName
+
+# Reload the common parameter file
+   cp = :loadCommonPar()
+   setctrlvalues(0,cp)
+
+# Report
+   message("Information","Parameter file '$specName$Common.par' updated with defaults","info")
+
+endproc()
+

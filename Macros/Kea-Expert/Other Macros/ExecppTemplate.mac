@@ -1,0 +1,239 @@
+#######################################################################################
+# Generate a UI in which a template can be chosen for the current experiment
+# loaded into the Spinsolve-Expert UI
+#######################################################################################
+
+procedure(defineTemplate)
+
+   n = :windowdefinition("2D")
+   showwindow(n)
+   :updateParameters()
+
+endproc()
+
+#######################################################################################
+# Define the UI
+#######################################################################################
+
+procedure(windowdefinition, dim)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Control macro template", -1, -1, 530, 214)
+
+      windowvar(wvDim)
+      wvDim = dim
+
+      # Define all controls with basic parameters
+      windowvar(loopStepsObj,loopEndObj,loopStartObj,loopParObj,nucF1Obj,nucF2Obj)
+      statictext(1, 103, 44, "right", "2D variable:")
+      loopParObj = textmenu(2, 111, 40, 90, 200)
+      statictext(3, 103, 83, "right", "Loop start:")
+      loopStartObj = textmenu(4, 111, 79, 90, 200)
+      statictext(5, 103, 122, "right", "Loop end:")
+      loopEndObj = textmenu(6, 111, 118, 90, 200)
+      statictext(7, 103, 161, "right", "Loop steps:")
+      loopStepsObj = textmenu(8, 111, 157, 90, 200)
+      groupbox(9, "2D Loop info", 10, 14, 221, 187)
+      groupbox(10, "2D Template", 251, 14, 260, 67)
+      button(11, 441, 94, 70, 31, "Dimension",
+         :setDimension();)
+      groupbox(14, "Nuclei", 250, 88, 172, 113)
+      statictext(15, 352, 44, "right", "2D template name:")
+      textmenu(16, 360, 40, 121, 200)
+      button(17, 441, 133, 70, 31, "Apply",
+         :applyTemplate();)
+      button(18, 441, 171, 70, 31, "Close",
+         :closeWindow();)
+      statictext(19, 332, 122, "right", "f1 nucleus:")
+      nucF1Obj = textmenu(20, 340, 118, 51, 200)
+      statictext(21, 332, 161, "right", "f2 nucleus:")
+      nucF2Obj = textmenu(22, 340, 157, 51, 200)
+
+     # Set other control parameters
+      setpar(n,2,"objID","loopVarObj",
+                  "valueID","loopVar")
+      setpar(n,4,"objID","loopStartObj",
+                  "valueID","loopStart")
+      setpar(n,6,"objID","loopEndObj",
+                  "valueID","loopEnd")
+      setpar(n,8,"objID","loopStepsObj",
+                  "valueID","loopSteps")
+      setpar(n,16,"valueID","templateName",
+                  "objID","templateNameObj")
+      setpar(n,17,"mode","default")
+      setpar(n,20,"objID","nucF1Obj",
+                  "valueID","nucF1",
+                  "menu",["1H","13C","19F","31P"])
+      setpar(n,22,"objID","nucF2Obj",
+                  "valueID","nucF2",
+                  "menu",["1H","13C","19F","31P"])
+
+endproc(n)
+
+#######################################################################################
+# Toggle the dimension
+#######################################################################################
+procedure(setDimension)
+
+   if(wvDim == "2D")
+      wvDim = "1D"
+   else
+      wvDim = "2D"
+   endif
+
+   :updateParameters()
+
+endproc()
+
+#######################################################################################
+# Update the parameter list on the 2D controls
+#######################################################################################
+procedure(updateParameters)
+
+   proc = "$gData->curExpt->protocol$:getseqpar"
+   seqInfo = proc()
+   var = seqInfo->var
+
+   par = list(gData->curExpt->parameters)
+   par = getlistnames(par)
+   loopParObj->menu(var) 
+   loopStartObj->menu(par) 
+   loopEndObj->menu(par) 
+   loopStepsObj->menu(par) 
+
+   cd(gData->curExpt->ppPath)
+   if(isfile("template.par"))
+      par = load("template.par")
+      setctrlvalues(0,par)
+   endif
+
+   # Load the template into memory
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Control Templates")
+   cd(wvDim)
+   lst = getfilelist(".")
+   lst = rmext(lst)
+   templateNameObj->menu(lst)
+
+endproc()
+
+#######################################################################################
+# Close the window and ssave the current parameters
+#######################################################################################
+procedure(closeWindow)
+
+   par = getctrlvalues(0)
+   cd(gData->curExpt->ppPath)
+   save("template.par",par)
+   closewindow(0)
+
+endproc()
+
+#######################################################################################
+# Apply the chosen template
+# Note that any procedures after getseqpar will be overwritten
+#######################################################################################
+procedure(applyTemplate)
+
+   assignlist(getctrlvalues(0))
+
+   exptName = gData->curExpt->protocol
+   if(query("Warning","This will modify the control and interface macros for the experiment '$exptName$', Continue?") == "no")
+      return
+   endif
+
+   assignlist(getctrlvalues(0))
+
+   name = templateName+".mac"
+
+   # Load the template into memory
+   cd("$appdir$\\Macros\\Spinsolve-Expert\\Control Templates")
+   if(wvDim == "2D")
+      cd("2D")
+      escapechar("false")
+      txt = load(name,"text")
+      escapechar("true")
+   endif
+
+# Extract the procedures from the template
+   execppStr = scanstr(txt,"*procedure(execpp,%1endproc*)")
+
+   expectedDurationStr = scanstr(txt,"*procedure(expectedDuration,%1endproc*)")
+
+   getPlotInfoStr = scanstr(txt,"*procedure(getPlotInfo,%1endproc*)")
+
+   saveProcParStr = scanstr(txt,"*procedure(saveProcPar,%1endproc*)")
+
+# Replace key strings in the procedure templates
+   varMenu = loopVarObj->menu
+   idx = getlistindex(varMenu,loopVar)
+   if(idx == -1)
+      message("Error","Loop variable not in list - aborting","error")
+      return
+   endif
+
+   hd =      "#########################################################\r\n"
+   hd = hd + "# Execute the pulse program, collecting nrScans of\r\n"
+   hd = hd + "# data and displaying the result in the 1D plot.\r\n" 
+   hd = hd + "#\r\n"
+   hd = hd + "# This procedure can be modified to perform more\r\n"
+   hd = hd + "# complex functions using the passed parameters:\r\n"
+   hd = hd + "#\r\n"
+   hd = hd + "# guipar ..... all parameters from the user interface\r\n"
+   hd = hd + "# ppList ..... the pulse program parameter list\r\n"
+   hd = hd + "# pcList ..... phase-cycle list\r\n"
+   hd = hd + "# pcIndex .... indices of phase parameters in ppList\r\n"
+   hd = hd + "# varIndex ... indices of variable parameters in ppList\r\n"
+   hd = hd + "#\r\n"
+   hd = hd + "# October 2023 CDE\r\n"
+   hd = hd + "#########################################################\r\n\r\n"
+   execppStr = replacestr(execppStr,"NUC1",nucF1)
+   execppStr = replacestr(execppStr,"NUC2",nucF2)
+   execppStr = replacestr(execppStr,"START_LOOP",loopStart)
+   execppStr = replacestr(execppStr,"NR_STEPS",loopSteps)
+   execppStr = replacestr(execppStr,"VAR_POS","$idx$")
+   execppStr = replacestr(execppStr,"VARNAME",loopVar)
+   execppStr = replacestr(execppStr,"EXPT_NAME",exptName)
+   execppStr = hd + "procedure(execpp," + execppStr + "endproc(\"execpp\") # Don't remove argument\r\n\r\n"
+
+   hd =      "########################################################\r\n"
+   hd = hd + "# Get the name of a plot file given the region name\r\n"
+   hd = hd + "# or return the whole list\r\n"
+   hd = hd + "########################################################\r\n\r\n"
+   getPlotInfoStr = replacestr(getPlotInfoStr,"EXPT_NAME",exptName)
+   getPlotInfoStr = hd + "procedure(getPlotInfo," + getPlotInfoStr + "endproc(null)\r\n\r\n"
+
+
+   hd =      "########################################################\r\n"
+   hd = hd + "# Return expected experiment duration in seconds\r\n"
+   hd = hd + "########################################################\r\n\r\n"
+   expectedDurationStr = replacestr(expectedDurationStr,"NR_STEPS",loopSteps)
+   expectedDurationStr = replacestr(expectedDurationStr,"START_LOOP",loopStart)
+   expectedDurationStr = hd + "procedure(expectedDuration," + expectedDurationStr + "endproc(duration)\r\n\r\n"
+
+   hd =      "#################################\r\n"
+   hd = hd + "# Save the processing parameters\r\n"
+   hd = hd + "#################################\r\n\r\n"
+   saveProcParStr = replacestr(saveProcParStr,"NUC1",nucF1)
+   saveProcParStr = replacestr(saveProcParStr,"NUC2",nucF2)
+   saveProcParStr = hd + "procedure(saveProcPar," + saveProcParStr + "endproc()\r\n"
+
+# Load the current experiment file
+   pathName = gData->curExpt->ppPath 
+   cd(pathName)
+   exptMacro = load(exptName+".mac","text")
+   exptStart = scanstr(exptMacro,"%1endproc(seqInfo)*")
+   exptStart = exptStart + "endproc(seqInfo)\r\n\r\n"
+
+# Build the new experiment macro by concatenating these procedures
+   newMacro = exptStart + execppStr + getPlotInfoStr + expectedDurationStr + saveProcParStr
+ 
+# Make a backup
+   copyfile(exptMacro,exptName+".mac.bak")
+
+# Save the new macro
+   save(exptName+".mac",newMacro)
+
+endproc()
+
+

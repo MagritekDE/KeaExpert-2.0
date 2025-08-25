@@ -1,0 +1,63 @@
+############################################################
+#   
+# Generates a pulse with a ramped shaped amplitude 
+# using the shapedrf command.
+#
+#
+# For demonstration purposes only
+#
+# pulse - delay - shapedpulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
+               "b1Freq",          "Pulse frequency",              "tb",  "float";
+               "ampMin",          "Pulse min dig amplitude",      "tb",  "float";
+               "ampMax",          "Pulse max dig amplitude",      "tb",  "float";
+               "ampSteps",        "Amplitude steps",              "tb",  "integer";
+               "stepDur",         "Table step length (us)",       "tb",  "pulselength";
+               "repTime",         "Repetition time (ms)",         "tb",  "reptime"]
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition",
+             "Processing_Std","Display_Std","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = ["nDataPnts     = nrPnts",
+                    "b1Freq1H      = b1Freq",
+                    "tAmp          = linspace(ampMin,ampMax,ampSteps)",
+                    "nTabSz        = size(tAmp)",
+                    "a1            = 0",
+                    "dTabStep      = stepDur",
+                    "totPnts       = nrPnts",
+                    "totTime       = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir)      
+   pulse(1,a1,p1,2)                          # Generate a pulse for scope triggering with constant phase            
+   delay(5)
+   shapedrf1(1,tAmp,p2,nTabSz,dTabStep)      # Shaped amplitude pulse
+   delay(5)                              
+   acquire("overwrite",nDataPnts)            # Acquire FID
+
+   parList = endpp()                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0,0,0,0;   # p1 : Trigger phase
+                 0,2,0,2;   # p2 : Shaped pulse phase
+                 0,0,0,0]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+

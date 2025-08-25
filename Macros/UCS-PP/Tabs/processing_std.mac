@@ -1,0 +1,55 @@
+procedure(processing_std)
+
+   n = window("Processing", -1, -1, 600, 160)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 47, 14, "right", "TIME")
+   statictext(2, 140, 38, "right", "Apodize FID")
+   checkbox(3, 148, 38, "no,yes", "no",
+        fn = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fn+1,fn+4,fn);)
+   statictext(4, 140, 63, "right", "Apodize function")
+   textmenu(5, 150, 60, 112, 200)
+   statictext(6, 140, 93, "right", "View/modify function")
+   button(7, 149, 89, 22, 22, "...",
+      filters();)
+   statictext(8, 140, 124, "right", "Zero fill factor")
+   textmenu(9, 150, 120, 51, 200)
+   divider(10, 297, 10, 3, 142, "vertical")
+   statictext(11, 387, 14, "right", "FREQUENCY")
+   statictext(12, 441, 49, "center", "Phase correction")
+   statictext(13, 457, 75, "right", "Magnitude")
+   statictext(14, 457, 96, "right", "Auto-phase")
+   statictext(15, 456, 116, "right", "None")
+   radiobuttons(16, 461, 77, 20, "vertical", "mag,autophase,none", "mag")
+
+     # Set other control parameters
+   setpar(n,1,"fgcolor",[0,70,213])
+   setpar(n,3,"valueID","filter")
+   setpar(n,5,"valueID","filterType",
+               "menu",[""])
+   setpar(n,9,"valueID","zf",
+               "menu",["1","2","4","8"])
+   setpar(n,10,"tag","disable")
+   setpar(n,11,"fgcolor",[0,70,213])
+   setpar(n,12,"fgcolor",[128,0,0])
+   setpar(n,16,"valueID","fdPhaseCorr")
+
+     # Set other window parameters
+endproc(16,"Processing")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+        fn = findobj(0,"name","filter");
+        ucsCtrl:enableControls(fn+1,fn+4,fn);
+   endif;
+
+endproc()

@@ -1,0 +1,29 @@
+####################################################
+#                  ift1decho.mac
+#
+# Calculates the inverse echo FFT of current 1D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek June 2013
+#
+#####################################################
+
+procedure(ift1dEcho)
+
+  (f,A) = getplotdata("1d")
+   if(f != null)
+      if(maths:ispower2(size(f))) 
+         N = size(f)
+         df = f[1] - f[0]
+         t = ([0:1:N-1])/(N*df)
+         plot(t,ftshift(ift(A))*(f[-1]-f[0]))
+      else
+         message("Can't complete operation","1D data set size is not a power of 2")
+      endif
+   else
+      message("Can't complete operation","No 1D data set presently plotted","error")
+   endif 
+
+endproc()
+

@@ -1,0 +1,35 @@
+procedure(noise_test1,verbose,delay)
+
+   clear1d()
+
+   s = 1e5
+   n = 50
+   sd = 5
+   m = sd*noise(s) + n/2
+   h = matrix(n)
+
+   for(k = 0 to s-1) 
+     ind = round(m[k])
+     h[ind] = h[ind] + 1
+   next(k)
+
+   x = ([0:n-1]-n/2)/sd
+   plot(x,h/2e4,"symbolcolor",[255,0,0],
+            "tracetype","none",
+            "symbolshape","cross")
+
+   hold("on")
+   x2 = [0:n-1]
+   y = 1/(sqrt(2*pi))*exp(-(x2-n/2)^2/(2*sd^2))
+   plot(x,y,"tracetype","lines",
+            "symbolshape","none")
+   xlabel("standard deviations")
+   ylabel("probability density")
+   title("Noise distribution: real and expected")
+
+   hold("off")
+
+   pause(delay)
+ 
+endproc(1,"")
+ 

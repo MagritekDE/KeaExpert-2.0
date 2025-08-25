@@ -1,0 +1,24 @@
+procedure(isfile_test1,verbose,delay)
+
+   bakdir = getcwd()
+   cd(getmacropath())
+
+
+   if(isfile("nofile"))
+      return(0, "Invalid result for isfile_test # 1")
+   endif
+
+   m = matrix(100)
+   save("testfile.1d",m)
+
+   if(isfile("testfile.1d") == 0)
+      return(0, "Invalid result for isfile_test # 2")
+   endif
+
+   rmfile("testfile")
+   cd("bakdir")
+
+endproc(1,"")
+
+
+

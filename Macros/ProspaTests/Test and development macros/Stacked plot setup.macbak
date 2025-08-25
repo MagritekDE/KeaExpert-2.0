@@ -1,0 +1,116 @@
+procedure(Stacked plot setup)
+
+   n = :windowdefinition()
+   :init()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Stacked plot setup", -1, -1, 420, 247, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(minYAxisCtrl,maxYAxisCtrl,mappingCtrl,tiltCtrl)
+      textbox(1, 328, 34, 51)
+      statictext(2, 322, 38, "right", "Minimum y value")
+      textbox(3, 328, 64, 51)
+      statictext(4, 322, 68, "right", "Maximum y value")
+      groupbox(5, "Vertical axis range", 209, 9, 185, 137)
+      radiobuttons(6, 328, 98, 20, "vertical", "lin,log", "lin")
+      statictext(7, 322, 99, "right", "Linear scale")
+      statictext(8, 322, 118, "right", "Logariithmic scale")
+      button(9, 220, 159, 48, 26, "Apply",
+         :apply();)
+      button(10, 220, 198, 48, 26, "Close",
+         closewindow(0);)
+      textbox(11, 130, 140, 51)
+      statictext(12, 124, 144, "right", "Tilt (ppm)")
+      textbox(13, 130, 37, 51)
+      statictext(14, 124, 41, "right", "Minimum y value")
+      textbox(15, 130, 67, 51)
+      statictext(16, 124, 71, "right", "Maximum y value")
+      groupbox(17, "Vertical data range", 11, 9, 185, 102)
+      groupbox(18, "Data display", 11, 119, 185, 112)
+      colorbox(19, 130, 170, 22, 22, [255,0,0])
+      statictext(20, 124, 173, "right", "Top color")
+      colorbox(21, 130, 170, 22, 22, [255,0,0])
+      statictext(22, 124, 173, "right", "Top color")
+      colorbox(23, 130, 200, 22, 22, [255,0,0])
+      statictext(24, 124, 203, "right", "Bottom color")
+
+     # Set other control parameters
+      setpar(n,1,"valueID","minYAxisCtrl")
+      setpar(n,3,"valueID","maxYAxisCtrl")
+      setpar(n,6,"valueID","mappingCtrl")
+      setpar(n,11,"valueID","tiltAngleCtrl")
+      setpar(n,13,"valueID","minYAxisCtrl")
+      setpar(n,15,"valueID","maxYAxisCtrl")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(init)
+
+   p = curplot("1d")
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   trcLst = p->tracelist()
+   (x,y) = p->trace(0)->getdata()
+   
+   sz = size(trcLst)
+
+   xoffset0 = p->trace(0)->xoffset()
+   xoffsetn = p->trace(sz-1)->xoffset()
+   xrange = p->axes->xrange
+   tilt = (xoffsetn-xoffset0)*(xrange[-1]-xrange[0])
+   tiltCtrl->text(tilt)
+   minYAxis = p->axes->origminaxisvalue()
+   maxYAxis = (p->axes->maxaxisvalue()/p->axes->minaxisvalue())*minYAxis
+
+   minYAxisCtrl->text("$minYAxis$")
+   maxYAxisCtrl->text("$maxYAxis$")
+
+   mapping = p->axes->ymapping()
+   mappingCtrl->text(mapping)
+
+endproc()
+
+procedure(apply)
+
+   minYAxis = minYAxisCtrl->value
+   maxYAxis = maxYAxisCtrl->value
+   mapping = mappingCtrl->text
+   tilt = tiltCtrl->value
+
+   p = curplot("1d")
+   type = p->axes->type()
+   if(type != "box_y_independent")
+      message("Error","not a stacked plot","error")
+      return
+   endif
+   trcLst = p->tracelist()
+   (x,y) = p->trace(0)->getdata()   
+   sz = size(trcLst)  
+   xrange = p->axes->xrange
+   minYAxis = minYAxisCtrl->value()
+   maxYAxis = maxYAxisCtrl->value()
+   for(k = 0 to sz-1)
+   
+      tc = p->trace(k)
+      tc->xoffset(tilt*k/((sz-1)*(xrange[-1]-xrange[0])))
+      tc->yoffset(0.9*k/(sz-1)+0.05)
+
+   next(k)
+
+   p->axes->ymapping(mapping)
+   p->axes->minaxisvalue(minYAxis)
+   p->axes->maxaxisvalue(maxYAxis)
+
+endproc()
+

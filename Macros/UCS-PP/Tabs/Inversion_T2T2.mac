@@ -1,0 +1,60 @@
+procedure(InversionT1T2)
+
+   n = window("InversionT1T2", -1, -1, 573, 157)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   statictext(1, 54, 37, 45, 28, "center", "Inversion method")
+   textmenu(2, 88, 40, 85, 200)
+   statictext(3, 54, 66, 51, 27, "center", "Smoothing factor")
+   textbox(4, 88, 70, 57)
+   statictext(5, 54, 97, 54, 26, "center", "Number of iterations")
+   textbox(6, 88, 100, 57)
+   statictext(7, 262, 24, "center", "T2 (s)")
+   statictext(8, 320, 24, "center", "T2 (s)")
+   statictext(9, 230, 46, "right", "Minimum")
+   textbox(10, 240, 40, 43)
+   textbox(11, 298, 40, 43)
+   statictext(12, 230, 73, "right", "Maximum")
+   textbox(13, 240, 70, 43)
+   textbox(14, 298, 70, 43)
+   statictext(15, 230, 103, "right", "Steps")
+   textbox(16, 240, 100, 43)
+   textbox(17, 298, 100, 43)
+   button(18, 359, 38, 63, 25, "Reset",
+      :resetPar();)
+   button(19, 359, 68, 63, 25, "Calculate",
+      :invert2DData();)
+   statictext(20, 501, 20, "right", "Convergence")
+   progressbar(21, 462, 44, 16, 86, "vertical")
+   button(22, 359, 98, 63, 25, "Load result",
+      :loadResult();)
+
+     # Set other control parameters
+   setpar(n,2,"valueID","inversionMethod",
+               "menu",["FISTA","Max Entropy"])
+   setpar(n,4,"valueID","smoothFactor")
+   setpar(n,6,"valueID","nrIterations")
+   setpar(n,10,"valueID","x_minimum")
+   setpar(n,11,"valueID","y_minimum")
+   setpar(n,13,"valueID","x_maximum")
+   setpar(n,14,"valueID","y_maximum")
+   setpar(n,16,"valueID","x_steps",
+               "type","float",
+               "range",[5,90])
+   setpar(n,17,"valueID","y_steps",
+               "type","float",
+               "range",[5,90])
+   setpar(n,21,"objID","convergObj",
+               "type","float",
+               "range",[0,100])
+   setpar(n,18,"tooltip","Use the pulse program to set the inversion parameters.")
+   setpar(n,19,"tooltip","Perform the inversion.")
+   setpar(n,22,"tooltip","Load and display the last inversion result.")
+
+     # Set other window parameters
+endproc(22, "Inverse Laplace")

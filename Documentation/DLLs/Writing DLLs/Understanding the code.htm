@@ -1,0 +1,156 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>Understanding the DLL C-code</title>
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-GB link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal style='background:#FF6600'><b><span lang=EN-NZ
+style='font-size:20.0pt'>Understanding the DLL C-code</span></b></p>
+
+<p class=MsoNormal><b><span lang=EN-NZ>&nbsp;</span></b></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Most Prospa DLL
+command procedures follow a similar syntax. In the <i>AddCommands</i> procedure
+the command name (a string) is compared against a list using a simple if, else
+if structure. If a match is found, the relevant command is called - the
+arguments or parameters to the command being passed to the function. In the
+function this comma delimited argument list is split into individual parameters
+using the <i>ArgScan</i> command. This function, part of the Prospa executable,
+does different things to the arguments depending on the various parameters
+passed to it. For example in the above example:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0cm'><span lang=EN-NZ style='font-size:
+9.0pt;font-family:"Courier New";color:#333399'>nrArgs =
+ArgScan(arguments,1,&quot;data to
+square&quot;,&quot;e&quot;,&quot;f&quot;,&amp;result)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>the first
+parameter to ArgScan is the argument list in string form. The second parameter
+is the minimum number of expected arguments. If none are supplied then the user
+is given the command syntax. e.g.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&gt; square()</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&nbsp; arguments: data to square (e:f)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>This indicates
+that the expected argument is the data to be squared, that it can be an
+expression (e), and that the result of this expression should be a floating
+point number (f)&nbsp; i.e. real. If the parameters match this syntax then the <i>ArgScan</i>
+command will update the variable <i>result</i> with the suppied data. e.g. if
+you enter</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:green'>&gt; pr square(3*sin(pi/4))</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>Then <i>result</i> will take the value
+2.12132.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify'><span lang=EN-NZ>Once the
+appropriate maths have been performed on the passed argument the final result
+(2.12132* 2.12132 = 4.5 in this case) is stored in the answer variable <i>ansVar</i>
+using the syntax:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:#333399'>ansVar-&gt;MakeAndSetFloat(result);</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><i><span lang=EN-NZ>ansVar</span></i><span lang=EN-NZ> is a
+global Prospa variable (called <i>ans</i> in the CLI). <i>MakeAndSetFloat</i>
+is a member procedure for the variable class. There are a number of other such
+procedures which are listed in the appendix.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>The variable <i>ansVar</i> is used
+extensively by Prospa, for example in the following command:</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:10.0pt;font-family:"Courier New";
+color:green'>answer = square(2*3)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>First 2*3 is evaluated and stored in <i>ansVar</i>.
+This value is then copied to the C variable <i>result</i>. Then in the square
+routine <i>result</i> is squared and copied to <i>ansVar</i> once more. Finally
+<i>ansVar</i> is copied to the Prospa variable <i>answer</i>. </span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>Lastly we tell Prospa that only one
+variable is to be returned to the calling program (the default is 0)</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ style='font-size:9.0pt;font-family:"Courier New";
+color:#333399'>NumberReturnedValues(1);</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>Note that it is also important to return
+&quot;OK&quot; to the main program at the end of the DLL routine to indicate
+that the command has been successfully executed.</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-NZ>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

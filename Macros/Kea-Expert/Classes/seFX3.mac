@@ -1,0 +1,1665 @@
+###########################################################
+# FX3/TRex class for KeaExpert2.xx
+#
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+   self->convertAmplitude             = "seFX3:convertAmplitude"
+   self->convertFrequency             = "seFX3:convertFrequency"
+   self->convertDelays                = "seFX3:convertDelays"
+   self->convertDigitalDelay          = "seFX3:convertDigitalDelay"
+   self->convertDigitalFrequency      = "seFX3:convertDigitalFrequency"
+   self->generatePulseProgram         = "seFX3:generatePulseProgram"
+   self->initFX3Info                  = "seFX3:initFX3Info"
+   self->initAndExecPP                = "seFX3:initAndExecPP"
+   self->runPulseProgram              = "seFX3:runPulseProgram"
+   self->runStartCode                 = "seFX3:runStartCode"
+   self->getSpectrometerParameters    = "seFX3:getSpectrometerParameters"
+   self->interleaveTables             = "seFX3:interleaveTables"
+   self->loadTRexStartCode            = "seFX3:loadTRexStartCode"
+   self->writePulseProgram            = "seFX3:writePulseProgram"
+   self->startPulseProgram            = "seFX3:startPulseProgram"
+   self->readData                     = "seFX3:readData"
+   self->readSpecID                   = "seFX3:readSpecID"
+   self->resetTables                  = "seFX3:resetTables"
+   self->saveTable                    = "seFX3:saveTable"
+   self->modifyTable                  = "seFX3:modifyTable"
+   self->setPulsePhases               = "seFX3:setPulsePhases"
+   self->setStartCodeFreq             = "seFX3:setStartCodeFreq"
+   self->setSampleShims               = "seFX3:setSampleShims"
+   self->setLockShims                 = "seFX3:setLockShims"
+   self->updateFX3Parameters          = "seFX3:updateFX3Parameters"
+   self->updateFX3FixedParameters     = "seFX3:updateFX3FixedParameters"
+   self->writePPToFX3Folder           = "seFX3:writePPToFX3Folder"
+
+   self->variableList = "============================================="
+   self->port                         = -1 # Current or last FX3 connected
+   self->useUpdateTable               = 0  # Use update table (1) for parameter mods.
+   self->updateDebug                  = 0  # Save updates to FX3 folder checking correctness of eventtable 
+   self->lockAndSatMode               = 0  # Run sequence in lock and saturate mode
+   self->triggerMode                  = 0  # Run sequence with a trigger
+   self->nrPntsToIgnoreCIC            = 6  # Ignore points for CIC digital filter 
+   self->nrPntsToIgnoreFIR            = 6  # Ignore points for CIC+FIR digital filters
+
+endproc()
+
+
+####################################################
+# Calculate the CIC scaling power (2^(-scaling))
+# use in the TRex DDC
+####################################################
+
+procedure(calcCICScaling, N, M, Dec)
+
+   Bmax = ceil(N * log2(Dec * M) + 16)
+   scaling = Bmax - 36
+   if(scaling < 0)
+       scaling = 0
+   endif
+
+endproc(scaling)
+
+####################################################
+# Work out the residual scaling need for the 
+# collected data to compensate for the rounded DDC
+# scaling exponent.
+####################################################
+
+procedure(calcDataScaling, N, M, Dec)
+
+  Bmax = N * log2(Dec * M) + 16
+  scaling = 2^(ceil(Bmax)-Bmax)
+
+endproc(scaling)
+
+
+##############################################################
+# Convert a frequency scalar or array from MHz to DDS format
+##############################################################
+
+procedure(convertAmplitude, self, txGain)
+
+   if(vartype(txGain) == "float")
+      txGain = 2^14*10^(txGain/20)-1
+      if(txGain < 0)
+        txGain = 0
+      endif
+      if(txGain >= 2^14)
+        txGain = 2^14-1
+      endif
+   else
+      txGain = 2^14*10^(txGain/20)-1
+   endif
+
+endproc(round(txGain))
+
+##############################################################
+# Convert a delay from p.s. table format back to us
+# digDelay must be an array of 16 bit numbers, 2 per delay
+# The output is sn array half the length
+##############################################################
+
+procedure(convertDigitalDelay, self, digDelay)
+
+   sz = size(digDelay)
+   usDelays = matrix(sz/2)
+   for(k = 0 to sz-2 step 2)
+      hiWord = double(digDelay[k])
+      loWord = double(digDelay[k+1])
+      usDelays[k/2] = (hiWord*2d^16 + loWord)/100
+   next(k)
+  
+endproc(usDelays)
+
+##############################################################
+# Convert a frequency from DDS format back to MHz
+# Freq must be an array of 16 bit numbers, 2 per frequency
+# The output is a double array half the length
+##############################################################
+
+procedure(convertDigitalFrequency, self, freqDig)
+
+   sz = size(freqDig)
+   out = matrix(sz/2)
+   for(k = 0 to sz-2 step 2)
+      hiWord = double(freqDig[k])
+      loWord = double(freqDig[k+1])
+      DDSFWord = hiWord*2d^16 + loWord
+      out[k/2] = DDSFWord*1000d/(2^32d)
+   next(k)
+  
+endproc(out)
+
+##############################################################
+# Convert a delay array from us to a 32-bit word with 10ns res
+##############################################################
+
+procedure(convertDelays, self, delays)
+
+   sz = size(delays)
+   out = matrix(sz*2)
+   delays = delays*100
+   for(k = 0 to sz-1)
+      hiWord = single((delays[k] & 0xFFFF0000)/2^16d)
+      loWord = single(delays[k] & 0xFFFF)
+      out[k*2]   = hiWord
+      out[k*2+1] = loWord
+   next(k)
+  
+endproc(out)
+
+##############################################################
+# Convert a frequency scalar or array from MHz to DDS format
+##############################################################
+
+procedure(convertFrequency, self, freq)
+
+   if(vartype(freq) == "float" | vartype(freq) == "double")
+      DDSFword = round((freq * 2^32d )/1000d) 
+      hiWord   = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+      loWord   = single(DDSFword & 0x0000FFFF) 
+      return(hiWord, loWord)
+   else
+      sz = size(freq)
+      out = matrix(sz*2)
+      for(k = 0 to sz-1)
+         DDSFword = round((freq[k] * 2^32d )/1000d) 
+         hiWord   = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+         loWord   = single(DDSFword & 0x0000FFFF) 
+         out[k*2]   = hiWord
+         out[k*2+1] = loWord
+      next(k)
+      return(out)
+   endif
+
+endproc()
+
+
+##############################################################
+# Generate the pulse program event table and store this in
+# wvFX3Info->ps
+#
+# In the case where useUpdateTable == 1 we only call this
+# procedure once. In this case we also need call the pulse 
+# program to generate wvFX3Info->updateTable which stores the 
+# location of variables to change on each scan.
+# 
+##############################################################
+
+procedure(generatePulseProgram, self, guipar)
+
+   t1 = time()
+
+   # The name of the procedure which contains the pulse program
+   proc = "$wvFX3Info->exptBaseName$_pp:pulse_program"
+   assignlist(guipar)
+
+   hpaLoc = gData->specParameters->rfAmpLocation[0]
+
+   if(self->useUpdateTable)
+
+   # Generate the wvFX3Info->updateTable
+      wvFX3Info->getDuration = 0
+      usequotedstrings("false")
+      wvFX3Info->mode = "tables"
+      proc("wvFX3Info",hpaLoc[0])
+      usequotedstrings("true")
+
+   # Generate explicit pulse program phase variables
+      (w,h) = size(wvFX3Info->phaseList)
+      for(k = 0 to h-2)
+         assign("p$k+1$",0,"local")
+      next(k)
+   
+   else # Not using an update table
+
+      assignlist(wvFX3Info->phaseList)
+
+   endif
+
+  # Generate the list of p.p. parameters
+   try
+      assignstruct(wvFX3Info->ppVariables)
+      pars = mkparlist(wvFX3Info->ppList)
+   catch
+      pars = list(0)
+   endtry
+
+  # Generate the pulse program event table
+   wvFX3Info->mode = "compile"
+   wvFX3Info->pgo = pgo
+   usequotedstrings("true")
+   proc("wvFX3Info",hpaLoc[0],pars)
+   wvFX3Info->mode = "none"
+
+  # Add the minimum start code to the start of the event table
+   if(gExpt->whichStartCode != 0)
+      wvFX3Info->ps = join(wvFX3Info->minStartCode,wvFX3Info->ps)
+   endif
+
+   if(gDebug->showPSTimes)
+      pr "\n   Time to generate pulse program = $(time()-t1)*1000,1.2f$ ms\n"
+   endif
+
+endproc()
+
+
+#############################################################
+# Return the spectrometer parameters as a structure
+#############################################################
+
+procedure(getSpectrometerParameters, self)
+
+   lst = gData->getXChannelParameters()
+   if(lst == null)
+      par = null
+   else
+      par = struct(lst)
+   endif
+
+endproc(par)
+
+
+#############################################################
+# Initialise the pulse program parameters and then run
+# the procedure execPP
+#
+# This procedure:
+# 1. Reads the preferences
+# 2. Reads the spectrometer parameters from the GUI
+# 3. Combines these and writes the acqu.par file
+# 4. Define a structure wxFX3Info, accessible to all p.s. commands
+# 5. Evaluate the relationships table from the _pp file
+# 6. Save any tables to the spectrometer and then replace with simpler variables [adrs,size]
+# 7. Define the NMR transmit and receive frequencies
+# 8. Load the start code updating relevant parameters store in wvFX3Info
+# 9. Update guipar with modified relationship table values and other useful parameters
+# 10. Update the phase list converting to digital units
+# 11. If using update table then generate the pulse program event table and write to spectrometer.
+# 12. Call execpp in the experiment control macro.
+#
+#############################################################
+
+procedure(initAndExecPP, self, path, macroName, guipar, wv_rel, wv_var, wv_pp_list, wv_pp_name, wv_phase_list)
+
+   if(vartype(guipar) == "structure")
+      guipar = list(guipar)
+      pr "Converting gui to list\n"
+   endif
+
+   t1 = time()
+
+# Save cwd
+   bak = getcwd()
+
+# Initialise the wvFX3Info structure by reading the spec parameters
+   try
+      self->initFX3Info()
+      wvFX3Info->dir = path
+      wvFX3Info->exptBaseName = rmext(macroName)
+      wvFX3Info->phaseList = wv_phase_list
+      wvPort = 0
+   catch
+      wvExpStatus = "stop"
+      pr lasterror()
+      pr "\n   Can't connect to device\n"
+      return(null,null,null,null,null)   
+   endtry
+
+# Intialise the TTL controller parameters
+   gExpt->triggerFTDI = 0 # Don't trigger using the external FTDI device
+   gExpt->whichStartCode = 0 # Don't use minimal start code just full start code 
+
+# Initialise the repetition time variables (used by ucsRun:checkTiming)
+   gData->curExpt->totScans = 0
+   gData->curExpt->startTime = time()
+   gData->curExpt->lastTime = gData->curExpt->startTime
+
+# Some defaults - will normally be overwritten by the assignlist commands
+# but some test exeriments don't need these parameters
+   dwellTime = 1
+   flatFilter = "no"
+   nrPnts = 0
+   rxGain = 40
+   rxPhase = 0
+   saveData = "false"
+   totPnts = nrPnts
+   usePhaseCycle = "no"
+
+# Expose the user preferences as locals
+   assignlist(gData->preferences)
+
+# Expose all gui parameters as locals
+# (Note these have priority over preference variables with the same name)
+   assignlist(guipar)
+
+# Save the guipar to acqu.par
+   if(saveData == "true")
+      if(isvar("exptNr"))
+         dir = "$dataDirectory$\\$expName$\\$exptNr$"   
+      elseif(isvar("expNr"))
+         dir = "$dataDirectory$\\$expName$\\$expNr$"  
+      else       
+         dir = "$dataDirectory$\\$expName$"
+      endif   
+      mkdir(dir)
+      file = "$dir$\\acqu.par"
+      fileBak = "$dir$\\acqu.par.bak"
+      try  
+         save(file,sortlist(guipar),"truedoubles")
+         copyfile(file,fileBak) # Backup file
+      catch
+         message("Warning","Can't save acqu.par in folder:\r$dir$\rIs is write protected?","warning")
+      endtry
+   endif
+
+# Check for invalid dwelltimes
+   if(dwellTime < 0.5 | dwellTime > 10000)
+      message("Error","Invalid dwelltime - should be between 0.5 and 10000 us","error")
+      throw("")
+   endif
+
+# Copy some important pulse sequence parameters from guipar to wvFX3Info
+   try
+      wvFX3Info->ppList = wv_pp_list
+      wvFX3Info->ppVariables = struct()
+      wvFX3Info->nrPnts = nrPnts
+      wvFX3Info->nrScans = nrScans
+      wvFX3Info->usePhaseCycle = usePhaseCycle
+   catch
+   endtry
+
+# Work out the expected receiver latency                        
+   tSample = 1/100e6                                  
+   fixLat  = 9*tSample
+   rxLat   = (fixLat)*1e6
+   if(flatFilter == "yes")
+      rxLat = rxLat + (6 - self->nrPntsToIgnoreFIR)*dwellTime + 1.65
+   else
+      rxLat = rxLat + (3 - self->nrPntsToIgnoreCIC)*dwellTime + 1.65
+   endif
+
+# Evaluate the relationship variables and make them local
+   assignlist(wv_rel)
+
+   wvFX3Info->totPnts = totPnts
+
+# Define wobbleMode if not already defined
+   if(not(isvar("specialMode")))
+      specialMode = "none"
+      wvFX3Info->ttlEnd = 0x0
+   endif
+   if(specialMode == "wobble")
+      wvFX3Info->ttlEnd = 0x1000
+   endif
+
+# Define wobbleMode if not already defined
+   if(not(isvar("wobbleMode")))
+      wobbleMode = "none"
+   endif
+
+# Now loop over the variable list and identify any tables
+# Save these tables to the FX3 and replace them with two
+# element arrays with the address and size
+   for(k = 0 to size(wv_pp_list)-1)
+      var = wv_pp_list[k]
+      if(var[0] == "t")
+         assign(var,self->saveTable(eval(var)),"local")
+      endif
+   next(k)
+   relationShips = mkparlist(getlistnames(wv_rel))  
+
+# Check that b1Freq/2 is defined
+   if(not(isvar("b1FreqCh1")) & not(isvar("b1FreqCh2")))
+      throw("b1FreqCh1/b1FreqCh2 not defined in sequence")
+   endif
+
+# Set the Tx frequencies for Ch2 equal to b1Freq
+# if this variable is not explicitly defined
+   if(not(isvar("b1FreqCh2")))
+      b1FreqCh2 = b1FreqCh1
+      if(getlistindex(guipar,"b1FreqCh2") == -1)
+         guipar = guipar + "b1FreqCh2 = $b1FreqCh2$"
+      endif
+   endif
+
+# If only b1FreqCh2 is defined then set b1Freq to the same value
+   if(not(isvar("b1FreqCh1")))
+      b1FreqCh1 = b1FreqCh2
+      if(getlistindex(guipar,"b1FreqCh1") == -1)
+         guipar = guipar + "b1FreqCh1 = $b1FreqCh1$"
+      endif
+   endif
+
+# Set the Rx frequencies equal to b1Freq
+# if this variable is not explicitly defined
+   if(not(isvar("freqRx")))
+      freqRx = b1FreqCh1
+      if(getlistindex(guipar,"freqRx") == -1)
+         guipar = guipar + "freqRx = $freqRx$"
+      endif
+   endif
+
+# Make these frequencies externally accessible
+   gData->curExpt->b1FreqCh1 = b1FreqCh1
+   gData->curExpt->b1FreqCh2 = b1FreqCh2
+   gData->curExpt->freqRx = freqRx
+
+# Print these frequencies
+   if(gDebug->showLevel > 0)
+      pr("\n   Ch1 freq = $b1FreqCh1,1.7f$ MHz")
+      pr("\n   Ch2 freq = $b1FreqCh2,1.7f$ MHz")
+      pr("\n   Rx  freq = $freqRx,1.7f$ MHz\n")
+   endif
+
+# Get the start (spectrometer initialisation) code and fill in the missing information. Store the result in wvFX3Info
+   rxGainStr = self->loadTRexStartCode(b1FreqCh1, b1FreqCh2, freqRx, flatFilter, rxGain, dwellTime, rxPhase, specialMode)
+
+# In the simple Prospa environment these were window
+# variables. Here they are added to guipar. We will
+# keep these names for backward compatibility
+   par =    ["wvAutoScale         = \"$autoScale$\"",
+             "wvUnits             = \"$units$\"",
+             "wvTimeMin           = $timeMin$",
+             "wvTimeMax           = $timeMax$",
+             "wvFreqMin           = $freqMin$",
+             "wvFreqMax           = $freqMax$",
+             "wvApplyPreampFactor = \"$calibrateForPreamp$\"",
+             "wvApplyRxampFactor  = \"$calibrateForRxAmp$\"",
+             "wvPreampGain        = $preampGain$",
+             "wvRxAmpCor          = $rxAmpCorrection$",
+             "wvRxCal             = 660",
+             "wv_pp_name          = \"$wv_pp_name$\"",
+             "wvMaxDutyCycle      = $maxDutyCycle$",
+             "wvMaxPSDutyCycle    = $maxPSDutyCycle$",
+             "wvDSPAdrs           = 0",
+             "wvFitCurveColor     = $fitColor$",
+             "wvSpectrumColor     = $spectrumColor$",
+             "wvDataSymbolColor   = $dataSymbolColor$",
+             "wvDataSymbolShape   = \"$dataSymbolShape$\"",
+             "wvDSPCtrlRepTime    = 0",
+             "wvSaveDataFiles     = \"$saveDataFiles$\"",
+             "wvSavePictureFiles  = \"$savePictureFiles$\"",
+             "wvSaveTextFiles     = \"$saveTextFiles$\""]
+
+#      if(isvar("wvExpStatus") == 0)
+#         par = par + ["wvExpStatus = \"\""]
+#      endif
+
+# Add new parameters to guipar for use elsewhere
+   par = par + ["xshim           = $xshim$",
+                "yshim           = $yshim$",
+                "zshim           = $zshim$",
+                "oshim           = $oshim$",
+                "pgo             = 5",
+                "rxLat           = $rxLat$",
+                "freqScaleFactor = 10",
+                "rxGain1         = \"$rxGainStr[0]$\"",
+                "rxGain2         = \"$rxGainStr[1]$\""]
+
+# Convert the phase list to machine units
+   if(usePhaseCycle == "yes")
+      phaseList = wv_phase_list*2^16/4
+   else # Remove phase cycling 
+      phaseList = wv_phase_list[0,:]*2^16/4
+   endif
+
+# Update guipar with these new parameters and the evaluated relationships list
+   guipar = guipar + par  + relationShips
+
+# Restore current working directory
+   cd(bak)
+
+# Reset overflow light
+   if(isvar("rxOverflow"))
+      rxOverflow->color([255,255,255,255])
+   endif
+
+# Get full name of pulse program procedure 
+   proc = rmext(wv_pp_name) +":execpp" 
+
+# This flag is used to signal aborts
+   assignlock("wvExpStatus","running","window")
+
+   t2 = time()
+
+  # pr("\n   Time to run init code = $(t2-t1)*1000$ ms\n")
+
+# If using update table then generate the pulse program event table and 
+# send to spectrometer now. Only done once in this case
+   if(self->useUpdateTable)
+
+      sz = size(wv_var)
+      if(sz > 0)
+         varIndex = [0:sz-1]
+      else
+         varIndex = 0
+      endif
+
+   # Load the default event-table and fixed update tables from the FX3 folder
+   # and then use the current parameters to generate a final event table.
+   # Save to the FX3 folder for comparison.
+      if(self->updateDebug)
+         cd(path)
+         stdTab = LoadAndInitPulseProgram(guipar)
+      endif
+
+   # Generate the event-table and parameter lists using the pulse program
+   # commands the current parameters and the fx3PP.dll
+      self->generatePulseProgram(guipar)
+
+   # Write the pulse program to the TRex BRAM
+      wvFX3Info->duration = self->writePulseProgram()
+
+   # For debugging purposes write the final event-table used to the FX3 folder
+   # And compare the standard and reference files
+      if(self->updateDebug)
+         self->writePPToFX3Folder()
+         if(size(stdTab) != size(wvFX3Info->ps))
+            print("   Event-tables have a size mismatch. Did you forget to set the non-flat filter in special.par?")
+            return(null)
+         endif
+         if(stdTab == wvFX3Info->ps)
+            print("   Event-tables with updates match for $wvFX3Info->exptBaseName$")
+         else
+            print("\n==>!!Event-tables with updates differ for $wvFX3Info->exptBaseName$!!<==\n")
+         endif
+         return(null)
+      endif
+
+   else # Generate a pulse program event table on each scan
+
+   # Search through parameter list for variables and record indices
+   # Update the varIndex table to match the location of the
+   # wv_var variables in the wv_pp_list
+      sz = size(wv_var)
+      varIndex = matrix(sz)
+      for(k = 0 to sz-1)
+         name = wv_var[k]
+         idx = getlistindex(wv_pp_list,name)
+         if(idx < 0 & name != "")
+            print("\n   Unknown wv_pp_list variable $name$")
+         endif
+         varIndex[k] = idx
+      next(k)
+
+   endif
+
+# Not used by FX3 code but needed for DSP compatibility in execpp
+   p = null
+   phaseIndex = null
+
+   if(gDebug->showLevel > 0)
+      pr("\n   Receiver channel: $rxChannel$\n")
+   endif
+
+# Run execPP 
+   try
+      r = proc(guipar,p,phaseList,phaseIndex,varIndex)
+   catch
+      searchdlls("true")
+      r = null
+      pr ("\n   Error in execpp detected\n")
+      err = lasterror()
+      if(err->description != "")
+         pr err
+      endif
+   endtry
+
+endproc(r)
+
+#############################################################
+# Initialise the wvFX3Info data structure
+# This includes all the information needed by the
+# pulse program including the spectrometer parameters
+#############################################################
+
+procedure(initFX3Info, self, specPar)
+
+   windowvar(wvFX3Info,wvPort)
+   wvFX3Info = struct()
+   wvFX3Info->dspPar = gData->specParameters
+   wvFX3Info->tableInfo = null # User sequence table info
+   wvFX3Info->updateTable = null # Variable parameter update table
+   wvFX3Info->fixedUpdateTable = null # Fixed parameter update table
+   wvFX3Info->pref = gData->preferences
+   if(gData->specParameters->rfAmpLocation[0] == "i")
+      wvFX3Info->ttlInit = 0x8000
+   else
+      wvFX3Info->ttlInit = 0x0000
+   endif
+
+   wvFX3Info->ttlEnd = 0
+
+endproc()
+
+#############################################################
+# Interleave the contents of up to four tables
+#############################################################
+
+procedure(interleaveTables, self, tab1, tab2, tab3, tab4)
+
+   # Interleave tables: tab1 and tab2
+   if(nrArgs == 3)
+
+      sz1 = size(tab1)
+      sz2 = size(tab2)
+      if(sz1 == sz2)
+         tabOut = matrix(sz1*2)
+         tabOut[0:2:-2] = tab1
+         tabOut[1:2:-1] = tab2
+         return(tabOut)
+      elseif(sz1 == sz2/2)
+         tabOut = matrix(sz1*3)
+         tabOut[0:3:-3] = tab1
+         tabOut[1:3:-2] = tab2[0:2:-2]
+         tabOut[2:3:-1] = tab2[1:2:-1]
+         return(tabOut)
+      else
+         throw("interleaved tables should be the same size or tab2 twice tab1")
+      endif
+
+   # Interleave tables: tab1, tab2 and tab3
+   elseif(nrArgs == 4)
+
+      sz1 = size(tab1)
+      sz2 = size(tab2)
+      sz3 = size(tab3)
+      if(sz1 == sz2 & sz1 == sz3)
+         tabOut = matrix(sz1*3)
+         tabOut[0:3:-3] = tab1
+         tabOut[1:3:-2] = tab2
+         tabOut[2:3:-1] = tab3
+         return(tabOut)
+      else
+         throw("interleaved tables should be the same size")
+      endif
+
+   # Interleave tables: tab1, tab2, tab3 and tab4
+   elseif(nrArgs == 5)
+
+      sz1 = size(tab1)
+      sz2 = size(tab2)
+      sz3 = size(tab3)
+      sz4 = size(tab4)
+      if(sz1 == sz2 & sz1 == sz3 & sz1 == sz4)
+         tabOut = matrix(sz1*4)
+         tabOut[0:4:-4] = tab1
+         tabOut[1:4:-3] = tab2
+         tabOut[2:4:-2] = tab3
+         tabOut[3:4:-1] = tab4
+         return(tabOut)
+      else
+         throw("interleaved tables should be the same size")
+      endif
+
+   else
+
+      throw("interleaveTables requires 2, 3 or 4 arguments")
+
+   endif
+
+
+endproc(null)
+
+##########################################################################
+# Generates the start code for TRex pulse programs controlled
+# by the FX3. Note requires that wvFX3Info is defined
+##########################################################################
+
+procedure(loadTRexStartCode, self, freqCh1=10 ,freqCh2=10, freqRx=10, flatFilter="no", 
+                                   rxGain=40, dwellTime=1, rxPhase=0, specialMode="none")
+
+
+# Check for FX3 window variable
+   if(not(isvar("wvFX3Info")))
+      throw("wvFX3Info must be defined (error found in loadTRexStartCode)")
+   endif
+
+   bak = getcwd()
+   cd("$appdir$\\Macros\\UCS-Core\\FX3 Macros\\StartCode")
+
+   t1 = time()
+# Get the frequency codes
+   freqScaleFactor = 10
+   DDSFwordTxCh1   = round((freqCh1 * 2^32d)/1000d) 
+   DDSFwordTxCh2   = round((freqCh2 * 2^32d)/1000d) 
+   DRPFwordRx      = round((freqRx * 2^32d)/1000d) * double(freqScaleFactor) 
+ 
+   rxFreq1  = single((DRPFwordRx & 0xFFFF0000) / (2 ^ 16) ) # FPGA Rx frequency
+   rxFreq2  = single((DRPFwordRx & 0x0000FFFF))
+   txFreq11 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+   txFreq12 = single((DDSFwordTxCh1 & 0x0000FFFF))
+   txFreq21 = single((DDSFwordTxCh2 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 2
+   txFreq22 = single((DDSFwordTxCh2 & 0x0000FFFF))
+   
+# Convert the receiver gain to device units
+   rxGainStr = ucsRun:convertRxGainHF(rxGain)
+   rxGain1 = eval("0x0$rxGainStr[0]$")
+   rxGain2 = eval("0x0$rxGainStr[1]$")
+
+# Choose the start code based on the filter status and read it in from file
+   if(flatFilter == "yes")
+      startCode = load("startCodeTRexFIRDelays.txt","text")
+      N = 4
+      M = 2
+      cicDecimation = 50 * dwellTime
+      cicScaling = :calcCICScaling(N, M, cicDecimation)
+      gData->digFilterCor = :calcDataScaling(N, M, cicDecimation)*1.50628
+   else
+      startCode = load("startCodeTRexCICDelays.txt","text")
+      N = 4
+      M = 2
+      cicDecimation = 100 * dwellTime
+      cicScaling = :calcCICScaling(N, M, cicDecimation) + 4
+      gData->digFilterCor = :calcDataScaling(N, M, cicDecimation)
+   endif 
+
+# Count number of lines in startcode
+   ascii = strtoascii(startCode)
+   startCodeLineCnt = sum(ascii==10)
+   if(ascii[-1] != 10) # Just in case there is no line feed at end
+     startCodeLineCnt = startCodeLineCnt + 1
+   endif
+
+# Get the jitter parameters
+   jitter1 = gData->specParameters->jitterCh1
+   jitter2 = gData->specParameters->jitterCh2
+
+# Restrict the receiver phase to 16 bits
+   rxPhase = (rxPhase%360/360*2^16) & 0xFFFF 
+
+# Wobble mode parameters
+   if(specialMode == "wobble")
+      w1 = "00001000"
+      w2 = "00001040"
+      w3 = "$wvFX3Info->ttlInit+0x1000,08X$"
+   else
+      w1 = "00000000"
+      w2 = "00000040"
+      w3 = "$wvFX3Info->ttlInit,08X$"
+   endif
+
+# The parameters to modify
+   parNames = ["TRUNCDEC1","DEC1","JITTER1","JITTER2",
+               "RXPHASE","TXFREQ11","TXFREQ12","TXFREQ21","TXFREQ22",
+               "RXFREQ1","RXFREQ2",
+               "IGNOREPNTS_CIC","IGNOREPNTS_FIR",
+               "RXGAIN",
+               "WOBBLE1","WOBBLE2","WOBBLE3"]
+
+# Their string values
+   parValues = ["$cicScaling,08X$","$cicDecimation,08X$","$jitter1,08X$","$jitter2,08X$",
+                "$rxPhase,08X$","$txFreq11,08X$","$txFreq12,08X$","$txFreq21,08X$","$txFreq22,08X$",
+                "$rxFreq1,08X$","$rxFreq2,08X$",
+                "$self->nrPntsToIgnoreCIC,01X$","$self->nrPntsToIgnoreFIR,01X$",
+                "$rxGain1,01X$$rxGain2,01X$",
+                w1,w2,w3]
+
+# Initialise the startcode update-table
+   updateTable = null
+
+# Replace parameters in the startcode by their current values and store in new array 'ps'.
+   ps = dmatrix((startCodeLineCnt-2)*3)
+   ec = 0
+   el = 0
+   c = 0
+   for (ln = 0 to startCodeLineCnt-1)
+      # Read in next line
+      (line,ec,el) = getline(startCode, ln, ec, el)
+      if(line == null)
+         exitfor
+      endif
+      # Replace parameter strings with current values
+      if(ln >= 2) # Ignore title and blank line
+         values = parse(line," ")
+         v = values[3]
+         idx = getlistindex(parNames,v)
+
+         if(idx >= 0) # Add parameter and also add to update table <============
+            v = parValues[idx]
+            vNr = eval("0x$v$")
+            tabEntry = [0d, idx, (ln-2)*6d+5d, vNr&0x0000FFFF]
+            if(updateTable == null)
+               updateTable = tabEntry
+            else
+               updateTable = join(updateTable,tabEntry,"horiz")
+            endif
+         endif
+         # Add this information to the ps array
+         ps[c] = eval(values[1])
+         ps[c+1] = eval("0x$values[2]$")
+         ps[c+2] = eval("0x$v$")
+         c = c + 3
+      endif
+   
+   next(ln)
+
+# Print out the startcode updateTable
+#   (w,h)= size(updateTable)
+#   print("\n - Start-code update table -\n")
+#   print("\n   Parameter, Line,  Value\n\n")
+#   for(y = 0 to h-1)
+#      row = updateTable[~,y]
+#      print("  $round(row[1]&0xFFF),5d$,$trunc(row[2]/6),8d$,   0x$hex(row[3])$\n")
+#   next(y)
+
+# Update the FX3 pulse sequence information structure
+# so these parameters are accessible from all procedures and ps commands
+   wvFX3Info->mode = "run"
+   wvFX3Info->startCode = startCode
+   wvFX3Info->psStartCode = ps
+   wvFX3Info->startCodeLineCnt = startCodeLineCnt
+   wvFX3Info->board = "TRex"
+   wvFX3Info->dwellTime = dwellTime
+   wvFX3Info->frequency = freqRx
+   wvFX3Info->flatFilter = flatFilter
+   wvFX3Info->rxGain = rxGain
+   wvFX3Info->currentTTL = 0x8000
+   wvFX3Info->offset = 0.3e6 # 3 ms
+   wvFX3Info->freqCh1 = freqCh1
+   wvFX3Info->freqCh2 = freqCh2
+   wvFX3Info->freqRx = freqRx
+
+  # t2 = time()
+  # pr("\n   Time to generate start code = $(t2-t1)*1000,1.2f$ ms\n")
+
+endproc(rxGainStr)
+
+#############################################################
+# Modify an existing table (refTable) stored in upper SRAM
+# The newTable size should be the same as the original
+# Note that refTable is the value passed in the event
+# table and just contains the address and table size
+#############################################################
+
+procedure(modifyTable, self, newTable, refTable)
+
+   adrs = refTable[0]
+   sz = refTable[1]
+   table = join([adrs],newTable)
+   if(size(table) != sz)
+      throw("invalid table modification - size mismatch")
+   endif
+   fx3write("T", 0x1A, [inv(0x40+0x80)]) 
+   fx3write("E",0x6081, [0])   # We are writing to upper SRAM not FIFO
+   fx3write("E",0x6084,[adrs-1]) # Specify the SRAM write address
+   fx3write("D",0x6085,table)  # Write the table to SRAM
+   fx3write("T", 0x1A, [inv(0x40)]) 
+
+endproc()
+
+
+#############################################################
+# Read the complex data from the FX3/TRex FIFO
+#############################################################
+
+procedure(readData, self, N)
+
+   #pr("Reading data\n")
+   #   t1 = time()
+   fx3write("T", 0x1A, [inv(0x40 + 0x80)])
+   s = fx3read("D",0x6080,1)
+   d = fx3read("D",0x6080,N*3)
+   data = unpackdata("FIFO",d)
+   fx3write("T", 0x1A, [inv(0x40)])
+
+   #pr time()-t1
+   #pr("Have read data\n")
+
+endproc(data)
+
+######################################################################
+# Read the MG number for the spectrometer at port
+######################################################################
+
+procedure(readSpecID, self, port=-1)
+
+   if(port >= 0)
+      try
+         fx3open(port)
+      catch
+         return("")
+      endtry
+   endif
+   
+   szBlock = 16
+   parIn = fx3read("f",0, szBlock)
+   parOut = matrix(size(parIn)*3)
+
+   for(k = 0 to size(parOut)-1 step 3)
+      parOut[k+2] = (parIn[k/3]&0xFF0000)/2^16
+      parOut[k+1] = (parIn[k/3]&0x00FF00)/2^8
+      parOut[k+0] = (parIn[k/3]&0x0000FF)
+   next(k)
+
+   parVersion = round(parOut[0]*100+parOut[1]*10+parOut[2])
+   if(parVersion == 127)
+      name = asciitostr(parOut[3:18])
+      return(name)
+   endif
+
+endproc("")
+
+
+#############################################################
+# Reset the tables information
+#############################################################
+
+procedure(resetTables, self)
+
+  wvFX3Info->tableInfo = null
+
+endproc(0)
+
+
+###################################################################
+#
+# Get the complex signal by running a pulse program. Also scale
+# the data based on the scaling setting in the kea preferences
+# dialog.
+#
+#  Input: N ........... number of points (real + imag) to collect
+#         guipar ...... gui parameters
+#
+# Output: status ...... "ok" or "abort".
+#         cdata ........ collected complex signal.
+#
+###################################################################
+
+procedure(runPulseProgram, self, N, guipar)
+
+  # Extract the gui variables
+   assignlist(guipar)
+
+  # Set the status flag to green (running)
+   if(isvar("ppStatus"))
+      if(gExpt->triggerFTDI)
+         ppStatus->color([255,0,255])
+      else
+         ppStatus->color([0,255,0])
+      endif
+   endif
+
+  try
+      # Send pulse program to FX3
+      if(not(self->useUpdateTable))
+         wvFX3Info->duration = self->writePulseProgram()
+      endif
+      # Start the pulse program
+      self->startPulseProgram()
+
+      # Collect the data from the FX3
+      cdata = self->readData(N)
+
+      if(wvExpStatus == "stop")
+         return("abort",null)
+      endif
+      status = "ok"
+   catch
+      pr(lasterror())
+      staus = "fault"
+      throw("")
+
+   endtry
+
+  # Set the status flag to blue (processing)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,0,255])
+   endif
+
+  # Calibrate
+   if(wvUnits != "raw")
+     # Apply transceiver rx channel gain
+      cdata = cdata/wvRxCal 
+     # Apply rx amplifier gain
+       if(wvApplyRxampFactor == "yes")
+         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
+         gainTot =  10^((gain1dB+gain2dB)/20)
+         cdata = cdata*wvRxAmpCor/gainTot
+      endif
+
+     # Apply preamp gain factor
+      if(wvApplyPreampFactor == "yes")
+         cdata = cdata/wvPreampGain
+      endif
+
+     # Apply units
+      if(wvUnits == "uV")
+         cdata = cdata*1000
+      endif
+
+      cdata = cdata*gData->digFilterCor
+
+   endif
+
+   wvDataModified = "true" # Data can now be saved on abort
+
+
+endproc(status, cdata)
+
+#############################################################
+# Just execute the startcode and then delete it
+#############################################################
+
+procedure(runStartCode, self, remove=1)
+
+   wvFX3Info->ps = wvFX3Info->psStartCode
+   wvFX3Info->ps = join(wvFX3Info->ps,[120d,   0x03000000,   0x00000000])
+   wvFX3Info->duration = self->writePulseProgram()
+   self->startPulseProgram()
+   wvFX3Info->ps = null
+   if(remove)
+      rmvar("wvFX3Info->psStartCode")
+   endif
+
+endproc()
+
+#############################################################
+# Save a table to the spectrometer as well as a record of 
+# the table address and size (in tableInfo)
+# Tables are stored in the upper half of TRex SRAM
+# Return a simplified table with only address and size. This
+# is passed to the pulse program.
+#############################################################
+
+procedure(saveTable, self, table)
+   
+   # Save a table to SRAM and return the address and size """
+   sz = size(table)+1 # With index
+
+   if(wvFX3Info->tableInfo == null) # First table so initialise
+      adrs = 0
+      wvFX3Info->tableInfo = matrix(2,1)
+      wvFX3Info->tableInfo[:,0] = [adrs,sz]
+#      if (sz > 32768)
+#         throw("Table size is too large - max 32k points")
+#      endif
+   else # Another table, so add to the current
+      info = wvFX3Info->tableInfo[:,-1]
+      adrs = info[0]+info[1]
+      if (sz > 32768)
+         throw("Table size is too large - max 32k points")
+     endif
+      if (adrs+sz > 32768)
+         throw("Total table size is too large - max 32k points")
+      endif
+      wvFX3Info->tableInfo = join(wvFX3Info->tableInfo,[adrs,sz],"horiz")
+   endif
+
+   table = join([adrs+1],table) # Initial value in adrs+1 is first table entry
+   fx3write("T", 0x1A, [inv(0x40+0x80)]) 
+   fx3write("E",0x6081, [0])   # We are writing to upper SRAM not FIFO
+   fx3write("E",0x6084,[adrs]) # Specify the SRAM start address
+   fx3write("D",0x6085,table)  # Write the table to SRAM
+   fx3write("T", 0x1A, [inv(0x40)]) 
+
+endproc([adrs+1, sz])
+
+
+######################################################################
+# Optimise the shims for the main sample
+######################################################################
+
+procedure(setSampleShims, self)
+
+ # Get the current x,y,z shims
+   xShim = wvFX3Info->pref->xshim
+   yShim = wvFX3Info->pref->yshim
+   zShim = wvFX3Info->pref->zshim
+   newShims = [xShim,yShim,zShim]
+   fx3write("S",0,newShims)
+   pause(0.01) # Give time for shims to settle  
+
+endproc()
+
+######################################################################
+# Optimise the shims for the lock sample
+######################################################################
+
+procedure(setLockShims, self)
+
+ # Get the current x,y,z shims and the lock offsets
+   xShim = wvFX3Info->pref->xshim + wvFX3Info->dspPar->xShimLock
+   yShim = wvFX3Info->pref->yshim + wvFX3Info->dspPar->yShimLock
+   zShim = wvFX3Info->pref->zshim + wvFX3Info->dspPar->zShimLock
+   newShims = [xShim,yShim,zShim]
+   fx3write("S",0,newShims)
+   pause(0.01) # Give time for shims to settle  
+
+endproc()
+
+######################################################################
+# Set the frequencies in the startcode or in the case of using
+# update tables in the updateTable
+######################################################################
+
+procedure(setStartCodeFreq, self, flatFilter="yes", tx1Freq=0, tx2Freq=0, rxFreq=0)
+
+   if(gFX3->useUpdateTable) # Update tables used so add frequencies to update table
+
+      updateTab = wvFX3Info->updateTable
+
+      if(tx1Freq != 0)
+         DDSFwordTxCh1   = round((tx1Freq * 2^32d)/1000d) 
+         txFreq11 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         txFreq12 = single((DDSFwordTxCh1 & 0x0000FFFF))
+         if(flatFilter == "yes")
+            updateTab = join(updateTab, [0d,0d,92d*6+4,txFreq11], "horiz")
+            updateTab = join(updateTab, [0d,0d,93d*6+4,txFreq12], "horiz")
+         else
+            updateTab = join(updateTab, [0d,0d,63d*6+4,txFreq11], "horiz")
+            updateTab = join(updateTab, [0d,0d,64d*6+4,txFreq12], "horiz")
+         endif
+      endif
+   
+      if(tx2Freq != 0)
+         DDSFwordTxCh1   = round((tx2Freq * 2^32d)/1000d) 
+         txFreq21 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         txFreq22 = single((DDSFwordTxCh1 & 0x0000FFFF))
+         if(flatFilter == "yes")
+            updateTab = join(updateTab, [0d,0d,96d*6+4,txFreq21], "horiz")
+            updateTab = join(updateTab, [0d,0d,97d*6+4,txFreq22], "horiz")
+         else
+            updateTab = join(updateTab, [0d,0d,67d*6+4,txFreq21], "horiz")
+            updateTab = join(updateTab, [0d,0d,68d*6+4,txFreq22], "horiz")
+         endif
+      endif
+   
+      if(rxFreq != 0)
+         DDSFwordRx   = round((rxFreq * 2^32d)/100d) 
+         rxFreq1 = single((DDSFwordRx & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         rxFreq2 = single((DDSFwordRx & 0x0000FFFF))
+         if(flatFilter == "yes")
+            updateTab = join(updateTab, [0d,0d,98d*6+4,rxFreq1], "horiz")
+            updateTab = join(updateTab, [0d,0d,99d*6+4,rxFreq2], "horiz")
+         else
+            updateTab = join(updateTab, [0d,0d,69d*6+4,rxFreq1], "horiz")
+            updateTab = join(updateTab, [0d,0d,70d*6+4,rxFreq2], "horiz")
+         endif
+      endif
+
+      wvFX3Info->updateTable = updateTab
+
+   else # Update tables not used so change startcode
+   
+      if(tx1Freq != 0)
+         DDSFwordTxCh1   = round((tx1Freq * 2^32d)/1000d) 
+         txFreq11 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         txFreq12 = single((DDSFwordTxCh1 & 0x0000FFFF))
+         if(flatFilter == "yes")
+            wvFX3Info->psStartCode[92*3+2]=txFreq11 
+            wvFX3Info->psStartCode[93*3+2]=txFreq12 
+         else
+            wvFX3Info->psStartCode[63*3+2]=txFreq11 
+            wvFX3Info->psStartCode[64*3+2]=txFreq12 
+         endif
+      endif
+   
+      if(tx2Freq != 0)
+         DDSFwordTxCh1   = round((tx2Freq * 2^32d)/1000d) 
+         txFreq21 = single((DDSFwordTxCh1 & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         txFreq22 = single((DDSFwordTxCh1 & 0x0000FFFF))
+         if(flatFilter == "yes")
+            wvFX3Info->psStartCode[96*3+2]=txFreq21 
+            wvFX3Info->psStartCode[97*3+2]=txFreq22 
+         else
+            wvFX3Info->psStartCode[67*3+2]=txFreq21 
+            wvFX3Info->psStartCode[68*3+2]=txFreq22
+         endif
+      endif
+   
+      if(rxFreq != 0)
+         DDSFwordRx   = round((rxFreq * 2^32d)/100d) 
+         rxFreq1 = single((DDSFwordRx & 0xFFFF0000) / (2 ^ 16))  # AD9910 Tx frequency Ch 1
+         rxFreq2 = single((DDSFwordRx & 0x0000FFFF))
+         if(flatFilter == "yes")
+            wvFX3Info->psStartCode[98*3+2]=rxFreq1 
+            wvFX3Info->psStartCode[99*3+2]=rxFreq2 
+         else
+            wvFX3Info->psStartCode[69*3+2]=rxFreq1 
+            wvFX3Info->psStartCode[70*3+2]=rxFreq2 
+         endif
+      endif
+
+   endif
+
+endproc()
+
+
+####################################################
+# Set an RF phase in the p.s. parameter array 
+#
+# Input: scan ... . expt scan numnber (0 based)
+#        pcArray .. phase cycle array
+#
+# Output: pAcq ... the acquisition phase
+#
+####################################################
+
+procedure(setPulsePhases, self, scan, pcArray)
+
+   pcArray = pcArray%65536
+   
+   (pw,ph) = size(pcArray)
+   
+   idx = scan % pw
+   phaseList = list(0)
+   for(k = 0 to ph-2)
+      phaseList = phaseList + ["p$k+1$ = $pcArray[idx,k]$"]
+   next(k)
+   wvFX3Info->phaseList = phaseList
+   pAcq  = pcArray[idx,ph-1]
+
+endproc(pAcq)
+
+
+#############################################################
+# Start the pulse program running and wait until it finishes
+# Also allow aborting via the TRex monitor entity
+# Note this code may be modified as the monitor FPGA entity
+# is improved.
+#############################################################
+
+procedure(startPulseProgram, self, psInfo=null)
+
+
+# Calculate how long the pulse program should take
+   aborted = "false"
+   if(psInfo == null)
+      waitTime = wvFX3Info->duration*1e-8+0.001 # Add 1ms for coms delays
+   else
+      waitTime = psInfo->duration*1e-8+0.001 # Add 1ms for coms delays
+   endif
+
+# Check if we need trigger on the FTDI TTL
+   if(gExpt->triggerFTDI)
+      assign("gPauseProgress",1,"global")
+      ftdiread(gExpt->ttlInput)  
+      assign("gPauseProgress",0,"global")
+      ppStatus->color([0,255,0])
+      if(gExpt->ttlOutput > 0)
+         ftdiwrite(gExpt->ttlOutput)
+         pause(gExpt->ttlOutputDuration)
+         ftdiwrite(0)
+      endif
+   endif
+
+# Start the pulse program
+   if(self->lockAndSatMode == 1)
+      fx3write("P", 0x85, [20]) # Start the pulse program wait 20 ms and then tell lock to saturate sample
+   else
+      fx3write("E", 0x85, [1]) # Start the pulse program
+   endif
+
+   fx3write("E", 0x88, [1]) # Reset abort flag in monitor entity
+   fx3write("E", 0x8A, [1]) # Reset trigger flag if set
+   fx3write("T", 0x1A, [inv(0x10+0x40)]) # Turn on LED to indicate we are running a p.p
+
+   # In trigger mode wait the expected duration and then just wait until the experiment finishes
+   # In this case abort will abort the waiting for trigger but not the rest of the sequence
+   # however subsequent scans will be aborted.
+   if(gFX3->triggerMode)
+
+      triggerAborted = 0
+      t1 = time()
+
+      while(1)
+         pause(0.001)
+         if(time()-t1 >= waitTime)
+            exitwhile
+         endif
+      endwhile()
+
+      while(1)
+         pause(0.01)
+         retCode = fx3read("E", 0x86, 1)
+         if(retCode[0] == 0xCBCB) # PS has finished
+            exitwhile
+         elseif(retCode[0] == 0x0BAD) # PS has aborted
+            ucsUtilities:resumeLock()
+            message("Error","PS has aborted!\n","error")
+            throw("PS has aborted!")
+            exitwhile
+         endif
+         if((triggerAborted == 0) & (wvExpStatus == "stop" | wvExpStatus == "abort")) # Abort pressed
+            fx3write("E",0x89,[1]) # Send trigger abort signal to monitor entity
+            fx3write("E",0x8A,[1]) # Send trigger abort reset signal to monitor entity to allow sequence to complete
+            triggerAborted = 1
+            print("\n   Trigger aborted - finishing scan ...\n")
+         endif
+      endwhile
+
+   else
+
+   # In normal mode sit in a loop waiting for the experiment duration to expire also check for an abort signal
+   # and if seen send abort command to the TRex if in production mode.
+      t1 = time()
+      while(1)
+         pause(0.001)
+         if(time()-t1 >= waitTime)
+            exitwhile()
+         endif
+         if(gData->productionMode == "true" & (wvExpStatus == "stop" | wvExpStatus == "abort")) # Abort pressed
+            fx3write("E",0x87,[1]) # Send abort signal to monitor entity
+            pause(0.1) # Allow time for it to abort
+            print("\n   Experiment aborted\n")
+            aborted = "true"
+            exitwhile()
+         endif
+      endwhile()
+
+   # Check for experiment end
+      extraTimeStart = time()
+      while(1)
+         retCode = fx3read("E", 0x86, 1)
+         if(retCode[0] == 0xCBCB) # PS has finished
+          #  pr ("Pulse sequence finished after $(time()-t1),g$s\n") # Expected time $waitTime,g$s\n")
+            exitwhile
+         elseif(retCode[0] == 0x0BAD) # PS has aborted
+            ucsUtilities:resumeLock()
+            message("Error","PS has aborted! Problem with stoplockandsat command?\n","error")
+            throw("PS has aborted!")
+            exitwhile
+         else # PS still running
+            if((time()-extraTimeStart) > 1) # Time out after 1 sec
+               pr("\n   Pulse program did not finish - make sure\n   default parameters are set for maximum\n   experiment duration.\n   Sequence will be aborted.")
+               fx3write("E",0x87,[1]) # Abort sequence
+               fx3write("T", 0x1A, [inv(0x40)]) # Turn off LED to indicate we have finished running a p.p
+               fx3write("E", 0x00, [0]) # Stop ADC capture (required after an abort)
+               fx3write("E", 0x85, [0]) # Return control to PC (shouldn't be necessary?)
+               aborted = "true"
+               exitwhile
+            endif
+         endif
+         pause(0.01)
+      endwhile
+
+   endif
+
+  # fx3write("E", 0x00, [0]) # Stop ADC capture (required after an abort)
+   fx3write("E", 0x85, [0]) # Return control to PC (shouldn't be necessary?)
+   fx3write("E", 0x88, [0]) # Reset abort flag if set
+   fx3write("E", 0x8A, [0]) # Reset trigger flag if set
+   fx3write("T", 0x1A, [inv(0x40)]) # Turn off LED to indicate we have finished running a p.p
+
+# If the system has been aborted then set a reset command to FX3
+   if(aborted == "true") 
+      xShim = wvFX3Info->pref->xshim
+      yShim = wvFX3Info->pref->yshim
+      zShim = wvFX3Info->pref->zshim
+      newShims = [xShim,yShim,zShim]
+      fx3write("R",0,newShims)
+      print("\n   x,y,z shims reset\n")
+   endif
+
+  if(gDebug->showPSTimes)
+      pr("\n   Time to run p.s. code = $(time()-t1)*1000,1.2f$ ms\n")
+   endif
+
+endproc()
+
+
+#######################################################
+# Update the FX3 parameters which are specified in
+# the wvFX3Info->fixedUpdateTable variable when generated
+# with the genupdate("full") option (basically for
+# testing Kea software compatibility)
+# #######################################################
+
+procedure(updateFX3FixedParameters, self, guipar)
+
+   assignlist(guipar)
+
+   updates = wvFX3Info->fixedUpdateTable # Faster with a local variable
+   psTable = wvFX3Info->ps 
+
+   expectedAcqTime = round(ucsRun:getAcqTime(guipar)*100)
+
+# Update the fixed parameters for this sequence
+   (w,h) = size(updates)
+   for(k = 0 to h-1)
+      if(updates[0,k] == 1) # Update the acquisition delay
+         if(updates[1,k] == 0x1000)
+            updates[3,k] = (expectedAcqTime & 0xFFFF0000)/2^16d
+         else
+            updates[3,k] = expectedAcqTime & 0x0000FFFF
+         endif
+      else # Update other fixed variable
+         entry = updates[1,k]
+         idx = single(entry & 0xFF)
+         par = wvFX3Info->ppList[idx]
+         value = eval(par)
+         if(par[0] == "a")
+            value = ucsRun:convertTxGain(value)           
+         elseif(par[0] == "d" | par[0] == "w")
+            value = round(value*100d)
+         endif
+         if((entry & 0x1000) > 0)
+            updates[3,k] = (value & 0xFFFF0000)/2^16d
+         else
+            updates[3,k] = value & 0x0000FFFF  
+         endif
+      endif
+   next(k)
+
+   if(gDebug->showUpdateList)
+      pr updates
+   endif
+
+# Update the event table (psTable) with the update table (updates)
+   updatepstable(psTable,updates)
+
+# Get the new experiment duration after this update
+  #(code, totalDuration) = packps(psTable)
+
+# Update the fixed parameters on the spectrometer
+   fx3write("T", 0x1A, [inv(0x40+0x80)]) 
+   t1 = time()
+   (w,h) = size(updates)
+   page = 0
+   fx3write("E",0x5000,[page])
+   for(k = 0 to h-1)# Loop over each parameter to update
+      adrs = single(updates[2,k])
+      value = updates[3,k]
+      page = trunc(adrs/4096)
+      if(page > 0)
+         fx3write("E",0x5000,[page])
+         fx3write("E",0x3000+adrs-page*4096,[value])
+      else
+         fx3write("E",0x3000+adrs,[value])
+      endif
+   next(k)
+   fx3write("T", 0x1A, [inv(0x40)])
+
+# Print out the event table to see the changes
+#   print("\n   Parameter, Line,  Value\n\n")
+#   (w,h) = size(psTable)
+#   for(y = 0 to w-1 step 3)
+#      print("$y/3,7d$: $psTable[y],10d$     $hex(psTable[y+1],32),8X$     $hex(psTable[y+2],32),8X$\n")
+#   next(y)
+
+# Make sure the global event table is updated with these changes
+   wvFX3Info->ps = psTable 
+   wvFX3Info->fixedUpdateTable = updates
+
+   if(gDebug->showPSTimes)
+      pr "\n   Time to update the event table with fixed parameters = $(time()-t1)*1000,1.2f$ ms\n"
+   endif
+
+endproc()
+
+
+
+#######################################################
+# Update the FX3 parameters which are specified in
+# the wvFX3Info->updateTable variable
+# Note that we can only address a maximum of 4k at
+# one time in TRex BRAM, hence the use of a page
+# address access by writing to 0x5000.
+#######################################################
+
+procedure(updateFX3Parameters, self, guipar)
+
+   assignlist(guipar)
+
+   updates = wvFX3Info->updateTable # Faster with a local variable
+   psTable = wvFX3Info->ps 
+
+   if(gDebug->showUpdateList)
+      pr updates
+   endif
+
+# Update the event table (psTable) with the update table (updates)
+   updatepstable(psTable,updates)
+
+# Print out the event table to see the changes
+#   print("\n   Parameter, Line,  Value\n\n")
+#   (w,h) = size(psTable)
+#   for(y = 0 to w-1 step 3)
+#      print("$y/3,7d$: $psTable[y],10d$     $hex(psTable[y+1],32),8X$     $hex(psTable[y+2],32),8X$\n")
+#   next(y)
+
+# Get the new experiment duration after this update
+  (code, totalDuration) = packps(psTable)
+   wvFX3Info->duration = totalDuration
+
+# Update the parameters on the spectrometer
+   fx3write("T", 0x1A, [inv(0x40+0x80)]) 
+   t1 = time()
+   (w,h) = size(updates)
+   page = 0
+
+   fx3write("E",0x5000,[page])
+   for(k = 0 to h-1)# Loop over each parameter to update
+      adrs = single(updates[2,k])
+      value = updates[3,k]
+      page = trunc(adrs/4096)
+      if(page > 0)
+         fx3write("E",0x5000,[page])
+         fx3write("E",0x3000+adrs-page*4096,[value])
+      else
+         fx3write("E",0x3000+adrs,[value])
+      endif
+   next(k)
+   fx3write("T", 0x1A, [inv(0x40)]) 
+
+# Make sure the global table is updated with changes
+   wvFX3Info->updateTable = updates
+
+   if(gDebug->showPSTimes)
+      pr "\n   Time to update the event table with variable parameters = $(time()-t1)*1000,1.2f$ ms\n"
+   endif
+
+endproc()
+
+
+#############################################################
+# Initialise the wvFX3Info data structure
+# This includes all the information needed by the
+# pulse program including the spectrometer parameters
+#############################################################
+
+procedure(writePPToFX3Folder, self)
+
+  # dir = gData->curExpt->ppPath
+   dir = wvFX3Info->dir
+
+   cd(dir)
+   mkdir("FX3")
+   cd("FX3")
+
+   ps = wvFX3Info->ps
+
+   printtofile("referenceEventTable.txt")
+   (w,h)= size(ps)
+   for(y = 0 to w-3 step 3)
+      row = ps[y:y+2]
+      print("$y/3,7d$:    $round(row[0]),10d$     $hex(row[1],32)$     $hex(row[2],32)$\n")
+   next(y)
+   closeprint()
+
+endproc()
+
+
+#############################################################
+# Write the pulse program to the FX3 returning the 
+# expected experiment duration
+#############################################################
+
+procedure(writePulseProgram, self, psInfo=null)
+
+   t1 = time()
+
+   fx3write("T", 0x1A, [inv(0x40+0x80)]) # Turn on the run p.p. USB LED (yellow) and the on light (blue)
+   fx3write("E", 0x85,[0])
+
+  # Generate a packed version of the event table
+   if(psInfo == null)
+      ps = wvFX3Info->ps
+   else
+      ps = psInfo->ps
+   endif
+
+# We need to offset the loop branch address if the minimal start code is used
+   if(gExpt->whichStartCode == 0) # Just use the full (standard) start code
+      loopOffset = 0
+   else # Minimal or both
+      loopOffset = size(wvFX3Info->minStartCode)
+   endif
+
+   (code, duration) = packps(ps, round(loopOffset))
+   if(gDebug->showDuration)
+      pr "Expected duration = $duration*1e-2$ us\n"
+   endif
+
+   t2 = time()
+   if(gDebug->showPSTimes)
+      pr("\n   Time to pack code = $(t2-t1)*1000,1.2f$ ms\n")
+   endif
+
+   # Work out how large the pulse program is
+   sz = size(code)
+   nPages = trunc(sz/4096)
+   rem = sz%4096
+   offset = 0
+   page = 0
+
+   # Check for an overlarge pulse program
+   if(nPages >= 8)
+      throw("Pulse program is too long")
+   endif
+
+  # Write code to separate pages if more than 4096 words
+   for(k = 0 to nPages-1)  
+      fx3write("E",0x5000,[page])
+      fx3write("E",0x3000,code[offset:offset+4096-1])
+      offset = offset+4096
+      page = page + 1
+   next(k)
+
+   # Write any remaining words if < 4096
+   if(rem > 0)
+      fx3write("E",0x5000,[page])  
+      fx3write("E",0x3000,code[offset:offset+rem-1])
+   endif
+   fx3write("E",0x5000,[0])
+   fx3write("T", 0x1A, [inv(0x40)])  # Turn off the run p.p. USB LED (yellow) and keep the power light on (blue)
+
+   t3 = time()
+
+   if(gDebug->showPSTimes)
+      pr("\n   Time to write p.s. code = $(t3-t1)*1000,1.2f$ ms\n")
+   endif
+
+endproc(duration)
+
+
+

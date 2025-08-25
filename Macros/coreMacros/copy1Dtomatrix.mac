@@ -1,0 +1,110 @@
+######################################################
+# Dialog to copy the current 1D plot into a matrix
+######################################################
+
+procedure(copy1DToMatrix)
+
+   n = :windowdefinition()
+    setwindowpar(n,"type","dialog")
+    setwindowpar(n,"show_menu","false")
+    setwindowpar(n,"focus",2)
+   :update_menu()
+   showdialog(n)
+
+endproc()
+
+##########################################################
+# Define the dialog
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Copy 1D data to vector", -1, -1, 282, 100)
+
+      # Define all controls with basic parameters
+       statictext(1, 182, 7, "right", "Variable Name")
+       textmenu(2, 115, 28, 71, 200)
+       button(3, 209, 13, 54, 28, "Copy",
+          if(:copy_to_matrix());
+          closedialog();
+          endif;)
+       button(4, 209, 53, 54, 28, "Exit",
+          closedialog();)
+       textmenu(5, 115, 56, 71, 200)
+       checkbox(6, 73, 32, "no,yes", "yes",:toggle_copy();)
+       checkbox(7, 73, 59, "no,yes", "yes",:toggle_copy();)
+       statictext(8, 65, 31, "right", "Copy x axis")
+       statictext(9, 65, 57, "right", "Copy y axis")
+       statictext(10, 106, 45, "right", "->")
+
+     # Set other control parameters
+       setpar(n,3,"mode","default")
+       setpar(n,4,"mode","cancel")
+
+endproc(n)
+
+##########################################################
+# Populate menu with names of all current 1D matrices
+##########################################################
+
+procedure(update_menu)
+
+   matMenu = matrixlist(1)
+   if(size(matMenu) > 0)
+      matMenu = sortlist(matMenu)
+      setpar(0,2,"menu",matMenu)
+      setpar(0,5,"menu",matMenu)
+   endif
+
+   setpar(0,2,"text","x")
+   setpar(0,5,"text","y")
+
+endproc()
+
+##########################################################
+# Copy the 1D data set to the named matrix or matrices
+##########################################################
+
+procedure(copy_to_matrix)
+
+   nameX = getpar(0,2,"text")
+   nameY = getpar(0,5,"text")
+   loadX = getpar(0,6,"text")
+   loadY = getpar(0,7,"text")
+
+   (x,y) = getplotdata("1d")
+
+   if(nameX != "" & loadX == "yes")
+      assign(nameX,x,"global")
+   endif
+
+   if(nameY != "" & loadY == "yes")
+      assign(nameY,y,"global")
+   endif
+
+   if((nameX == "" & loadX == "yes") | (nameY == "" & loadY == "yes"))
+      return(0)
+   endif
+
+endproc(1)
+
+procedure(toggle_copy)
+
+   loadX = getpar(0,6,"text")
+   loadY = getpar(0,7,"text")
+
+   if(loadX == "yes")
+      setpar(0,2,"enable","true")
+   else
+      setpar(0,2,"enable","false")
+   endif
+
+   if(loadY == "yes")
+      setpar(0,5,"enable","true")
+   else
+      setpar(0,5,"enable","false")
+   endif
+
+endproc()

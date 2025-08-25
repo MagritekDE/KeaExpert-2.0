@@ -1,0 +1,25 @@
+procedure(getsublist_test1,verbose,delay)
+
+   lst = list(100)
+   for(k = 10 to 99)
+      lst[k] = "a$k$ = $k$"
+   next(k)
+
+# Check first method (explicit extraction)
+   sublst = getsublist(lst,["a23","a24","a25","a26"])
+    for(k = 23 to 26)
+      if(sublst[k-23] != lst[k])
+         return(0, "Invalid result for: getsublist() #1")
+      endif
+   next(k)   
+
+# Check second method (first characters extraction)
+   sublst = getsublist(lst,"a2")
+    for(k = 20 to 29)
+      if(sublst[k-20] != lst[k])
+         return(0, "Invalid result for: getsublist() #2")
+      endif
+   next(k) 
+     
+
+endproc(1,"")

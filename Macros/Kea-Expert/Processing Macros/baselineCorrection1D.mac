@@ -1,0 +1,444 @@
+####################################################
+# A dialog to perform a baseline correction on a
+# spectrum. Works to identifying baseline regions
+# by dividing the spectrum into segments which are
+# approximately linear and which have a noise level
+# not significantly higher than a peak free region.
+# A 6th order trig function is then fitted to these
+# segments and then subtracted from the spectrum.
+# This simulates a distortion in the first 6 data 
+# points of the FID.
+# A simple option which just subtracts the end  
+# values from the spectrum can also be applied.
+#
+# Craig Eccles, Magritek, September 2020 
+####################################################
+
+procedure(baseLineCorrect1D, pltInfo)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   freqPlt = gPlot->getPlotObject(pltInfo)
+   (fAxis,spectrum) = freqPlt->getdata()
+
+   n = :windowdefinition()
+   windowvar(wvFreqPlt,wvAxis,wvSpectrum,wvSpectrumBak,wvPlotPar)
+   wvFreqPlt = freqPlt
+   wvAxis = fAxis
+   wvSpectrum = spectrum
+   wvSpectrumBak = spectrum
+   wvPlotPar = :getPlotPar(freqPlt)
+   :loadPar()
+   :selectBaselineCorrectionMethod()
+   setwindowpar(n,"show_menu","false")
+   showdialog(n)
+
+endproc()
+
+####################################################
+# Define the dialog
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Baseline Correction", -1, -1, 290, 171)
+       setwindowpar(n,"type","dialog")
+      # Define all controls with basic parameters
+      groupbox(1, "Baseline correction parameters", 10, 10, 195, 150)
+      statictext(2, 85, 54, "right", "Method:")
+      baseLineCorrectionCtrl = textmenu(3, 90, 50, 70, 200,
+         :selectBaselineCorrectionMethod();)
+      statictext(4, 85, 84, "right", "Nr. segments:")
+      baseLineNrSegmentsCtrl = textmenu(5, 90, 80, 60, 200)
+      statictext(6, 85, 114, "right", "Noise factor:")
+      baseLineNoiseFactorCtrl = textmenu(7, 90, 110, 60, 200)
+      statictext(8, 196, 83, "right", "Debug")
+      blDebugCtrl = checkbox(9, 175, 100, "no,yes", "no")
+      button(20, 216, 15, 55, 28, "Correct",
+         :process();
+         :savePar();)
+      button(21, 215, 53, 57, 28, "Undo",
+         :undo();)
+      button(22, 215, 93, 57, 28, "Help",
+         :showHelp();)
+      button(23, 215, 133, 57, 28, "Close",
+         :savePar();
+         closedialog();)
+
+     # Set other control parameters
+      setpar(n,3,"valueID","baseLineCorrectionMethod",
+                  "menu",["Offset","Segment"])
+      setpar(n,5,"valueID","baseLineNrSegments",
+                  "menu",["8","16","32","64","128","256"])
+      setpar(n,7,"valueID","baseLineNoiseFactor",
+                  "menu",["1","2","3","4","5","6","7","8","9","10"])
+      setpar(n,9,"valueID","blDebug")
+      setpar(n,20,"mode","default")
+
+     # Set other window parameters
+      setwindowpar(n,"showmenu","false")
+
+endproc(n)
+
+####################################################
+# Display some help for this function
+####################################################
+
+procedure(showHelp)
+
+   pr("\n\n--------------------------------------------------------------\n")
+   pr("       Baseline Correction Help\n")
+   pr("\n   Mode:   Offset\n")
+   pr("   Takes an average of the each end of the spectrum and then\n")
+   pr("   subtracts this from the spectrum. Useful when there is a\n")
+   pr("   simple offset.\n")
+   pr("\n   Mode:   Segment\n")
+   pr("   Searches for the baseline using linear segmentation, fits\n")
+   pr("   a low order trig function and then subtracts this from the\n")
+   pr("   spectrum. Useful when there is curvature.\n")
+   pr("\n   Segment parameter:   Nr. segments\n")
+   pr("   The number of segments to use when searching for the\n")
+   pr("   baseline. Depends on the curvature and number of peaks.\n")
+   pr("\n   Segment parameter:   Noise factor\n")
+   pr("   How much more noise to expect on the baseline relative to\n")
+   pr("   the noise at the ends of the spectrum. Increase until peaks\n")
+   pr("   are just affected and then back off. Typical value is 3.\n")
+   pr("\n   Option:   Debug\n")
+   pr("   Displays the baseline without performing the subraction.\n")
+   pr("\n   Button:   Correct\n")
+   pr("   Performs the correction on the current spectrum.\n")
+   pr("\n   Button:   Undo\n")
+   pr("   Removes the last correction.\n")
+   pr("\n   Button:   Help\n")
+   pr("   Displays this help.\n")
+   pr("\n   Button:   Close\n")
+   pr("   Closes the Baseline Correction window.\n")
+   pr("\n--------------------------------------------------------------\n\n")
+ 
+endproc()
+
+
+####################################################
+# Disable/enable certain controls based on method
+####################################################
+
+procedure(selectBaselineCorrectionMethod)
+
+   method = baseLineCorrectionCtrl->text
+
+   if(method == "Offset")
+      setpar(0,4,"enable","false")
+      setpar(0,5,"enable","false")
+      setpar(0,6,"enable","false")
+      setpar(0,7,"enable","false")
+      setpar(0,2,"enable","true")
+      setpar(0,3,"enable","true")
+   elseif(method == "Segment")
+      setpar(0,4,"enable","true")
+      setpar(0,5,"enable","true")
+      setpar(0,6,"enable","true")
+      setpar(0,7,"enable","true")
+      setpar(0,2,"enable","true")
+      setpar(0,3,"enable","true")
+   endif
+
+endproc()
+
+####################################################
+# Undo the correction
+####################################################
+
+procedure(undo)
+
+   wvSpectrum = wvSpectrumBak
+   wvFreqPlt->draw("false")
+   wvFreqPlt->plot(wvAxis,wvSpectrum)
+   :setPlotPar(wvFreqPlt,wvPlotPar)
+   wvFreqPlt->draw("true")
+
+endproc()
+
+####################################################
+# Load old parameters
+####################################################
+
+procedure(loadPar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   if(isfile("baseLineCorrect1D.par"))
+      proc = load("baseLineCorrect1D.par")
+      setctrlvalues(0,proc)
+   else
+      proc = struct(baseLineCorrectionMethod = "Segment",
+                     baseLineNoiseFactor = 3,
+                     baseLineNrSegments = 64,
+                     blDebug = "no")
+       setctrlvalues(0,list(proc))    
+   endif
+   cd(bak)
+
+endproc()
+
+####################################################
+# Save current parameters
+####################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("SpinsolveParameters")
+   cd("SpinsolveParameters")
+   guipar = getctrlvalues(0)
+   save("baseLineCorrect1D.par",sortlist(guipar))
+   cd(bak)
+
+endproc()
+
+###########################################################
+# Choose which correction procedure to apply
+###########################################################
+
+procedure(process)
+
+   assignlist(getctrlvalues(0))
+
+   if(baseLineCorrectionMethod == "Segment")
+      if(size(wvSpectrum)%baseLineNrSegments != 0)
+          message("Error","Spectral size must be divisible by number of base line segments.", "error")
+          return
+      endif 
+      (spectrum,bl,blFit) = :segmentBaselineCorrection(wvAxis,wvSpectrum)
+   elseif(baseLineCorrectionMethod == "Offset")   
+      (spectrum,bl,blFit) = :offsetBaselineCorrection(wvAxis,wvSpectrum)
+   endif
+
+# Redraw the corrected spectrum
+   wvFreqPlt->draw("false")
+   if(blDebugCtrl->text == "yes") # Debug mode
+      wvFreqPlt->plot(wvAxis,spectrum)
+      wvFreqPlt->hold("on")
+      wvFreqPlt->plot(wvAxis,bl,"color",[0,255,0])
+      wvFreqPlt->plot(wvAxis,blFit,"color",[0,0,255])
+      wvFreqPlt->hold("off")
+   else    # Corrected spectrum         
+      wvFreqPlt->plot(wvAxis,spectrum-blFit)
+   endif
+   :setPlotPar(wvFreqPlt,wvPlotPar) # Restore annotations
+   wvFreqPlt->draw("true")
+
+endproc()
+
+###########################################################
+# Correct the baseline by averaging the ends of the 
+# spectrum and then subtracting this
+###########################################################
+
+procedure(offsetBaselineCorrection, fAxis, spectrum)
+
+# Work out the offset by averaging 1/32 of the 
+# spectrum at each end.
+   sz = size(spectrum)
+   fac = 32
+   left = real(spectrum[0:sz/fac])
+   right = real(spectrum[sz-sz/fac:-1])
+   offset = (avg(left)+avg(right))/2
+
+# Make a vector showing the region used for correction
+   bl = matrix(sz)+offset
+   bl[0:sz/fac] = left
+   bl[sz-sz/fac:-1] = right
+
+# Make the correction vector
+   blfit = matrix(sz)+offset
+
+endproc(spectrum,bl,blfit)
+
+
+###########################################################
+# Correct the baseline using a piecewise segmentation 
+# and then trig fit
+###########################################################
+
+procedure(segmentBaselineCorrection, fAxis, spectrum)
+
+   # Break the spectrum into segments and search
+      sz = size(spectrum)
+      bl = matrix(sz)
+      nSeg = baseLineNrSegmentsCtrl->value
+      segSz = sz/nSeg
+      noiseFactor = baseLineNoiseFactorCtrl->value
+      foundBl = 1
+
+     # Loop over each segment
+      for(k = 0 to nSeg-1)
+       # Get a section of the data set of size segSz
+         x = [k*segSz:(k+1)*segSz-1]
+         seg = real(spectrum[x])
+       # Fit to a straight line to this
+         (m,c) = :linfit(seg)
+         line = m*(x-x[0]) + c
+       # and subtract from the segment
+       # This is the flattened version
+         segFlat = seg-(m*x+c)
+       # Find the noise level of this
+         segNoise = sd(segFlat)
+       # Record reference noise at edge
+         if(k == 0)
+            refNoise = segNoise*noiseFactor
+         endif
+       # If the noise is <= reference noise
+       # then record this as part of baseline
+         if(segNoise <= refNoise)
+           # If found a segment after a peak then
+           # just add a straight line from the last point
+            if(foundBl == 0) 
+               n = x[0]-lastx+1
+               xBreak = [lastx:x[0]]
+               yBreak = linspace(lasty,line[0],n)
+               bl[xBreak] = yBreak
+            endif
+            bl[x] = real(spectrum[x])
+            lastx = x[-1]
+            lasty = line[-1]
+            foundBl = 1
+         else        
+            foundBl = 0
+         endif
+            
+      next(k)
+
+  # Now do a trig fit to the baseline - should use an FT here it is much faster
+      blfit = :trigfit(bl,6)
+
+endproc(spectrum,bl,blfit)
+
+###########################################################
+# Perform a linear fit to the vector y
+# returning the slope and intercept
+###########################################################
+
+procedure(trigfit, spectrum, nrTerms)
+
+# Build the design matrix
+   xsize = size(spectrum)
+   ones = matrix(xsize) + 1
+   A = matrix(nrTerms*2+1,xsize)
+   x = [0:xsize-1]
+   n = 0
+   for(k = 0 to nrTerms*2)
+      if(k > 0)
+        if(k%2 == 1)
+            func =  "sin(x*n*pi/$xsize$)"
+         else
+            func =  "cos(x*n*pi/$xsize$)"
+         endif
+      else
+         func = "1"
+      endif
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      if(k%2 == 0)
+         n = n + 1
+      endif
+      A[k,~] = v'     
+   next(k)
+
+# Work out the inverse of the matrix
+   (U,V,S) = svd(A)
+   for(k = 0 to nrTerms*2)
+      if(S[k,k] != 0)
+        S[k,k] = 1/S[k,k]
+      endif
+   next(k)
+   inA = (V*S*U')
+   par =  (inA*spectrum')'
+
+   ymodel = matrix(xsize)
+   n = 0
+   for(k = 0 to nrTerms*2)
+      if(k > 0)
+        if(k%2 == 1)
+            func =  "sin(x*n*pi/$xsize$)"
+         else
+            func =  "cos(x*n*pi/$xsize$)"
+         endif
+      else
+         func = "1"
+      endif
+      if(func == "1")
+         v = ones
+      else
+         v = eval(func)
+      endif
+      if(k%2 == 0)
+         n = n + 1
+      endif
+      ymodel = ymodel + par[k]*v   
+   next(k)
+
+endproc(ymodel)
+
+###########################################################
+# Perform a linear fit to the vector y
+# returning the slope and intercept
+###########################################################
+
+procedure(linfit,y)
+
+# Calculate various sums  
+     N = size(y)
+     x = [0:N-1]
+    sx = sum(x)
+    sy = sum(y)
+   sxx = sum(x.*x)
+   syy = sum(y.*y)
+   sxy = sum(x.*y)
+
+# Work out slope and intercept
+   delta = sxx*N - sx*sx
+   c = (sxx*sy - sx*sxy)/delta
+   m = (sxy*N - sx*sy)/delta
+
+endproc(m,c)
+
+#############################################
+# Get current 1D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(getPlotPar, plt)
+
+   s = struct()
+   s->txt = plt->title->text()
+   s->lx = plt->xlabel->text()
+   s->ly = plt->ylabel->text()
+   (s->x1,s->x2,s->y1,s->y2) = plt->zoom1d()
+
+endproc(s)
+
+#############################################
+# Set 1D display parameters
+# (title, labels, plot mode, zoom region)
+#############################################
+
+procedure(setPlotPar, plt, s)
+
+   assignstruct(s)
+   plt->title(txt)
+   plt->xlabel(lx)
+   plt->ylabel(ly)
+   plt->zoom(x1,x2,y1,y2)
+
+endproc()

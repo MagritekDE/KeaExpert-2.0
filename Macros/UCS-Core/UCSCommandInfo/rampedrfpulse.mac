@@ -1,0 +1,20 @@
+#########################################################
+# Measures the duration of the rampedrfpulse command 
+# Used by DrawPulseSequence and GetPulseProgramDuration.
+#########################################################
+
+procedure(rampedrfpulse, ch, amp, ph, duration)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      pgo = gSeq->psInfo->preferences->pgo
+      totalDuration = pgo + duration + 2 + 1
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + totalDuration
+      gSeq->psInfo->command = gSeq->psInfo->command + ["rampedrfpulse,$ch$,$amp$,$ph$,$duration$,$args[1]$,$args[2]$,$args[3]$"]
+
+   endif
+
+endproc()
+

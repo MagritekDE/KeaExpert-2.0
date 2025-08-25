@@ -1,0 +1,309 @@
+##################################################
+# Generate a 2D plot window
+#
+# 3 modes:
+#
+#  0 arguments - full is self contained window
+#  1 argument - full window but constrained
+#  2 arguments - 2D plot object is part of another window
+#
+#  n is the window number
+#  m is the initial object number
+#
+###################################################
+
+procedure(plot2dwin, n, m)
+
+# Load the plot preferences
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      plotPreferences()    
+   catch
+   endtry
+   cd(bak)
+
+   if(nrArgs == 0) # Stand alone window
+      (x,y,w,h) = :loadpar()
+      n = window("2D Plot", x,y,w,h,"resizable")
+      setwindowpar(n,"dimensions",[x,y,w,h])
+      setwindowpar(n,"title","2D Plot ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      m = 1
+      plot2d(m,0,0,"ww","wh")
+   elseif(nrArgs == 1) # Constrained window
+      mode = n
+      n = window("2D Plot", "0","0","ww","wh","resizable")
+      setwindowpar(n,"title","2D Plot ($n$)")
+      setwindowpar(n,"titleupdate","true")
+      if(mode == 1)
+         setwindowpar(n,"constrained","true")
+      elseif(mode == 2)
+         setwindowpar(n,"constrained","true")
+         setwindowpar(n,"permanent","true")
+      endif
+      m = 1
+     plot2d(m,5,5,"ww-10","wh-10")
+   else # Part of another window
+     plot2d(m,5,5,"rw-10","rh-10")
+     setwindowpar(n,"titleupdate","false")
+   endif
+
+   :windowdefinition(n, m)
+
+# Set margins
+   bak = getcwd()
+   cd("$prefdir$\\Core Macros")
+   try
+      marginPreferences()
+      (l,r,t,b) = marginspref(2) 
+      curplot("2d")
+      windowmargins(l,r,t,b)
+   catch
+   endtry
+   cd(bak)
+
+# Stand alone window
+   if(nrArgs == 0)
+      setwindowpar(n,"toolbar",m+2)
+      setwindowpar(n,"statusbox",m+1)
+      showwindow(n,"recalc")
+      setwindowpar(n,"keepInFront","true")
+      setwindowpar(n,"menubar",[m+10:m+15])
+      setwindowpar(n,"title","2D Plot ($n$)")
+   elseif(nrArgs == 1)
+      setwindowpar(n,"keepInFront","false")
+      setwindowpar(n,"toolbar",m+2)
+      setwindowpar(n,"statusbox",m+1)
+   endif
+
+   setwindowpar(n,"focus",m)
+   setwindowpar(n,"exit_procedure",":exitproc()")
+   setwindowpar(n,"show_menu","false")
+
+   if(cmap() == null)
+      cmap(rainbow) 
+   endif
+
+endproc(n)
+
+procedure(loadpar)
+
+   bak = getcwd()
+   cd(prefdir)
+   try
+      cd("Core Macros")
+      pos = load("2d.par")
+      assignlist(pos,"local")
+   catch
+      x = -1
+      y = -1
+      w = 1000
+      h = 800
+   endtry
+   cd(bak)
+
+
+endproc(x,y,w,h)
+
+procedure(exitproc)
+
+   pos = getwindowpar(0,"dimensions")
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Core Macros")
+   cd("Core Macros")
+   par = ["x = $pos[0]$","y = $pos[1]$","w = $pos[2]$","h = $pos[3]$"]
+   save("2d.par",par)
+   cd(bak)
+   hidewindow(0)
+
+endproc()
+
+
+procedure(windowdefinition, n, m)
+
+
+   statusbox(m+1,"ww/3","ww*0.6667","ww-45","-1")
+
+   toolbark(m+2, "toolbar2D", "Load plot", "", func2d("load plot"),
+                 "Save Plot", "", func2d("save plot"),
+                 "Print plot", "", func2d("print plot"),
+                 "Separator", , ,
+                 "Zoom plot",  "", func2d("zoom region"),
+                 "Last zoom", "",  func2d("last region"),
+                 "Full region", "",  func2d("full region"),
+                 "Separator", , ,
+                 "Data display",  "display_data", func2d("display data"),
+                 "Region selection",  "select_region", func2d("select region"),
+                 "Move plot",  "drag_plot", func2d("drag plot"),
+                 "Separator", , ,
+                 "Corner axes",  "corner_axes", func2d("corner axes"),
+                 "Border axes",  "border_axes", func2d("border axes"),
+                 "Separator", , ,
+                 "Select row",  "select_row", func2d("select row"),
+                 "Select column",  "select_column", func2d("select column"),
+                 "Separator", , ,
+                 "Set display parameters",  "", displaySettings2D(),
+                 "Toggle color-bar scale",  "toggle_colorbar", func2d("toggle colorbar"),
+                 "Display surface plot", "",  surf2dParameters(),
+                 "Separator", ,)
+
+       menu(m+3, "bkgMenu", "Copy plot data to matrix ...\tCtrl+K", Copy2DToMatrix(),
+                 "Display matrix ...\tCtrl+D",displayMatrix(),
+                 "Copy image new 2D window ...\tCtrl+Shift+C", copy2DtoNewWin(),
+                 "Separator", "",
+                 "Keep this region, remove others", func2d("remove other subplots"),
+                 "Remove all data from region", func2d("remove current data"))
+
+       menu(m+4, "axesMenu",                  "Axes font", ImageParameters("Axes"),
+                 "Tick and label spacing ...", ImageParameters("Ticks"),
+                 "Grids", ImageParameters("Grid"),
+                 "Mapping", ImageParameters("Mapping"),
+                 "Axes range", ImageParameters("Range"))
+
+   
+       menu(m+5, "titleMenu", "Modify title ...", ImageParameters("Title"))
+   
+       menu(m+6, "labelMenu", "Modify labels ...", ImageParameters("Axes"),
+                              "Modify label font ...", ImageParameters("Labels"))
+
+
+
+       menu(m+7, "Scale", "Enlarge vertical\tShift+up", func2d("enlarge vertical"),
+                 "Reduce vertical\tShift+down", func2d("reduce vertical"),
+                 "Enlarge horizontal\tShift+right", func2d("enlarge horizontal"),
+                 "Reduce horizontal\tShift+left", func2d("reduce horizontal"))
+       menu(m+8, "Move", "Move up\tup", func2d("move up"),
+                 "Move down\tdown", func2d("move down"),
+                 "Move right\tright", func2d("move right"),
+                 "Move left\tleft", func2d("move left"))
+       menu(m+9, "Multiplot", "1 plot\tCtrl+Shift+S", func2d("multiplot 1*1"),
+                 "1 row by 2 columns\tCtrl+Shift+H", func2d("multiplot 1*2"),
+                 "2 rows by 1 column\tCtrl+Shift+V", func2d("multiplot 2*1"),
+                 "2 rows by 2 columns\tCtrl+Shift+G", func2d("multiplot 2*2"),
+                 "m rows by n columns\tCtrl+Shift+M", func2d("multiplot m*n"))
+ 
+      menu(m+10, "&File",
+                 "&Open Plot ...\tCtrl+O", func2d("load plot"),
+                 "&Save Plot ...\tCtrl+S", func2d("save plot"),
+                 "Separator", ,
+                 "Save as &Image ...\tCtrl+I", func2d("save as image"),
+                 "&Print Plot\tCtrl+P", func2d("print plot"))
+      menu(m+11, "&Edit", 
+                 "Copy all plots\tCtrl+Shift+C", func2d("copy all plots"),
+                 "Delete all plots\tCtrl+D", func2d("delete all plots"),
+                 "Separator", ,
+                 "Copy current plot\tCtrl+C", func2d("copy plot"),
+                 "Cut current plot\tCtrl+X", func2d("cut plot"),
+                 "Paste to current plot\tCtrl+V", func2d("paste plot"))
+
+       menuk(m+12,"&View", 
+                 "Show &data under cursor\td",  "display_data", func2d("display data"),
+                 "&Select a rectangular region\ts",  "select_region", func2d("select region"),
+                 "Move plot\tm",  "drag_plot", func2d("drag plot"),
+                 "Select row data\tr", "select_row",  func2d("select row"),
+                 "Select column data\tc",  "select_column", func2d("select column"),
+                 "Separator", , ,
+                 "&Select region and zoom\tCtrl+Drag", "",nop,
+                 "&Zoom a region\tz",  "", func2d("zoom region"),
+                 "Show &last region\tl",  "", func2d("last region"),
+                 "Display &all data\ta",  "", func2d("full region"),
+                 "Separator", , ,
+                 "Pull_right","" , m+9,
+                 "View one plot\tv",  "", func2d("view one plot"),
+                 "Full view\tf",  "", func2d("show all plots"),
+                 "Separator", ,,
+                 "Pull_right", "",  m+8,
+                 "Pull_right", "",  m+7,
+                 "Toggle color-bar",  "toggle_colorbar", func2d("toggle colorbar"),
+                 "Make plot square", "", make2DPlotSquare(),
+                 "Separator", ,,
+                 "Display &border\tb", "toggle_border",  func2d("toggle border"),
+                 "Separator",, ,
+                 "Display mode\tShift+D", "",  displaymode(),
+                 "Surface plot\tShift+S",  "", surf2dParameters(),
+                 "Separator",, ,
+                 "Show next window\tCtrl+Tab",  "", shownextwindow(0),
+                 "Show last window\tCtrl+Shift+Tab", "",  showlastwindow(0),
+                 "Hide window\tCtrl+W",  "", hidewindow(0);)
+       menu(m+13, "&Pref", 
+                 "Tick &spacing ...\tShift+S", ImageParameters("Ticks"),
+                 "&Grids ...\tShift+G", ImageParameters("Grid"),
+                 "Axes &range ...\tShift+R", ImageParameters("Range"),
+                 "Mapping ...\tShift+P", ImageParameters("Mapping"),
+                 "Plot margi&ns ...\tShift+N", ImageParameters("Margins"),
+                 "Separator", ,
+                 "&Title text and font ...\tShift+T", ImageParameters("Title"),
+                 "X and Y &labels ...\tShift+L", ImageParameters("Labels"),
+                 "&Axes font ...\tShift+A", ImageParameters("Axes"),
+                 "Separator", ,
+                 "Plot &colours ...\tShift+C", ImageParameters("Colors"),
+                 "Modify image colour-&map ...\tShift+M", selectColourScale(),
+                 "Make plot &black and white\tShift+B", makePlotBlackAndWhite("2d"),
+                 "Separator", ,
+                 "Load plot preferences ...\tCtrl+Shift+L", loadPlotPreferences("2d"),
+                 "Save plot preferences ...\tCtrl+Shift+S", savePlotPreferences("2d"))
+
+       menu(m+14, "&Macros",
+                 "Macro help", help("Macros\\2D","baselineCorrection.htm"),
+                 "Separator", ,
+                 "user menu", "$appdir$\\Macros\\2D_Macros")
+ 
+       menu(m+15, "&Help", "Window &help", help("User Interface\2D Plot","Introduction.htm"))
+
+# Set toolbar, statusbox and menu box for 2D plot
+   setpar(n,m+12,"checkitem",0) 
+   setpar(n,m+12,"checkitem",18) 
+   setpar(n,m,"toolbar",m+2) 
+   setpar(n,m,"statusbox",m+1)
+   setpar(n,m,"menubar",[m+10:m+15])
+   setpar(n,m+12,"name","image_view_menu")          
+   setpar(n,m+2,"name","image_toolbar") 
+   setpar(n,m+2,"checkitem",8) 
+   setpar(n,m+2,"checkitem",13) 
+
+
+   setpar(n,m,"bkgMenu",m+3)
+   setpar(n,m,"axesMenu",m+4)
+   setpar(n,m,"titleMenu",m+5)
+   setpar(n,m,"labelMenu",m+6)
+
+
+endproc()
+
+procedure(init)
+
+plot([0:100])
+title("My GUI plot")
+xlabel("x axis")
+ylabel("y axis")
+
+endproc()
+
+procedure(func,n)
+
+   image(noise(50,50))
+
+endproc()
+
+procedure(LoadFile)
+
+   name = getfilename("load","Load 2D Plot File","2D Plot Files","pt2")
+   if(name != "cancel")
+     load(name)
+   endif
+
+endproc()
+
+
+procedure(SaveFile)
+
+   name = getfilename("save","Save 2D Plot File","2D Plot Files","pt2")
+   if(name != "cancel")
+     save(name)
+   endif
+
+endproc()
+
+

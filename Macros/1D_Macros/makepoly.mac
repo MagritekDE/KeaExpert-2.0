@@ -1,0 +1,147 @@
+####################################################
+#                     makepoly.mac
+#
+# Generates a polynomial data set with optional
+# noise added. i.e.
+# 
+# y = a0 + a1*x + a2*x^2 + a3*x^3 + ... + noise
+#
+# To use it, select the maximum polynomial order
+# from the first text menu. 
+# 
+# Next choose the number of points in the plot.
+#
+# Then select the coefficients for the calculation.
+#
+# Finally choose the standard deviation of the 
+# noise (if any) to add and press the plot button.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(makepoly)
+   n = window("Make polynomial", -1, -1, 194, 234)
+      statictext(1, 14, 18, "left", "Order")
+      textmenu(2, 50, 14, 40, 500,
+             order = getpar(0,2,"value");
+             :enableobjs(order);)
+      button(3, 122, 15, 50, 30, "Plot",
+             order = getpar(0,2,"value");
+             :plotpoly(order);)
+      button(4, 122, 95, 50, 30, "Exit",
+             closewindow(0);)
+      statictext(5, 12, 52, "left", "Points")
+      textbox(6, 50, 50, 40)
+      statictext(7, 121, 150, "left", "Noise SD")
+      textbox(8, 125, 169, 40)
+      button(9, 122, 55, 50, 30, "Help",
+             :showhelp();)
+      :makeobjs();
+
+   showwindow(n)
+   
+   setpar(n,2,"menu",[0:1:9])
+   setpar(n,2,"text","1")
+   setpar(n,6,"text","50")
+   setpar(n,8,"text","0")
+   :enableobjs(1)
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","makepoly.htm")
+endproc()
+
+####################################################
+# Make the coefficient text fields and labels
+####################################################
+
+procedure(makeobjs)
+
+  x = 40    # Initial x coordinate
+  y = 80    # Initial y coordinate
+  step = 25 # Space between controls
+  obj = 10  # Number of first control
+
+  for(c = 1 to 11)
+     statictext(obj,x,y+3,"right","a$c-1$:")
+  #   setpar(0,obj,"enable","false")
+     obj = obj + 1
+     textbox(obj,x+10,y,40)
+  #   setpar(0,obj,"enable","false")
+     setpar(0,obj,"text","0")
+     obj = obj + 1
+     y = y + step
+  next
+
+endproc()
+
+####################################################
+# Ensure the correct controls are enabled
+####################################################
+
+procedure(enableobjs,order)
+
+
+# Make visible all controls up to present order
+
+  obj = 10  # Number of first control
+  for(c = 1 to order+1)
+    setpar(0,obj,"visible","true")
+    setpar(0,obj+1,"visible","true")
+    obj = obj + 2
+  next
+
+# Make all other controls invisible
+
+  for(c = order+2 to 11)
+    setpar(0,obj,"visible","false")
+    setpar(0,obj+1,"visible","false")
+    obj = obj + 2
+  next
+ 
+# Make the window the correct height
+
+  if(order > 5)
+     setwindowpar(0,"height",260 + (order-5)*25)
+  else
+     setwindowpar(0,"height",260)
+  endif
+
+endproc()
+
+####################################################
+# Calculate and plot the polynomial
+####################################################
+
+procedure(plotpoly,order)
+
+   N = getpar(0,6,"value")
+
+   x = [0:1:N-1]
+   f = x
+   y = matrix(N)
+   f[~] = 1
+   obj = 11  # Number of first text control
+   for(c = 1 to order+1)
+      p = getpar(0,obj,"value")
+      y = y + f*p
+      f = f.*x
+      obj = obj + 2
+   next
+
+   SD = getpar(0,8,"value")
+   y = y + noise(N)*SD
+   plot(x,y,"tracetype","none",
+               "symbolshape","opensquare",
+               "symbolsize",2,
+               "symbolcolor",[255,0,0])
+
+endproc()

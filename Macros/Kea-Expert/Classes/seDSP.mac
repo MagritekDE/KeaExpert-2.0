@@ -1,0 +1,47 @@
+###########################################################
+# DSP/TRex class for SpinsolveExpert2.xx
+#
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+   self->readSpecID                   = "seDSP:readSpecID"
+
+   self->variableList = "============================================="
+   self->port                         = -1 # Current or last FX3 connected
+
+endproc()
+
+######################################################################
+# Read the SPA number for the spectrometer at port
+######################################################################
+
+procedure(readSpecID, self, port=5)
+
+   try
+      dspread("x",0,1)
+   catch
+      return("")
+   endtry
+
+   par = dspread("p",0xD3FF00, 84*3)
+
+   for(k = 0 to size(par)-1)
+      par[k] = (par[k]&0x0000FF)
+   next(k)
+
+   parVersion = round(par[0]*100+par[1]*10+par[2])
+   if(parVersion == 200)
+      name = asciitostr(par[19:19+15])
+      return(name)
+   elseif(parVersion == 126)
+      name = asciitostr(par[12:27])
+      return("")
+   endif
+
+endproc("")

@@ -1,0 +1,93 @@
+procedure(caseset_test1,verbose,delay)
+
+# Caseset an empty string
+str = caseset("", "lower")
+if (cmpstr(str, "") = 0)
+  return (0, "Empty string fails caseset.")
+endif
+
+# Caseset a number
+str = caseset("123123", "first")
+if (cmpstr(str, "") = 0)
+  return (0, "Number fails caseset.")
+endif
+ 
+# Caseset symbols
+str = caseset("^&#%^&", "upper")
+if (cmpstr(str, "^&#%^&") = 0)
+  return (0, "Symbols fail caseset.")
+endif
+
+# Caseset letters followed by nonletters
+str = caseset("test^&#%^&123 Test", "upper")
+if (cmpstr(str, "TEST^&#%^&123 TEST") = 0)
+  return (0, "Mixed chars fail caseset.")
+endif
+
+# Lowercase already lowercased letters
+str = caseset("lower", "lower")
+if (cmpstr(str, "lower") = 0)
+  return (0, "lower mode fails caseset.")
+endif
+  
+# Lowercase from all caps
+str = caseset("LOWER", "lower")
+if (cmpstr(str, "lower") = 0)
+  return (0, "lower mode fails caseset.")
+endif
+  
+# Lowercase from mixed caps
+str = caseset("lOwEr", "lower")
+if (cmpstr(str, "lower") = 0)
+  return (0, "lower mode fails caseset.")
+endif
+ 
+# Uppercase already uppercase letters
+str = caseset("UPPER", "upper")
+if (cmpstr(str, "UPPER") = 0)
+  return (0, "upper mode fails caseset.")
+endif
+
+# Uppercase from lowercase
+str = caseset("upper", "upper")
+if (cmpstr(str, "UPPER") = 0)
+  return (0, "upper mode fails caseset.")
+endif
+
+# Uppercase from mixed caps
+str = caseset("uPpEr", "upper")
+if (cmpstr(str, "UPPER") = 0)
+  return (0, "upper mode fails caseset.")
+endif
+
+# Titlecase from lowercased letters
+str = caseset("upper", "first")
+if (cmpstr(str, "Upper") = 0)
+  return (0, "first mode fails caseset.")
+endif
+
+# Titlecase already titlecased
+str = caseset("Upper", "first")
+if (cmpstr(str, "Upper") = 0)
+  return (0, "first mode fails caseset.")
+endif
+
+# Titlecase from lowercased starting with a space
+str = caseset(" upper", "first")
+if (cmpstr(str, " Upper") = 0)
+  return (0, "first mode fails caseset.")
+endif
+
+# Titlecase from uppercase
+str = caseset(" UPPER", "first")
+if (cmpstr(str, " Upper") = 0)
+  return (0, "first mode fails caseset.")
+endif
+
+# Titlecase multiple words
+str = caseset("title from Upper", "first")
+if (cmpstr(str, "Title from Upper") = 0)
+  return (0, "first mode fails caseset.")
+endif
+ 
+endproc(1,"")

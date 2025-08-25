@@ -1,0 +1,1348 @@
+###################################################################################
+#  Draw the pulse sequence which is currently selected in the parameter list
+#  this version draws 3 traces one for RF ch1, 1 for RF ch2 and 1 for shims/gradients
+#
+# Options are:
+# mode ........... new - open a new window, current - use the current window
+# fontsize ....... what size to display the text (in points)
+# showArgNames ... toggles the display of times or argument names
+#
+# If the shift key is held down from the menu option then the current plot is used
+#
+###################################################################################
+
+procedure(DrawPulseSequence2, mode = "new", keepZoom=0, fontSize=8, showArgNames=1, usePPBlocks=1,showTableInfo=1)
+
+   gExpt->pauseMonitoring()
+
+   guiwinnr(gView->wn)
+
+   protocol = gData->curExpt->protocol
+
+   if(GetPulseProgramDuration:dspDuration(protocol,usePPBlocks,null) == 0)
+      message("Error","'$protocol$' does not support pulse sequence visualization.","error")
+      gExpt->resumeMonitoring()
+      return
+   endif
+
+   uiPar = struct(getctrlvalues(gView->wn))
+
+   sequenceInfo = gSeq->psInfo->command
+   
+   if(iskeypressed("shift"))
+      mode = "current"
+   endif
+
+   n = findwin("title","Sequence Visualizer")
+   if(((mode == "current") & (n == -1)) | (mode == "new"))
+      n = sequenceVisualizer("DrawPulseSequence2")
+      func1d("toggle border")
+   endif
+   plt = curplot("1d")
+   plt->rmtext()
+   sz = size(sequenceInfo)
+
+   textStr = null
+
+   x1_0 = 0
+   x2_0 = 0
+   xg_0 = 0
+
+   y1_0 = 350 # Channel 1 y-offset
+   y2_0 = 150 # Channel 2 y-offset
+   yg_0 = 0   # Gradient channel y-offset
+
+# Initial values
+   x1 = [x1_0] # Channel 1
+   y1 = [y1_0]
+   x2 = [x2_0] # Channel 2
+   y2 = [y2_0]
+   xg = [xg_0] # Gradients/Shims
+   yg = [yg_0]
+   cnt = 0
+
+# One step
+   dx = [0,2] + x1[-1]
+   dy1 = [y1_0,y1_0]
+   dy2 = [y2_0,y2_0]
+   dyg = [yg_0,yg_0]
+   x1 = join(x1,dx)
+   y1 = join(y1,dy1)
+   x2 = join(x2,dx)
+   y2 = join(y2,dy2)
+   xg = join(xg,dx)
+   yg = join(yg,dyg)
+
+# Loop over the commands
+   for(k = 1 to sz)
+   
+      cmdInfo = sequenceInfo[k-1]
+
+      args = parse(cmdInfo,",")
+      cmd = args[0]
+  
+      if(cmd == "acquire")
+
+         mode = args[1]
+
+         if(mode != "overwrite")
+            ax = [-3:0.05:3]
+            dx = ax + x1[-1] + 3.5
+            dy = 75*sin((ax+0.001)*pi)/((ax+0.001)*pi)
+            xOff = -3
+         else
+            ax = [0:0.05:12]
+            dx = ax + x1[-1] + 0.5
+            dy = 75*sin(ax*pi).*exp(-ax/4)
+            xOff = -6
+         endif
+
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         yOffset = y1_0
+
+         N = eval(args[2])
+         if(mode != "overwrite")
+            dur = args[3]       
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-40]$","N = $N$, $dur$ us","-0.5","1"]
+            yOff = 90
+         else
+            dwellTime = eval(args[3])       
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-40]$","N = $N$, $N*dwellTime/1000,1.1f$ ms","-0.5","1"]
+            yOff = 40
+         endif
+        textStr = textStr + ["$[x1[-1]+xOff,yOff+yOffset]$","Acquire ($mode$)","-0.5","2"]
+
+     elseif(cmd == "acquireon")
+
+         ax = [0:0.05:6]
+         dx = ax + x1[-1] + 0.5
+         dy = 75*sin(ax*pi).*exp(-ax/8)
+
+         if(uiPar->rxChannel == "1H" | uiPar->rxChannel == "19F")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y2_0
+         endif
+
+         textStr = textStr + ["$[x1[-1]-3,yOffset+70]$","Acquire On","-0.5","2"]
+
+      elseif(cmd == "acquireoff")
+
+         ax = [0:0.05:6]
+         dx = ax + x1[-1] + 0.5
+         dy = 75*sin((ax+6)*pi).*exp(-(ax+6)/8)
+
+         if(uiPar->rxChannel == "1H" | uiPar->rxChannel == "19F")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y2_0
+         endif
+
+         textStr = textStr + ["$[x1[-1]-3,yOffset+40]$","Acquire Off","-0.5","2"]
+
+      elseif(cmd == "cleardata")
+
+         dx = [0,0.1,4.9,5,4.9,0.1,0,0.1,4.9,5] + x1[-1]
+         dy = [0,5,5,0,-5,-5,0,5,5,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         N = args[1]
+         nrName = args[2]
+         if(showArgNames & nrName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$nrName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","N = $N$","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+20]$","Clear data","-0.5","2"]
+
+      elseif(cmd == "chirprf2" | cmd == "chirprf")
+
+         channel = args[1]
+         N = 256
+         dx = linspace(0,6,N)/1.5 + x1[-1]
+         f = linspace(1,3,N)
+         dy = 50*sin(2*pi*dx.*f)
+         xOff = -3
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            yOffset = y1_0 
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            yOffset = y2_0 
+         endif
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         ph = args[2]
+         sz = eval(args[3])
+         dur = eval(args[4])
+         ampTableName = args[5]
+         phTableName = args[6]
+         phName = args[7]
+
+         if(showArgNames)
+            dur = args[3]       
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-85]$","$ampTableName$, $phTableName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-85]$","N = $sz$, $sz*dur/1000,0.4g$ ms","-0.5","1"]
+         endif
+        textStr = textStr + ["$[x1[-1]+xOff,yOffset+85]$","Chirp RF (Ch-$channel$)","-0.5","2"]
+
+      elseif(cmd == "composite")
+
+         channel = args[1]
+         dx = [0,1,1.1,2,2.04,2.08,2.9,2.94,2.98,3.9,4,5] + x1[-1]
+         dy = [0,0,1,1,0,1,1,0,1,1,0,0]*100
+         angle = args[2]
+         dur = eval(args[3])
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$angle$, $dur,.3g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0+110]$","Composite (Ch1)","-0.5","2"]
+         elseif(channel == "2")
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0-10]$","$angle$, $dur,.3g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0+110]$","Composite (Ch2)","-0.5","2"]
+         elseif(channel == "1+2")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$angle$, $dur,.3g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0+110]$","Composite (Ch1)","-0.5","2"]
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0-10]$","$angle$, $dur,.3g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0+110]$","Composite (Ch2)","-0.5","2"]
+         endif
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+
+       elseif(cmd == "decindex" & showTableInfo)
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         tableName = args[1]
+         if(showArgNames & durName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$tableName$","-0.5","1"]
+         else
+           # textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$dur,1.0f$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","DecrementIndex","-0.5","2"]
+
+      elseif(cmd == "delay")
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+  
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         dur = eval(args[1])
+         durName = args[2]
+         if(showArgNames & durName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$durName$","-0.5","1"]
+         else
+            if(vartype(dur) == "matrix1d") # Display the duration range
+                dur = gFX3->convertDigitalDelay(dur)
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","[$dur[0],1.1f$ .. $dur[-1],1.1f$] us","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$dur,1.1f$ us","-0.5","1"]
+            endif
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","Delay","-0.5","2"]
+
+     elseif(cmd == "dualshapedrf1")
+
+         ax = [-3:0.05:3]
+         dx = ax + x1[-1] + 3.5
+         dy = 75*exp(-ax^2)
+         xOff = -3
+  
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,dy+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+
+         sz = eval(args[3])
+         dur = eval(args[4])
+         ampTableName = args[5]
+         ph1Name = args[6]
+         ph2Name = args[7]
+         stepName = args[8]
+         durName = args[9]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-20]$","$ph1Name$, $ph2Name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-30]$","$stepName$, $durName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-20]$","$ph1Name$, $ph2Name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-30]$","$stepName$, $durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-20]$","Length = $sz*dur,0.4g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-20]$","Length = $sz*dur,0.4g$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]+xOff,y1_0+85]$","(Amplitude modulated)","-0.5","2"]
+         textStr = textStr + ["$[x1[-1]+xOff,y1_0+95]$","Dual-Channel Shaped RF","-0.5","2"]
+
+      elseif(cmd == "dualshapedrf2")
+
+         ax = [-3:0.05:3]
+         dx = ax + x1[-1] + 3.5
+         dy = 75*exp(-ax^2)
+         xOff = -3
+
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,dy+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+
+         sz = eval(args[3])
+         dur = eval(args[4])
+         ampTableName = args[5]
+         ph1Name = args[6]
+         ph2Name = args[7]
+         stepName = args[8]
+         durName = args[9]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-20]$","$ph1Name$, $ph2Name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-30]$","$stepName$, $durName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-20]$","$ph1Name$, $ph2Name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-30]$","$stepName$, $durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0-20]$","Length = $sz*dur,0.4g$ us","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,y2_0-20]$","Length = $sz*dur,0.4g$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]+xOff,y1_0+85]$","(Amplitude+Phase modulated)","-0.5","2"]
+         textStr = textStr + ["$[x1[-1]+xOff,y1_0+95]$","Dual-Channel Shaped RF","-0.5","2"]
+
+       elseif(cmd == "endiftrue") # Ignore
+
+       elseif(cmd == "endloop")
+
+         dx = [0,0.5,0.4,0.0,0.4,0.5,0.4,0.0,0.4,0.5] + x1[-1]
+         dy = [0,0,150,150,150,0,-400,-400,-400,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         name = args[1]
+
+         textStr = textStr + ["$[x1[-1],y1_0+160]$","End loop $name$","-1","1"]
+
+      elseif(cmd == "gradramp")
+
+         start = eval(args[1])
+         end = eval(args[2])
+         steps = eval(args[3])
+         del = eval(args[4])
+         try
+            if(abs(end) > abs(start))
+               dx = [0,0.5,2.0,3.0,2.8,3.0,2.8,3.0,2,0.5,5] + x1[-1]
+               dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*75
+            else
+               dx = [0,4.5,3,2,2.2,2,2.2,2,3,4.5,5] + x1[-1]
+               dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*75
+            endif
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,dy+yg_0)
+         catch
+         endtry
+
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0-30]$","$start$->$end$","-0.5","1"]
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0-40]$","$steps*del,1.0f$ us","-0.5","1"]
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+90]$","Grad-Ramp","-0.5","2"]
+
+      elseif(cmd == "iftrue") # Ignore
+
+
+      elseif(cmd == "incindex" & showTableInfo)
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         tableName = args[1]
+        # amountName = args[2]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$tableName$","-0.5","1"]
+         else
+           # textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$dur,1.0f$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","IncrementIndex","-0.5","2"]
+
+      elseif(cmd == "incrxfreq")
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         delF = args[1]
+         delFName = args[2]
+         if(showArgNames & durName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$delFName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$delF$ MHz","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","Increment Rx Frequency","-0.5","2"]
+
+      elseif(cmd == "inctxfreq")
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         delF = args[1]
+         delFName = args[2]
+         if(showArgNames & durName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$delFName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$delF$ MHz","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","Increment Tx Frequency","-0.5","2"]
+
+      elseif(cmd == "loop")
+
+         dx = [0,0.5,0.6,1.0,0.6,0.5,0.6,1.0,0.6,0.5] + x1[-1]
+         dy = [0,0,150,150,150,0,-400,-400,-400,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+
+         name = args[1]
+         N = args[2]
+         textStr = textStr + ["$[x1[-1],y1_0+160]$","Loop $name$, N = $N$","0","1"]
+
+      elseif(cmd == "pulse")
+
+         sz = size(args)
+
+         channel = args[1]
+
+         dx = [0,1,1.1,3.9,4,5] + x1[-1]
+         dy = [0,0,1,1,0,0]*100
+
+         if(sz == 8 | sz == 10)
+            if(channel[0] == "i" | channel[0] == "e")
+               x1 = join(x1,dx)
+               y1 = join(y1,dy+y1_0)
+               x2 = join(x2,dx)
+               y2 = join(y2,matrix(size(dx))+y2_0)
+               channel = "1"
+               yoff = y1_0
+            else
+               x1 = join(x1,dx)
+               y1 = join(y1,matrix(size(dx))+y1_0)
+               x2 = join(x2,dx)
+               y2 = join(y2,dy+y2_0)
+               yoff = y2_0
+            endif
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+         endif
+
+         if(sz == 8)  # Single pulse no frequency
+ 
+            amp = eval(args[2])
+            ph = eval(args[3])
+            dur = eval(args[4])
+            ampName = :choose(args[5]=="", "$amp,1.0f$", args[5])
+            phName  = :choose(args[6]=="", "$ph,1.1f$",  args[6])
+            durName = :choose(args[7]=="", "$dur,1.1f$", args[7])
+
+            if(showArgNames) # Show variable names
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$ampName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$durName$","-0.5","1"]
+            else # Show values
+               if(vartype(amp) == "matrix1d") # Display the amplitude range
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","[$amp[0]$ .. $amp[-1]$]","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp$ dB","-0.5","1"]
+               endif
+               if(vartype(ph) == "matrix1d") # Display the phase range
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","[$ph[0]$ .. $ph[-1]$]","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$ph*90$ deg","-0.5","1"]
+               endif
+               if(vartype(dur) == "matrix1d") # Display the duration range
+                  dur = gFX3->convertDigitalDelay(dur)
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","[$dur[0],1.0f$ .. $dur[-1],1.0f$] us","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$dur,1.0f$ us","-0.5","1"]
+               endif
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+110]$","RF Pulse (Ch-$channel$)","-0.5","2"]
+
+         elseif(sz == 10) # Single pulse with frequency
+
+            amp = eval(args[2])
+            ph = eval(args[3])
+            dur = eval(args[4])
+            freq = eval(args[5])
+            ampName = args[6]
+            phName = args[7]
+            durName = args[8]
+            freqName = args[9]
+            if(showArgNames) # Show variable names
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$ampName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$durName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-40]$","$freqName$","-0.5","1"]
+            else # Show values
+               if(vartype(amp) == "matrix1d") # Display the amplitude range
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","[$amp[0]$ .. $amp[-1]$]","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp$ dB","-0.5","1"]
+               endif
+               if(vartype(ph) == "matrix1d") # Display the phase range
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","[$ph[0]$ .. $ph[-1]$]","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$ph*90$ deg","-0.5","1"]
+               endif
+               if(vartype(dur) == "matrix1d") # Display the duration range
+                  dur = gFX3->convertDigitalDelay(dur)
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","[$dur[0],1.0f$ .. $dur[-1],1.0f$] us","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$dur,1.0f$ us","-0.5","1"]
+               endif
+               if(vartype(freq) == "matrix1d") # Display the frequency range (need to convert back)
+                  freq = gFX3->convertDigitalFrequency(freq)
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-40]$","[$freq[0],1.3f$ .. $freq[-1],1.3f$] MHz","-0.5","1"]
+               else
+                  textStr = textStr + ["$[x1[-1]-2.5,yoff-40]$","$freq,1.6f$ MHz","-0.5","1"]
+               endif
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+110]$","RF Pulse (Ch-$channel$)","-0.5","2"]
+
+        elseif(sz == 17) # Dual pulse
+
+            ch1      = args[1]
+            amp1      = args[2]
+            ph1       = eval(args[3])
+            freq1     = eval(args[4])
+            ch2       = args[5]
+            amp2      = args[6]
+            ph2       = eval(args[7])
+            freq2     = eval(args[8])
+            dur       = eval(args[9])
+            amp1Name  = args[10]
+            ph1Name   = args[11]
+            freq1Name = args[12]
+            amp2Name  = args[13]
+            ph2Name   = args[14]
+            freq2Name = args[15]
+            durName   = args[16]
+
+            if(showArgNames)
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$amp1Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-10]$","$amp2Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$ph1Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-20]$","$ph2Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-30]$","$freq1Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-30]$","$freq2Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-40]$","$durName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-40]$","$durName$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$amp1$ dB","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-10]$","$amp2$ dB","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$ph1*90$ deg","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-20]$","$ph2*90$ deg","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-30]$","$freq1,1.6f$ MHz","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-30]$","$freq2,1.6f$ MHz","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y1_0-40]$","$dur,1.0f$ us","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,y2_0-40]$","$dur,1.0f$ us","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0+110]$","Dual-Channel RF Pulse","-0.5","2"]
+
+         endif     
+
+      elseif(cmd == "rampedrfpulse")
+
+         channel = args[1]
+         if(channel == "other")
+            channel = "1"
+         endif
+
+         dx = [0,1,1.5,3.5,4,5] + x1[-1]
+         dy = [0,0,1,1,0,0]*100
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            yOffset = y1_0 
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            yOffset = y2_0 
+         endif
+
+         amp = eval(args[2])
+         dur = eval(args[4])
+         ampName = :choose(args[5]=="", "$amp,1.0f$", args[5])
+         phName  = :choose(args[6]=="", "$ph,1.1f$",  args[6])
+         durName = :choose(args[7]=="", "$dur,1.1f$", args[7])
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yOffset-10]$","$ampName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yOffset-20]$","$phName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yOffset-30]$","$durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yOffset-10]$","$amp$ dB","-0.5","1"]
+            try
+               ph = eval(args[3])
+               if(vartype(ph) == "float")
+                  textStr = textStr + ["$[x1[-1]-2.5,yOffset-20]$","$ph*90$ deg","-0.5","1"]
+               endif
+            catch
+            endtry
+            textStr = textStr + ["$[x1[-1]-2.5,yOffset-30]$","$dur,1.0f$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yOffset+110]$","Ramped RF Pulse (Ch-$channel$)","-0.5","2"]
+
+      elseif(cmd == "setindex" & showTableInfo)
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         tableName = args[1]
+         indexName = args[2]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$tableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$indexName$","-0.5","1"]
+         else
+           # textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$dur,1.0f$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","SetIndex","-0.5","2"]
+
+      elseif(cmd == "settxfreqs")
+
+         dx = [0,0.1,4.9,5,4.9,0.1,0,0.1,4.9,5] + x1[-1]
+         dy = [0,5,5,0,-5,-5,0,5,5,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,dy+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         f1 = eval(args[1])
+         f2 = eval(args[2])
+         f1Name = args[3]
+         f2Name = args[4]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$f1Name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0-20]$","$f2Name$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-20]$","$f1,0.5g$ MHz","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,y2_0-20]$","$f2,0.5g$ MHz","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+20]$","Set Ch1/2 Tx Freq.","-0.5","2"]
+
+      elseif(cmd == "settxfreq")
+
+         dx = [0,0.1,4.9,5,4.9,0.1,0,0.1,4.9,5] + x1[-1]
+         dy = [0,5,5,0,-5,-5,0,5,5,0]
+
+         if(size(args) == 5)
+            channel = eval(args[1])
+            freq = eval(args[2])
+            channelName = args[3]
+            fName = args[4]
+         else
+            channel = 1
+            freq = eval(args[1])
+            fName = args[2]
+         endif
+
+         if(channel == 1)
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoffset = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoffset = y2_0
+         endif
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yoffset-12]$","$fName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yoffset-12]$","$freq,0.5g$ MHz","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yoffset+12]$","Set Ch$channel$ Tx Freq.","-0.5","2"]
+
+      elseif(cmd == "setrxfreq")
+
+         dx = [0,0.1,4.9,5,4.9,0.1,0,0.1,4.9,5] + x1[-1]
+         dy = [0,5,5,0,-5,-5,0,5,5,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+
+         freq = eval(args[1])/10
+         fName = args[2]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-12]$","$fName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-12]$","$freq,0.5g$ MHz","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+12]$","Set Rx Freq.","-0.5","2"]
+
+      elseif(cmd == "shapedrf1")
+
+         channel = args[1]
+
+         ax = [-3:0.05:3]
+         dx = ax + x1[-1] + 3.5
+         dy = 75*exp(-ax^2)
+         xOff = -3
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y2_0
+         endif
+
+         sz = eval(args[3])
+         dur = eval(args[4])
+         ampTableName = args[5]
+         phName = args[6]
+         stepName = args[7]
+         durName = args[8]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-20]$","$phName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-30]$","$stepName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-40]$","$durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-20]$","Length = $sz*dur/1e3,0.4g$ ms","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]+xOff,yOffset+85]$","(Amplitude modulated)","-0.5","2"]
+         textStr = textStr + ["$[x1[-1]+xOff,yOffset+95]$","Shaped RF Pulse (Ch-$channel$)","-0.5","2"]
+
+      elseif(cmd == "shapedrf2")
+
+         ax = [-3:0.05:3]
+         dx = ax + x1[-1] + 3.5
+         dy = 75*exp(-ax^2)
+         xOff = -3
+         channel = args[1]
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yOffset = y2_0
+         endif
+
+         sz = eval(args[3])
+         dur = eval(args[4])
+         ampTableName = args[5]
+         phName = args[6]
+         stepName = args[7]
+         durName = args[8]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","$ampTableName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-20]$","$phName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-30]$","$stepName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-40]$","$durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","Steps = $sz$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset-20]$","Length = $sz*dur/1e3,0.4g$ ms","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]+xOff,yOffset+85]$","(Amplitude+Phase modulated)","-0.5","2"]
+         textStr = textStr + ["$[x1[-1]+xOff,yOffset+95]$","Shaped RF Pulse (Ch-$channel$)","-0.5","2"]
+
+      elseif(cmd == "shapedrf")
+
+         ax = [-3:0.05:3]
+         dx = ax + x1[-1] + 3.5
+         dy = 75*exp(-ax^2)
+         xOff = -3
+         channel = args[1]
+
+
+         if(size(args) == 14) # Dual channel
+
+            ph1 = args[1]
+            ph2 = args[2]
+            freq1 = args[3]
+            freq2 = args[4]
+            sz = eval(args[5])
+            dur = eval(args[6])
+            ampTableName = args[7]
+            phTableName = args[8]
+            ph1Name = args[9]
+            ph2Name = args[10]
+            f1Name = args[11]
+            f2Name = args[12]
+
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+
+            if(showArgNames)
+               textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","$ampTableName$, $phTableName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","$ampTableName$, $phTableName$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]+xOff,y1_0-10]$","N = $sz$, $sz*dur/1000,0.4g$ ms","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]+xOff,y2_0-10]$","N = $sz$, $sz*dur/1000,0.4g$ ms","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]+xOff,y1_0+85]$","Dual Shaped RF","-0.5","2"]
+
+         else # Single channel
+
+            ph = args[2]
+            sz = eval(args[3])
+            dur = eval(args[4])
+            ampTableName = args[5]
+            phTableName = args[6]
+            phName = args[7]
+
+            if(channel == "1")
+               x1 = join(x1,dx)
+               y1 = join(y1,dy+y1_0)
+               x2 = join(x2,dx)
+               y2 = join(y2,matrix(size(dx))+y2_0)
+               xg = join(xg,dx)
+               yg = join(yg,matrix(size(dx))+yg_0)
+               yOffset = y1_0
+            else
+               x1 = join(x1,dx)
+               y1 = join(y1,matrix(size(dx))+y1_0)
+               x2 = join(x2,dx)
+               y2 = join(y2,dy+y2_0)
+               xg = join(xg,dx)
+               yg = join(yg,matrix(size(dx))+yg_0)
+               yOffset = y2_0
+            endif
+
+            if(showArgNames)
+               dur = args[3]       
+               textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","$ampTableName$, $phTableName$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]+xOff,yOffset-10]$","N = $sz$, $sz*dur/1000,0.4g$ ms","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]+xOff,yOffset+85]$","Shaped RF (Ch-$channel$)","-0.5","2"]
+
+         endif
+
+      elseif(cmd == "gradon")
+
+         dx = [0,0.5,1.0,2.0,1.8,2.0,1.8,2.0,1,0.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*50
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+         name = args[1]
+         value = args[2]
+         nameArg = args[3]
+         valueArg = args[4]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$nameArg$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-30]$","$valueArg$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$name$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-30]$","$value$","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+65]$","Grad-On","-0.5","2"]
+
+      elseif(cmd == "gradoff")
+
+         dx = [0,4.5,4,3,3.2,3,3.2,3,4,4.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*50
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+
+         name = args[1]
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$name$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$name$","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+65]$","Grad-Off","-0.5","2"]
+
+
+      elseif(cmd == "gradramp")
+
+         channel = args[1]
+         start = eval(args[2])
+         end   = eval(args[3])
+         steps = eval(args[4])
+         del   = eval(args[5])
+         startName = :choose(args[7]=="", "$start,1.0f$", args[7])
+         endName   = :choose(args[8]=="", "$end,1.0f$",   args[8])
+         stepsName = :choose(args[9]=="", "$steps,1.0f$", args[9])
+         delName   = :choose(args[10]=="","$del,1.0f$",   args[10])
+         if(abs(end) > abs(start))
+            dx = [0,0.5,2.0,3.0,2.8,3.0,2.8,3.0,2,0.5,5] + x1[-1]
+            dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*75
+         else
+            dx = [0,4.5,3,2,2.2,2,2.2,2,3,4.5,5] + x1[-1]
+            dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*75
+         endif
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-30]$","$startName$->$endName$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-40]$","$stepsName$*$delName$ us","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-30]$","$start$->$end$","-0.5","1"]
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-40]$","$steps*del,1.0f$ us","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+90]$","Shim-Ramp (Ch-$channel$)","-0.5","2"]
+
+      elseif(cmd == "spoil")
+
+         dx = [0,1,1.1,3.9,4,5,4,3.9,1.1,1,0,0,1,1.1,3.9,4,5] + x1[-1]
+         dy = [0,0,1,1,0,0,0,1,1,0,0,0,0,-1,-1,0,0]*50
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+         name = "Spoiler"
+         which = args[1]
+         dur = eval(args[2])
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0-60]$","$dur/1000,.3g$ ms","-0.5","1"]
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+60]$","Spoiler ($which$)","-0.5","2"]
+
+      elseif(cmd == "spoileron")
+
+         dx = [0,0.5,2.0,3.0,2.8,3.0,2.8,3.0,2,0.5,5] + x[-1]
+         dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*75
+
+         x = join(x,dx)
+         y = join(y,dy)
+
+         which = args[1]
+
+         textStr = textStr + ["$[x[-1]-2.5,90]$","SpoilerOn ($which$)","-0.5","2"]
+
+      elseif(cmd == "spoileroff")
+
+         dx = [0,4.5,3,2,2.2,2,2.2,2,3,4.5,5] + x[-1]
+         dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*75
+
+         x = join(x,dx)
+         y = join(y,dy)
+
+         which = args[1]
+
+         textStr = textStr + ["$[x[-1]-2.5,90]$","SpoilerOff ($which$)","-0.5","2"]
+
+      elseif(cmd == "txon")
+
+         dx = [0,0.5,1.0,2.0,1.8,2.0,1.8,2.0,1,0.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*70
+         channel = args[1]
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoff = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoff = y2_0
+         endif
+
+         sz = size(args)
+
+         if(sz == 6)
+
+            amp     = args[2]
+            phas    = args[3]
+            ampName = args[4]
+            phName  = args[5]
+
+            if(showArgNames)
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$ampName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phName$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp$ dB","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phas$ deg","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+85]$","Tx On (Ch-$channel$)","-0.5","2"]
+
+         elseif(sz == 8)
+
+            amp       = args[2]
+            phas      = args[3]
+            freq      = args[4]
+            ampName   = args[5]
+            phName    = args[6]
+            freqName  = args[7]
+
+            if(showArgNames)
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$ampName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phName$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$freqName$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp$ dB","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phas$ deg","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$freq$ MHz","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+85]$","Tx On (Ch-$channel$)","-0.5","2"]
+
+         elseif(sz == 13)
+
+            amp1       = args[1]
+            phas1      = args[2]
+            freq1      = args[3]
+            amp2       = args[4]
+            phas2      = args[5]
+            freq2      = args[6]
+            amp1Name   = args[7]
+            ph1Name    = args[8]
+            freq1Name  = args[9]
+            amp2Name   = args[10]
+            ph2Name    = args[11]
+            freq2Name  = args[12]
+
+            if(showArgNames)
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp1Name$/$amp2Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$ph1Name$/$ph2Name$","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$freq1Name$/$freq2Name$","-0.5","1"]
+            else
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-10]$","$amp1$/$amp2$ dB","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-20]$","$phas1$/$phas2$ deg","-0.5","1"]
+               textStr = textStr + ["$[x1[-1]-2.5,yoff-30]$","$freq1$/$freq2$ MHz","-0.5","1"]
+            endif
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+85]$","Tx On (Ch-1/2)","-0.5","2"]
+         endif
+
+      elseif(cmd == "txoff")
+
+         dx = [0,4.5,4,3,3.2,3,3.2,3,4,4.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*70
+         channel = args[1]
+         if(channel == "1")
+            x1 = join(x1,dx)
+            y1 = join(y1,dy+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,matrix(size(dx))+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoff = y1_0
+         else
+            x1 = join(x1,dx)
+            y1 = join(y1,matrix(size(dx))+y1_0)
+            x2 = join(x2,dx)
+            y2 = join(y2,dy+y2_0)
+            xg = join(xg,dx)
+            yg = join(yg,matrix(size(dx))+yg_0)
+            yoff = y2_0
+         endif
+
+         if(size(args) == 2)
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+85]$","Tx Off (Ch-$channel$)","-0.5","2"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yoff+85]$","Tx Off","-0.5","2"]
+         endif
+
+      elseif(cmd == "ttlon")
+
+         dx = [0,0.5,1.0,2.0,1.8,2.0,1.8,2.0,1,0.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.90,1,1,0,0]*50
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+         byte = eval(args[1])
+         byteName = args[2]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$byteName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","0x$hex(byte,8)$","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+65]$","TTL On","-0.5","2"]
+
+      elseif(cmd == "ttloff")
+
+         dx = [0,4.5,4,3,3.2,3,3.2,3,4,4.5,5] + x1[-1]
+         dy = [0,0,1,1,1.1,1,0.9,1,1,0,0]*50
+         x1 = join(x1,dx)
+         y1 = join(y1,matrix(size(dx))+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,dy+yg_0)
+         byte = eval(args[1])
+         byteName = args[2]
+
+         if(showArgNames)
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","$byteName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,yg_0-10]$","0x$hex(byte,8)$","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,yg_0+65]$","TTL Off","-0.5","2"]
+
+      elseif(cmd == "wait")
+
+         dx = [0,0.25,0,0.25,0,5,4.75,5,4.75,5] + x1[-1]
+         dy = [0,3,0,-3,0,0,3,0,-3,0]
+         x1 = join(x1,dx)
+         y1 = join(y1,dy+y1_0)
+         x2 = join(x2,dx)
+         y2 = join(y2,matrix(size(dx))+y2_0)
+         xg = join(xg,dx)
+         yg = join(yg,matrix(size(dx))+yg_0)
+         dur = eval(args[1])
+         durName = args[2]
+
+         if(showArgNames & durName != "")
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$durName$","-0.5","1"]
+         else
+            textStr = textStr + ["$[x1[-1]-2.5,y1_0-10]$","$dur/1000,0.4g$ ms","-0.5","1"]
+         endif
+         textStr = textStr + ["$[x1[-1]-2.5,y1_0+10]$","Wait","-0.5","2"]
+
+      endif
+
+   next(k)
+
+   dx = [0,1] + x1[-1]
+   dy = [0,0]
+   x1 = join(x1,dx)
+   y1 = join(y1,[y1_0,y1_0])
+   x2 = join(x2,dx)
+   y2 = join(y2,[y2_0,y2_0])
+   xg = join(xg,dx)
+   yg = join(yg,[yg_0,yg_0])
+
+# Draw the sequence - keeping the last zoom if just changing the font etc.
+   if(keepZoom)
+      (xa,xb,ya,yb) = plt->zoom()
+   endif
+
+   cnt = 0
+   plt->draw("false")
+  # if(sum(y1)/size(y1) != y1_0)
+      plt->plot(x1,y1,"color",[0,128,0])
+      textStr = textStr + ["$[x1_0+1,y1_0+20]$","CH-1","-0.5","1"]
+      plt->hold("on")
+      cnt = cnt + 1
+   #endif
+   #if(sum(y2)/size(y2) != y2_0)
+#      if(cnt == 0)
+#         y2 = y2 - 150
+#      endif
+      plt->plot(x2,y2,"color",[255,0,0])
+      textStr = textStr + ["$[x2_0+1,y2_0+20]$","CH-2","-0.5","1"]
+      cnt = cnt + 1
+      #plt->hold("on")
+   #endif
+   #if(sum(yg)/size(yg) != yg_0)
+#      if(cnt == 0)
+#         yg = yg - 350
+#      endif
+#      if(cnt == 1)
+#         yg = yg - 150
+#      endif
+      plt->plot(xg,yg,"color",[0,0,255])
+      textStr = textStr + ["$[xg_0+1,yg_0+60]$","SHIM","-0.5","1"]
+      textStr = textStr + ["$[xg_0+1,yg_0+40]$","GRAD","-0.5","1"]
+      textStr = textStr + ["$[xg_0+1,yg_0+20]$","TTL","-0.5","1"]
+   #endif
+
+ # Add all text
+   for(k = 0 to size(textStr)-1 step 4)
+      pos = eval(textStr[k])
+      str = textStr[k+1]
+      off = eval(textStr[k+2])
+      col = eval(textStr[k+3])
+      if(col == 2)
+         plt->addtext(pos,str,[off,0;0,-0.5],"",fontSize,0,"regular",[128,0,0])
+      else
+         plt->addtext(pos,str,[off,0;0,-0.5],"",fontSize,0,"regular",[0,0,255])
+      endif
+   next(k)
+   plt->title("text","$protocol$ sequence","color",[255,0,0],"size",14)
+   if(keepZoom)
+      plt->zoom(xa,xb,ya,yb)
+   else
+      (xa,xb,ya,yb) = plt->zoom()
+      plt->zoom(xa-2,xb+2,ya*1.0,yb*1.1)
+   endif
+   plt->draw("true")
+   plt->hold("off")
+
+   gExpt->resumeMonitoring()
+
+endproc()
+ 
+############################################
+# Choose between two options based on the 
+# value of test (1/0)
+############################################
+
+procedure(choose, test, opTrue, opFalse)
+
+   if(test)
+      return(opTrue)
+   else
+      return(opFalse)
+   endif
+
+endproc()

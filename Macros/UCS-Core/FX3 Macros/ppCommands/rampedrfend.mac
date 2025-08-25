@@ -1,0 +1,48 @@
+####################################################
+# Setup the profile for a ramped pulse
+#
+# rampedrfend(channel)
+#
+#   channel: 1/2
+#
+#   Duration is 5 us
+####################################################
+
+procedure(rampedrfend, channel)
+
+   if(wvFX3Info->mode == "run")
+
+      if(channel == 1)
+         FPGA_DDS_Pro0  = 0x118E
+         FPGA_DDS_CFR1  = 0x1180
+      else
+         FPGA_DDS_Pro0  = 0x128E
+         FPGA_DDS_CFR1  = 0x1280
+      endif
+      FPGA_DDS_CR = 0x1081
+
+          # Enable Auto IO Update
+      ps = [20d,      FPGA_DDS_CR,     0x0000400,         # Enable Auto IOU          
+            20d,      FPGA_DDS_CFR1,   0x0004045,         # CFR1 32-16  RAM enabled, RAM destination = AMP, Internal Profile Control Mode (Pro0-Pro2 then halt), Cosine        
+            200d,     FPGA_DDS_CFR1,   0x0000000,         # CFR1 15-0
+          # Restore profile 0 for normal pulses
+            20d,      FPGA_DDS_Pro0,   0x0000000,         # Set amplitude
+            20d,      FPGA_DDS_Pro0,   0x0000000,         # Set phase
+            20d,      FPGA_DDS_Pro0,   0x0000000,         # Set frequency high word (TODO)
+            200d,     FPGA_DDS_Pro0,   0x0000000] 
+         
+      updatePSArray(ps)
+
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + 5
+      gSeq->psInfo->command = gSeq->psInfo->command + ["rampedrfend,$channel$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(nrLoops)
+
+   endif
+
+endproc()

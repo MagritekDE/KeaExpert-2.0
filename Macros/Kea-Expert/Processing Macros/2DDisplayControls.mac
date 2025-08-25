@@ -1,0 +1,587 @@
+########################################################
+# Display a user interface to control the 2D mapping
+# of data. i.e. contour/intensity, color, threshold
+# and range.
+########################################################
+
+procedure(2DDisplayControls, saveMode, displayMode)
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+   if(nrArgs == 0)
+      saveMode = "savePar"
+      displayMode = "linear"
+   endif
+   n = :windowdefinition()
+   windowvar(wvSaveMode,wvXMapping,wvYMapping,wvXGrid,wvYGrid,wvXFineGrid,wvYFineGrid,wvPlotLines)
+   wvSaveMode = saveMode
+   assignctrls(n)
+   :initialize()
+   setwindowpar(n,"show_menu","false")
+   showwindow(n)
+
+endproc()
+
+###########################################################################
+# Apply the current settings to the current 2D plot
+###########################################################################
+
+procedure(apply)
+
+   par = getctrlvalues(0)
+   (minValLin,maxValLin) = :backdoor(par)
+   minValueCtrl->text(minValLin)
+   maxValueCtrl->text(maxValLin)
+
+endproc()
+
+###########################################################################
+# Callback for color scale textmenu
+###########################################################################
+
+procedure(applyColorScale)
+
+   col = colorScaleCtrl->text
+   idx = colorScaleCtrl->index
+   if(col == "---Positive---" | col == "---Signed---")
+      colorScaleCtrl->index(idx+1)
+   endif
+   :apply()
+   :apply()
+
+endproc()
+
+
+###########################################################################
+# Variables
+# wv_data is the raw data
+# mind,maxd are scaled local versions for wv_maxd,wv_mind. 
+# They are the minimum and maximum value of the positive data. 
+# In log mode they are scaled by the log of the contour spacing factor.
+#
+# minOut and maxOut are processed versions of these variables modified
+# based on the adjustment mode.
+#
+# minOutLin and maxOutLin are just linearised versions of these variables
+#
+###########################################################################
+
+procedure(backdoor, par)
+
+   assignlist(par)
+   img = curplot("2d")
+   img->draw("false")
+
+   absData = abs(real(wv_data))
+
+   if(contourFactor == "logarithmic")
+      contourFactor = exp(1)
+   endif
+
+   if(isfloat(contourFactor)) # Display in log mode
+      if(img->dataMapping() != "log" | wv_mind == null) # Currently linear switching to log
+        logData = loge(absData)
+        wv_mind = min(logData)
+         mind = wv_mind/loge(contourFactor)
+         wv_maxd = max(logData)
+         maxd = wv_maxd/loge(contourFactor)
+         img->dataMapping("log")
+      else # Already log
+         mind = wv_mind/loge(contourFactor) # <= what divide by log contour
+         maxd = wv_maxd/loge(contourFactor)
+      endif
+   else # Display in linear mode
+      contourFactor = 0
+      if(img->dataMapping() != "linear" | wv_mind == null) # Currently log
+         img->dataMapping("linear")
+         mind = min(absData)
+         maxd = max(absData)
+         wv_mind = mind
+         wv_maxd = maxd
+      else # Already linear
+         mind = wv_mind
+         maxd = wv_maxd
+      endif
+   endif
+
+# Get the image mapping log/linear
+   mapping = img->dataMapping
+
+# Use colormap and sliders positions to determine 
+# threshold (a) & range (b) as a percentage
+  map = img->cmap()
+  (w,h) = size(map)
+
+# Get slider positions (0-100)
+  a = base
+  b = range+1
+
+# Use a,b parameters in conjunction 
+# with data range to work out actual
+# threshold and range
+   threshold = a*(maxd-mind)/100 + mind
+   range     = b*(maxd-mind)/100
+
+   if(contourFactor != 0) # Log mode
+      if(adjustmentMethod == "range")
+         minOut = threshold
+         maxOut = threshold + nrContours-1
+      elseif(adjustmentMethod == "max")
+         minOut = threshold
+         maxOut = maxd
+      elseif(adjustmentMethod == "adjust")
+         minOut = threshold
+         maxOut = threshold + range
+      else
+         minOut = mind
+         maxOut = maxd
+      endif
+   else # Linear mode
+      if(adjustmentMethod == "range")
+         minOut = threshold
+         maxOut = threshold + maxd
+      elseif(adjustmentMethod == "max")
+         minOut = threshold
+         maxOut = maxd
+      elseif(adjustmentMethod == "adjust")
+         minOut = threshold
+         maxOut = threshold + range
+      else
+         minOut = mind
+         maxOut = maxd
+      endif
+   endif
+
+# Display these values 
+   if(contourFactor != 0)
+      minOutLin = exp(minOut*loge(contourFactor))
+      maxOutLin = exp(maxOut*loge(contourFactor))
+   else
+      minOutLin = minOut
+      maxOutLin = maxOut   
+   endif
+   if(plotModeCtrl->text == "contour")
+      if(minOutLin < wv_mn)
+         minOutLin = wv_mn
+      endif
+      if(maxOutLin <= minOutLin)
+         maxOutLin = minOutLin*1.1
+      endif
+   endif
+
+   img->cmap(eval(colorScale))
+
+   if(adjustmentMethod == "full")
+      img->autorange("on")
+   else
+      img->autorange("off")
+   endif
+
+   if(minOutLin == maxOutLin)
+      img->imagerange(minOutLin,maxOutLin*1.001)
+   else
+      img->imagerange(minOutLin,maxOutLin)
+   endif
+
+   lab = plotProc:getLabels(img)
+   (z1,z2,z3,z4) = img->zoom()
+   img->image(wv_data,wv_rngx,wv_rngy)
+   img->axes->xmapping(wvXMapping)
+   img->axes->ymapping(wvYMapping)
+   img->grid->xgrid(wvXGrid)
+   img->grid->ygrid(wvYGrid)
+   img->grid->finexgrid(wvXFineGrid)
+   img->grid->fineygrid(wvYFineGrid)
+   if(wvPlotLines != null)
+      img->addlines(wvPlotLines)
+   endif
+   img->zoom(z1,z2,z3,z4)
+   plotProc:setLabels(lab,img)
+
+   if(plotMode == "intensity")
+      img->contour(nrContours,1)
+   elseif(plotMode == "contour")
+      img->contour(nrContours,2)
+   endif
+
+   img->draw("true")
+
+
+endproc(minOutLin,maxOutLin)
+
+
+##########################################################
+# Calculte the average baseline and standard deviation
+# by measuring 7 columns equally spaced across the spectrum.
+# Use the minimum values to calculate a noise floor
+# do not show contours below this
+###########################################################
+
+procedure(calcMinLev)
+
+   (w,h)= size(wv_data)
+   
+   s = w/8
+   avgM = matrix(7)
+   sdM = matrix(7)
+
+   for(x = 1 to 7)
+     c = trunc(x*s)
+     col = real(wv_data[c,~])  
+     avgM[x-1] = avg(col)
+     sdM[x-1] = sd(col)
+
+   next(x)
+
+   result = min(avgM) + 4*min(sdM)
+
+endproc(result)
+
+
+
+procedure(exit_procedure)
+
+  # :savePar()
+
+endproc()
+
+
+
+#############################################################################
+# Variables
+# wv_data is the raw data
+# minr,maxr is the image display range in linear form taken from the
+# data set.
+
+# mind,maxd They are the minimum and maximum value of the positive
+# data which is stored in linear window variables wv_maxd,wv_mind
+# mind and maxd will be logged if in log mode.
+
+# minOut and maxOut are processed versions of these variables modified
+# based on the adjustment mode.
+#
+# minOutLin and maxOutLin are just linearised versions of these variables
+#
+#############################################################################
+
+procedure(initialize)
+
+# Define window variables
+   windowvar(wv_data,wv_maxd,wv_mind,wv_rngx,wv_rngy,wv_mn)
+
+   bak = getcwd()
+   name = "$getmacropath()$\\$getmacroname()$"
+
+   cachemacro(name)
+   cacheproc("true")
+
+   cd("$appdir$\\Macros\\1D_Macros")
+   cachemacro("plotProc.mac")
+   cd(bak)
+
+
+# Get the current 2D plot
+   img = curplot("2d")
+
+# Get display mode and update UI
+   (contours, mode) = img->contour()
+   if(mode == 1) 
+     plotModeCtrl->text("intensity")
+   elseif(mode == 2)
+     plotModeCtrl->text("contour")
+   endif
+   if(vartype(contours) == "matrix1d")
+      nrContours = size(contours)
+   else
+      nrContours = contours
+   endif  
+
+# Get colormap and update text in UI
+   colorMap = img->cmap()
+   scales = colorScaleCtrl->menu
+   for(k = 0 to size(scales)-1)
+      try
+         if(eval(scales[k]) == colorMap)
+            colorScaleCtrl->text(scales[k])
+         endif
+      catch
+      endtry
+   next(k)
+
+# Get axes mapping info
+   wvXMapping = img->axes->xmapping()
+   wvYMapping = img->axes->ymapping()
+
+# Get grid info
+   wvXGrid = img->grid->xgrid()
+   wvYGrid = img->grid->ygrid()
+   wvXFineGrid = img->grid->finexgrid()
+   wvYFineGrid = img->grid->fineygrid()
+
+# Get lines
+  wvPlotLines = img->getlines()
+
+# Set nr of contours in UI
+   nrContoursCtrl->text(nrContours)
+
+# Set contour spacing in UI
+   dataMapping = img->datamapping
+   if(dataMapping == "log")
+      contourFactorCtrl->text("logarithmic")
+   else
+      contourFactorCtrl->text("linear")
+   endif
+
+# Set adjustment method to "Fully adjustable"
+   adjustmentMethodCtrl->text("adjust")
+   
+# Set current image range (minr,maxr)
+  (minr,maxr) = img->imagerange()
+
+# Get the 2D data and its range
+  (wv_data,wv_rngx,wv_rngy) = img->getdata()
+  absData = abs(real(wv_data))
+
+   wv_maxd = max(absData)
+   wv_mind = min(absData)
+   if(wv_mind == 0)
+      wv_data = wv_data + wv_maxd/1e6
+   endif
+
+# Display the image range but limit contours
+# based on noise threshold
+   wv_mn = :calcMinLev()
+   if(plotModeCtrl->text == "contour")
+      if(wv_mn > minr)
+         minr = wv_mn
+      endif
+     # Adjust maximum is needed
+      if(minr >= maxr)
+         maxr = minr*1.1
+      endif
+   endif
+
+# Update the min and max values in the UI
+   minValueCtrl->text(minr)
+   maxValueCtrl->text(maxr)
+
+# Work out the slider positions
+   if(dataMapping == "linear")
+      base = 100*(minr-wv_mind)/(wv_maxd-wv_mind)
+      range = 100*(maxr-minr)/(wv_maxd-wv_mind)
+      baseCtrl->value(base)
+      rangeCtrl->value(range-1)
+   else
+      if(colorMap[0,-1] == 1) # +/- colormap
+         base = 100*(loge(minr)-loge(wv_mind))/(loge(wv_maxd)-loge(wv_mind))
+         range = 100*(loge(maxr)-loge(minr))/(loge(wv_maxd)-loge(wv_mind))
+         baseCtrl->value(base)
+         rangeCtrl->value(range-1)
+         logData = loge(absData)
+         wv_mind = min(logData)
+         wv_maxd = max(logData)    
+      else
+         base = 100*(loge(minr)-loge(wv_mind))/(loge(wv_maxd)-loge(wv_mind))
+         range = 100*(loge(maxr)-loge(minr))/(loge(wv_maxd)-loge(wv_mind))
+         baseCtrl->value(base)
+         rangeCtrl->value(range-1)
+         logData = loge(absData)
+         wv_mind = min(logData)
+         wv_maxd = max(logData)  
+      endif
+   endif
+
+# Enable controls depending on settings
+  :setCtrlEnable()
+
+# Update the plot based on new values
+  :apply()
+
+  :recordAppliedValues()
+
+endproc()
+
+procedure(processMessage)
+
+  (src,cmd) = getpar(0,0,"text")
+   callingwin = getpar(0,0,"source")
+   parentwin = guiwinnr()
+
+   if(src == "Macro" & callingwin != parentwin)
+
+      if(cmd == "update display")
+         :initialize()
+      endif
+
+   endif
+
+endproc()
+
+
+procedure(recordAppliedValues)
+
+# Initial values
+   windowvar(wvInitPlotMode,wvInitColorScale,wvInitContours,
+            wvInitContourFactor,wvInitAdjustMethod,wvInitBase,wvInitRange)
+   wvInitPlotMode = plotModeCtrl->text
+   wvInitColorScale = colorScaleCtrl->text
+   wvInitContours = nrContoursCtrl->value
+   wvInitContourFactor = contourFactorCtrl->text
+   wvInitAdjustMethod = adjustmentMethodCtrl->text
+   wvInitBase = baseCtrl->value
+   wvInitRange = rangeCtrl->value
+
+
+endproc()
+
+
+procedure(restoreAppliedValues)
+
+   plotModeCtrl->text(wvInitPlotMode)
+   colorScaleCtrl->text(wvInitColorScale)
+   nrContoursCtrl->text(wvInitContours)
+   contourFactorCtrl->text(wvInitContourFactor)
+   adjustmentMethodCtrl->text(wvInitAdjustMethod)
+   baseCtrl->value(wvInitBase)
+   rangeCtrl->value(wvInitRange)
+   :apply()
+   :apply()
+
+endproc()
+
+procedure(setCtrlEnable)
+
+   adjustMethod = adjustmentMethodCtrl->text
+   if(adjustMethod == "range" | adjustMethod == "max")
+      rangeCtrl->enable("false")
+      baseCtrl->enable("true")
+   elseif(adjustMethod == "adjust")
+      rangeCtrl->enable("true")
+      baseCtrl->enable("true")
+   else
+      rangeCtrl->enable("false")
+      baseCtrl->enable("false")
+   endif
+
+endproc()
+
+
+####################################################
+# Invert above code to set slider positions
+####################################################
+
+procedure(setManualLimits)
+#
+#   minVal = minValueCtrl->text()
+#   maxVal = maxValueCtrl->text()
+#
+#   (minBase,maxBase) = baseCtrl->range()
+#   (minRng,maxRng) = rangeCtrl->range()
+
+endproc()
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showHelp)
+
+   help("Macros\\Post Processing","Adjusting the 2D plot display.htm")
+
+endproc()
+
+###############################################################
+# Define the window layout
+###############################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D display controls", -1, -1, 352, 360)
+
+      getmessage(0,:processMessage())
+      # Define all controls with basic parameters
+      groupbox(1, "Contours", 10, 104, 211, 87)
+      textmenu(2, 130, 29, 80, 200,
+         :apply();)
+      statictext(3, 125, 33, "right", "Plotting mode:")
+      textmenu(4, 130, 125, 80, 200,
+         :apply();)
+      statictext(5, 125, 129, "right", "Number of contours:")
+      textmenu(6, 130, 155, 80, 200,
+         :apply();)
+      statictext(7, 125, 158, "right", "Contour spacing:")
+      radiobuttons(8, 149, 222, 20, "vertical", "range,max,adjust,full", "range",
+           :setCtrlEnable();
+           :apply();)
+      statictext(9, 143, 221, "right", "Constant range:")
+      statictext(10, 143, 241, "right", "Constant maximum:")
+      statictext(11, 143, 261, "right", "Fully adjustable:")
+      statictext(12, 143, 281, "right", "Full range:")
+      groupbox(13, "Adjustment method", 10, 199, 211, 107)
+      textbox(14, 268, 270, 60,:setManualLimits())
+      slider(15, 264, 50, 20, 174, "vertical",
+           :apply();)
+      slider(16, 295, 50, 20, 174, "vertical",
+           :apply();)
+      statictext(17, 257, 32, "left", "base")
+      statictext(18, 292, 32, "left", "range")
+      statictext(19, 263, 273, "right", "min:")
+      groupbox(20, "Adjust levels", 235, 8, 102, 298)
+      groupbox(21, "Mode", 10, 8, 211, 87)
+      textmenu(22, 130, 59, 80, 200,
+         :applyColorScale();)
+      statictext(23, 125, 63, "right", "Color scale:")
+      button(24, 20, 319, 51, 32, "Apply",
+         :apply();
+         :recordAppliedValues();)
+      button(25, 190, 319, 51, 32, "Help",
+         :showHelp();)
+      button(26, 275, 319, 51, 32, "Cancel",
+         :restoreAppliedValues();
+         :exit_procedure();
+         closewindow(0);)
+       #  closedialog();)
+      button(27, 100, 319, 61, 32, "Apply and\rExit",
+         :apply();
+         :exit_procedure();
+         closewindow(0);)
+       #  closedialog();)
+      textbox(28, 268, 240, 60,
+             :setManualLimits())
+      statictext(29, 263, 243, "right", "max:")
+
+     # Set other control parameters
+      setpar(n,2,"objID","plotModeCtrl",
+                  "valueID","plotMode",
+                  "menu",["intensity","contour"])
+      setpar(n,4,"objID","nrContoursCtrl",
+                  "valueID","nrContours",
+                  "type","integer",
+                  "menu",["1","2","5","10","15","20"])
+      setpar(n,6,"objID","contourFactorCtrl",
+                  "valueID","contourFactor",
+                  "menu",["linear","logarithmic"])
+      setpar(n,8,"objID","adjustmentMethodCtrl",
+                  "valueID","adjustmentMethod")
+      setpar(n,14,"objID","minValueCtrl","readonly","true")
+      setpar(n,15,"objID","baseCtrl",
+                  "valueID","base",
+                  "type","float",
+                  "range",[0,100])
+      setpar(n,16,"objID","rangeCtrl",
+                  "valueID","range",
+                  "type","float",
+                  "range",[0,100])
+      setpar(n,22,"objID","colorScaleCtrl",
+                  "valueID","colorScale",
+                  "menu",["---Positive---","copper","grey","hot","rainbow","---Signed---","hotandcold","spectrum","redwhiteblue"])
+    #  setpar(n,24,"mode","default")
+      setpar(n,28,"objID","maxValueCtrl","readonly","true")
+
+     # Set other window parameters
+endproc(n)

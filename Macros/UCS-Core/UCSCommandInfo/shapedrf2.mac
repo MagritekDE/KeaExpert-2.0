@@ -1,0 +1,17 @@
+###################################################################################
+#######################################################
+
+procedure(shapedrf2, channel, ampPhaseTable, ph, szTable, durStep)
+
+   if(gSeq->psInfo->skipCmds == 0)
+   
+      args = getargnames()
+      pgo = gSeq->psInfo->preferences->pgo
+      cnt = gSeq->psInfo->loopCnt
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + pgo + szTable*durStep
+      gSeq->psInfo->command = gSeq->psInfo->command + ["shapedrf2,$channel$,$ph$,$szTable$,$durStep$,$args[1]$,$args[2]$,$args[3]$,$args[4]$"]
+
+   endif
+
+endproc()
+

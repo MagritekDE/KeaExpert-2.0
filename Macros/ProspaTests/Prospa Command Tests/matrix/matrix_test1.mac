@@ -1,0 +1,129 @@
+procedure(matrix_test1,verbose,delay)
+
+# 1D matrix test
+   m = matrix(100)
+   w = size(m)
+
+   if(w != 100)
+      return(0, "Invalid result for: matrix_test1 #1")
+   endif  
+
+   for(k = 0 to w-1)
+      m[k] = k
+   next(k)  
+
+   for(k = 0 to w-1)
+      if(m[k] != k)
+         return(0, "Invalid result for: matrix_test1 #2")
+      endif  
+   next(k)  
+
+   c = 0
+   try
+      m[-101] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #3")
+   endif  
+ 
+   c = 0
+   try
+      m[w] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #4")
+   endif  
+
+# 2D matrix test
+   m = matrix(100,50)
+   (w,h) = size(m)
+
+   if(w != 100 | h != 50)
+      return(0, "Invalid result for: matrix_test1 #5")
+   endif  
+
+   for(y = 0 to h-1)
+     for(x = 0 to w-1)
+        m[x,y] = x*y
+     next(x)  
+   next(y)
+
+   for(y = 0 to h-1)
+     for(x = 0 to w-1)
+       if(m[x,y] != x*y)
+         return(0, "Invalid result for: matrix_test1 #6")
+      endif  
+     next(x)  
+   next(y) 
+
+   c = 0
+   try
+      m[-101,-51] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #7")
+   endif  
+ 
+   c = 0
+   try
+      m[w,h] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #8")
+   endif  
+
+# 3D matrix test
+   m = matrix(50,20,10)
+   (w,h,d) = size(m)
+
+   if(w != 50 | h != 20 | d != 10)
+      return(0, "Invalid result for: matrix_test1 #9")
+   endif  
+
+   for(z = 0 to d-1)
+      for(y = 0 to h-1)
+        for(x = 0 to w-1)
+           m[x,y,z] = x*y*z
+        next(x)  
+      next(y)
+   next(z)
+
+   for(z = 0 to d-1)
+      for(y = 0 to h-1)
+        for(x = 0 to w-1)
+          if(m[x,y,z] != x*y*z)
+            return(0, "Invalid result for: matrix_test1 #10")
+         endif  
+        next(x)  
+      next(y)
+   next(z)
+
+   c = 0
+   try
+      m[-51,-21,-11] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #11")
+   endif  
+ 
+   c = 0
+   try
+      m[w,h,d] = 2
+   catch
+      c = 1
+   endtry
+   if(c == 0)
+      return(0, "Invalid result for: matrix_test1 #12")
+   endif  
+
+endproc(1,"")

@@ -1,0 +1,337 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 14 (filtered)">
+<title>Using tables</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+h1
+	{mso-style-link:"Heading 1 Char";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	background:#FF6600;
+	font-size:20.0pt;
+	font-family:"Times New Roman","serif";}
+h2
+	{mso-style-link:"Heading 2 Char";
+	margin-top:10.0pt;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:0cm;
+	margin-bottom:.0001pt;
+	page-break-after:avoid;
+	font-size:13.0pt;
+	font-family:"Cambria","serif";
+	color:#4F81BD;}
+span.Heading1Char
+	{mso-style-name:"Heading 1 Char";
+	mso-style-link:"Heading 1";
+	font-family:"Cambria","serif";
+	color:#365F91;
+	font-weight:bold;}
+span.Heading2Char
+	{mso-style-name:"Heading 2 Char";
+	mso-style-link:"Heading 2";
+	font-family:"Cambria","serif";
+	color:#4F81BD;
+	font-weight:bold;}
+.MsoChpDefault
+	{font-size:10.0pt;}
+@page WordSection1
+	{size:595.45pt 841.7pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-NZ>
+
+<div class=WordSection1>
+
+<h1>Using tables</h1>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Tables are used to generate shaped RF and
+gradient pulses or to step through a list of gradient values during a pulse
+program. The following Kea pulse program commands can use tables</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>setindex
+..... set the current index in a table</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>incindex
+..... increment a table index</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>decindex
+..... decrement a table index</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>delay
+........ wait for a defined length of time</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>gradon
+....... set a gradient value from the current index in the specified table</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>gradramp
+..... set initial and/or final values from the current index in the specified
+table</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>shapedrf
+..... modulate the rf amplitude and sign/phase from two tables</span></p>
+
+<p class=MsoNormal style='margin-left:90.0pt;text-indent:-90.0pt'><span
+lang=EN-US style='font-size:10.0pt;font-family:"Courier New";color:black'>shapedgrad
+... modulate the gradient amplitude from a table</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Tables are defined in the pulse program
+relationships list as arrays of numbers (row vectors). e.g.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   t1 = [10:2:100]</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Some commands take a complete table while
+others just refer to the current table index. The current index is controlled
+by the commands setindex, incindex and decindex.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<h2><a name="_Toc315512123"></a><a name="_Toc315518724"></a><a
+name="_Toc317500304"><span lang=EN-US>Modifying the current table value</span></a></h2>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>For those commands which use a single table
+entry the following syntax is suggested (where x is the table number and cmd is
+the command using the table value):</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>setindex</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(tx,n)    </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Initialise
+the table index to n</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>cmd</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(.., tx, ...)  </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Use the nth
+value from the table in command</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>incindex</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(tx)      </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Increment
+the index</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>cmd</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(...,tx, ...)  </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Use the
+(n+1)th value from the table in command</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>decindex</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(tx)      </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Decrement
+the index</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>cmd</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(...,tx, ...)  </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Use the nth
+value from the table in command</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Typically such commands will be embedded in
+a loop  e.g.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>setindex</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(tx,0)    </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Initialise
+the table index</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>loop</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(l1,n1)       </span><span lang=EN-GB
+style='font-size:10.0pt;font-family:"Courier New";color:#AA0000'># Repeat
+following code n1 times</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'> ...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'> </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>cmd</span><span lang=EN-GB style='font-size:10.0pt;font-family:
+"Courier New";color:black'>(...,tx,...) </span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'> </span><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:#780078'>incindex</span><span lang=EN-GB style='font-size:10.0pt;
+font-family:"Courier New";color:black'>(tx)</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'> ...</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt;text-autospace:
+none'><span lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";
+color:black'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:108.0pt;text-indent:-108.0pt'><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:#780078'>endloop</span><span
+lang=EN-GB style='font-size:10.0pt;font-family:"Courier New";color:black'>(l1)</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<h2><a name="_Toc315512124"></a><a name="_Toc315518725"></a><a
+name="_Toc317500305"><span lang=EN-US>Updating complete tables</span></a></h2>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>Tables are not stored in the pulse program
+parameter list (ppList), but are written directly to the DSP memory using the
+command dspwrite. However the table address may be found in the parameter list
+and can be accessed in the usual way using the varIndex array. For example if you
+wish to modify table &quot;t1&quot; before each scan you would pass it in the
+variables list part of the pulse program (_pp) macro:</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   variables = [</span><span lang=EN-US style='font-size:10.0pt;
+font-family:"Courier New";color:gray'>&quot;t1&quot;</span><span lang=EN-US
+style='font-size:10.0pt;font-family:"Courier New";color:black'>]</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>The location of this variable in the ppList
+array will be passed to the execpp procedure in your GUI macro in the array
+called varIndex. So in this example the address of table t1 in DSP memory can
+be extracted using:</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   adrs = ppList[varIndex[0]]</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>A new table  ‘tNew’ can then be written
+with the dspwrite command</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   dspwrite(&quot;y&quot;,adrs,tNew)</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>All tables will be found between addresses
+y:30000 and y:4ffff while collected NMR data is stored between y:10000 and
+y:2ffff. Existing tables in the DSP memory can be read back to Prospa using the
+dspread command</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US style='font-size:10.0pt;font-family:"Courier New";
+color:black'>   tOld = dspread(&quot;y&quot;,adrs,sz)</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>where sz is the expected size of the table.</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:92.15pt;text-indent:-92.15pt'><span
+lang=EN-US>&nbsp;</span></p>
+
+<div style='border:none;border-top:solid windowtext 1.0pt;padding:1.0pt 0cm 0cm 0cm'>
+
+<p class=MsoNormal style='border:none;padding:0cm'><span lang=EN-US>&nbsp;</span></p>
+
+</div>
+
+<p class=MsoNormal style='text-align:justify'><i><span lang=EN-US>&nbsp;Correct
+for Prospa version 3.12,  1-August-2012</span></i></p>
+
+<p class=MsoNormal><span lang=EN-GB>&nbsp;</span></p>
+
+<p class=MsoNormal><span lang=EN-US>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

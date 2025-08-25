@@ -1,0 +1,43 @@
+procedure(amplitude_control)
+
+   n = window("Amplitude Control", -1, -1, 408, 87)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+procedure(definecontrols,n)
+
+   # Define all controls with basic parameters
+    statictext(1, 97, 19, "center", "Use fixed amplitude scale")
+    checkbox(2, 166, 20, "no,yes", "no",
+         fn = findobj(0,"name","fixedAmp");
+         ucsCtrl:enableControls(fn+1,fn+2,fn);)
+    statictext(3, 260, 19, "center", "Maximum amplitude")
+    textbox(4, 315, 16, 54)
+    statictext(5, 101, 48, "center", "Use log amplitude scale")
+    checkbox(6, 166, 49, "no,yes", "no",
+         fn = findobj(0,"name","logScale");
+         ucsCtrl:enableControls(fn+1,fn+2,fn);)
+    statictext(7, 260, 41, "center", "Number of decades")
+    statictext(8, 260, 55, "center", "below maximum")
+    textbox(9, 315, 45, 54)
+
+  # Set other control parameters
+    setpar(n,2,"name","fixedAmp")
+    setpar(n,4,"name","maxAmp")
+    setpar(n,6,"name","logScale")
+    setpar(n,9,"name","nrDecades")
+
+endproc(9,"Display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   fn = findobj(0,"name","fixedAmp");
+   ucsCtrl:enableControls(fn+1,fn+2,fn);
+   fn = findobj(0,"name","logScale");
+   ucsCtrl:enableControls(fn+1,fn+2,fn);
+
+endproc()

@@ -1,0 +1,54 @@
+###################################################################################
+# Set the transmit amplitude from a scalar or table
+#
+#   settxamp(channel, amp)
+#
+#   channel : 1/2
+#   amp    : amplitude in dB or a table
+#
+#   Duration 2 us
+#
+##################################################################################
+
+procedure(settxamp, channel, ampdB)
+
+   if(nrArgs != 2)
+      throw("Expecting two arguments to settxamp command")
+   endif
+
+
+   if(wvFX3Info->mode == "run")
+  
+      if(channel == 1)
+         ddsAdrs = 0x118E
+      else
+         ddsAdrs = 0x128E
+      endif
+
+      if(vartype(ampdB) == "float")
+         amplitude = ucsRun:convertTxGain(ampdB)
+         ps =  [200d,     ddsAdrs, amplitude] 
+
+      else
+         amplitude = ampdB
+
+         ps = [20d,      0x00006084, amplitude[0]-1,
+               20d,      0x01006086, 1,
+               20d,      0x01006086, 1,
+               20d,      0x00006084, 0x01000000,
+               20d,      0x01006085, 1,
+               20d,      0x01006085, 1,
+               80d,      ddsAdrs,    0x01000000]
+      endif
+
+   # Add the pulse code to the rest of the pulse sequence array
+      updatePSArray(ps) 
+       
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(ampdB)
+
+   endif
+
+endproc()
+

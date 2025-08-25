@@ -1,0 +1,246 @@
+
+#####################################################################
+# Calculate the linewidth from the last FindF0 result
+#####################################################################
+
+procedure(calcLineWidth, result)
+   
+   fAxisDisp = result->fAxis
+   spectrum = result->fData
+   try
+      guipar = list(result->par)
+      (fIndx, maxAmp, width1, width2) = TestShims:calcLW(fAxisDisp,spectrum,guipar)
+   catch
+      (fIndx, maxAmp, width1, width2) = TestShims:calcLW(fAxisDisp,spectrum)
+   endtry
+   txt = "(50%/0.55%) Linewidth is ($width1,1.2f$/$width2,1.2f$) Hz"
+   print("\n   $txt$\n")
+
+endproc(txt,width1,width2)
+
+#########################################################
+# Update the common parameters with the found frequency
+# Also set the 1H offset in preferences.
+#########################################################
+
+procedure(calibrate, psPar, b1Freq1H=null, verbose=1)
+   
+   assignstruct(psPar)
+
+# Get the gyromagnetic ratios and ppm offsets
+ #  lst = ucsFiles:loadPref()
+ #  assignlist(lst)
+   assignstruct(gData->preferences)
+
+# Calculate all the frequencies based on b1Freq1H
+   b1Freq1HZero = b1Freq1H*(1 - ppmOffset1H/1e6) # Correct for ppm offset
+
+   b1Freq2H   = b1Freq1HZero*gyro2H/gyro1H
+   b1Freq2H   = b1Freq2H*(1 + ppmOffset2H/1e6)
+
+   b1Freq3H   = b1Freq1HZero*gyro3H/gyro1H
+   b1Freq3H   = b1Freq3H*(1 + ppmOffset3H/1e6)
+
+   b1Freq7Li   = b1Freq1HZero*gyro7Li/gyro1H
+   b1Freq7Li   = b1Freq7Li*(1 + ppmOffset7Li/1e6)
+
+   b1Freq11B   = b1Freq1HZero*gyro11B/gyro1H
+   b1Freq11B   = b1Freq11B*(1 + ppmOffset11B/1e6)
+
+   b1Freq13C   = b1Freq1HZero*gyro13C/gyro1H
+   b1Freq13C   = b1Freq13C*(1 + ppmOffset13C/1e6)
+
+   b1Freq14N   = b1Freq1HZero*gyro14N/gyro1H
+   b1Freq14N   = b1Freq14N*(1 + ppmOffset14N/1e6)
+
+   b1Freq15N   = b1Freq1HZero*gyro15N/gyro1H
+   b1Freq15N   = b1Freq15N*(1 + ppmOffset15N/1e6)
+
+   b1Freq19F   = b1Freq1HZero*gyro19F/gyro1H
+   b1Freq19F   = b1Freq19F*(1 + ppmOffset19F/1e6)
+
+   b1Freq23Na  = b1Freq1HZero*gyro23Na/gyro1H
+   b1Freq23Na  = b1Freq23Na*(1 + ppmOffset23Na/1e6)
+
+   b1Freq27Al  = b1Freq1HZero*gyro27Al/gyro1H
+   b1Freq27Al  = b1Freq27Al*(1 + ppmOffset27Al/1e6)
+
+   b1Freq29Si  = b1Freq1HZero*gyro29Si/gyro1H
+   b1Freq29Si  = b1Freq29Si*(1 + ppmOffset29Si/1e6)
+
+   b1Freq31P   = b1Freq1HZero*gyro31P/gyro1H
+   b1Freq31P   = b1Freq31P*(1 + ppmOffset31P/1e6)
+
+   b1Freq33S   = b1Freq1HZero*gyro33S/gyro1H
+   b1Freq33S   = b1Freq33S*(1 + ppmOffset33S/1e6)
+
+   b1Freq119Sn = b1Freq1HZero*gyro119Sn/gyro1H
+   b1Freq119Sn = b1Freq119Sn*(1 + ppmOffset119Sn/1e6)
+
+   b1Freq129Xe = b1Freq1HZero*gyro129Xe/gyro1H
+   b1Freq129Xe = b1Freq129Xe*(1 + ppmOffset129Xe/1e6)
+
+# Save these results to the common par file for this spectrometer
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("SpinsolveParameters\\Common")
+   cd("SpinsolveParameters\\Common")
+   commonFile = "$gData->specID$Common.par"
+
+   freqs = ["b1Freq1H    = $b1Freq1H,1.7f$d",
+            "b1Freq2H    = $b1Freq2H,1.7f$d",
+            "b1Freq3H    = $b1Freq3H,1.7f$d",
+            "b1Freq7Li   = $b1Freq7Li,1.7f$d",
+            "b1Freq11B   = $b1Freq11B,1.7f$d",
+            "b1Freq13C   = $b1Freq13C,1.7f$d",
+            "b1Freq14N   = $b1Freq14N,1.7f$d",
+            "b1Freq15N   = $b1Freq15N,1.7f$d",
+            "b1Freq19F   = $b1Freq19F,1.7f$d",
+            "b1Freq23Na  = $b1Freq23Na,1.7f$d",
+            "b1Freq27Al  = $b1Freq27Al,1.7f$d",
+            "b1Freq29Si  = $b1Freq29Si,1.7f$d",
+            "b1Freq31P   = $b1Freq31P,1.7f$d",
+            "b1Freq33S   = $b1Freq33S,1.7f$d",
+            "b1Freq119Sn = $b1Freq119Sn,1.7f$d",
+            "b1Freq129Xe = $b1Freq129Xe,1.7f$d",
+            "calibrated  = 1"]
+
+# If a common parameter file is not present make a default one first
+   if(not(isfile(commonFile)))
+      ucsFiles:loadCommonPar()
+   endif
+
+# Merge new parameters with existing common parameter file
+   par = load(commonFile)
+   par = mergelists(par,freqs)
+   par = setlistvalues(par,freqs)
+   save(commonFile,sortlist(par))   
+   gData->commonPar =  struct(sortlist(par))  
+
+   cd(bak) 
+ 
+   if(verbose)
+      print("\n---- Frequencies-----\n\n")
+      print("   Proton 1       : $b1Freq1H,1.7f$ MHz\n")
+      print("   Deuterium 2    : $b1Freq2H,1.7f$ MHz\n")
+      print("   Tritium 3      : $b1Freq3H,1.7f$ MHz\n")
+      print("   Lithium 7      : $b1Freq7Li,1.7f$ MHz\n")
+      print("   Boron 11       : $b1Freq11B,1.7f$ MHz\n")
+      print("   Carbon 13      : $b1Freq13C,1.7f$ MHz\n")
+      print("   Nitrogen 14    : $b1Freq14N,1.7f$ MHz\n")
+      print("   Nitrogen 15    : $b1Freq15N,1.7f$ MHz\n")
+      print("   Fluorine 19    : $b1Freq19F,1.7f$ MHz\n")
+      print("   Sodium 23      : $b1Freq23Na,1.7f$ MHz\n")
+      print("   Aluminium 27   : $b1Freq27Al,1.7f$ MHz\n")
+      print("   Silicon 29     : $b1Freq29Si,1.7f$ MHz\n")
+      print("   Phosphorous 31 : $b1Freq31P,1.7f$ MHz\n")
+      print("   Sulphur 33     : $b1Freq33S,1.7f$ MHz\n")
+      print("   Tin 119        : $b1Freq119Sn,1.7f$ MHz\n")
+      print("   Xenon 129      : $b1Freq129Xe,1.7f$ MHz\n")
+   endif
+                 
+      
+endproc()
+
+#########################################################
+# Search for the resonant frequency using dwellTimes 
+# 2, and 100/200 us (depending on highRes argument)
+# Returns the spectrometer parameter list and the
+# updated TestShims parameter list.
+#########################################################
+
+procedure(findF0, function, psPar, hiRes=0, saveData="false")
+
+# Get ready to run
+   psPar->nrScans = 1
+# Get the default pulse parameters
+   specPar = gData->getXChannelParameters("1H")
+   if(hiRes == 0)
+      psPar->b1Freq1H = double(specPar->Frequency_1H)
+      psPar->90Amplitude1H = specPar->PowerLevel_1H
+   endif
+   psPar->pulseLength1H = specPar->PulseLength_1H*0.5
+   psPar->usePPMScale = "yes"
+   psPar->findingF0 = 1
+   assignlock("wvExpStatus","running","window")
+
+# Find the resonant frequency 1 MHz BW
+   if((wvExpStatus == "running") & (hiRes == 0)) 
+      dwellTime = 1
+      nrPnts = 16384
+      psPar->nrPnts = nrPnts
+      psPar->dwellTime = dwellTime
+      psPar->acqTime = dwellTime*nrPnts/1e3
+      psPar->bandwidth = 1000/dwellTime
+      psPar->dispRange = 50000
+      psPar->saveData = "false"
+      result = TestShims:backdoor(list(psPar))
+      if(result != 0)
+         if(function != null)
+            function->iteration = function->iteration + 1
+         endif
+         psPar->b1Freq1H = psPar->b1Freq1H+result->maxFreq/1e6
+      endif
+   endif
+
+# Find the resonant frequency using 5 or 10 kHz BW
+   if(wvExpStatus == "running") 
+      if(hiRes == 0)
+         dwellTime = 100
+         psPar->dwellTime = dwellTime
+         psPar->acqTime = dwellTime*nrPnts/1e3
+         psPar->bandwidth = 1000/dwellTime
+      endif
+      psPar->saveData = saveData
+      result = TestShims:backdoor(list(psPar))
+      if(result != 0) 
+         if(function != null) 
+            function->iteration = function->iteration + 1
+         endif
+         psPar->b1Freq1H = psPar->b1Freq1H + result->maxFreq/1e6
+         delF = (psPar->peakPositionPPM-4.74)*psPar->b1Freq1H
+         psPar->b1Freq1H = psPar->b1Freq1H-delF/1e6
+      endif
+   endif
+   psPar->findingF0 = 0
+
+endproc(result, psPar, specPar)
+
+
+#########################################################
+# Read the DSP parameters and return as a list
+# or structure based on the mode
+#########################################################
+
+procedure(loadDSPParameters, mode="list")
+
+   specPar = gData->getXChannelParameters()
+
+   if(specPar == null)
+      return(null)
+   endif
+   if(mode == "list")      
+      specPar = list(specPar)
+   endif
+
+endproc(specPar)
+
+
+#########################################################
+# Update the x,y,z shims in the Kea preferences file
+# and in the gData->preferences structure
+#########################################################
+
+procedure(updateXYZPreferences, par)
+
+   pref = ucsFiles:loadPref()
+   assignlist(par)
+   if(par != null)
+      pref = setlistvalue(pref,"xshim","$xshim$")
+      pref = setlistvalue(pref,"yshim","$yshim$")
+      pref = setlistvalue(pref,"zshim","$zshim$")
+      ucsFiles:savePref(pref)
+   endif
+   gData->preferences = struct(pref)
+
+endproc()

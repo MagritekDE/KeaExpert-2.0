@@ -1,0 +1,111 @@
+#########################################################
+# Update the parameters in the experiment list with
+# common parameters
+#########################################################
+
+procedure(CommonParSelection, parWin)
+
+   n = :windowdefinition()
+   windowvar(wv_parent)
+   wv_parent = parWin
+
+   setwindowpar(n,"type","dialog")
+   showdialog(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apply common parameters", -1, -1, 300, 106, "resizable")
+
+      # Define all controls with basic parameters
+      statictext(1, 18, 10, 255, 29, "left", "This will replace some of the parameters by common parameters. How do you want to proceed?")
+      button(2, 20, 52, 87, 36, "Apply to current experiment",:applyToCurrent())
+      button(3, 120, 52, 87, 36, "Apply to all experiments",:applyToAll())
+      button(4, 220, 52, 50, 36, "Cancel",closedialog())
+
+endproc(n)
+
+#########################################################
+# Replace the common parameters in the current experiment
+# in the parameter list but no in the acqu.par file
+#########################################################
+
+procedure(applyToCurrent)
+
+   curWin = guiwinnr()
+
+   guiwinnr(wv_parent)
+   if(wvCurrentExpt == null)
+      return
+   endif 
+
+   prefs = struct(wvProcLoadPref())
+
+   if(expert:isDataPresent(wvCurrentExpt))
+      message("Error","The current experiment cannot be modified as data has been collected.","error")
+      return
+   endif  
+
+   if(query("Warning!","This my replace some of the current experiment parameters\rwith common parameters. Do you want to proceed?") == "no")
+      return
+   endif
+
+   par = ucsFiles:loadCommonPar()
+   setctrlvalues(0,par)
+
+   guiwinnr(curWin)
+   message("Information","Common parameters updated in current experiment.","info")
+   closedialog()
+
+endproc()
+
+#########################################################
+# Replace the common parameters in all normal 
+# experiments in the experiment list which do not have
+# data.
+#########################################################
+
+procedure(applyToAll)
+
+   if(query("Warning!","This my replace some of the experiment parameters\rwith common parameters.\r\rThis will be applied to all incomplete experiments in the list.\r\rDo you want to proceed?") == "no")
+      return
+   endif
+
+   bak = getcwd()
+ 
+   curWin = guiwinnr()
+
+   guiwinnr(wv_parent)
+   expLst = exptListCtrl->list
+   for(k = 0 to size(expLst)-1)
+
+      exptInfo = expert:getExptInfo(exptListCtrl,k)
+      if(not(expert:isDataPresent(exptInfo)))   
+         if(not(expert:isSpecialCmd(exptInfo->name)))
+            if(exptListCtrl->zindex == k) # Update the visible parameters
+               par = ucsFiles:loadCommonPar()
+               setctrlvalues(0,par)
+               parSaved = expert:getExptParameters(exptInfo)
+               par = getctrlvalues(0,"list","list",getlistnames(parSaved))
+            else # Load acqu.par and merge with common par
+               par = expert:getExptParameters(exptInfo)
+               par = expert:mergeWithCommonPar(par)
+            endif
+            cd(exptInfo->path)
+            save("acqu.par",sortlist(par),"truedoubles")
+         endif
+      endif
+
+   next(k)
+
+   cd(bak)
+   guiwinnr(curWin)
+
+   message("Information","Common parameters updated in all experiment.","info")
+   closedialog()
+    
+
+endproc()

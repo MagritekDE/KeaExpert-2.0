@@ -1,0 +1,50 @@
+procedure(selectColourScale)
+
+   n = :windowdefinition()
+   windowvar(cscale)
+   :init()
+   setwindowpar(n,"type","dialog")
+   setwindowpar(n,"sizelimits",[233,-1,174,-1])
+   scale = showdialog(n)
+
+endproc(scale)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Select image color-scale", -1, -1, 230, 143, "resizable")
+
+      # Define all controls with basic parameters
+       listbox(1, 18, 27, 110, 100,:listcallback())
+       button(2, 147, 15, 57, 30, "Select",:select();)
+       button(3, 147, 56, 57, 30, "Close",closedialog(cscale);)
+       statictext(4, 45, 7, "center", "Color-scales")
+
+     # Set other control parameters
+       setpar(n,2,"mode","default")
+
+endproc(n)
+
+procedure(init)
+
+   setpar(0,1,"list",colorscales)
+
+endproc()
+
+procedure(listcallback)
+
+   if(getpar(0,1,"event") == "double_click_down")
+      cscale = getpar(0,1,"value")
+      cmap(cscale)
+   endif
+
+endproc()
+ 
+
+procedure(select)
+
+   cscale = getpar(0,1,"value")
+   cmap(cscale)
+
+endproc()

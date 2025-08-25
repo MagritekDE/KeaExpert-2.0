@@ -1,0 +1,383 @@
+# Test different file formats with export and import
+
+procedure(export3d_test1,verbose,delay)
+
+   clear1d()
+
+   
+# Binary real bigend - float
+   clear3d()
+   m = noise(50,50,50)
+
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != m)
+       return(0, "Invalid result for: export3d_test1 'binary-real-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-float-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary real bigend - long
+   clear3d()
+   m = 1e4*noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-real-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-long-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary real bigend - short
+   clear3d()
+   m = 1000*noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-real-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-short-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary real littleend - float
+   clear3d()
+   m = noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "float", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != m)
+       return(0, "Invalid result for: export3d_test1 'binary-real-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-float-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary real littleend - long
+   clear3d()
+   m = 1e4*noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "long", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-real-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-long-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary real littleend - short
+   clear3d()
+   m = 1000*noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "real", 
+              "fls", "short", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-real-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-short-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex bigend - float
+   clear3d()
+   m = noise(50,50,50)+i*noise(50,50,50)
+
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != m)
+       return(0, "Invalid result for: export3d_test1 'binary-complex-float-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-complex-float-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex bigend - long
+   clear3d()
+   m = 1e4*(noise(50,50,50)+i*noise(50,50,50))
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-complex-long-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-complex-long-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex bigend - short
+   clear3d()
+   m = 1000*(noise(50,50,50)+i*noise(50,50,50))
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "bigend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "bigend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-complex-short-bigend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-complex-short-bigend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex littleend - float
+   clear3d()
+   m = noise(50,50,50)+i*noise(50,50,50)
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "float", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != m)
+       return(0, "Invalid result for: export3d_test1 'binary-complex-float-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-complex-float-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex littleend - long
+   clear3d()
+   m = 1e4*(noise(50,50,50)+i*noise(50,50,50))
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "long", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-complex-long-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-complex-long-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# Binary complex littleend - short
+   clear3d()
+   m = 1000*(noise(50,50,50)+i*noise(50,50,50))
+   export3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "littleend",
+              "fileheader", 0)
+   
+   export3d(m, "data")
+   
+   import3dpar("ab", "binary",  "xyrc", "complex", 
+              "fls", "short", "machine", "littleend", 
+              "fileheader", 0)
+   
+   n = import3d("data",50,50,50)
+   if(n != round(m))
+       return(0, "Invalid result for: export3d_test1 'binary-complex-short-littleend'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'binary-real-complex-littleend'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+
+# ASCII real
+   clear3d()
+   m = noise(50,50,50)
+   mm = max(m)
+   export3dpar("ab", "ascii",  "xyrc", "real")
+   export3d(m, "data")
+   import3dpar("ab", "ascii",  "xyrc", "real")
+   
+   n = import3d("data",50,50,50)
+
+   if(max(abs(n - m)) > 1e-5) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export1d_test1 'ascii-real")
+   endif
+   if(verbose)
+      pr "      Valid test: : export1d_test1 'ascii-real\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(n,1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+
+# ASCII complex
+   clear3d()
+   m = (noise(50,50,50)+i*noise(50,50,50))
+   mm = max(real(m))
+   export3dpar("ab", "ascii",  "xyrc", "complex")
+   export3d(m, "data")
+   import3dpar("ab", "ascii",  "xyrc", "complex")
+   
+   n = import3d("data",50,50,50)
+   if(max(abs(n - m)) > 1e-5) # Some rounding since ascii mode only save 6 sig figures 
+      return(0, "Invalid result for: export3d_test1 'ascii-complex'")
+   endif
+   if(verbose)
+      pr "      Valid test: : export3d_test1 'ascii-complex'\n"  
+   endif
+   draw3d("false")
+   shift3d(-25,-25,-25)
+   isosurf(real(n),1.5,[1,0.5,0])
+   rotate3d(-36,320,0)
+   draw3d("true")
+   pause(delay)
+   clear3d()
+
+   rmfile("data")
+
+endproc(1,"")

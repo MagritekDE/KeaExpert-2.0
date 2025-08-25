@@ -1,0 +1,228 @@
+###################################################
+#            calibrate1d.mac
+#
+# Add a user-defined linear x-axis to the 1D plot
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek February 2007-2022
+###################################################
+
+procedure(calibrate1d)
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y)
+   :updatecontrols()
+   setwindowpar(n,"focus",4)
+   :mode_change()
+   showwindow(n)
+   
+endproc()
+
+##########################################################
+# Window definition
+##########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calibrate 1D x-Axis", -1, -1, 337, 168)
+
+      # Define all controls with basic parameters
+       windowvar(wv_x,wv_y)
+       statictext(1, 220, 57, "right", "Width")
+       button(2, 63, 130, 43, 27, "Indices",
+          :reset();)
+       button(3, 222, 130, 43, 27, "Help",
+          :show_help();)
+       textbox(4, 65, 53, 59)
+       textbox(5, 65, 84, 59)
+       statictext(6, 58, 57, "right", "Left")
+       statictext(7, 58, 88, "right", "Right")
+       statictext(8, 226, 83, "right", "Selected")
+       textbox(9, 235, 84, 59)
+       textbox(10, 235, 53, 59)
+       statictext(11, 217, 95, "right", "Point")
+       button(12, 275, 130, 43, 27, "Exit",
+          closewindow(0);)
+       groupbox(13, "", 5, 4, 155, 117)
+       groupbox(14, "", 170, 4, 155, 117)
+       radiobuttons(15, 66, 22, 180, "horizontal", "range,selection", "range",:mode_change();)
+       statictext(16, 60, 21, "right", "By range")
+       statictext(17, 241, 21, "right", "By selection")
+       button(18, 169, 130, 43, 27, "Update",
+          :updatecontrols();)
+       button(19, 10, 130, 43, 27, "Apply",
+          :calibrate();)
+       button(20, 116, 130, 43, 27, "Undo",
+          :undo();)
+
+     # Set other control parameters
+       setpar(n,2,"tab_number",8)
+       setpar(n,3,"tab_number",9)
+       setpar(n,4,"tab_number",2)
+       setpar(n,5,"tab_number",3)
+       setpar(n,9,"tab_number",6)
+       setpar(n,10,"tab_number",5)
+       setpar(n,12,"tab_number",10)
+       setpar(n,15,"name","mode")
+       setpar(n,19,"mode","default",
+                   "tab_number",7)
+
+endproc(n)
+
+procedure(show_help)
+   help("Macros\\1D","calibrate1d.htm")
+endproc()
+
+##########################################################
+# User has selected range option
+##########################################################
+
+procedure(mode_change)
+
+   mode = getpar(0,15,"text")
+
+   if(mode == "range")
+      setpar(0,4,"enable","true")
+      setpar(0,5,"enable","true")
+      setpar(0,10,"enable","false")
+      setpar(0,9,"enable","false")
+   else
+      setpar(0,4,"enable","false")
+      setpar(0,5,"enable","false")
+      setpar(0,10,"enable","true")
+      setpar(0,9,"enable","true")
+   endif
+
+endproc()
+
+
+
+##########################################################
+# Update text boxes with current data set
+##########################################################
+
+procedure(updatecontrols)
+
+   (x,y) = getplotdata("1d")
+
+   w = size(x)
+   if(w == 0)
+      return()
+   endif
+
+   setpar(0,10,"text",w)
+   setpar(0,9,"text",0)
+
+   setpar(0,4,"text",x[0])
+   setpar(0,5,"text",x[w-1])
+   setpar(0,10,"text",x[w-1]-x[0]) 
+
+endproc()
+
+
+
+##########################################################
+# Apply the specified calibration
+##########################################################
+
+procedure(calibrate)
+
+# Get the 1D data
+   (x,y) = getplotdata("1d")
+   if(x == null)
+     message("Error","No data in 1D plot","error")
+     return()
+   endif
+   w = size(x)
+
+# Save the vectors for undo operation
+   wv_x = x
+   wv_y = y
+
+# Record the current 1D plot state
+   (txt,lx,ly) = 1dpar:get()
+
+# Calibrate by giving the range
+   if(getpar(0,15,"text") == "range") # By range
+
+      xleft = getpar(0,4,"value")
+      xright = getpar(0,5,"value")
+
+      xmin = min([xleft,xright])
+      xmax = max([xleft,xright])
+
+      xnew = linvec(xleft,xright,w)
+      draw1d("false")
+         plot(xnew,y)
+         1dpar:set(txt,lx,ly)
+      draw1d("true")
+  
+# Calibrate by selection, giving the width and a reference point
+   else
+
+      userWidth = getpar(0,10,"value")
+      calValue = getpar(0,9,"value")  
+ 
+      title("Select calibration point")
+      s = findindex(x,getx())
+
+      xleft = calValue-s/w*userWidth 
+      xright = xleft + userWidth  
+      xnew = linvec(xleft,xright,w)
+      draw1d("false")
+         plot(xnew,y)
+         1dpar:set(txt,lx,ly)
+      draw1d("true")
+
+   endif
+
+endproc()
+
+##########################################################
+# Restore default calibration (use indices)
+##########################################################
+
+procedure(reset)
+
+    curplot("1d")
+    txt = title("getargs")
+    xlbl = xlabel("getargs")
+    ylbl = ylabel("getargs")
+
+   (x,y) = getplotdata("1d")
+    if(x == null)
+      message("Error","No data in 1D plot","error")
+      return()
+    endif
+
+    N = size(x)
+
+   setpar(0,4,"text",0)
+   setpar(0,5,"text",N)
+
+   draw1d("false")
+      plot(y)
+      title(txt)
+      xlabel(xlbl)
+      ylabel(ylbl)
+   draw1d("true")
+
+endproc()
+
+
+####################################################
+# Restore the vector stored before last correction
+####################################################
+
+procedure(undo)
+
+   (txt,lx,ly) = 2dpar:get()
+   draw1d("false")
+      plot(wv_x,wv_y)
+      1dpar:set(txt,lx,ly)
+   draw1d("true")
+
+endproc()

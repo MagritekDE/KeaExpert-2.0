@@ -1,0 +1,26 @@
+m = getplotdata("2d")
+(w,h) = size(m)
+zfx = 2
+zfy = 2
+mOut1 = cmatrix(w*zfx,h/2)
+a = 60*pi/180
+fltx = sin(a+(pi-a)*[0:w-1]/w)^2
+flty = sin(a+(pi-a)*[0:h/2-1]/(h/2))^2
+
+
+ph = 1
+for(y = 0 to h-1 step 2)
+  rowR = real(ph*ft(zerofill(m[~,y].*fltx,w*zfx,"end")))
+  rowI = real(ph*ft(zerofill(m[~,y+1].*fltx,w*zfx,"end")))
+  mOut1[~,y/2] = rowR + i*rowI
+next(y)
+
+mOut2 = cmatrix(w*zfx,h/2*zfy)
+
+for(x = 0 to w*zfx-1)
+  mOut2[x,~] = ft(zerofill(mOut1[x,~].*flty',h/2*zfy,"end"))
+next(x)
+
+image(mOut2)
+curplot()->axes()->xdirection("reversed")
+curplot()->axes()->ydirection("reversed")

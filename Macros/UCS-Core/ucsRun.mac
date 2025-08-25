@@ -1,0 +1,2333 @@
+###################################################################################
+#
+# ucsRun.mac
+#
+# Procedures called from the execPP prcoedure in Kea/RCA macros which
+# relate to running the pulse program.
+#
+# accumlate ........... sum collected data to improve SNR
+# autoPhase ........... autophase time domain data
+# autoPhaseFreq ....... autophase frequency domain data
+# baselineCorrection .. baseline correct using offset method.
+# calibrate ........... convert the raw data to uV or mV.
+# checkTimeAndAbort ... make sure the repetition time is correct
+#                       and also check for abort or finish state.
+# convertRxGainHF ..... convert from Rx gain in dB to a number (HF kea)
+# convertRxGainLF ..... convert from Rx gain in dB to a number (LF kea)
+# convertTxGain ....... convert from Tx gain in dB to a 14 bit number
+# getData ............. run the pulse program and collect returned data.
+# getNrPnts ........... returns maximum number of points for a given echotime. 
+# highDutyCycle ....... check for a high RF duty cycle.
+# logAxis ............. generate a logarithmically spaced axis
+# pauseAndAbort ....... wait for predefined time checking for abort or finish.
+# pseudoLogBin ........ bin points from an x-y data set using pseudo-logarithmic spacing
+# pseudoLogAxis ....... return an axis with pseudo-logarithmic spacing
+# rmsValue ............ calculate the RMS value of a data set.
+# runPPNoData ......... run an experiment which does not return data.
+# setPPAmplitude ...... set an RF amplitude in the pulse sequence parameter array
+# setPPDelay .......... set a short delay in the pulse sequence parameter array
+# setPPGainHF ......... set the RF rx gain in the pulse sequence parameter array (HF version) 
+# setPPGainLF ......... set the RF rx gain in the pulse sequence parameter array (LF version) 
+# setPPLongDelay ...... set a long delay in the pulse sequence parameter array
+# setPPNumber ......... set a number in pulse sequence parameter array
+# setPPPhase .......... set an RF phase in the pulse sequence parameter array
+# setPPFrequency ...... set a frequency in the pulse sequence parameter array
+# transformData ....... apply a Fourier transform to a data set.
+# trackB0 ............. run an experiment to update the resonant frequency
+#                      
+#
+# Last modified 28 July 2015 by C Eccles
+#
+# Copyright (c) Magritek Ltd 2015
+#
+##################################################################################
+ 
+
+###################################################################
+#
+# Accumulate the data
+#
+#  Input: accum ....... accumulate or not ("yes"/"no")
+#         pAcq ........ acquisition phase (x,-x,y,-y)
+#         totalData ... current accumulated data set
+#         data ........ new data to add
+#
+# Output: status ...... "ok" or "abort".
+#         cdata ........ collected complex signal.
+#
+###################################################################
+ 
+procedure(accumulate,accum,pAcq,totalData,data)
+
+   #if(gData->curExpt->parameters->usePhaseCycle == "yes")
+      ph = round(pAcq/16384) # Convert from 16 bit to 0,1,2,3
+   #else
+  #    ph = 0
+  # endif
+
+   if(accum == "yes")
+      if(ph == 0)
+         totalData = totalData + data
+      elseif(ph == 2)
+         totalData = totalData - data
+      elseif(ph == 1)
+         totalData = totalData - imag(data) + i*real(data)
+      elseif(ph == 3)
+         totalData = totalData + imag(data) - i*real(data)
+      endif
+   else
+      if(ph == 0)
+         totalData = data
+      elseif(ph == 2)
+         totalData = - data
+      elseif(ph == 1)
+         totalData = -imag(data) + i*real(data)
+      elseif(ph == 3)
+         totalData = +imag(data) - i*real(data)
+      endif
+   endif
+
+endproc(totalData)
+
+
+#######################################################
+# Auto phase by finding the phase in degrees with minimum
+# absolute imaginary integral but large real integral.
+#######################################################
+
+procedure(autoPhaseFreq,data)
+
+    n = size(data)
+    s1 = matrix(360)
+    s2 = matrix(360)
+    for(q = -180 to 179)
+       dataA = data *exp(i*q*pi/180)
+       s1[q+180] = sum(real(dataA))
+       s2[q+180] = sum(imag(dataA))
+    next(q)
+
+   denom = (abs(s2)+max(s2)/1000)
+   if(denom != matrix(360))
+      (v,ph,y) = max(s1/(abs(s2)+max(s2)/1000))
+      ph = ph - 180
+   else
+      ph = 0
+   endif
+
+endproc(ph, data*exp(i*ph*pi/180))
+
+###################################################################
+#
+# Auto-phase the time domain data by maximising the real part
+# of the decay or minimising the range of the imaginary part
+# while still keeping the real part positive.
+#
+# Input: data ... complex data to be phased
+#        method . phasing method 'maxreal' or 'minimag'
+#
+# Output: ph .... phase value used in degrees
+#         data .. phased data
+#         
+#
+###################################################################
+ 
+procedure(autoPhase,data,method,startPhase=null)
+
+   if(method == "minsd") # Minimise the standard deviation of the imaginary part
+
+      nd = 0.5*(data[0:-2]+data[1:-1]) # Smooth data
+
+      if(startPhase == null)
+         ph = -phase(nd[0])*180/pi
+      else
+         ph = startPhase
+      endif
+
+      dp = 90
+      minr = +1e30
+      minp = minr
+   
+      pdata0 = nd * exp(i*ph/180*pi)
+      r0 = sd(imag(pdata0)) # Range 0
+      v0 = max(real(pdata0))
+      while(dp > 0.01) # Stop when step is 0.01 degrees
+   # pr "ph = $ph$ dp = $dp$\n"
+         pdata1 = nd * exp(i*(ph-dp)/180*pi)
+         pdata2 = nd * exp(i*(ph+dp)/180*pi)
+         r1 = sd(imag(pdata1)) # rms 1
+         r2 = sd(imag(pdata2)) # rms 2
+         v1 = max(real(pdata1))
+         v2 = max(real(pdata2))
+         if(v0 < 0) # First time data 0 is invalid
+            if(v1 > 0 & v2 < 0) # data 1 is only one valid
+               if(r1 < minr)
+                  minr = r1
+                  minp = ph-dp
+               endif
+               ph = ph-dp
+               r0 = r1
+               v0 = v1
+               pdata0 = pdata1
+            elseif(v2 > 0 & v1 < 0) # data 2 is only one valid
+               if(r2 < minr)
+                  minr = r2
+                  minp = ph+dp
+               endif
+               ph = ph+dp
+               r0 = r2
+               v0 = v2
+               pdata0 = pdata2
+            else
+               break # Shouldn't happen
+            endif
+         elseif(v1 > 0 & v2 > 0 & r1 <= r2 & r1 < r0) # Lower try is smaller
+            if(r1 < minr)
+               minr = r1
+               minp = ph-dp
+            endif
+            ph = ph-dp
+            r0 = r1
+            v0 = v1
+            pdata0 = pdata1
+         elseif(v1 > 0 & v2 > 0 & r2 <= r1 & r2 < r0) # Upper try is smaller
+            if(r2 < minr)
+               minr = r2
+               minp = ph+dp
+            endif
+            ph = ph+dp
+            r0 = r2
+            v0 = v2
+            pdata0 = pdata2
+         elseif(r1 < r0 & v1 > 0 & v2 < 0) # Lower try is valid
+            if(r1 < minr)
+               minr = r1
+               minp = ph-dp
+            endif
+            ph = ph-dp
+            r0 = r1
+            v0 = v1
+            pdata0 = pdata1
+         elseif(r2 < r0 & v1 < 0 & v2 > 0) # Upper try is valid
+            if(r2 < minr)
+               minr = r2
+               minp = ph+dp
+            endif
+            ph = ph+dp
+            r0 = r2
+            v0 = v2
+            pdata0 = pdata2
+         elseif(v0 > 0) # Last try is smaller
+            if(r0 < minr)
+               minr = r0
+               minp = ph
+            endif
+            ph = ph
+         endif
+   
+         dp = dp/2 # Halve step
+   
+      endwhile()
+
+   # Apply final phase
+      data = data * exp(i*minp/180*pi)
+      ph = minp
+      
+      return(ph,data)
+
+   endif
+
+ # Smooth the oscillations in the imaginary domain first
+   nd = convolve(data,[1,1,1,1,1])
+   nd = nd[2:-3] # Remove the end bits messed up by convolve
+
+ # Find the maximum value in the real part of nd*exp(-i*ph)
+ # Using a successive approxmation algorithm
+
+   if(method == "maxreal")
+   
+      ph = 180
+      dp = 120
+      maxv = -1e30
+      maxp = maxv
+
+      nd = data
+   
+      pdata0 = nd * exp(i*ph/180*pi)
+      v0 = max(real(pdata0))
+      while(dp > 0.01) # Stop when step is 0.01 degrees
+   
+         pdata1 = nd * exp(i*(ph-dp)/180*pi)
+         pdata2 = nd * exp(i*(ph+dp)/180*pi)
+         v1 = max(real(pdata1))
+         v2 = max(real(pdata2))
+         if(v1 > v2 & v1 > v0) # Lower try is bigger
+            if(v1 > maxv)
+               maxv = v1
+               maxp = ph-dp
+            endif
+            ph = ph-dp
+            v0 = v1
+            pdata0 = pdata1
+         elseif(v2 > v1 & v2 > v0) # Upper try is bigger
+            if(v2 > maxv)
+               maxv = v2
+               maxp = ph+dp
+            endif
+            ph = ph+dp
+            v0 = v2
+            pdata0 = pdata2
+         else # Last try is bigger
+            if(v0 > maxv)
+               maxv = v0
+               maxp = ph
+            endif
+            ph = ph
+         endif
+ 
+         dp = dp/2 # Halve step
+   
+      endwhile()
+
+      data = data * exp(i*maxp/180*pi)
+      ph = maxp
+
+ # Find the maximum value in the sum of the real part of nd*exp(-i*ph)
+ # Using a successive approxmation algorithm
+
+   elseif(method == "maxrealsum")
+   
+      ph = 180
+      dp = 120
+      maxv = -1e30
+      maxp = maxv
+   
+      nd = data
+
+      pdata0 = nd * exp(i*ph/180*pi)
+      v0 = sum(real(pdata0))
+      while(dp > 0.01) # Stop when step is 0.01 degrees
+   
+         pdata1 = nd * exp(i*(ph-dp)/180*pi)
+         pdata2 = nd * exp(i*(ph+dp)/180*pi)
+         v1 = sum(real(pdata1))
+         v2 = sum(real(pdata2))
+         if(v1 > v2 & v1 > v0) # Lower try is bigger
+            if(v1 > maxv)
+               maxv = v1
+               maxp = ph-dp
+            endif
+            ph = ph-dp
+            v0 = v1
+            pdata0 = pdata1
+         elseif(v2 > v1 & v2 > v0) # Upper try is bigger
+            if(v2 > maxv)
+               maxv = v2
+               maxp = ph+dp
+            endif
+            ph = ph+dp
+            v0 = v2
+            pdata0 = pdata2
+         else # Last try is bigger
+            if(v0 > maxv)
+               maxv = v0
+               maxp = ph
+            endif
+            ph = ph
+         endif
+   
+         dp = dp/2 # Halve step
+   
+      endwhile()
+
+      data = data * exp(i*maxp/180*pi)
+      ph = maxp
+
+  # Find the minimum range in the imaginary part of nd*exp(-i*ph)
+  # Using a successive approxmation algorithm
+
+   else
+
+      ph = 0
+      dp = 90
+      minr = +1e30
+      minp = minr
+   
+      nd = data
+
+      pdata0 = nd * exp(i*ph/180*pi)
+      r0 = max(imag(pdata0)) - min(imag(pdata0)) # Range 0
+      v0 = sum(real(pdata0))
+      while(dp > 0.01) # Stop when step is 0.01 degrees
+  # pr "ph = $ph$ dp = $dp$\n"
+         pdata1 = nd * exp(i*(ph-dp)/180*pi)
+         pdata2 = nd * exp(i*(ph+dp)/180*pi)
+         r1 = max(imag(pdata1)) - min(imag(pdata1)) # Range 1
+         r2 = max(imag(pdata2)) - min(imag(pdata2)) # Range 2
+         v1 = sum(real(pdata1))
+         v2 = sum(real(pdata2))
+#pr "$v0$,$v1$,$v2$, $r0$, $r1$,$r2$\n"
+         if(v0 < 0) # First time data 0 is invalid
+            if(v1 > 0 & v2 < 0) # data 1 is only one valid
+               if(r1 < minr)
+                  minr = r1
+                  minp = ph-dp
+               endif
+               ph = ph-dp
+               r0 = r1
+               v0 = v1
+  # pr "A r1 valid ph = $ph$\n"
+               pdata0 = pdata1
+            elseif(v2 > 0 & v1 < 0) # data 2 is only one valid
+               if(r2 < minr)
+                  minr = r2
+                  minp = ph+dp
+               endif
+               ph = ph+dp
+               r0 = r2
+               v0 = v2
+#pr "B r2 valid ph = $ph$\n"
+               pdata0 = pdata2
+            else
+               break # Shouldn't happen
+            endif
+         elseif(v1 > 0 & v2 > 0 & r1 <= r2 & r1 < r0) # Lower try is smaller
+            if(r1 < minr)
+               minr = r1
+               minp = ph-dp
+            endif
+            ph = ph-dp
+            r0 = r1
+            v0 = v1
+#pr "r1 < r2 ph = $ph$\n"
+            pdata0 = pdata1
+         elseif(v1 > 0 & v2 > 0 & r2 <= r1 & r2 < r0) # Upper try is smaller
+            if(r2 < minr)
+               minr = r2
+               minp = ph+dp
+            endif
+            ph = ph+dp
+            r0 = r2
+            v0 = v2
+            pdata0 = pdata2
+#pr "r2 < r1 ph = $ph$\n"
+         elseif(r1 < r0 & v1 > 0 & v2 < 0) # Lower try is valid
+            if(r1 < minr)
+               minr = r1
+               minp = ph-dp
+            endif
+            ph = ph-dp
+            r0 = r1
+            v0 = v1
+#pr "r1 < r0 ph = $ph$\n"
+            pdata0 = pdata1
+         elseif(r2 < r0 & v1 < 0 & v2 > 0) # Upper try is valid
+            if(r2 < minr)
+               minr = r2
+               minp = ph+dp
+            endif
+            ph = ph+dp
+            r0 = r2
+            v0 = v2
+            pdata0 = pdata2
+#pr "r2 < r0 ph = $ph$\n"
+         elseif(v0 > 0) # Last try is smaller
+            if(r0 < minr)
+               minr = r0
+               minp = ph
+            endif
+            ph = ph
+#pr "r0 < r1 < r2 ph = $ph$\n"
+         endif
+   
+         dp = dp/2 # Halve step
+   
+      endwhile()
+
+   # Apply final phase
+      data = data * exp(i*minp/180*pi)
+      ph = minp
+
+   endif
+
+#pr ph
+
+endproc(ph,data)
+
+###################################################################
+#
+# Perform a baseline correction on spectrum using method
+#
+# method = offset  - subtract average of end points
+#         parameters = 1/fraction of data set to average
+# 
+####################################################################
+
+procedure(baselineCorrection, spectrum, method, parameters)
+
+   if(method == "offset")
+
+      fracSize = parameters
+      specSize = size(spectrum)
+      nrBasePoints = round(specSize/fracSize)
+      blLeft = sum(spectrum[0:nrBasePoints-1])/nrBasePoints
+      blRight = sum(spectrum[specSize-nrBasePoints:-1])/nrBasePoints
+      blAvg = (blLeft+blRight)/2
+      spectrum = spectrum - blAvg
+
+   endif
+
+endproc(spectrum)
+
+###################################################################
+#
+# Calibrates the input data in uV or mV
+#
+# Input: cdata ... complex data to be calibrated
+#        guipar .. gui parameters
+#
+# Output: cdata .... calibrated data
+#         
+###################################################################
+ 
+procedure(calibrate, cdata, guipar)
+
+  # Extract the gui variables
+   assignlist(guipar)
+
+  # Calibrate
+   if(wvUnits != "raw")
+     # Apply transceiver rx channel gain
+      cdata = cdata/wvRxCal 
+
+     # Apply rx amplifier gain
+      if(wvApplyRxampFactor == "yes")
+         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
+         gainTot =  10^((gain1dB+gain2dB)/20)
+         cdata = cdata*wvRxAmpCor/gainTot
+      endif
+
+     # Apply preamp gain factor
+      if(wvApplyPreampFactor == "yes")
+         cdata = cdata/wvPreampGain
+      endif
+
+     # Apply units
+      if(wvUnits == "uV")
+         cdata = cdata*1000
+      endif
+
+   endif
+
+endproc(cdata)
+
+###########################################################
+# Ensure the repetition or interexperiment time is correct
+# and allow the user to abort or finish the pulse program
+# 
+# Input: guipar ..... GUI parameter list
+#        startTime .. when the pulse sequence started (s)
+#        scan ....... current scan number (0 based)
+#        pcList ..... the phase cycle list.
+#        lastScan ... if the last scans it to be ignored
+#                     when calculating the delay. (Optional)
+#
+# Output: abort ..... stop the pulse program
+#         continue .. keep scanning.
+#         finish .... complete phase cycle and save data
+#
+###########################################################
+
+procedure(checkTimeAndAbort,guipar,startTime,scan,pcList,lastScan)
+
+   assignlist(guipar)
+
+   if(isvar("ppStatus"))
+      ppStatus->color([255,255,0])
+   endif
+
+   if(isvar("nrScans"))
+      curScanCtrl->text("$scan+1$/$nrScans$")
+   endif
+
+# Last scan so don't wait
+   if(nrArgs == 5)
+      if(scan == nrScans-1)
+         if(wvExpStatus == "stop")
+            return("abort")
+         endif
+         gExpt->percentageCompleted = 100.0
+         return("continue")
+      endif
+   endif
+
+   if(isvar("ieTime")) # ieTime defined
+
+    # Make sure the inter-experiment time is correct
+      t1 = time()
+      while(1)
+         if(wvExpStatus == "stop")
+            return("abort")
+         elseif(wvExpStatus == "finish")
+            szList = size(pcList)
+            if(scan >= 0 & (((scan+1)%szList == 0) | (nrScans < szList)))
+               return("finish")
+            endif
+         endif
+         if(time()-t1 > ieTime/1000)
+            exitwhile()
+         endif
+      endwhile
+
+   else # repTime defined
+
+    # Make sure the repetition time is correct
+      tm = (time()-startTime)*1000
+
+      if(tm > repTime) # repTime too short
+
+         pr("\n   Increase repetition time to $tm,2.0f$ms\n")
+         if(wvExpStatus == "stop")
+            return("abort")
+         elseif(wvExpStatus == "finish")
+            szList = size(pcList)
+            if(scan >= 0 & (((scan+1)%szList == 0) | (nrScans < szList) ))
+               return("finish")
+            endif
+         endif
+      else # repTime not reached yet, so check for an abort while waiting
+        while((time()-startTime)*1000 < repTime)
+           if(wvExpStatus == "stop")
+              return("abort")
+           elseif(wvExpStatus == "finish")
+              szList = size(pcList)
+              if(scan >= 0 & (((round(scan+1))%szList == 0) | (nrScans < szList)))
+                 return("finish")
+              endif
+           endif
+        endwhile
+      endif
+
+   endif # End repTime
+
+endproc("continue")
+
+
+###############################################################
+#
+# Controls the repetition or interexperiment times in an 
+# experiment
+#
+# If a repetition time is defined (the usual case) then this
+# procedure should be called before the pulse sequence is run.
+# 
+# If an inter-experiment times is defined then the parameter 
+# tEndPS should be defined in which case it is the time
+# when the sequence ends. In this case this procedure 
+# function should then be called at the end of the scan loop.
+#
+##############################################################
+
+procedure(checkTiming,guipar,scan,pcList,tEndPS=null)
+
+   assignlist(guipar)
+
+# Change the experiment status color to yellow
+   if(isvar("ppStatus"))
+      ppStatus->color([255,255,0])
+   endif
+
+   if(isvar("ieTime")) # ieTime defined
+
+      if(tEndPS == null)
+         abort("Parameter tEndPS in checkTiming is not defined for ieTime option")
+      endif
+
+   # Update the scan counter
+      if(isvar("nrScans"))
+         if(scan >= 0)
+            curScanCtrl->text("$scan+1$/$nrScans$")
+         elseif(scan != -1000)
+            curScanCtrl->text("$scan$/$nrScans$")
+         endif
+      endif
+
+    # Check for a short ieTime
+      if(time()-tEndPS > ieTime/1000)
+         pr("\n   The interexperiment time is too short by $(time()-tEndPS - ieTime/1000)*1000,2.0f$ms\n")
+         return("continue")
+      endif
+
+    # Make sure the inter-experiment time is correct
+      while(1)
+         remainingTime = ieTime/1000-(time()-tEndPS)
+         if((remainingTime > 2) & (gExpt->pauseMonitor == 1))
+            gExpt->resumeMonitoring(1)
+         elseif((remainingTime < 1) & (gExpt->pauseMonitor == 0))
+            gExpt->pauseMonitoring()
+         endif
+
+         if(wvExpStatus == "stop")
+            return("abort")
+         elseif(wvExpStatus == "finish")
+            szList = size(pcList)
+            if(scan >= 0 & (((scan+1)%szList == 0) | (nrScans < szList)))
+               return("finish")
+            endif
+         endif
+         if(time()-tEndPS > ieTime/1000)
+            exitwhile()
+         endif
+
+      endwhile
+
+      return("continue")
+
+   endif
+
+# Keep track of the number of scans and the elapsed time
+   totScans = gData->curExpt->totScans+1
+   startTime = gData->curExpt->startTime
+   lastTime = gData->curExpt->lastTime
+   curTime = time()
+
+   status = "continue"
+
+# Ignore end delay
+   if(gData->curExpt->parameters->useEndDelay == 0 & scan == -1000)
+      return(status)
+   endif
+
+# Update the scan counter
+   if(isvar("nrScans"))
+      if(scan >= 0)
+         curScanCtrl->text("$scan+1$/$nrScans$")
+      elseif(scan != -1000)
+         curScanCtrl->text("$scan$/$nrScans$")
+      endif
+   endif
+
+# Check if we should ignore the start delay
+   if(gData->curExpt->parameters->useStartDelay == 0)
+      gData->curExpt->parameters->useStartDelay = 1
+      gData->curExpt->lastTime = curTime
+      gData->curExpt->startTime = curTime
+      return(status)
+   endif
+
+# Make sure the repetition time is correct
+   tm = curTime-startTime # Duration so far (s)
+   if(repTime < (curTime-lastTime)*1000) # repTime too short
+
+      if(wvExpStatus == "stop")
+         return("abort")
+      elseif(wvExpStatus == "finish")
+         if(pcList == null)
+            gData->curExpt->totScans = totScans
+            gData->curExpt->lastTime = time()
+            status = "finish"
+         endif 
+         szList = size(pcList)
+         if(scan >= 0 & (((scan+1)%szList == 0) | (nrScans < szList) ))
+            gData->curExpt->totScans = totScans
+            gData->curExpt->lastTime = time()
+            status = "finish"
+         endif
+      endif
+      if(pcList != null)
+         pr("\n   Increase repetition time to > $(curTime-lastTime)*1000,2.0f$ms\n")
+      endif
+
+   else # repTime not reached yet, so check for an abort while waiting
+      t1 = time()
+      while((time()-startTime) < repTime/1000*totScans)
+         remainingTime = repTime/1000*totScans-(time()-startTime)
+         if((remainingTime > 2) & (gExpt->pauseMonitor == 1))
+            gExpt->resumeMonitoring(1)
+         elseif((remainingTime < 1) & (gExpt->pauseMonitor == 0))
+            gExpt->pauseMonitoring()
+         endif
+         if(wvExpStatus == "stop")
+            return("abort")
+         elseif(wvExpStatus == "finish")
+            if(pcList == null)
+              status = "finish"
+            else  
+               szList = size(pcList)
+               if(scan >= 0 & (((round(scan+1))%szList == 0) | (nrScans < szList)))
+                 status = "finish"
+               endif
+            endif
+         endif
+      endwhile
+   endif
+
+# Update the total scan counter and when this scan finished
+   gData->curExpt->totScans = totScans
+   gData->curExpt->lastTime = time()
+
+endproc(status)
+
+
+####################################################
+# Convert receiver gain from dB to hex index
+# The first nibble is the gain of the input rx amp
+# the second nibble is the gain of the second rx amp
+# Gains from 40 dB have the best noise figure since
+# the first amp has maximum gain then.
+# This version works with the high frequency Kea.
+#
+# Input: rxGain .... gain in dB
+# Output: rxGain ... gain as a number suitable for
+#                    receiver amplifier gain block.
+####################################################
+
+procedure(convertRxGainHF,rxGain)
+
+   rxGain = gSeq->convertRxGain(rxGain)
+
+endproc(rxGain)
+
+####################################################
+# Convert receiver gain from dB to a 16 bit number.
+# This version works with the low frequency Kea.
+# See data sheets AD8336 and AD5764 for details
+#
+# Input: rxGain .... gain in dB
+# Output: rxGain ... gain as a number suitable for
+#                    receiver amplifier gain block.
+####################################################
+
+procedure(convertRxGainLF,rxGain)
+
+   V = (rxGain-26-4.4)/49.9
+   n = V*13/10*2^15
+
+endproc(n)
+
+####################################################
+# Convert transmitter level from dB to 14 bit number
+# suitable for the AD9910 DDS
+#
+# Input: txGain ... gain in dB
+# Output txGain ... gain as 14 bit number
+####################################################
+
+procedure(convertTxGain,txGain)
+
+  txGain = 2^14*10^(txGain/20)-1
+  if(txGain < 0)
+     txGain = 0
+  endif
+
+  if(txGain >= 2^14)
+     txGain = 2^14-1
+  endif
+
+endproc(round(txGain))
+
+###################################################################
+#
+# Calculate the total acquisition time
+#
+# This depends on a variety of parameters but most importantly
+# on the dwell time and the number of points ignored at the 
+# start of the acquisition period. However there is also a delay
+# at the end of the acqusition period during which time data
+# is returned to the DSP. This varies depending on whether the
+# flat (FIR) filter is being used or not.
+#
+###################################################################
+ 
+procedure(getAcqTime,guipar)
+
+   assignlist(guipar)
+
+   DW = dwellTime
+   ignorePnts = 6
+   MaxSpeed = 65
+   nrTaps = 20
+   if(flatFilter == "yes")
+      CIC_Scale = 3
+   else
+      CIC_Scale = 11
+   endif
+
+   FIRScale = 2
+
+   if(2*nrPnts > nrTaps+1)
+      FIRStartDelay = 21*MaxSpeed
+   else
+      FIRStartDelay = 2*nrPnts*MaxSpeed
+   endif
+
+   CICDelay = 10*(CIC_Scale + 71 + (3*MaxSpeed))/1000
+   FIRDelay = 10*(50 + FIRScale + FIRStartDelay)/1000
+
+# Make allowances for CIC shift register delays
+   scaleDwellTime = [0.5,1,2,5,10,20,50,100,200,500,1000,2000]
+   scaleDelay = [0.11,0.15,0.19,0.27,0.31,0.35,0.39,0.43,0.47,0.51,0.55,0.59] + 0.14
+   indx = findindex(scaleDwellTime,DW)
+   CICScaleDelay = scaleDelay[indx]
+   if(flatFilter == "yes")
+      acqTm = (nrPnts + ignorePnts) * DW + CICDelay + FIRDelay + 0.5
+   else
+      acqTm = (nrPnts + ignorePnts) * DW + CICDelay + CICScaleDelay + 0.5
+   endif
+endproc(acqTm+1) 
+
+###################################################################
+#
+# Run the NMR experiment currently loaded on the spectrometer
+#
+#  Input: guipar ...... gui parameters
+#
+#  Output: status ...... "ok" or "abort".
+#
+###################################################################
+ 
+procedure(runExperiment, guipar)
+
+  # Extract the gui variables
+   assignlist(guipar)
+
+   if(gData->procType == "FX3")
+
+     # Set the status flag to green (running)
+      if(isvar("ppStatus"))
+         if(gExpt->triggerFTDI)
+            ppStatus->color([255,0,255])
+         else
+            ppStatus->color([0,255,0])
+         endif
+      endif
+
+      # Send pulse program to FX3
+      wvFX3Info->duration = gFX3->writePulseProgram()
+
+      # Start the pulse program
+      gFX3->startPulseProgram()
+
+      if(wvExpStatus == "stop")
+         status = "abort"
+      else
+         status = "ok"
+      endif
+
+     # Set the status flag to blue (processing)
+      if(isvar("ppStatus"))
+         ppStatus->color([0,0,255])
+      endif
+
+   else
+
+      status = dsprunpp(0x2000,1)
+
+   endif
+
+
+endproc(status)
+
+###################################################################
+#
+# Read the data collected by the NMR experiment previously run
+# the data is scaled into the appropriate units
+#
+#  Input: guipar ...... gui parameters
+#  Output: cdata ...... collected complex data
+#
+###################################################################
+ 
+procedure(readData, N, guipar)
+
+  # Extract the gui variables
+   assignlist(guipar)
+
+   if(gData->procType == "FX3")
+      cdata = gFX3->readData(N)
+   else
+      D = dspread("y",0x10000,N*2)
+      cdata = rtoc(D)
+   endif
+
+  # Calibrate
+   if(wvUnits != "raw")
+     # Apply transceiver rx channel gain
+      cdata = cdata/wvRxCal 
+     # Apply rx amplifier gain
+       if(wvApplyRxampFactor == "yes")
+         rxGainV2 = ((gData->specParameters->HardwareCap2 & 2d^12) > 0)
+         if(rxGainV2) # Check this!
+            gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+            gainTot =  10^((gain1dB)/20)
+         else
+            gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+            gain2dB = 3.0*eval("0x$rxGain2$")-10.0
+            gainTot =  10^((gain1dB+gain2dB)/20)
+         endif
+         cdata = cdata*wvRxAmpCor/gainTot
+      endif
+
+     # Apply preamp gain factor
+      if(wvApplyPreampFactor == "yes")
+         cdata = cdata/wvPreampGain
+      endif
+
+     # Apply units
+      if(wvUnits == "uV")
+         cdata = cdata*1000
+      endif
+
+   endif
+
+   wvDataModified = "true" # Data can now be saved on abort
+
+
+endproc(cdata)
+
+
+###################################################################
+#
+# Get the complex signal by running a pulse program. Also scale
+# the data based on the scaling setting in the kea preferences
+# dialog.
+#
+#  Input: N ........... number of points (real + imag) to collect
+#         guipar ...... gui parameters
+#
+# Output: status ...... "ok" or "abort".
+#         cdata ........ collected complex signal.
+#
+###################################################################
+ 
+procedure(getData,N,guipar)
+
+  # FX3 support
+   if(gData->procType == "FX3")
+      wvFX3Info->totPnt = N
+      (status, cdata) = gFX3->runPulseProgram(N,guipar)
+      return(status, cdata)
+   endif
+  # Extract the gui variables
+   assignlist(guipar)
+
+  # Set the status flag to green (running)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,255,0])
+   endif
+
+  # Run pulse program return "ok" or "abort"
+   if(wvDSPCtrlRepTime) # No longer supported - delete?
+      if(isvar("ieTime"))
+         status = dsprunietimepp(0x2000,1)
+         if(status == "shortIET")
+            message("Error","Inter-experiment time is too short!","error")        
+         endif
+      else
+         status = dsprunreptimepp(0x2000,1)
+         if(status == "shortTD")
+            message("Error","Repetition time is too short!","error")        
+         endif
+      endif
+   else
+   # Check if we need trigger on the FTDI TTL
+      if(gExpt->triggerFTDI)
+         assign("gPauseProgress",1,"global")
+         ppStatus->color([255,0,255])
+         ftdiread(gExpt->ttlInput)  
+         assign("gPauseProgress",0,"global")
+         ppStatus->color([0,255,0])
+         if(gExpt->ttlOutput > 0)
+            ftdiwrite(gExpt->ttlOutput)
+            pause(gExpt->ttlOutputDuration)
+            ftdiwrite(0)
+         endif
+      endif
+      tStart = time()
+    # Run the pulse program
+      status = dsprunpp(0x2000,1)
+
+   endif
+
+   if(status == "usb_error")
+      pr("USB Error - trying to reconnect\n")
+      gExpt->usbError = 1
+      while(1)
+         try
+            dspread("x",0,1)
+            exitwhile()
+         catch
+            pause(0.1)
+         endtry
+      endwhile
+      pr("USB recovered\n")
+      status = "ok"
+   endif
+
+   # Make sure the experiment is finished
+   while(time()-tStart < gExpt->seqDuration)
+      pr("Seeing this message implies a fault or incorrect repetition time\n")
+      pause(0.1)
+   endwhile
+
+  # Read the data
+   if(status == "ok")
+      D = dspread("y",0x10000,N*2)
+   else
+      D = matrix(N*2)
+   endif
+
+  # Set the status flag to blue (processing)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,0,255])
+   endif
+
+  # Check the overflow flag
+   if(isvar("rxOverflow"))
+      ov = dspread("x",0x22085,1)
+      if(ov[0])
+         rxOverflow->color([255,0,0])
+      endif
+   endif
+
+  # Check for DSP internal abort caused by invalid RF pulse
+   if(N*2 > 50)
+      if(submatrix(D,1,49) == matrix(49)+100)
+         if(D[0] == 2)
+            message("Error","RF pulse length too short - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         elseif(D[0] == 1)
+            message("Error","RF pulse length too long - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         else
+           message("Error","Unknown DSP error - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         endif 
+        return("abort",cmatrix(N))
+      endif
+   else
+      if(submatrix(D,1,N*2-1) == matrix(N*2-1)+100)
+         if(D[0] == 2)
+            message("Error","RF pulse length too short - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         elseif(D[0] == 1)
+            message("Error","RF pulse length too long - aborting\r\r(Valid range is 0.5 us to 1 ms)","error")
+         else
+           message("Error","Unknown DSP error - aborting","error")
+         endif 
+         return("abort",cmatrix(N))
+      endif
+   endif
+
+  # Unpack real and imaginary data from D and store in a complex data set
+   cdata = rtoc(D)
+
+  # Calibrate
+   if(wvUnits != "raw")
+     # Apply transceiver rx channel gain
+      cdata = cdata/wvRxCal 
+     # Apply rx amplifier gain
+       if(wvApplyRxampFactor == "yes")
+         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
+         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
+         gainTot =  10^((gain1dB+gain2dB)/20)
+         cdata = cdata*wvRxAmpCor/gainTot
+      endif
+
+     # Apply preamp gain factor
+      if(wvApplyPreampFactor == "yes")
+         cdata = cdata/wvPreampGain
+      endif
+
+     # Apply units
+      if(wvUnits == "uV")
+         cdata = cdata*1000
+      endif
+
+   endif
+
+   wvDataModified = "true" # Data can now be saved on abort
+
+endproc(status, cdata)
+
+#####################################################
+# This function inverts ucsRun:getAcqTime returning
+# the maximum number of points for a given echotime
+# dwell time and echo shift
+#####################################################
+
+procedure(getNrPnts,guipar)
+
+   assignlist(guipar)
+
+   DW = dwellTime 
+
+   ignorePnts = 6 
+   MaxSpeed = 65
+   nrTaps = 20
+   if(flatFilter == "yes")
+      CIC_Scale = 3
+   else
+      CIC_Scale = 11
+   endif
+
+   FIRScale = 2 
+
+   CICDelay = 10*(CIC_Scale + 71 + (3*MaxSpeed))/1000
+   K = 10*(50 + FIRScale)/1000
+
+   te = echoTime
+   tes = echoShift
+   del = CICDelay+0.4
+   Sm = MaxSpeed
+   ip = ignorePnts
+   
+# ta is the time between the end of the damping pulse and te/2
+   ta = te/2-d1/2-d6
+# tb is the time between te/2 and the second RF pulse
+   tb = te/2-d1/2-pgo
+# tc is the maximum time available for acquisition
+   tc = te-d1-pgo-d6-tes
+     
+   if(isvar("centerAcq") == 0)
+      centerAcq = "yes"
+   endif
+
+   if(centerAcq == "yes")
+ 
+      if(flatFilter == "yes")
+   
+         N1 = (tb-ip*DW-tes-rxLat-del-K)/(DW/2+2*Sm/100)
+         N2 = 2*(tb-ip*DW-tes-rxLat-del-K-21*Sm/100)/DW
+
+         if(N1*2<=nrTaps+1)
+            N = N1
+         else
+            N = N2
+         endif
+   
+      else
+
+         N1 = 2*(ta+tes+rxLat)/DW
+         N2 = 2*(tb-ip*DW-tes-rxLat-del)/DW
+         if(N1 < N2)
+            N = N1
+         else
+            N = N2
+         endif
+
+      endif
+
+   else
+
+      if(flatFilter == "yes")
+     
+         N1 = (tc-ip*DW-del-K)/(DW+2*Sm/100)
+         N2 = (tc-ip*DW-del-K-21*Sm/100)/(DW)
+   
+         if(N1*2<=nrTaps+1)
+            N = N1
+         else
+            N = N2
+         endif 
+
+      else
+ 
+         N = (tc-del)/DW-ip
+
+      endif
+
+   endif
+
+endproc(N)
+
+####################################################
+# Check to see if the kea has a high rf duty cycle
+# Uses window variable wvMaxDutyCycle.
+#
+# Input: pulseTime ... total pulse duration.
+#        totalTime ... total duration of sequence
+#        guipar ...... GUI parameters.
+#
+# Output: 1 .......... duty cycle too high
+#         0 .......... duty cycle ok
+####################################################
+
+procedure(highDutyCycle,pulseTime,totalTime,guipar)
+
+   assignlist(guipar)
+   dutyCycle1 = pulseTime/totalTime
+
+   if(isvar("ieTime"))
+      dutyCycle2 = pulseTime/(ieTime*1e3+totalTime)
+      txt = "inter-experiment time"
+   else
+      dutyCycle2 = pulseTime/(repTime*1e3+totalTime)
+      txt = "repetition time"
+   endif
+
+# Check duty cycle inside pulse sequence
+   if(dutyCycle1 > wvMaxPSDutyCycle/100)
+     message("Error","RF duty cycle in pulse sequence is $100*dutyCycle1,2.1f$% > predefined limit of $wvMaxPSDutyCycle$%.\rReduce duty cycle within pulse sequence.","error")
+     return(1)
+   endif
+
+# Check total duty cycle
+   if(dutyCycle2 > wvMaxDutyCycle/100)
+     newTime = (pulseTime-wvMaxDutyCycle/100*totalTime)/(1000*wvMaxDutyCycle/100)
+     message("Error","Total RF duty cycle is $100*dutyCycle2,2.1f$% >= predefined limit of $wvMaxDutyCycle$%.\rIncrease $txt$ to > $newTime,2.0f$ ms.","error")
+     return(1)
+   endif
+
+endproc(0)
+
+##########################################
+# Apply linear prediction to correct the 
+# first 6 points distorted by the digital
+# filter or just the first point lost
+# by shifting the data for 1st order
+# phase correction.
+# Here data full fid before correction.
+# predictAll specifies if we want to correct
+# just the first point ("no") or the first
+# 6 points ("yes")
+# mode is "fast" or "precise". The latter
+# gives better results 
+###########################################
+
+procedure(linearPrediction, data, predictAll, precise="no") 
+
+   sz = size(data)
+   if(sz < 200)
+      nrCoeff = 32
+      sigPoints = sz-nrCoeff
+      predBack = 1
+   else
+      if(predictAll == "yes")
+         sigPoints = 200
+         nrCoeff = 64
+         if(sigPoints > sz)
+            sigPoints = sz-nrCoeff
+         endif   
+         predBack = 6
+      else
+         sigPoints = 100
+         nrCoeff = 32
+         predBack = 1
+      endif
+   endif
+
+   if(sz > sigPoints*20)
+      if(precise == "no")
+         temp = fastlinearpredict(data[predBack:sigPoints*20-1],sigPoints,nrCoeff,predBack,0)
+      else
+         temp = linearpredict(data[predBack:sigPoints*20-1],sigPoints,nrCoeff,predBack,0)
+      endif
+      data = join(temp, data[sigPoints*20:-1])
+   else
+      if(precise == "no")
+         data = fastlinearpredict(data[predBack:-1],sigPoints,nrCoeff,predBack,0)
+      else
+         data = linearpredict(data[predBack:-1],sigPoints,nrCoeff,predBack,0)
+      endif
+   endif
+
+
+endproc(data)
+
+###################################################################
+# Applies linear prediction to remove residual p1 errors. Should
+# be applied to the collected FID data before Fourier transform.
+#
+# Predicts 4 of the 6 ignored points and then enough points before
+# that to include the FIR build up.
+# Next applies the FIR filter and removes the distorted initial points
+# Finally decimates the data to reduce the bandwidth
+#
+# data ......... data to process
+# filter ....... the FIR filter to apply
+# decimation ... the decimation factor for this filter
+###################################################################
+
+procedure(LPandFIR, data, filter,decimation)
+
+   start = time()
+  # Linear predict the first 4+nLP points
+   nFIR = size(filter)
+   nLP =(nFIR-1)/2
+#  save("C:\Temp\BeforePredict.1d",data)
+   
+#  yp = linearpredict(data,200,16,nLP+4,0)
+#  yp = yp[0:-7] # Remove additional end points
+
+#trying to predict one more point, with a long delay time for better p1
+
+   nCIC = 4
+   nExtra = 2
+   MaxRank = 32 # <= very slow if large
+   nCoef = 200
+
+   yp = cmatrix(size(data)+ nLP + nCIC -6)
+   ypTemp = linearpredict(data[0:20*nCoef-1],nCoef,MaxRank,nLP+nCIC+nExtra,0)   
+   yp = join(ypTemp[0:nLP+nCIC+nExtra-1],data[0:-(6+1+nExtra)])
+
+  # yp = linearpredict(data,200,64,nLP+4+2,0)
+  # yp = yp[0:-9] # Remove additional end points
+
+  # yp = linearpredict(data,200,64,nLP+4+1,0)
+  # yp = yp[0:-8] # Remove additional end points
+
+# Apply LP and FIR
+      
+  # save("C:\Temp\AfterPredict.1d",yp)
+
+  # Convolve with FIR filter
+   yf = convolve(yp,filter)
+
+  # save("C:\Temp\AfterConvolve.1d",yf)
+
+  # Remove points distored by filter
+   yf = yf[nFIR:-1]
+
+  # Decimate
+   y = decimate(yf,0,decimation)
+
+   pr "LP and FIR processing time = $time()-start$\n"
+
+endproc(y)
+
+###################################################################
+# Generate N log binned points between minT and maxT
+###################################################################
+
+procedure(logAxis,mn,mx,N)
+
+   step = (log10(mx)-log10(mn))/(N-1)
+   x = [log10(mn): step: log10(mx)]
+   xl = 10^x
+
+endproc(xl)
+
+###################################################################
+# Modify the pulse program parameters so we can apply an FIR
+# filter after the CIC only data is collected.
+# The varIndex list must include the number of points as the 
+# first parameter and the FIR filters must be stored in the
+# <prospa>\FIR_Filters as 1D data files.
+# This procedure should be called at the start of execpp.
+#
+# ppList ... the pulse program list
+# varIndex ... the index of pulse program varaiables.
+# guipar ..... the list of user interface parameters
+#
+###################################################################
+
+procedure(modifyParForNoP1,ppList,varIndex,guipar)
+
+   assignlist(guipar)
+
+# Load the FIR filter
+   cd("$appdir$\\FIR_Filters")
+   dec = firDecimation
+   firFilter = load("filter_dec$dec$.1d")
+
+# Calculate the number of complex points to acquire
+   nFIR = size(firFilter)
+
+ #  pointsToAcquire = nrPnts*dec+3+(nFIR-1)/2
+
+# Change MWH 5/4/2017 - the points to ignore is 6, need to ignore 1 more, so collect one more
+  pointsToAcquire = nrPnts*dec+3+(nFIR-1)/2 + 1
+
+
+# Adjust all the parameters which depend on this
+   ppList[varIndex[0]] = pointsToAcquire 
+   ppList[2] = ppList[2]/dec
+   N = 4
+   M = 2
+   Bmax = ceil(N*log2(ppList[2]*M)+16)
+   truncDec = Bmax - 36
+   if( truncDec < 0)
+      truncDec = 0
+   endif
+   truncDec = truncDec + 4
+   ppList[5] = truncDec
+
+endproc(ppList,pointsToAcquire,firFilter)
+
+###########################################################
+# Wait for a predefined delay (repTime)
+# and allow the user to abort or finish the pulse program
+###########################################################
+
+procedure(pauseAndAbort,guipar,scans,pcList,lastScan)
+
+   message("Warning!","The call to ucsRun:pauseAndAbort procedure should\rbe replaced by ucsRun:checkTimeAndAbort.\rNote the different argument requirements","warning")
+
+   assignlist(guipar)
+
+  # Set the status flag to yellow (waiting)
+   if(isvar("ppStatus"))
+      ppStatus->color([255,255,0])
+   endif
+
+   if(wvDSPCtrlRepTime)
+   
+      if(wvExpStatus == "stop")
+         return("abort")
+      elseif(wvExpStatus == "finish")
+         if(isvar("wvFullTitle")) # From Expert interface
+            setwindowpar(0,"title","Wait for phase-cycling to complete ...")
+         endif
+         szList = size(pcList)
+         if(scans >= 0 & (((scans+1)%szList == 0) | (nrScans < szList)))
+           return("finish")
+         endif
+      endif
+
+   else
+   
+   # Last scan so don't wait
+      if(nrArgs == 5)
+         if(scans == nrScans-1)
+            if(wvExpStatus == "stop")
+               return("abort")
+            endif
+            return("continue")
+         endif
+      endif
+   
+    # Make sure the repetition time is correct
+      t1 = time()
+      while(1)
+        if(wvExpStatus == "stop")
+           return("abort")
+        elseif(wvExpStatus == "finish")
+           setwindowpar(0,"title","Wait for phasecycling to complete ...")
+           szList = size(pcList)
+           if(scans >= 0 & (((scans+1)%szList == 0) | (nrScans < szList)))
+             return("finish")
+           endif
+        endif
+        if(time()-t1 > repTime/1000)
+           exitwhile()
+        endif
+     endwhile
+
+   endif
+
+endproc("continue")
+
+#########################################################
+# (xIn,yIn)is the data set to be log binned
+# N is the number of pseudo-log binned points to produce
+#########################################################
+
+procedure(pseudoLogBin, xIn, yIn, N)
+
+   sz = size(xIn)
+
+   if(N > sz)
+      message("Error","Reduce number of points")
+      abort("")
+   endif
+
+   n = 1.999
+   del = 1
+   q = xIn[-1]/xIn[0]
+   p = N
+
+   while(1)
+      m = (n^p-1)/(n-1)
+      if(m < q)
+         n = n + del
+      else
+         n = n -del
+      endif
+      del = del/2
+      if(del < 1e-8)
+         alpha = 1/(n-1)
+         z = loge(alpha)/loge(n)
+         exitwhile()
+      endif
+   endwhile()
+
+   x = [0:N]
+   r = (n^z*(n^x-1)+1)*xIn[0]
+
+   xOut = matrix(N)
+   yOut = matrix(N)
+   num = matrix(N)
+
+   startIndx = 0
+   
+   for(k = 0 to N-1)
+      indx1 = findindex(xIn,r[k])
+      indx2 = findindex(xIn,r[k+1])
+      if(indx2 == indx1)
+         xOut[k] = xIn[indx1]
+         yOut[k] = yIn[indx1]
+         num[k] = 1
+      else
+         xOut[k] = sum(xIn[indx1:indx2-1])/(indx2-indx1)
+         yOut[k] = sum(yIn[indx1:indx2-1])/(indx2-indx1)
+         num[k] = indx2-indx1
+      endif
+
+   next(k)
+
+
+
+endproc(xOut,yOut,num,N)
+
+###################################################################
+# Generate N log binned points between minT and maxT
+# Only works for N < maxT/minT and minT > 0
+#
+# Input: minT ... minimum time
+#        maxT ... maximum time
+#        N ...... number of point in log axis
+#
+# Output: axis ... new log spaced axis.
+#
+###################################################################
+
+procedure(pseudoLogAxis, minT, maxT, N)
+
+   p = N
+   if(minT = 0)
+     message("Error","Invalid parameters in pseudoLogAxis procedure.","error")
+     abort("")
+   endif
+   q = maxT/minT
+   if(N >= q)
+     message("Error","Invalid parameters in pseudoLogAxis procedure.","error")
+     abort("")
+   endif
+   
+   x = [0:p]
+
+   n = 1.999
+   del = 1
+
+   while(1)
+      m = (n^p-1)/(n-1)
+      if(m < q)
+         n = n + del
+      else
+         n = n -del
+      endif
+      del = del/2
+      if(del < 1e-8)
+         alpha = 1/(n-1)
+         z = loge(alpha)/loge(n)
+         y = n^z*(n^x-1)
+         return(y[1:]*minT)
+      endif
+   endwhile()
+
+endproc()
+
+####################################################
+# Calcuate the RMS value of some real data. 
+# Calculation is performed in double precision.
+#
+# Input: data ....... data set to be analysed
+#        axis ....... time/freq domain axis (opt)
+#        lim1 ....... left limit on axis (opt)
+#        lim2 ....... right limit on axis (opt)
+#
+# Output: rms ....... RMS value (single precision)
+#         indx ...... indices of limits (opt).
+####################################################
+
+procedure(rmsValue,data,axis,lim1,lim2)
+
+   if(nrArgs == 4)
+      (ind1,ind2) = findindex(axis,lim1,lim2)
+      data = double(data[[ind1:ind2]])
+   else
+      data = double(data)
+   endif
+   N = size(data)
+   s = sum(data)
+   rms = sqrt(sum((data-s/N)^2)/N) 
+   if(nrArgs == 4)
+      return(single(rms),ind2-ind1+1)
+   endif
+
+endproc(single(rms))
+
+###################################################################
+#
+# Run a pulse program which does not return any data
+#
+#  Input: guipar ...... gui parameters
+#
+#  Output: status ...... "ok" or "abort".
+#
+###################################################################
+ 
+procedure(runPPNoData,guipar)
+
+  # Extract the gui variables
+   assignlist(guipar)
+
+  # Set the status flag to green (running)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,255,0])
+   endif
+
+  # Run pulse program return "ok" or "abort"
+   if(wvDSPCtrlRepTime)
+      if(isvar("ieTime"))
+         status = dsprunietimepp(0x2000,1)
+         if(status == "shortIET")
+            message("Error","Inter-experiment time is too short!","error")        
+         endif
+      else
+         status = dsprunreptimepp(0x2000,1)
+         if(status == "shortTD")
+            message("Error","Repetition time is too short!","error")        
+         endif
+      endif
+   else
+      status = dsprunpp(0x2000,1)
+   endif
+
+  # Set the status flag to blue (processing)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,0,255])
+   endif
+
+  # Check the overflow flag
+   if(isvar("rxOverflow"))
+      ov = dspread("x",0x22085,1)
+      if(ov[0])
+         rxOverflow->color([255,0,0])
+      endif
+   endif
+
+endproc(status)
+
+
+####################################################
+# Set a 24 bit integer number in the p.p parameter array
+#
+# Input: p ....... pulse program parameter array
+#        index ... index of parameter to change in array
+#        num ..... new number
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPNumber,p,idx,num)
+
+   if(gData->procType == "DSP")
+      p[idx] = round(num)
+   else
+      if(gFX3->useUpdateTable)
+         updates = wvFX3Info->updateTable
+         (w,h) = size(updates)
+         for(k = 0 to h-1)
+            isPhase = single(updates[0,k]) # Ignore phase variables
+            if(not(isPhase))
+               varIndx = updates[1,k] # Variable index
+               if((varIndx&0xFFF) == idx)
+                  if((varIndx&0x1000) > 0) # Hi word
+                     updates[3,k] = (num & 0xFFFF0000)/2^16d
+                  else # Lo word
+                     updates[3,k] = (num & 0x0000FFFF)
+                  endif
+               endif
+            endif
+         next(k)
+          wvFX3Info->updateTable = updates
+      else
+         assign("wvFX3Info->ppVariables->$wvFX3Info->ppList[idx]$",num,"window")
+      endif
+   endif
+
+endproc(p)
+
+####################################################
+# Set an RF amplitude in the p.p parameter array
+#
+# Input: p ....... pulse program parameter array
+#        index ... index of parameter to change in array
+#        ampB .... new amplitude in dB
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPAmplitude,p,idx,ampdB)
+
+   ampLin = :convertTxGain(ampdB)
+   if(gData->procType == "DSP")
+      p[idx] = round(ampLin)
+   else
+      if(gFX3->useUpdateTable)
+         updates = wvFX3Info->updateTable
+         (w,h) = size(updates)
+         for(k = 0 to h-1)
+            isPhase = single(updates[0,k]) # Is it a phase variable?
+            if(not(isPhase))
+               varIndx = updates[1,k] # Variable number
+               if(varIndx == idx)
+                  updates[3,k] = ampLin
+               endif
+            endif
+         next(k)
+         wvFX3Info->updateTable = updates
+      else
+         assign("wvFX3Info->ppVariables->$wvFX3Info->ppList[idx]$",ampdB,"window")
+      endif
+   endif
+
+endproc(p)
+
+
+####################################################
+# Set an RF phase in the p.p parameter array 
+#
+# Input: p ........ pulse program parameter array
+#        idx ...... index of parameter to change in array
+#        pcArray .. phase cycle array
+#        pcIndex .. index of phase parameter in p 
+#
+# Output: p ...... modified p.p. parameter array.
+#         pAcq ... the acquisition phase
+#
+####################################################
+
+procedure(setPPPhase,p,idx,pcArray,pcIndex)
+
+    
+   pcArray = pcArray%65536
+   (pw,ph) = size(pcArray)
+   idx = idx % pw
+
+   if(gData->procType == "DSP")
+
+      if(vartype(pcIndex) == "matrix1d")
+         for(k = 0 to ph-2)
+            if(pcIndex[k] > 0) # Ignore unused phases
+               p[pcIndex[k]] = pcArray[idx,k]
+            endif
+         next(k)
+      endif
+      pAcq  = pcArray[idx,ph-1]
+
+   else # Make explicit phase parameter list for FX3
+      if(gFX3->useUpdateTable)
+         t1 = time()
+         updates = wvFX3Info->updateTable # Work with a local copy - much faster
+         (uw,uh) = size(updates)
+         for(k = 0 to ph-2)
+            phaseVal = pcArray[idx,k] # Phase value
+            for(q = 0 to uh-1)
+               isPhase = single(updates[0,q]) # Is it a phase variable?
+               if(isPhase)
+                  phNumber = updates[1,q] # Phase number (1 based)
+                  if(phNumber == k+1)
+                     updates[3,q] = phaseVal
+                  endif
+               endif
+            next(q)
+         next(k)
+         wvFX3Info->updateTable = updates
+         if(gDebug->showPSTimes)
+            pr("\n   Time to update phases = $(time()-t1)*1000,1.2f$ ms\n")
+         endif
+      else
+         idx = idx % pw
+         phaseList = list(0)
+         for(k = 0 to ph-2)
+            phaseList = phaseList + ["p$k+1$ = $pcArray[idx,k]$"]
+         next(k)
+         wvFX3Info->phaseList = phaseList
+      endif
+      pAcq  = pcArray[idx,ph-1]
+
+   endif
+
+
+endproc(p,pAcq)
+
+####################################################
+# Set a Delay in the p.p parameter array 
+#
+# Input: p ....... pulse program parameter array
+#        index ... index of parameter to change in array
+#        dly ..... new delay in us
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPDelay,p,idx,dly)
+
+  if(dly <= 0.2)
+      message("Error","Invalid short delay: index '$index$' (<= 0)\rCheck the pulse program.","error")
+      throw("")
+   endif
+
+   if(gData->procType == "DSP")
+      p[idx] = round(dly*50-1)
+   else
+      if(gFX3->useUpdateTable)
+         updates = wvFX3Info->updateTable
+         (w,h) = size(updates)
+         dly = round(dly*100d) # Convert to 10ns clock cycles
+         for(k = 0 to h-1)
+            isPhase = single(updates[0,k]) # Ignore phase variables
+            if(not(isPhase))
+               varIndx = updates[1,k] # Variable index
+               if((varIndx&0xFFF) == idx)
+                  if((varIndx&0x1000) > 0) # Hi word
+                     updates[3,k] = (dly & 0xFFFF0000)/2^16d
+                  else # Lo word
+                     updates[3,k] = (dly & 0x0000FFFF)
+                  endif
+               endif
+            endif
+         next(k)
+         wvFX3Info->updateTable = updates
+      else
+         assign("wvFX3Info->ppVariables->$wvFX3Info->ppList[idx]$",dly,"window")
+      endif
+   endif
+
+endproc(p)
+
+
+####################################################
+# Set an RF gain in the p.p parameter array
+# (HF Kea version)
+#
+# Input: p ....... pulse program parameter array
+#        index ... index of parameter to change in array
+#        gain .... new gain in dB
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPGainHF,p,index,gain)
+
+   gain = :convertRxGainHF(gain)
+   gain1 = gain[0]
+   gain2 = gain[1]
+   p[index] = eval("0x0$gain1$00") 
+   p[index+1] = eval("0x0$gain2$00") 
+
+endproc(p)
+
+####################################################
+# Set an RF gain in the p.p parameter array
+# (LF Kea version)
+#
+# Input: p ....... pulse program parameter array
+#        index ... index of parameter to change in array
+#        gain .... new gain in dB
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPGainLF,p,index,gain)
+
+   p[index] = :convertRxGainLF(gain)
+
+endproc(p)
+
+
+####################################################
+# Set a long delay (wait) in the p.p parameter array 
+#
+# Input: p ....... pulse program parameter array
+#        c ....... index of parameter to change in array
+#        dly ..... new delay in us
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPLongDelay,p,c,dly)
+
+  if(gData->procType == "DSP")
+
+      if(dly <= 0.2)
+         message("Error","Invalid long delay: index '$c$' (<= 0)\rCheck the pulse program.","error")
+         throw("")
+      endif
+
+      if(dly/(2^24) < 1) # Can be represented in < 2^24 1us steps?
+         in = trunc(dly) # number of 1us steps
+         fr = dly - in # fraction part of 1us
+         if(in > 1)
+            p[c] = trunc(dly)-1 # Number of steps
+            p[c+1] = 103 + round(fr*100) - 19 # Gives fractional part + 1us
+            p[c+2] = 95 # Gives 1us step
+         elseif(dly > 0.2)
+            p[c] = 0
+            p[c+1] = round(dly*100) - 19
+            p[c+2] = 0
+         endif
+      elseif(dly/(2^24) < 10) # Can be represented in < 2^24 10us steps?
+   
+        in = trunc(dly/10) # number of 10us steps
+         fr = dly - trunc(dly) # fraction part of 1us
+         if(in > 10)
+            p[c] = in-1 # Number of 10us steps
+            p[c+1] = 1000 + round(fr*100) - 19 # Gives fractional part + 1us
+            p[c+2] = 995 # Gives 10us step
+         elseif(dly > 0.2)
+            p[c] = 0
+            p[c+1] = round(dly*1000) - 19
+            p[c+2] = 0
+         endif
+      endif
+   else
+      if(gFX3->useUpdateTable)
+         updates = wvFX3Info->updateTable
+         (w,h) = size(updates)
+         dly = round(dly*100d) # Convert to 10ns clock cycles
+         for(k = 0 to h-1)
+            isPhase = single(updates[0,k]) # Ignore phase variables
+            if(not(isPhase))
+               varIndx = updates[1,k] # Variable index
+               if((varIndx&0xFFF) == c)
+                  if((varIndx&0x1000) > 0) # Hi word
+                     updates[3,k] = (dly & 0xFFFF0000)/2^16d
+                  else # Lo word
+                     updates[3,k] = (dly & 0x0000FFFF)
+                  endif
+               endif
+            endif
+         next(k)
+         wvFX3Info->updateTable = updates
+      else
+         assign("wvFX3Info->ppVariables->$wvFX3Info->ppList[c]$",dly,"window")
+      endif
+   endif
+
+endproc(p)
+
+####################################################
+# Set a frequency in the p.p parameter array 
+#
+# Input: p ....... pulse program parameter array
+#        c ....... index of parameter to change in array
+#        freq .... new frequency in MHz
+#
+# Output: p ...... modified p.p. parameter array.
+#
+####################################################
+
+procedure(setPPFrequency,p,n,freq)
+
+   if(gData->procType == "DSP")
+      DDSFword = round((freq * 2^32d )/1000d) 
+      p[n]  = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+      p[n+1] = single(DDSFword & 0x0000FFFF) 
+   else
+      if(gFX3->useUpdateTable)  
+         DDSFword = round((freq * 2^32d )/1000d) 
+         hiWord  = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
+         loWord = single(DDSFword & 0x0000FFFF) 
+         updates = wvFX3Info->updateTable
+         (w,h) = size(updates)
+         for(k = 0 to h-1)
+            isPhase = single(updates[0,k]) # Is it a phase variable?
+            if(not(isPhase))
+               varIndx = single(updates[1,k]) # Variable number
+               if((varIndx&0xFFF) == n)
+                  if((varIndx&0x1000) > 0)
+                     updates[3,k] = hiWord
+                  else
+                     updates[3,k] = loWord
+                  endif
+               endif
+            endif
+         next(k)
+         wvFX3Info->updateTable = updates
+      else
+         assign("wvFX3Info->ppVariables->$wvFX3Info->ppList[n]$",freq,"window")
+      endif
+   endif
+
+endproc(p)
+
+
+##############################################################
+# Fourier transform the time domain data (Echo data)
+# Optionally applies an autophase to the time and
+# frequency domain data sets. Autophasing is based on that
+# part of the spectrum defined by the dispRange parameter.
+# FT only occurs if the frequency domain data is visible
+# if we are autophasing the time domain data or if we force
+# the transform.
+# Time domain data must be a power of 2.
+#
+# Input: tData ............. complex time domain data
+#        fAxis ............. frequency scale
+#        guipar ............ gui parameter list
+#        mode .............. "fid" or "echo"
+#        forceFT ........... whether to force a transform (0/1)
+#        halveFirstPoint ... whether to halve the first FID point
+#        autoPhaseMethod ... how to perform an autophase
+#
+# Output: tData ............ phased time domain data (opt)
+#         fData ............ frequency domain spectrum 
+#                            (optionally phased)
+#
+##############################################################
+
+procedure(transformData,tData,fAxis,guipar,mode="fid",forceFT=0,
+          halveFirstPoint=0, autoPhaseMethod="maximiseBaseline")
+
+   assignlist(guipar)
+
+# Process the data
+   sz = size(tData)
+   fData = matrix(sz)
+   ph = 0
+
+#   if(nrArgs == 3)
+#      mode = "fid"
+#      forceFT = 0
+#   elseif(nrArgs == 4)
+#      forceFT = 0
+#   endif
+
+   if(not(isvar("tdPhaseCorr")))
+      tdPhaseCorr = "none"
+   endif
+   if(not(isvar("fdPhaseCorr")))
+      fdPhaseCorr = "none"
+   endif
+   if(not(isvar("showFreqDomain")))
+      showFreqDomain = "yes"
+   endif
+
+# Don't transform unless we have to
+   if(forceFT | showFreqDomain == "yes" | tdPhaseCorr == "autophase")
+
+   # Range of frequencies
+      df = (max(fAxis)-min(fAxis))
+
+      if(frac(log2(sz)) != 0)
+         message("Error","The length of the time domain vector is not a power of 2","error")
+         abort("")
+      endif
+
+      if(mode == "echo" ) 
+         fData = ft(ftshift(tData))/df
+      else
+         tDataCorr = tData
+         if(halveFirstPoint)
+            tDataCorr[0] = tDataCorr[0]/2
+         endif
+         fData = ft(tDataCorr)/df
+      endif
+  
+    # Apply 1st order phase correction to account for acqDelay
+      if(isvar("firstOrderCorr"))
+         n = ([0:sz-1]-sz/2)/sz
+         fData = fData.*exp(i*firstOrderCorr*n)
+      endif
+
+      if(tdPhaseCorr == "autophase" | fdPhaseCorr == "autophase")
+     
+         if(autoPhaseMethod == "maximiseBaseline")
+
+            ph = autoPhase1D:autoPhase1D(fData,8) # Maximises amount of baseline
+            if(tdPhaseCorr == "autophase")
+               tData = tData*exp(i*ph/180*pi)
+            endif
+            if(fdPhaseCorr == "autophase")
+               fData = fData*exp(i*ph/180*pi)
+            endif
+
+         else # Autophase the data based on the first point
+        
+            ph = -180/pi*phase(tData[0])
+            if(tdPhaseCorr == "autophase")
+               tData = tData*exp(i*ph/180*pi)
+            endif
+            if(fdPhaseCorr == "autophase")
+               fData = fData*exp(i*ph/180*pi)
+            endif
+
+         endif
+   
+      endif
+   
+      if(fdPhaseCorr == "mag")
+         fData = mag(fData)
+      endif
+
+   endif
+
+endproc(tData,fData,ph)
+
+#######################################################
+# Run an echo experiment and use it to modify the
+# b0/1 frequency. This may occur due to magnet drift.
+# This procedure can be inserted at the start an existing
+# pulse sequence without affecting its operation
+# apart from the additional time required.
+# It uses the default parameters from the calling
+# experiment but the number of points in the echo
+# and the dwelltime can be adjusted if desired.
+# The echo time is determined from these parameters
+# as 2*nrPnts*dwellTime (us)
+#
+# Input:
+#        guipar ...... gui parameter list
+#        ppList ...... pulse program list
+#        nrPntsIn .... desired number of points (opt)
+#        dwellTimeIn . desired dwellTime (opt)
+#
+# Output:
+#        ppList ...... pulse program list (modified
+#                      for new B1 frequency).
+#
+#######################################################
+
+procedure(trackB0, guipar, ppList, nrPntsIn, dwellTimeIn)
+  
+  assignlist(guipar)
+
+# Save Kea state
+  (winVariables,parameters,filterCoef,pulseProg,tables) = ucsCtrl:saveKeaState(guipar)
+
+# Get optional arguments
+  if(nrArgs == 4)
+     nrPnts = nrPntsIn
+     dwellTime = dwellTimeIn
+  endif
+
+# Set up gui par
+   guipar = ["saveData = \"false\"",
+             "incExpNr = \"no\"",
+             "expNr = 1",
+             "expName = \"spinecho\"",
+             "dataDirectory = \"\"",
+             "dispRange = 20",
+             "freqMag = \"yes\"",
+             "showFreqDomain = \"no\"",
+             "showTimeDomain = \"no\"",
+             "tdPhaseCorr = \"autophase\"",
+             "fdPhaseCorr = \"autophase\"",
+             "filterType = \"sinebellsquared\"",
+             "filter = \"yes\"",
+             "usePhaseCycle = \"yes\"",
+             "accumulate = \"yes\"",
+             "bandwidth = $1000/dwellTime$",
+             "flatFilter = \"yes\"",
+             "nrScans = 1",
+             "dwellTime = $dwellTime$",
+             "nrPnts = $nrPnts$",
+             "acqTime = $nrPnts/bandwidth$",
+             "rxPhase = 0",
+             "rxGain = $rxGain$",
+             "echoTime = $2*acqTime*1000$",
+             "pulseLength = $pulseLength$",
+             "180Amplitude = $90Amplitude+6$",
+             "90Amplitude = $90Amplitude$",
+             "flatFilter = \"yes\"",
+             "repTime = $repTime$",
+             "b1Freq = $b1Freq$"]
+
+# Run the macro via the backdoor
+   cd("$appdir$\\Macros\\Kea-NMR")
+   result = SpinEcho:backdoor(guipar)
+   ucsCtrl:disableButtons()
+
+# Update the b1 frequency from the peak position
+   bandwidth = eval(getlistvalue(guipar,"bandwidth"))
+  (val,xp,yp) = max(mag(result->fy))
+   off = -bandwidth/2+bandwidth*xp/size(result->fy)
+   b1Freq = b1Freq + off/1000
+
+   setpar(0,findobj(0,"name","b1Freq"),"text",b1Freq)
+   ppList = ucsRun:setPPFrequency(ppList,9,b1Freq)
+   ppList = ucsRun:setPPFrequency(ppList,13,b1Freq*freqScaleFactor)
+
+# Restore Kea
+   ucsCtrl:restoreKeaState(winVariables,parameters,filterCoef,pulseProg,tables,guipar)
+
+endproc(ppList)
+
+#######################################################
+# Update the DSP parameters
+#######################################################
+
+procedure(updatePPParameters,ppList, guipar, port=0)
+
+   if(gData->procType == "DSP")
+      dspwrite("x",0x00,ppList)
+   elseif(gData->procType == "FX3")
+      if(gFX3->useUpdateTable)
+         gFX3->updateFX3Parameters(guipar)
+      else
+         gFX3->generatePulseProgram(guipar)
+      endif
+   endif
+
+endproc()
+
+#######################################################
+# Combine parameter update, timing check, sequence
+# execution and data return
+#######################################################
+
+procedure(runSequence,guipar,ppList,pcList,pcIndex,scan)
+
+   assignlist(guipar)
+ # Set phases for this scan
+   (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
+
+ # Send all parameter values to spectrometer
+    ucsRun:updatePPParameters(ppList,guipar)  
+
+ # Wait for repetition time and check for abort
+   check = ucsRun:checkTiming(guipar,scan,pcList)
+   if(check == "abort")
+      return(null,null,check)
+   endif
+
+ # Run the pulse program and collect the data
+    ucsUtilities:suspendLock() # turn lock control loop off
+   (status,data) = ucsRun:getData(totPnts,guipar)
+    ucsUtilities:resumeLock()  # turn lock control loop on
+
+   if(status != "ok")
+      return(null,null,"abort")
+   endif
+
+endproc(data,pAcq,check)
+
+#######################################################
+# For shifted data recalcuate the first data point
+# and phase the FID 
+#######################################################
+
+procedure(correctFirstDataPoint, data, shiftPoints, fdPhaseCorr)
+
+   if(shiftPoints == 1)
+      datacorr = ucsUtilities:correctFirstPointAmpPhase(data)
+   else
+      datacorr = data
+   endif
+   phCor = 0
+
+   # FID autophase
+   if(fdPhaseCorr == "autophase")
+      phCor = phase(datacorr[0])
+      datacorr = datacorr*exp(-i*phCor)
+   else
+      phCor = 0
+   endif
+      
+endproc(datacorr,phCor)

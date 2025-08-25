@@ -1,0 +1,318 @@
+############################################################################################################
+# The Simplex class
+#
+# Provides functions and variables to support a simplex search for an optimal
+# shim. The simplex search is based on the Numerical Recipes code in Ch 10.
+############################################################################################################
+
+
+############################################################################################################
+# The constructor for the Simplex class
+############################################################################################################
+
+procedure(init, self)
+
+   self->SimplexSearch =  "simplex:SimplexSearch"
+   self->Amoeba = "simplex:Amoeba"
+   self->Amotry = "simplex:Amotry"
+   self->Swap = "simplex:Swap"
+   self->GetShimsToModify = "simplex:GetShimsToModify"
+   self->ExtractShimValues = "simplex:ExtractShimValues"
+
+   self->iteration = 0
+   self->nrShims = 15+1
+   self->shimCurrents = matrix(self->nrShims)
+   self->shimDeltas = matrix(self->nrShims)
+   self->shimsToOptimise = matrix(self->nrShims)
+   self->bestShimValuesFound = self->shimCurrents
+   self->shimNames = ["","xshim","yshim","zshim",
+                         "z2shim","zxshim","zyshim","xyshim","x2y2shim",
+                         "z3shim","z2xshim","z2yshim","zxyshim","zx2y2shim","x3shim","y3shim"]
+   self->shimDeltaNames = ["","delxshim","delyshim","delzshim",
+                           "delz2shim","delzxshim","delzyshim","delxyshim","delx2y2shim",
+                           "delz3shim","delz2xshim","delz2yshim","delzxyshim","delzx2y2shim","delx3shim","dely3shim"]
+   self->shimsToOptimiseNames = ["","xgo","ygo","zgo",
+                                "z2go","zxgo","zygo","xygo","x2y2go",
+                                "z3go","z2xgo","z2ygo","zxygo","zx2y2go","x3go","y3go"]
+
+   self->lw0.55 = null
+   self->lw50 = null
+
+endproc()
+
+############################################################################################################
+# The shim algorithm
+############################################################################################################
+
+procedure(SimplexSearch, self, simplexStep)
+
+
+   try
+
+      maxiter = self->maxInterations
+      shimDeltas = self->shimDeltas
+      shimsToUse = self->shimsToOptimise
+      nrShims = size(shimsToUse)
+      shimCurrents = self->shimCurrents[0:nrShims-1]
+
+    # Collect those shims which are to optimised
+      (shimCurrentsToUse,shimDeltas,shimIndices) = self->GetShimsToModify(shimCurrents,shimDeltas,shimsToUse)
+      nrShims = size(shimCurrentsToUse)
+
+    # Make the parameter matrix for the simplex fitting
+    #
+    # Example for just x,y,z
+    # Each column is a set of shims to check for quality
+    #
+    #  | 0,    0,       0,     0,   0 |
+    #  | 0,    x+dx,    x,     x,   0 |
+    #  | 0,    y,    y+dy,     y,   0 |
+    #  | 0,    z,       z,  z+dz,   0 |
+    # 
+    # Columns are shim currents
+    # Note this algorithm is 1 based (from NR) and so ignore the first row and colum
+
+      shimPar = matrix(nrShims+1,nrShims)      
+      for(x = 1 to nrShims)
+         shimPar[x,~] = shimCurrentsToUse'
+      next(x)
+
+    # Diagonal has deltas added
+      for(k = 1 to nrShims-1)
+         shimPar[k,k] = shimPar[k,k] + shimDeltas[k]
+      next(k)
+
+    # Measure the initial peak width - do 5 scans to reach equilibrium
+    # the first time and then 1 for subsequent searches
+      if(simplexStep == 1)
+         m = 5
+      else
+         m = 1
+      endif
+      for(k = 1 to m)
+         result = self->measureLineWidth(self->psPar)
+      next(k)
+
+    # This records the quality (e.g. linewidth) history
+      quality = matrix(nrShims+1)
+
+    # Measure the quality for each shim set (as defined in the shimPar columns) 
+      for(k = 1 to nrShims)
+         quality[k] = self->checkShimQuality(shimPar[k,~]',shimIndices)
+      next(k)
+
+      ftol = 1e-4
+
+    # Now apply the simplex search to optmise the shims
+     (optimizedShimPar, quality, nfunc) = self->Amoeba(shimPar, quality, ftol, maxiter,shimIndices)
+
+    # Find the best column from the simplex search
+      (bestQuality, bestIndex) = min(quality[1:nrShims])
+
+    # Record the best shim settings found
+      self->ExtractShimValues(optimizedShimPar[bestIndex+1,~]',shimIndices)
+
+   catch
+
+      err = lasterror()
+      if(err->type != "Throw")
+         pr err
+         return
+      else 
+         if(err->description == "Abort pressed")          
+            pr "\n   Shimming aborted\n"
+         else
+            pr "\n   Shimming finished early\n"
+         endif
+      endif
+
+   endtry 
+
+endproc(self->shimCurrents)
+
+
+
+############################################################################################################
+# From the initial current distribution (p) adjust currents to optimise y
+# See Numerical Recipes in C section 10.4 (Nelder and Mead's algorithm)
+############################################################################################################
+
+procedure(Amoeba, self, p, y, ftol, maxiter, shimIndices)
+
+   (mpts,ndim) = size(p)
+   t1 = time()
+   psum = matrix(ndim)
+   nfunk = 0
+
+   psum =  (sum(p,"x"))'
+   exitflag = 0
+   while(exitflag < 1)
+
+      if(wvExpStatus == "stop")
+         throw("Abort pressed")
+      endif
+      if(wvExpStatus == "finish")
+         throw("Finish pressed")
+      endif
+
+      ilo = 1
+     # First we must determine which point is the highest (ihi) (worst), next-highest (inhi), and lowest
+     # (ilo) (best), by looping over the points in the simplex.
+      if(y[1] > y[2])
+         ihi = 1  
+         inhi = 2  
+      else
+         ihi = 2
+         inhi = 1
+      endif
+      for(k = 1 to mpts-1)
+         if(y[k] <= y[ilo])
+            ilo = k # Initial low index
+         endif
+         if(y[k] > y[ihi])
+            inhi = ihi
+            ihi = k
+         elseif((y[k] > y[inhi]) & (k!= ihi))
+            inhi = k
+         endif
+      next(k)
+      # Compute the SD of the last 10 50% linewidths. If less than 0.005 Hz exit
+      # Also compute the simplex fractional range from highest to lowest and return if satisfactory.
+      if(size(self->lw50) > 10)
+         SD = sd(self->lw50[-10:-1])
+      else
+         SD = 100
+      endif
+      rtol = 2*abs(y[ihi]-y[ilo])/(abs(y[ihi])+abs(y[ilo])+1e-10)
+      if((rtol < ftol) | (SD < 0.005)) # If returning, put best point and value in index 1.
+         (y[1],y[ilo]) = self->Swap(y[1],y[ilo])
+         for(k = 1 to ndim-1)
+            (p[1,k], p[ilo,k]) = self->Swap(p[1,k], p[ilo,k])
+         next(k)
+         exitflag = 1
+         pr ("      Reached tolerance, exiting\n")
+         exitwhile()
+      endif
+
+      # Too many iterations
+      if (nfunk > maxiter)
+         pr ("      Reaching $maxiter$ iterations, exiting\n")
+         exitflag = 2
+         exitwhile()
+      endif
+
+      # Finishing early
+      if(wvExpStatus == "finish")
+         exitflag = 2
+         exitwhile()
+      endif
+
+      # User has asked to abort
+      if(wvExpStatus == "stop")
+         throw("Abort pressed")
+      endif
+
+      nfunk = nfunk + 2
+
+     # Begin a new iteration. First extrapolate by a factor -1 through the face of the simplex
+     # across from the high point, i.e., reflect the simplex from the high point.
+
+      (ytry,p,y,psum) = self->Amotry(p,y,psum,ndim,ihi,-1.0,shimIndices)
+
+      if(ytry <= y[ilo])
+        # Gives a result better than the best point, so try an additional extrapolation by a
+        # factor 2.
+        (ytry,p,y,psum) = self->Amotry(p,y,psum,ndim,ihi,2.0,shimIndices)
+      elseif(ytry >= y[inhi])
+        # The reflected point is worse than the second-highest, so look for an intermediate
+        # lower point, i.e., do a one-dimensional contraction.
+         ysave = y[ihi]
+
+        (ytry,p,y,psum) = self->Amotry(p,y,psum,ndim,ihi,0.5,shimIndices)
+         if(ytry > ysave) # Can't seem to get rid of that high point. Better contract around the lowest (best) point
+            for(k = 1 to mpts-1)
+               if(k != ilo)
+                  for(q = 1 to ndim-1)
+                     psum[q] = 0.5*(p[k,q]+p[ilo,q])
+                     p[k,q] = psum[q]
+                  next(q)
+                  y[k] = self->checkShimQuality(psum,shimIndices)
+               endif
+            next(k)
+            nfunk = nfunk + ndim
+            psum =  (sum(p,"x"))'
+         endif
+
+      else
+         nfunk = nfunk-1
+      endif
+      
+   endwhile
+   
+endproc(p,y,nfunk) # Return new matrix, quality vector and number of function evaluations performed
+
+############################################################################################################
+# Extrapolates by a factor 'fac' through the face of the simplex 'p' across from the high point, tries
+# it, and replaces the high point if the new point is better.
+############################################################################################################
+
+procedure(Amotry, self,p, y, psum, ndim, ihi, fac, shimIndices)
+
+   ptry = matrix(ndim)
+   fac1 = (1-fac)/(ndim-1)
+   fac2 = fac1-fac
+   for(k = 1 to ndim-1)
+      ptry[k] = psum[k]*fac1 - p[ihi,k]*fac2
+   next(k)
+
+   ytry = self->checkShimQuality(ptry, shimIndices)
+   if(ytry < y[ihi])
+      y[ihi] = ytry
+      for(k = 1 to ndim-1)
+         psum[k] = psum[k] + ptry[k] - p[ihi,k]
+         p[ihi,k]= ptry[k]
+      next(k)
+   endif
+
+endproc(ytry,p,y,psum)
+
+############################################################################################################
+# Swap variables a and b
+############################################################################################################
+procedure(Swap, self, a, b)
+
+endproc(b, a)
+
+############################################################################################################
+# Reduce the shim current vectors to just contain those shimvalues we are modifying
+############################################################################################################
+
+procedure(GetShimsToModify,self, shimCurrents,shimDeltas,shimsToUse)
+
+   shimCurrentsToUse = [0]
+   shimDeltasToUse   = [0]
+   shimIndicesToUse  = [0]
+
+   nrShims = size(shimCurrents)
+   for(k = 1 to nrShims-1)
+      if(shimsToUse[k]) 
+         shimCurrentsToUse = join(shimCurrentsToUse, [shimCurrents[k]])
+         shimDeltasToUse = join(shimDeltasToUse, [shimDeltas[k]])
+         shimIndicesToUse = join(shimIndicesToUse, [k])
+      endif
+   next(k)
+
+endproc(shimCurrentsToUse,shimDeltasToUse,shimIndicesToUse)
+
+############################################################################################################
+# Copy the shims we are modifying back to the full list
+############################################################################################################
+
+procedure(ExtractShimValues, self, bestShims,shimIndices)
+
+   for(k = 0 to size(shimIndices)-1)
+      self->shimCurrents[shimIndices[k]] = round(bestShims[k])
+   next(k)
+
+endproc()
+

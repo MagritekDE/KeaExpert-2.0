@@ -1,0 +1,645 @@
+###################################################
+# Generate a license file 'license' for Prospa
+# 
+# V2.0 C Eccles, March 2014
+#
+# History
+# 1. Removed .txt extension from license files
+# 2. Added option to save up to 5 MAC addresses
+#
+# Not for distribution outside Magritek!
+#
+#
+# -------------------------------------------------------
+# License request format after unshuffling and xoring
+#
+# 40 byte long vector
+#
+# nrMacAdrs, macAdrs1, macAdrs2, macAdrs3, macAdrs4,
+# macAdrs5 ... version, hash[1], hash[2], hash[3], hash[4]
+#
+#
+# All MAC addresses are 6 bytes long so
+# the total space used is 1 + 5*6 + 1 + 4 = 36 bytes
+#
+# -------------------------------------------------------
+# License format after unshuffling and xoring
+#
+# 20 by 20 byte array
+# 
+# R0 ID-ID-ID-Version-nrCmds-szMAC-nrMac-szSerial-serialNr
+# R1 (0-5) MAC adrs1 (10-15) MAC adrs2
+# R2 (0-5) MAC adrs3 (10-15) MAC adrs4
+# R3 (0-5) MAC adrs5 
+# R4 licensed command 1
+# R5 licensed command 2
+# ...
+# R18 licensed command 15
+# R19 expDay-expMonth-expYear ... hash[1]-hash[2]-hash[3]-hash[4]
+# 
+# Currently szMac = 6, szSerial = 10
+###################################################
+
+procedure(LicenseGeneratorV2)
+
+   n = :windowdefinition()
+   :addLicenseList()
+   assignctrls(n)
+   :loadPar()
+   serialNrCtrl->text("0000000000")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("License Generator V2.0", -1, -1, 541, 303)
+
+      # Define all controls with basic parameters
+      windowvar(wvLicStartNr,wvLicNrEntries,licensePathCtrl,macAdrsCtrl,serialNrCtrl,durationCtrl,macAdrsCtrl4,macAdrsCtrl3,macAdrsCtrl2,macAdrsCtrl1)
+      textbox(1, 91, 80, 70)
+      statictext(2, 84, 84, "right", "Serial number:")
+      textbox(3, 35, 140, 141)
+      groupbox(4, "Possible ethernet MAC addresses", 10, 114, 194, 177)
+      textbox(5, 91, 19, 280)
+      statictext(6, 54, 23, "center", "License path:")
+      button(7, 443, 109, 66, 36, "Generate license",
+         :makeLicense();)
+      button(8, 443, 242, 66, 29, "Exit",
+         :savePar();
+         closewindow(0);)
+      button(9, 386, 21, 23, 20, "...",
+         :selectPath();)
+      button(10, 443, 39, 66, 36, "Read\nrequest",
+         :decodeMacAddress();)
+      button(11, 443, 179, 66, 29, "Help",
+         :showHelp();)
+      groupbox(12, "", 431, 14, 91, 277)
+      statictext(13, 236, 84, "right", "(10 digits)")
+      textbox(14, 35, 260, 141)
+      divider(15, 10, 58, 410, 3, "horizontal")
+      groupbox(16, "Licensed commands", 220, 114, 201, 177)
+      statictext(17, 302, 77, 57, 27, "center", "License duration")
+      textbox(18, 336, 80, 40)
+      statictext(19, 402, 84, "right", "days")
+      textbox(20, 35, 170, 141)
+      textbox(21, 35, 200, 141)
+      textbox(22, 35, 230, 141)
+#      statictext(100, 280, 150, "right", "lexus")
+#      checkbox(101, 290, 150, "no,yes", "yes")
+#      statictext(102, 280, 170, "right", "lhil2d")
+#      checkbox(103, 290, 170, "no,yes", "yes")
+#      statictext(104, 280, 190, "right", "meil2d")
+#      checkbox(105, 290, 190, "no,yes", "yes")
+
+     # Set other control parameters
+      setpar(n,1,"objID","serialNrCtrl")
+      setpar(n,3,"objID","macAdrsCtrl1")
+      setpar(n,5,"objID","licensePathCtrl",
+                  "valueID","licensePath")
+      setpar(n,14,"objID","macAdrsCtrl5")
+      setpar(n,15,"enable","false")
+      setpar(n,18,"objID","durationCtrl")
+      setpar(n,20,"objID","macAdrsCtrl2")
+      setpar(n,21,"objID","macAdrsCtrl3")
+      setpar(n,22,"objID","macAdrsCtrl4")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(showHelp)
+   
+   help("Macros\\Licensing","LicenseGeneratorV2.htm")
+
+endproc()
+
+procedure(loadPar)
+
+   bak = getcwd()
+   cd(prefdir)
+   if(isdir("Other Macros"))
+      cd("Other Macros")
+      if(isfile("licenseGenerator.par"))
+         lst = load("licenseGenerator.par")
+         setctrlvalues(0,lst)
+      endif
+   endif
+   cd(bak)
+
+endproc()
+
+procedure(savePar)
+
+   bak = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   lst = getctrlvalues(0)
+   save("licenseGenerator.par",lst)
+   cd(bak)
+
+endproc()
+
+procedure(addLicenseList)
+
+   cmdLst = ["lexus",
+             "lhil2d",
+             "meil2d",
+             "fista"]
+
+   szCmds = size(cmdLst)
+   wvLicNrEntries = szCmds
+   n = 100
+   x = 280
+   y0 = 150
+   y = y0
+   wvLicStartNr = n
+   for(k = 0 to szCmds-1)
+
+      if(k == 5)
+         y = y0
+         x = 360
+      endif
+      statictext(n,x,y,"right",cmdLst[k])
+      checkbox(n+1,x+10,y,"no,yes","no")
+      y = y + 20
+      n = n + 2
+
+
+   next(k)
+
+ #  setpar(0,16,"height",30+szCmds*20)
+ #  h = getwindowpar(0,"height")
+ #  setwindowpar(0,"height",h+szCmds*20+10)
+
+endproc()
+
+#########################################################
+# Generate a Prospa license file containing the customer's
+# MAC address, serial number and a list of licensed
+# commands (max 17)
+#########################################################
+
+procedure(selectPath)
+
+   dir = licensePathCtrl->text()
+   if(isdir(dir) == 0)
+      dir = desktop
+   endif
+   dir = getfolder(dir,"Select folder where license files are stored")
+   if(dir != "cancel")
+      licensePathCtrl->text(dir)
+      :decodeMacAddress()
+   endif
+
+endproc()
+
+#########################################################
+# Generate a Prospa license file containing the customer's
+# MAC address, serial number and a list of licensed
+# commands (max 17)
+#########################################################
+
+procedure(makeLicense)
+   
+   # Where to save the license file
+   dir = licensePathCtrl->text
+   if(isdir(dir) == 0)
+      message("Error","Folder not found:\r$dir$","error")
+      return
+   endif
+   cd(dir)
+   
+   # This is the list of commands we have licenses for
+   c = wvLicStartNr  
+   cmdLst = list(0)
+   for(k = 0 to wvLicNrEntries-1)
+      if(getpar(0,c+1,"text") == "yes")
+         cmdLst = cmdLst + ["$getpar(0,c,\"text\")$"]
+      endif
+      c = c + 2
+   next(k)
+
+   szCmds = size(cmdLst)
+   if(szCmds > 15)
+      message("Error","Too many licensed commands (15 max).","error")
+      return
+   endif
+   
+   # Get serial number
+   serialNr = serialNrCtrl->text()
+   if(serialNr == "")
+      message("Error","Serial number not defined.","error")
+      return
+   endif   
+   if(size(serialNr) != 10)
+      message("Error","Serial number must have 10 digits.","error")
+      return
+   endif
+   szSerialNr = size(serialNr)
+   
+   # Extract the customers MAC addresses
+   nrMacAdrs = 0
+
+   macAdrs1 = :convertAddress(macAdrsCtrl1->text(),1)
+   if(macAdrs1 != null)
+      nrMacAdrs = nrMacAdrs + 1
+   endif
+
+   macAdrs2 = :convertAddress(macAdrsCtrl2->text(),2)
+   if(macAdrs2 != null)
+      nrMacAdrs = nrMacAdrs + 1
+   endif
+
+   macAdrs3 = :convertAddress(macAdrsCtrl3->text(),3)
+   if(macAdrs3 != null)
+      nrMacAdrs = nrMacAdrs + 1
+   endif
+
+   macAdrs4 = :convertAddress(macAdrsCtrl4->text(),4)
+   if(macAdrs4 != null)
+      nrMacAdrs = nrMacAdrs + 1
+   endif
+
+   macAdrs5 = :convertAddress(macAdrsCtrl5->text(),5)
+   if(macAdrs5 != null)
+      nrMacAdrs = nrMacAdrs + 1
+   endif
+  
+   szMacAdrs = 6
+
+   # These are the dimensions of the license matrix
+   width = 20
+   height = 20
+   
+   # These matrices are very important and must not be changed
+   # coder is the exclusive or matrix, shuffleMat mixes things up
+   (coder,shuffleMat) = :getMatrices()
+
+   # This is the blank license matrix
+   mIn = matrix(width,height)
+   
+   # The first and second elements in the matrix is an identifying tag
+   tag = sum(strtoascii("Prospa License"))
+
+   mIn[0,0] = (tag & 0xFF00)/256
+   mIn[1,0] = (tag & 0x00FF)
+   # The third element in the matrix is a version number
+   mIn[2,0] = 2
+   # The fourth element in the matrix is the number of licensed commands
+   mIn[3,0] = szCmds
+   # The fifth element contains the size of the MAC address
+   mIn[4,0] = szMacAdrs
+   # The sixth element contains the number of MAC address
+   mIn[5,0] = nrMacAdrs
+   # The seventh elements contains the size of the serial number
+   mIn[6,0] = szSerialNr
+   mIn[[7:szSerialNr+6],0] = strtoascii(serialNr)
+   # The second row to fourth rows contains the MAC addresses
+   for(k = 1 to nrMacAdrs)
+      if(k == 1)
+         if(macAdrs1 != null)
+            mIn[[0:szMacAdrs-1],1] = macAdrs1
+         else
+            message("Error","MAC address 1 is invalid.","error")
+            return
+         endif
+      endif
+      if(k == 2)
+         if(macAdrs2 != null)
+            mIn[[10:szMacAdrs+9],1] = macAdrs2
+         else
+            message("Error","MAC address 2 is invalid.","error")
+            return
+         endif
+      endif
+      if(k == 3)
+         if(macAdrs3 != null)
+            mIn[[0:szMacAdrs-1],2] = macAdrs3
+         else
+            message("Error","MAC address 3 is invalid.","error")
+            return
+         endif
+      endif
+      if(k == 4)
+         if(macAdrs4 != null)
+            mIn[[10:szMacAdrs+9],2] = macAdrs4
+         else
+            message("Error","MAC address 4 is invalid.","error")
+            return
+         endif
+      endif
+      if(k == 5)
+         if(macAdrs5 != null)
+            mIn[[0:szMacAdrs-1],3] = macAdrs5
+         else
+            message("Error","MAC address 5 is invalid.","error")
+            return
+         endif
+      endif
+   next(k)
+
+
+   # The remaining rows (4-18) contain the license names. The first element
+   # is the string length, then the string and then padded to width elements
+   for(k = 0 to szCmds-1)
+      m = strtoascii(cmdLst[k])
+      m = join([size(m)],m)
+      m = zerofill(m,width,"end",95)
+      mIn[~,k+4] = m 
+   next(k)
+
+   # The final row has an expiry date
+   duration = durationCtrl->text
+   if(duration != "" & duration != "0")
+      nrDays = eval(duration)
+      (day,month,year) = :findExpiryDate(nrDays)
+      mIn[0,19] = day
+      mIn[1,19] = month
+      mIn[2,19] = year
+   endif
+
+   # We then encrypt this with the exclusive or matrix coder
+   mIn = xor(mIn,coder)
+
+   # Get a hash value for the first 396 bytes and write at end
+   mOut = reshape(mIn,width*height)
+
+   hashValue = hash(mOut[[0:-5]])
+
+
+   hashVec = single([(hashValue & 0xFF000000)/2^24,
+                     (hashValue & 0x00FF0000)/2^16,
+                     (hashValue & 0x0000FF00)/2^8,
+                      hashValue & 0x000000FF])
+   mOut[-4:-1] = hashVec
+
+   # And then shuffle it
+   mOut = :shuffleIt(mOut,shuffleMat)
+
+   export1dpar("ab","binary","xyrc","real","fls","byte","machine","littleend")
+   export1d(mOut,"prospaLicense.lic")
+
+   message("Information","License file created.","info")
+  
+endproc()
+
+############################################################
+# Add nrDays to the current date
+##############################################################
+
+procedure(findExpiryDate,nrDays)
+
+   date = getdate("dd:mm:yy")
+   (day,month,year) = scanstr(date,"%1:%2:%3")
+   d = :dateToDay(eval(day),eval(month),eval(year))
+   (day,month,year) = :dayToDate(d+nrDays)
+
+endproc(day,month,year)
+
+############################################################
+# All division is integer division, operator % is modulus. 
+# Given integer d, m, y, calculate day number.
+# From http://alcor.concordia.ca/~gpkatch/gdate-algorithm.html
+##############################################################
+
+procedure(dateToDay,d,m,y)
+
+   m = (m + 9) % 12
+   y = y - trunc(m/10)
+   day = 365*y + trunc(y/4) - trunc(y/100) + trunc(y/400) + trunc((m*306 + 5)/10) + (d - 1)
+
+endproc(day)
+
+############################################################
+# Calculate date from day number
+# All division is integer division, operator % is modulus. 
+# Given day number calculate year, month, and day.
+# From http://alcor.concordia.ca/~gpkatch/gdate-algorithm.html
+##############################################################
+
+procedure(dayToDate,day)
+
+   y = trunc((10000*day + 14780)/3652425)
+   ddd = day - (365*y + trunc(y/4) - trunc(y/100) + trunc(y/400))
+   if (ddd < 0) then
+    y = y - 1
+    ddd = day - (365*y + trunc(y/4) - trunc(y/100) + trunc(y/400))
+    endif
+   mi = trunc((100*ddd + 52)/3060)
+   mm = (mi + 2)%12 + 1
+   yy = y + trunc((mi + 2)/12)
+   dd = ddd - trunc((mi*306 + 5)/10) + 1
+
+endproc(dd,mm,yy)
+
+#############################################################################################
+# Encryption and shuffle matrices 
+#############################################################################################
+
+procedure(getMatrices)
+   
+   xorMat = [90,194,60,175,57,214,47,109,204,20,130,120,15,192,58,220,36,40,199,159;
+                  94,167,176,249,59,200,183,247,32,64,146,112,17,223,188,187,56,32,96,6;
+                  124,128,239,187,240,77,95,216,110,5,168,166,13,250,119,180,220,92,176,123;
+                  137,87,183,154,78,101,18,17,239,135,113,88,0,123,140,203,80,180,1,70;
+                  174,23,157,95,223,71,42,35,0,149,61,195,41,60,25,19,143,29,37,65;
+                  238,149,3,187,142,161,201,154,153,240,107,128,24,9,225,91,90,60,255,225;
+                  17,114,160,70,224,144,25,247,183,151,130,224,177,29,226,14,198,85,189,32;
+                  32,69,19,104,67,80,84,54,237,206,85,20,226,184,198,127,118,57,64,238;
+                  21,43,94,144,152,56,0,187,175,193,41,94,33,62,149,105,48,42,129,147;
+                  236,58,178,103,174,247,65,246,155,104,62,37,93,252,152,246,239,72,120,178;
+                  184,217,116,95,192,177,182,117,74,156,153,31,151,8,197,15,25,133,79,54;
+                  231,149,236,84,172,241,180,195,231,247,140,106,183,86,173,52,8,184,97,6;
+                  96,113,117,139,18,4,100,200,45,131,209,213,218,127,74,184,136,188,224,174;
+                  154,54,166,228,236,189,139,245,239,183,172,30,172,63,151,148,110,69,142,214;
+                  93,213,84,113,220,46,129,23,221,212,243,118,11,64,90,169,254,87,112,196;
+                  80,90,212,73,207,98,41,253,158,40,107,6,133,43,12,174,61,242,226,193;
+                  0,124,104,226,35,149,98,201,252,56,97,203,239,149,60,151,211,0,252,144;
+                  130,83,71,172,231,253,211,59,53,100,229,139,175,188,103,194,180,1,160,220;
+                  93,57,15,59,121,164,113,164,39,6,137,34,224,180,154,164,47,136,45,204;
+                  229,97,42,212,15,100,188,237,122,149,32,3,1,255,209,77,129,10,41,146]
+
+   shuffleMat = [8,332,215,56,256,186,106,258,4,282,133,81,210,131,361,26,207,377,151,120;
+                  284,275,188,341,344,380,331,217,273,35,276,75,50,167,61,229,24,280,87,135;
+                  105,111,30,214,127,318,103,180,291,173,252,89,199,297,91,222,55,296,88,352;
+                  79,196,152,391,223,287,299,398,172,333,394,200,220,72,334,66,44,381,243,393;
+                  164,244,384,314,272,153,140,157,40,125,109,48,201,147,365,168,39,137,121,82;
+                  205,129,396,340,33,99,238,306,198,395,283,176,260,203,262,288,327,7,206,195;
+                  184,356,52,366,158,253,236,12,204,389,102,371,69,239,118,67,360,29,122,149;
+                  212,387,77,315,11,22,345,71,264,84,97,397,322,38,114,255,142,372,86,70;
+                  289,249,148,241,189,320,231,257,42,295,59,254,124,197,80,219,181,143,321,304;
+                  247,62,316,116,95,221,335,348,57,292,226,51,187,303,45,150,336,224,328,25;
+                  294,240,390,302,83,317,169,234,330,183,85,218,324,78,41,339,233,107,326,378;
+                  17,248,15,266,144,376,211,134,115,216,274,193,104,338,311,290,279,362,46,27;
+                  2,265,54,98,277,20,313,208,13,23,323,19,370,246,160,337,92,232,286,245;
+                  93,76,74,383,250,379,96,53,162,64,174,126,123,225,228,10,353,132,155,60;
+                  293,308,3,182,32,358,14,49,175,329,179,58,94,63,112,368,170,351,399,347;
+                  309,6,73,350,154,68,145,43,47,34,382,0,301,388,185,300,36,138,278,101;
+                  130,261,90,9,375,263,242,285,369,18,100,310,28,128,141,386,385,5,209,298;
+                  392,343,367,230,307,268,349,117,342,251,373,113,16,374,364,312,165,136,202,177;
+                  359,146,363,166,269,65,191,227,305,259,1,319,213,21,161,159,354,325,270,357;
+                  178,37,163,110,139,281,190,271,267,346,31,192,355,237,194,119,171,235,108,156]
+
+endproc(xorMat,shuffleMat)
+
+#############################################################################################
+# Takes the file 'prospaLicenseRequest generated by Prospa and returns the mac address 
+#############################################################################################
+
+procedure(decodeMacAddress)
+   
+   dir = licensePathCtrl->text
+   if(isdir(dir) == 0)
+      message("Error","Folder not found:\r$dir$","error")
+      return
+   endif
+   cd(dir)
+
+   if(isfile("prospaLicenseRequest.lic"))
+      fileName = "prospaLicenseRequest.lic"
+   elseif(isfile("prospaLicenseRequest.txt"))
+      fileName = "prospaLicenseRequest.txt"
+   else
+      message("Error","Request file not found (prospaLicenseRequest or prospaLicenseRequest.txt)","error")
+      return
+   endif
+
+   coderMat = [29,98,184,199,109,115,161,85,13,71,85,216,53,24,252,193,83,212,157,15,
+                        175,88,4,191,182,175,162,69,54,122,248,108,84,39,147,143,140,34,21,141]
+   
+   unshuffleMat = [12,7,5,24,15,3,6,11,34,32,30,25,38,9,29,31,2,14,22,17,18,0,4,35,23,13,
+                          33,19,1,27,10,37,16,21,8,39,28,36,20,26]
+   
+   import1dpar("ab","binary","xyrc","real","fls","byte","machine","littleend")
+   mIn = import1d(fileName)
+#   pr size(mIn)
+   mIn = :shuffleIt(mIn,unshuffleMat)
+   
+   hashValue = round(single(hash(mIn[[0:-5]])))
+   hashIn = round(mIn[-4:-1]*(2^[24,16,8,0])')
+   if(hashValue != hashIn)
+      message("Alert!","Hash values are different!","error")
+      return
+   endif
+   
+   mIn = xor(mIn,coderMat)
+   
+   ver = mIn[-5]
+   nrAdrs = mIn[0]
+
+# Check version number
+   if(ver != 1)
+      message("Error","License request version number is $ver+1$.\rPlease run the appropriate license generator","error")
+      return
+   endif
+ 
+   for(k = 1 to nrAdrs)
+     if(k == 1)
+        s = 1; e = s+5
+        macAdrsCtrl1->text("$mIn[s:e]$")
+        pr "\n   MAC address is: $mIn[s:e]$ or $hex(mIn[s:e])$\n"
+     elseif(k == 2)
+        s = 7; e = s+5
+        macAdrsCtrl2->text("$mIn[s:e]$")
+        pr "\n   MAC address is: $mIn[s:e]$ or $hex(mIn[s:e])$\n"
+     elseif(k == 3)
+        s = 13; e = s+5
+        macAdrsCtrl3->text("$mIn[s:e]$")
+        pr "\n   MAC address is: $mIn[s:e]$ or $hex(mIn[s:e])$\n"
+     elseif(k == 4)
+        s = 19; e = s+5
+        macAdrsCtrl4->text("$mIn[s:e]$")
+        pr "\n   MAC address is: $mIn[s:e]$ or $hex(mIn[s:e])$\n"
+     elseif(k == 5)
+        s = 25; e = s+5
+        macAdrsCtrl5->text("$mIn[s:e]$")
+        pr "\n   MAC address is: $mIn[s:e]$ or $hex(mIn[s:e])$\n"
+     endif
+   next(k)
+#   
+#   pr "\n   MAC address is: $mIn[0:5]$\n"
+#   pr "   or in Hex: $hex(mIn[0:5])$\n"
+
+endproc(mIn)
+
+#############################################################################################
+# Routine to the shuffle the data
+#############################################################################################
+
+procedure(shuffleIt,mIn,sMat)
+
+   (w,h) = size(mIn)
+   mOut = matrix(w*h)
+   sMat = reshape(sMat,w*h)
+   for(k = 0 to w*h-1)
+      mOut[k] = mIn[sMat[k]]
+   next(k)
+
+endproc(mOut)
+
+#############################################################################################
+# Convert the macro address into a string
+#############################################################################################
+
+procedure(convertAddress,adrsTxt, n)
+
+   if(adrsTxt != "")
+
+      try
+         macAdrs = eval(adrsTxt)
+      catch
+         macAdrs = adrsTxt
+      endtry
+   
+      if(vartype(macAdrs) != "matrix1d")
+         macAdrs = :convertHexMacAdrs(adrsTxt)
+      endif
+
+      if(vartype(macAdrs) != "matrix1d")
+         message("Error","MAC address $n$ has an invalid format","error")
+         abort("")
+      endif
+
+      if(macAdrs != null)
+         if(size(macAdrs) != 6)
+            message("Error","MAC address $n$ does not have 6 numbers.","error")
+            abort("")
+         endif
+      endif
+
+   else
+
+      macAdrs = null
+
+   endif
+
+endproc(macAdrs)
+
+
+############################################################
+# See if str has the form xx-xx-xx-xx-xx-xx where xx are hex 
+# numbers.
+##############################################################
+
+procedure(convertHexMacAdrs,str)
+
+   try
+      (d1,d2,d3,d4,d5,d6) = scanstr(str,"%1-%2-%3-%4-%5-%6")
+      d1 = eval("0x$d1$")
+      d2 = eval("0x$d2$")
+      d3 = eval("0x$d3$")
+      d4 = eval("0x$d4$")
+      d5 = eval("0x$d5$")
+      d6 = eval("0x$d6$")
+      macAdrs = "[$d1$,$d2$,$d3$,$d4$,$d5$,$d6$]"
+   catch
+      pr lasterror()
+      return(null)
+   endtry
+
+endproc(eval(macAdrs))
+
+

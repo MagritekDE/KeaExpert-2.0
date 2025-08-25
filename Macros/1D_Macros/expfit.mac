@@ -1,0 +1,76 @@
+##############################################################
+# Performs an single exponential fit on the current data set
+#
+# Parameters retured:
+# title ... text of title
+# fit ..... fit data (y-axis)
+# Ea ...... fit amplitude
+# Ta ...... fit time constant
+# EaErr ... s.e. in fit amplitude
+# TaErr ... s.e. in fit time constant
+#
+##############################################################
+
+procedure(ExpFit)
+
+   plt = curplot("1d")
+   trcLst = plt->tracelist
+   if(size(trcLst) > 0)
+      (abscissa,E) = plt->trace(trcLst[0])->getdata
+   else
+      return
+   endif
+
+   if(abscissa == null)
+     message("Error","No data to fit!","error")
+     return
+   endif
+
+  # Get a best fit
+   try
+     (fit,Ea,Ta,EaErr,TaErr) = expfit(abscissa,real(E))
+     E0 = Ea
+     resultTxt = "$errorstr(Ea,EaErr,1)$ \G(0xB4) exp(-t/$errorstr(Ta,TaErr,1)$)"
+   catch
+     Ea = E[0]
+     resultTxt = ""
+   endtry
+
+  # Display raw data and best fit comparison
+   drawplot("false")
+   
+      plot(abscissa,E,
+           "tracetype","none",
+           "symbolshape","opensquare",
+           "symbolsize",3,
+           "symbolcolor",[255,0,0])
+
+      if(resultTxt != "")
+         hold("on")
+         plot(abscissa,fit,
+               "tracetype","lines",
+               "symbolshape","none",
+               "tracecolor",[0,128,0])
+         axes("fontsize",11)
+      endif
+      
+      if(resultTxt != "")
+         title("text",resultTxt,"size",12)
+      else
+         title("text","Echo attenuation data","size",12)
+      endif
+
+      axes("fontsize",11)
+      ylabel("text","Normalised peak integral","size",12)
+      xlabel("text","time (ms)","size",12)
+      hold("off")
+   
+   drawplot("true")
+
+   EaStr = errorstr(Ea,EaErr,1,3)
+   TaStr = errorstr(Ta,TaErr,1,3)
+   pr "\n\n ---- Exponential fit results -----\n\n"
+   pr "   Ea = $EaStr$\n"
+   pr "   Ta= $TaStr$\n"
+
+endproc(resultTxt,fit,Ea,Ta,EaErr,TaErr)

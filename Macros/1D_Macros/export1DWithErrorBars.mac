@@ -1,0 +1,37 @@
+procedure(export1DWithErrorBars)
+
+# Get the data from the plot
+  (x,y) = curtrace()->getdata()
+
+   if(x == null)
+      message("Error","No plot data present","error")
+      return
+   endif
+
+# Get size of data set
+   nrPnts = size(x)
+
+# Get the errorbar array
+   if(curtrace()->ebarfixed == "true")
+      length = curtrace()->ebarsize
+      ebMat = matrix(nrPnts,2) + length
+   else
+      ebMat = curtrace()->ebararray
+   endif
+
+# Pack data in a matrix
+   m = matrix(4,nrPnts)
+   m[0,~] = x'
+   m[1,~] = y'
+   m[[2:3],~] = ebMat'
+ 
+# Get export file name
+   name = getfilename("save", "Export a 1D plot file in ASCII format", "Text files", "txt")
+
+# Export the data
+   if(name != "cancel")
+      export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+      export2d(m,name)
+   endif
+
+endproc()

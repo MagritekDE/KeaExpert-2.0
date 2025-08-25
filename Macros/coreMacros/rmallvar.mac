@@ -1,0 +1,30 @@
+########################################
+# Removes all variables of a certain type
+#
+# type is one of: global or window
+# Can't delete local variables using
+# this macro.
+#
+########################################
+
+procedure(rmallvar,type)
+
+   if(nrArgs == 0)
+      type = "global"
+   endif
+
+   if(type == "local")
+      message("Error","Can't delete local variables using rmallvar macro.","error")
+      abort("")
+   endif
+
+   lst = varlist("all",type)
+
+   for(k = 0 to size(lst)-1)
+      (vis,rw) = varstatus(lst[k])
+      if(rw == "readwrite")
+         rmvar(type,lst[k])
+      endif
+   next(k)
+
+endproc()

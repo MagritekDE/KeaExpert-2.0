@@ -1,0 +1,43 @@
+procedure(light3d_test1,verbose,delay)
+
+   clear3d()
+
+  n = 20
+   m = matrix(n,n,n)
+   
+   for(z = 0 to n-1)
+      for(y = 0 to n-1)
+        for(x = 0 to n-1)
+           r = sqrt((x-n/2)^2+(y-n/2)^2+(z-n/2)^2)
+           m[x,y,z] = 1/(r+0.01)
+        next(x)
+      next(y)
+   next(z)
+
+   isosurf(m,0.15,[1,.5,0],
+           [-n/2,n/2,-n/2,n/2,-n/2,n/2])
+
+   viewdistance(50)
+
+   for(x = -150 to 150 step 0.5)
+      light3d(x,50,150)
+   next(t)
+
+   for(y = -150 to 150 step 0.5)
+      light3d(50,y,150)
+   next(t)
+
+   for(z = -150 to 150 step 0.5)
+      light3d(50,50,z)
+   next(t)
+
+   for(t = 0 to 360 step 0.5)
+      x = 100*sin(t/180*pi)
+      z = 100*cos(t/180*pi)
+      light3d(x,0,z)
+   next(t)
+
+endproc(1,"")
+
+
+

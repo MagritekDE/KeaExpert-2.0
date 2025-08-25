@@ -1,0 +1,1326 @@
+###########################################################
+# Data class for KeaExpert
+#
+# V2.xx.xx
+###########################################################
+
+###########################################################
+# Initialiser for the class
+###########################################################
+
+procedure(init, self)
+
+   self->procedureList = "============================================="
+   self->addTimes                 = "seData:addTimes"
+   self->addToPPSearchPath        = "seData:addToPPSearchPath"
+   self->checkForSubExperiments   = "seData:checkForSubExperiments"
+   self->checkLockRunning         = "seData:checkLockRunning"
+   self->convertDate              = "seData:convertDate"
+   self->convertProtocolName      = "seData:convertProtocolName"
+   self->convertSeconds           = "seData:convertSeconds"
+   self->convertTime              = "seData:convertTime"
+   self->copyFolder               = "seData:copyFolder"
+   self->dataFolderToHistoryName  = "seData:dataFolderToHistoryName"
+   self->extractDatePathFromDir   = "seData:extractDatePathFromDir"
+   self->findPP                   = "seData:findPP"
+   self->getDefaultParameters     = "seData:getDefaultParameters"
+   self->getExptDataPath          = "seData:getExptDataPath"
+   self->getExptParameters        = "seData:getExptParameters"
+   self->getFolderHierarchy       = "seData:getFolderHierarchy"
+   self->getPreferences           = "seData:getPreferences"
+   self->importExpertData         = "seData:importExpertData"
+   self->initialiser              = "seData:initialiser"
+   self->initPPLocations          = "seData:initPPLocations"
+   self->isDataPresent            = "seData:isDataPresent"
+   self->isValidDataFolder        = "seData:isValidDataFolder"
+   self->isValidDatePath          = "seData:isValidDatePath"
+   self->listIndexToCoord         = "seData:listIndexToCoord"
+   self->loadCommonPar            = "seData:loadCommonPar"
+   self->loadFactoryDefaults      = "seData:loadFactoryDefaults"
+   self->loadSetLockShimCode      = "seData:loadSetLockShimCode"
+   self->loadShimsFromDSP         = "seData:loadShimsFromDSP"
+   self->mergeWithCommonPar       = "seData:mergeWithCommonPar"
+   self->mergeWithDefaultPar      = "seData:mergeWithDefaultPar"
+   self->mergeWithFactoryPar      = "seData:mergeWithFactoryPar"
+   self->removeFromPPSearchPath   = "seData:removeFromPPSearchPath"
+   self->restoreCommonPar         = "seData:restoreCommonPar"
+   self->saveShimsToDSP           = "seData:saveShimsToDSP"
+   self->testSaveShims            = "seData:testSaveShims"
+
+   self->variableList = "============================================="
+
+   self->commonPar      = null         # The common parameters for the system
+   self->connected      = 0            # Whether we are connected to a Kea
+   self->curExpt        = struct()     # Information about the current experiment selected or running
+   self->curHistoryDate = ""           # Date for the current history list (e.g. 200407)
+   self->curHistoryPath = ""           # Full path to the list of experiment shown in the history list
+   self->dataInfoSet    = 0            # Whether data output information has be set
+   self->datePath       = ""           # The date hierarchy below the project folder
+   self->defaultCommon  = 1            # Whether default common parameter have been loaded
+   self->lastImportDir  = ""           # Last directory selected for importing old data 
+   self->lockPref       = null         # The current lock preference list
+   self->lockRunning    = 0            # Whether the lock is running
+   self->offLineDevelop = "false"      # If off-line development is allowed
+   self->permissions    = null         # A structure containing flags to disable some functions
+   self->pexDir         = "$appdir$\\Macros\\Kea-Expert"
+   self->ppLocations    = null         # Location of all pulse program folders
+   self->ppmOffset1H    = 4.74         # Offset frequency for 1H
+   self->preferences    = null         # The program preferences
+   self->procType       = ""           # Spectrometer processor type: DSP
+   self->productionMode = "false"      # A special setting for Magritek production
+   self->projectPaths   = list(0)      # List of previously visited project (experiment) paths
+   self->sampleNames    = list(0)      # A list of sample names
+   self->shims          = null         # The current shims
+   self->SI             = null         # Information about the current script running
+   self->specID         = "NoConnection"  # The SPA number of the spectrometer (if connected)
+   self->specModel      = "None"       # The spinsolve model (if connectedP
+   self->specParameters = null         # List of parameters stored on the spectrometer
+   self->sseOpen        = 0            # A flag to indicate another active Expert version is open
+   self->tempPP         = null         # The pulse program for checking the temperatures
+   self->useCommonPar   = "true"       # Whether common parameters should be used
+   self->refFIDxAxis    = null         # Storage for a reference FID obtaining with shim
+   self->refFIDyAxis    = null
+
+# Menus used by the compiler
+   self->rxGainMenu     = [-20:3:70]   
+   self->nrPntsMenu     = [4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536]
+   self->dwellTimeMenu  = [1,2,5,10,20,50,100,200,500,1000,2000]
+
+endproc()
+
+###########################################################
+# Add time in seconds to current time in hr:min:sec
+# New days are ignored
+###########################################################
+
+procedure(addTimes, self, curTime, delTime)
+
+   hours = eval(curTime[0:1])
+   minutes = eval(curTime[3:4])
+   seconds = eval(curTime[6:7])
+
+   totalSeconds = hours*3600+minutes*60+seconds
+   secondsInDay = 24*3600
+
+   newTotalSeconds = (totalSeconds + delTime) % (secondsInDay)
+   hours = trunc(newTotalSeconds/3600)
+   minutes = trunc((newTotalSeconds%3600)/60)
+   seconds = newTotalSeconds%60
+
+   newTime = "$hours,02d$:$minutes,02d$:$seconds,02d$"
+
+endproc(newTime)
+
+###########################################################
+# Add a new folder to the pulse program 
+# search path list
+###########################################################
+
+procedure(addToPPSearchPath, self, folder)
+
+# Make sure we are adding a valid directory
+   if(isdir(folder) == 0)
+      pr "addToPPSearchPath error: $folder$ not a valid directory\n"
+      return
+   endif
+
+# Already present so don't add again
+   if(self->ppLocations != null)
+      if(getlistindex(self->ppLocations,folder) != -1)
+         return 
+      endif
+   endif
+
+# Add to ppLocations
+   self->ppLocations = ["$folder$"] + self->ppLocations
+
+endproc()
+
+
+###########################################################
+# Remove a folder from the pulse program 
+# search path
+###########################################################
+
+procedure(removeFromPPSearchPath, self, folder)
+
+# Make sure we are removing a valid directory
+   if(isdir(folder) == 0)
+      pr "removeFromPPSearchPath error: $folder$ not a valid directory\n"
+      return
+   endif
+
+# Remove from the pp list
+   self->ppLocations = rmfromlist(self->ppLocations, folder)
+
+endproc()
+
+
+###########################################################
+# Check whether experiment numbers should beused
+###########################################################
+
+procedure(checkForSubExperiments, self, par, useSubExptNr)
+
+   if(getlistvalue(par,"expNr") != null)
+      if(useSubExptNr == "yes")
+         par = setlistvalue(par,"expNr","1")
+         par = setlistvalue(par,"incExpNr","\"yes\"")
+      else
+         par = setlistvalue(par,"expNr","\"\"")
+         par = setlistvalue(par,"incExpNr","\"no\"")
+      endif
+   endif
+   
+endproc(par)
+
+###########################################################
+# Check if the lock is running
+###########################################################
+
+procedure(checkLockRunning, self)
+
+   if(gData->procType == "DSP")
+      if(self->connected)
+         ver = dspread("x",0x029082,2)
+         s1 = dspread("x",0x28000,1)
+         dspwrite("x",0x28001,[32]) 
+         s2 = dspread("x",0x28400+128,2)
+         self->lockRunning = ((ver == [0,0]) & (s1 == [3]) & (s2 == [0,1])) # Lock running      
+      else
+         self->lockRunning = 0
+      endif
+   else
+     if(self->connected)
+         ver = fx3read("E",0x09082,2)
+         s1 = fx3read("E",0x8000,1)
+         fx3write("E",0x8001,[32]) 
+         s2 = fx3read("E",0x8400+128,2)
+         self->lockRunning = ((ver == [0,0]) & (s1 == [3]) & (s2 == [0,1])) # Lock running      
+      else
+         self->lockRunning = 0
+      endif
+
+   endif
+      
+endproc(self->lockRunning)
+
+
+###########################################################
+# Convert a date to readable or compact form
+###########################################################
+
+procedure(convertDate, self, date, mode="readable")
+
+   monthList = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+   if(mode == "readable")
+    
+      if(size(date) == 6)
+         year = date[0:1]
+         monthNr = eval(date[2:3])-1
+         dayNr = eval(date[4:5])
+         month = monthList[monthNr] 
+         newDate = "$dayNr$-$month$-20$year$"
+      else
+         try
+            (year,month,day) = scanstr(date,"%1\\%2\\%3")
+            monthNr = eval(month)-1
+            dayNr = eval(day)
+            month = monthList[monthNr] 
+            newDate = "$dayNr$-$month$-$year$"
+         catch
+            print("Error - Invalid date '$date$ for conversion to readable form"\n) 
+            newDate = date
+         endtry
+      endif
+
+   endif
+
+endproc(newDate)
+
+###########################################################
+# Convert a standard software protocol name to the expert
+# version. Returns null if a match is not found
+# If protocol is not provided or is null then the list
+# of supported names is returned.
+###########################################################
+
+procedure(convertProtocolName, self, protocol=null)
+
+   names = ["====== PROTON 1D ======","";
+            "1D PROTON","Proton";
+            "1D EXTENDED+","Proton";
+            "1D PROTON FDEC WALTZ","ProtonFDec";
+            "1D PROTON CDEC","ProtonCDec";
+            "T1","T1";
+            "T1 PARAMAGNETIC","T1";
+            "T2","T2";
+            "T2+","T2";
+            "RM","ProtonRepeat";  # needs import
+
+            "====== PROTON 2D ======","";
+            "COSY 2D","COSY";
+            "COSY+","COSY";
+            "TOCSY","TOCSY";
+            "ROESY","ROESY"; # needs import
+            "NOESY","NOESY"; # needs import
+            "JRES 2D","JRES"; # needs import
+
+            "====== CARBON 1D ======","";
+            "1D CARBON+ WALTZ", "Carbon";
+            "1D CARBON WALTZ", "Carbon";
+#           "1D CARBON", "Carbon_no";   # it is from Carbon 43 MHz, names of parameters are different
+            "1D CARBON HFDEC", "CarbonHFDec";
+            "CARBON T1","CarbonT1";
+
+            "====== CARBON 2D ======","";
+            "HSQC WALTZ","HSQC";
+            "HSQC-ME-WALTZ","HSQCtgME";# needs import, some problems with data processing
+            "HSQC-ME-WET","HSQCtgMEwet";# needs import, some problems with data processing
+            "HMQC WALTZ","HMQC";# needs import, some problems with data processing
+            "HMBC WALTZ","HMBC";
+
+            "====== FLUORINE ======","";
+            "1D FLUORINE","Fluorine";
+            "1D FLUORINE+","Fluorine";
+            "FLUORINE T1","T1-F";
+            "FLUORINE T2","T2-F";
+            "FLUORINE PGSTE","PGSTE-F"
+
+            "====== DIFFUSION ======","";
+            "PGSTE","PGSTE";
+            "PGSTE CDEC","PGSTEstandardCDEC";
+            "PGSTE WET SUP","PGSTEwetsup"]
+
+   if(protocol == null)
+      return(names[0,~])
+   endif
+
+   (w,h) = size(names)
+
+   for(k = 0 to h-1)
+      stdName = names[0,k]
+      expertName = names[1,k]
+      if(protocol == stdName)
+         return(expertName)
+      endif
+   next(k)
+
+endproc(null)
+
+
+###########################################################
+# Convert a time to readable or compact form
+###########################################################
+
+procedure(convertTime, self, tm, mode="readable")
+
+   if(mode == "readable")
+    
+      if(size(tm) == 6)
+         hour = tm[0:1]
+         minute = tm[2:3]
+         second = tm[4:5]
+         newDate = "$hour$:$minute$:$second$"
+      else
+         print("Error - Invalid time '$tm$ for conversion to readable format"\n) 
+         newDate = date
+      endif
+
+   endif
+
+endproc(newDate)
+
+###########################################################
+# Converts seconds to hours:min:sec
+###########################################################
+
+procedure(convertSeconds, self, tm)
+
+   hours = trunc(tm/3600)
+   minutes = trunc((tm-hours*3600)/60)
+   seconds = round(((tm-hours*3600)/60-minutes)*60)
+
+   if(hours == 0 & minutes > 0)
+      return("$minutes$m:$seconds$s")
+   elseif(hours == 0 & minutes == 0)
+      return("$seconds$s")
+   endif
+
+endproc("$hours$h:$minutes$m:$seconds$s")
+
+###########################################################
+# Copy all the files from one folder to another.
+# Currently not copying subfolders.
+###########################################################
+
+procedure(copyFolder, self, srcDir, dstDir)
+
+   mkdir(dstDir)
+   if(isdir(srcDir))
+      files = getfilelist(srcDir)
+      for(k = 0 to size(files)-1)
+        copyfile("$srcDir$\\$files[k]$","$dstDir$\\$files[k]$")
+      next(k)
+   endif
+
+endproc()   
+
+###########################################################
+# Given a directory which is part of a date e.g. 2020\04\20
+# return the next parent directory which is not a number
+###########################################################
+
+procedure(extractDatePathFromDir, self, dir)
+
+   folder = getbasedir(dir)
+   datePath = ""
+   while(1)
+      if(isinteger(folder))
+         datePath = "\\" + folder + datePath
+         dir = simplifydir(dir + "\\..")
+         folder = getbasedir(dir)
+      else
+         exitwhile
+      endif
+   endwhile
+
+   if(size(datePath) > 0)
+      datePath = datePath[1:-1]
+   endif
+
+endproc(dir, datePath)
+
+###########################################################
+# Intialise miscellaneous data structures 
+###########################################################
+
+procedure(initialiser, self)
+
+# Initialise the pulse program locations
+   gData->initPPLocations()
+
+# Intialise history structure REVISIT
+   gData->history = struct()
+   gData->history->magTemp = null
+   gData->history->boxTemp = null
+   gData->history->roomTemp = null
+   gData->history->lock = null
+   gData->history->magnetVolts = null
+   gData->history->peltierVolts = null
+   gData->history->lock = null
+   gData->history->timeAxis = null
+
+endproc()
+
+###########################################################
+# Read the factory defaults from the spectrometer and
+# save as a structure in the data object
+###########################################################
+
+procedure(loadFactoryDefaults, self)
+
+   try
+
+   # Load default parameters into specPar structure
+      specPar = KeaParameterUpdater:readSpecPar(null,3)
+      if(specPar == null)
+         gDebug->pr("No connection to a Kea found")
+         message("Error","No connection to a Kea found","error")
+         return
+      endif 
+
+   # Make a copy in the data object
+      self->specParameters = specPar
+
+   # Update the spectrometer ID and model parameters
+      self->specID = self->specParameters->SystemID
+      gDebug->pr("DSP parameters",self->specParameters,2)
+
+   catch
+      pr lasterror()
+      self->specParameters = null
+   endtry
+
+endproc()
+
+###########################################################
+# Load the DSP code to set the lock shims
+###########################################################
+
+procedure(loadSetLockShimCode, self)
+
+# Add code to set the lock shims
+   try
+      bak = getcwd()
+      cd("$appdir$\\Macros\\Kea-Expert\\Setup Macros\\SetShims\\SetLockShims")
+      pp = dspreadpp("SetLockShims.p")
+      dspwrite("p",0x1D00,pp,0) # Write the pulse program just below normal memory
+#    for(k = 0 to size(pp)-1)
+#       pr "$k$ $hex(pp[k],24)$\n"
+#    next(k)
+      cd(bak)
+   catch
+   endtry
+
+endproc()
+
+
+###########################################################
+# Initialise the list of pulse program
+# directories
+###########################################################
+
+procedure(initPPLocations, self)
+ 
+   if(gView->tester)
+       self->ppLocations = [""]
+   else
+       self->ppLocations = ["$appdir$\\Macros\\Kea-NMR",
+                            "$appdir$\\Macros\\Kea-MRI"]
+   endif
+
+endproc()
+
+###########################################################
+# Import expert data in either new (data and time stamp) or
+# old format (without date and time stamp) into the current
+# heirarchy (flat or date based).
+###########################################################
+
+procedure(importExpertData, self)
+
+# There needs to be a valid experiment basepath
+   if(isdir(gView->projPathCtrl->text) == 0)
+      message("Error","Please enter a valid experiment base-path","error")
+      return
+   endif
+
+# Restrict operation to date hierarchy mode
+   if(gData->getFolderHierarchy() != "date")
+      message("Error","Expert data import only works when in the 'date' hierarchy mode","error")
+      return
+   endif
+
+# Get the location of the data to import
+   bak = getcwd()
+   if(self->lastImportDir != "")
+      srcDir = getfolder(self->lastImportDir,"Select data folder or parent folder to import")
+   else
+      srcDir = getfolder(gView->projPathCtrl->text,"Select data folder or parent folder to import")
+   endif
+   if(srcDir == "cancel")
+      return  
+   endif
+   self->lastImportDir = srcDir
+
+   cd(srcDir)
+
+# Work out the type of data to import
+   (dataType, dateStamp, timeStamp, protocol, suffix) = gImport->getDataType(srcDir)
+
+   if(dataType == "old")
+      lastDir = gImport->importOldData(srcDir, protocol, suffix)
+   elseif(dataType == "new")
+      lastDir = gImport->importNewData(srcDir, dateStamp, timeStamp, protocol, suffix)
+   else
+      lastDir = gImport->importMultipleFolders(srcDir)
+   endif
+
+# Load the last data set imported into the history list if one has been found
+   if(lastDir != null)
+      (parentDir, datePath) = gData->extractDatePathFromDir(simplifydir("$lastDir$\\.."))
+      self->datePath = datePath
+      try
+         gView->loadHistoryList()
+         lastExpt = gData->dataFolderToHistoryName(lastDir)
+         idx = getlistindex(gView->history->list,lastExpt)
+         if(idx >= 0)
+            gView->history->zindex(idx)
+            gExpt->loadExistingDataSet()
+         endif
+
+      catch
+         message("Error","'Data path' is not a valid KeaExpert project folder","error")
+      endtry
+   endif
+
+endproc()
+
+###########################################################
+# Convert a data foldername into a history or batch 
+# entry name
+###########################################################
+
+procedure(dataFolderToHistoryName, self, folderName)
+
+   folderName = getbasedir(folderName)
+   try
+      (dateStamp, timeStamp, protocol, comment) = scanstr(folderName,"%1-%2 %3 (%4)")
+      entry = "$timeStamp$|$protocol$|$comment$"
+      return(entry)
+   catch
+      entry = null
+   endtry
+
+   try
+      (dateStamp, timeStamp, protocol) = scanstr(folderName,"%1-%2 %3")
+      entry = "$timeStamp$|$protocol$|"
+      return(entry)
+   catch
+      entry = null
+   endtry
+
+endproc(entry)
+
+###########################################################
+# Find the location of a pulse program folder
+# 'pp' from the stored list of possible 
+# locations. 
+###########################################################
+
+procedure(findPP, self, pp)
+
+   pp = caseset(pp,"lower")
+   sz = size(self->ppLocations)
+
+   for(k = 0 to sz-1)
+      dir = self->ppLocations[k]
+      if(isdir(dir))
+         lst = getdirlist(dir)
+         if(size(lst) > 0)
+            pps = caseset(lst,"lower")
+            idx = getlistindex(pps,pp)
+            if(idx >= 0)
+               return("$dir$\\$pp$")
+            endif
+         endif
+      endif
+   next(k)
+
+endproc(null)
+  
+###########################################################
+# See if data (*.ptx or *.1d or *.2d) is present in folder
+###########################################################  
+  
+procedure(isDataPresent, self, folder)
+
+   bak = getcwd()
+   cd(folder)
+   plots = ls("*.pt?")
+   data = ls("*.?d")
+   cd(bak)
+   if(size(plots) > 0 | size(data) > 0)
+      return(1)
+   endif
+ 
+endproc(0)
+
+###########################################################
+# Does dir represent a valid date path? e.g. 2020\09\23
+###########################################################  
+
+procedure(isValidDatePath, self, dir)
+
+   try
+
+      (yearStr,monthStr,dayStr) = scanstr(dir,"%1\\%2\\%3")
+      if(size(yearStr)  == 4 & isinteger(yearStr)  &
+         size(monthStr) == 2 & isinteger(monthStr) &
+         size(dayStr)   == 2 & isinteger(dayStr))
+
+         year  = eval(yearStr)
+         month = eval(monthStr)
+         day   = eval(dayStr)
+
+         if(year >= 2000 & year <= 2100 &
+            month >= 1 & month <= 12 &
+            day >= 1 & day <= 31)
+            return(1)
+         endif
+
+      endif
+
+   catch
+
+   endtry
+
+endproc(0)
+
+
+###########################################################
+# Does dir represent a valid date path?
+###########################################################  
+
+procedure(isValidDataFolder, self, path)
+
+   isok = 0
+   try
+      (dateStamp,timeStamp,protocol,comment) = scanstr(path,"%1-%2 %3 (%4)")
+      isok = 1
+   catch
+   endtry
+
+   if(not(isok))
+      try
+         (dateStamp,timeStamp,protocol) = scanstr(path,"%1-%2 %3 ()")
+         isok = 1
+      catch
+      endtry
+   endif
+
+endproc(isok)
+
+###########################################################
+# Given a 2D list with zero based 1D index idx
+# return the x,y coordinate
+###########################################################  
+
+procedure(listIndexToCoord, self, lst, idx)
+
+   (nrCols,nrRows) = size(lst)
+   cnt = 0
+   for(y = 0 to nrRows-1)
+      for(x = 0 to nrCols[y]-1)
+         if(idx == cnt)
+            return(x,y)
+         endif
+         cnt = cnt + 1
+
+      next(x)
+   next(y)
+
+endproc(-1,-1)
+  
+###########################################################
+# Load the common parameters from  file
+# NO LONGER USED??
+###########################################################
+
+procedure(loadCommonPar, self)
+
+   cd(prefdir)
+   if(isdir("KeaParameters\\Common"))
+      cd("KeaParameters\\Common")
+      id = self->specParameters->SystemID
+      fileName = id + "Common2.par"
+      if(isfile(fileName))
+         par = load(fileName)
+         self->specParameters = struct(par)
+         gDebug->pr("Common parameters loaded")
+      endif
+      return(1)
+   endif
+
+endproc(0)
+
+###########################################################
+# Determine the data path for 'expt' based
+# on the member variables of this structure
+###########################################################
+
+procedure(getExptDataPath, self, expt)
+
+   protocol = expt->protocol
+   suffix = expt->suffix
+   timeStamp = expt->timeStamp
+   dateStamp = expt->dateStamp
+
+   if(suffix == "")
+      path = "$self->dataParentPath$\\$dateStamp$-$timeStamp$ $protocol$"
+   else
+      path = "$self->dataParentPath$\\$dateStamp$-$timeStamp$ $protocol$ ($suffix$)"
+   endif
+
+endproc(path)
+
+###########################################################
+# Return the current folder hierarchy
+###########################################################
+
+procedure(getFolderHierarchy, self)
+
+   try
+      mode = self->preferences->folderHierarchy
+   catch
+      pr lasterror()
+      mode = "date"
+   endtry
+
+endproc(mode)
+
+###########################################################
+# Get the default parameter structure for the 
+# current experiment.
+# 'type' null if it can't be found
+###########################################################
+
+procedure(getDefaultParameters, self, protocol, ppFolder)
+
+   defaults = null
+   if(ppFolder != null)
+      bak = getcwd()
+      if(isdir(ppFolder))
+        cd(ppFolder)
+        if(isfile("$protocol$Default.par"))
+           defaults = struct(load("$protocol$Default.par"))  
+         endif
+      endif
+      cd(bak)
+   endif
+
+endproc(defaults)
+
+###########################################################
+# Get the parameter structure for the 
+# current protocol.
+# return null if it can't be found
+###########################################################
+
+procedure(getExptParameters, self, protocol, findFolder=0)
+
+   if(findFolder==0)
+      srcDir = "$self->ppFolder$"
+   else
+      srcDir = gData->findPP(protocol)
+   endif
+   par = null
+   defaults = null
+   calibrated = 0
+   if(isdir(srcDir))
+     cd(srcDir)
+     if(isfile("$protocol$Default.par"))
+        pref = gData->preferences
+        defaults = load("$protocol$Default.par") 
+        par = self->checkForSubExperiments(defaults,useSubExptNr="no")
+        par = self->mergeWithFactoryPar(par,protocol,srcDir)
+        par = gParam->updateBWandAcq(par)      # Make sure BW and acqTime are correct
+        (par, calibrated) = self->mergeWithCommonPar(par) 
+     endif
+   endif
+
+endproc(struct(par),struct(defaults), calibrated)
+
+###########################################################
+# Load the program preferences
+###########################################################
+
+procedure(getPreferences, self, updateSkin=1)
+
+  # Update the x,y,z shims and load the preferences into gData->preferences
+   setupUtilities:updateXYZPreferences(gData->shims)
+
+   assignstruct(self->preferences)
+
+  # Set various options based on preference settings
+   self->useCommonPar = useCommonPar
+   self->permissions = mkparstruct(["canOverTrashData","canOverWriteDefaultPar","canOverWriteFirmware",
+                                    "canWriteDSPPar","showTestProtocols","canEditScripts","canEditImporter"])
+
+   if(updateSkin & isvar("uiSkin"))
+      setuiskin(uiSkin)
+   endif
+   if(isvar("productionMode"))
+      self->productionMode = productionMode
+   else
+      self->productionMode = "false"
+   endif
+   if(isvar("recordHistory"))
+      self->recordHistory = recordHistory
+   else
+      self->recordHistory = "false"
+   endif
+   if(isvar("offLineDevelop"))
+      self->offLineDevelop = offLineDevelop
+   else
+      self->offLineDevelop = "false"
+   endif
+   if(isvar("showParameterHelp"))
+      gParam->showParHelp = (showParameterHelp == "yes")
+   else
+      gParam->showParHelp = 0
+   endif
+
+endproc(self->preferences)
+
+
+###########################################################
+# Load common parameters if desired
+# (such as 90amplitude, pulse duration ...)
+# and merge with the parameter list 'par'
+###########################################################
+
+procedure(mergeWithCommonPar, self, par)
+
+   usingDefaults = 0
+   calibrated = 0
+   if(self->useCommonPar == "yes")
+      (lst,calibrated) = ucsFiles:loadCommonPar()
+      if(lst != null)
+         setctrlvalues(0,lst)
+         par = setlistvalues(par,lst)
+      endif
+   endif
+
+endproc(par, calibrated)
+
+###########################################################
+# Load default parameters
+# and merge with par picking up anything new
+###########################################################
+
+procedure(mergeWithDefaultPar, self, exptInfo, par)
+
+   expt = exptInfo->name
+   srcDir = :getPPFolder(expt)
+   if(srcDir == null)
+      throw("Experiment $expt$ not found")
+   endif
+   if(isdir(srcDir))
+      cd(srcDir)
+      if(isfile("$expt$Default.par"))
+         lst = load("$expt$Default.par")
+         par = mergelists(par,lst)
+      endif
+   endif
+
+endproc(par)
+
+###########################################################
+# Load a list of factory parameters which should
+# be used and merge with the parameter list 'par'
+###########################################################
+
+procedure(mergeWithFactoryPar, self, par, name, srcDir)
+
+   bak = getcwd()
+
+   if(vartype(par) == "structure")
+      par = list(par)
+   endif
+
+# Search in experiment macro for 'getFactoryBasedParameters'
+   if(isproc(srcDir,"$name$","getFactoryBasedParameters"))
+      proc = "$name$:getFactoryBasedParameters"
+      facPar = proc(par)
+      if(facPar != null)
+         par = mergelists(facPar,par)
+      endif
+
+# Otherwise search in pulse program macro for 'getFactoryBasedParameters'
+   elseif(isproc(srcDir,"$name$_pp","getFactoryBasedParameters"))
+      proc = "$name$_pp:getFactoryBasedParameters"
+      facPar = proc(par)
+      if(facPar != null)
+         par = mergelists(facPar,par)
+      endif
+   endif
+
+   cd(bak)
+
+endproc(par)
+
+###########################################################
+# Restores the common parameter file to factory defaults
+# as read from the spectrometer parameter block if there
+# is no existing common parameter file
+#
+# Returns 1 on success 0 on failure
+#
+# verbose = 1 display error messages
+# verbose = 0 is silent
+# updateUI = 1 then the current parameters
+# are also updated with the factor defaults
+###########################################################
+#
+#procedure(restoreCommonPar, self, updateUI=1, verbose=1)
+#
+#   if(verbose)
+#      if(query("Restore parameters","This will overwrite the current common parameters with factory defaults - continue?") == "no")
+#         return(0)
+#      endif
+#   endif
+#
+## Don't do this is another instance is already open REVISIT (necessary?)
+#   if(gData->stdSWOpen)
+#      return(0)
+#   endif
+#
+## Get a list of the factory default common parameters from the spectrometer
+#   if(gData->specParameters == null)
+#      if(verbose)
+#         message("Error","No connection to the spectrometer","error")
+#      endif
+#      return(0)
+#   else
+#      specPar = gData->specParameters
+#   endif
+#
+## Extract relevant parameters to a local list
+#   try
+#      facComPar = ["freqCh1           = $specPar->frequencyCh1$",
+#                   "freqCh2           = $specPar->frequencyCh2$",
+#                   "pulseLengthCh1    = $specPar->pulseLengthCh1$",
+#                   "pulseLengthCh2    = $specPar->pulseLengthCh2$",
+#                   "pulseAmplitudeCh1 = $specPar->pulseAmplitudeCh1$",
+#                   "pulseAmplitudeCh2 = $specPar->pulseAmplitudeCh2$"] 
+#   catch
+#      return(0)
+#   endtry
+#
+## Merge the factory defaults with the common parameter file
+#   dir = getcwd()
+#   cd(prefdir)
+#   mkdir("KeaParameters\\Common")
+#   cd("KeaParameters\\Common")
+#
+## Make a default common parameter file if not present
+## and also add a parameter to indicate we need to 
+## calibrate
+#   if(not(isfile("$self->specID$Common.par")))
+#       facComPar = facComPar + ["calibrated = 0"]
+#       ucsFiles:saveCommonPar([""])
+#   endif
+#
+## Add the parameter values from the DSP parameter block
+##   cp = load("$self->specID$Common.par")
+##   cp =  mergelists(cp,facComPar)
+##   save("$self->specID$Common.par",sortlist(cp))
+##
+## Save the common parameters
+#   self->commonPar = struct(sortlist(cp))
+##  
+### Update user interface if desired
+##   if(updateUI)
+##      cp = rmfromlist(cp,"common")
+##      setctrlvalues(0,cp) 
+##   endif
+#
+#   cd(dir)
+#
+#endproc(1)
+
+###################################################
+# Save the shims and linewidths to the DSP 
+###################################################
+
+procedure(testSaveShims, self, file="SPA3424Shim.par")
+
+   cd(prefdir)
+   cd("KeaParameters\\Shims")
+   par = load(file)
+   info = :getParameterInfo()
+
+   self->saveShimsToDSP(info,par)
+
+endproc(info)
+
+
+procedure(getParameterInfo)
+
+#   info = struct(name = "macAdrs",    type = "uint16",  scale = 1;
+#                 name = "freq1H",     type = "uint32",  scale = 1;
+   info = struct(name = "xshim",      type = "int16",   scale = 1;
+                 name = "yshim",      type = "int16",   scale = 1;
+                 name = "zshim",      type = "int16",   scale = 1;
+                 name = "z2shim",     type = "int16",   scale = 1; 
+                 name = "zxshim",     type = "int16",   scale = 1;
+                 name = "zyshim",     type = "int16",   scale = 1;
+                 name = "x2y2shim",   type = "int16",   scale = 1;
+                 name = "xyshim",     type = "int16",   scale = 1;
+                 name = "z3shim",     type = "int16",   scale = 1;
+                 name = "z2xshim",    type = "int16",   scale = 1;
+                 name = "z2yshim",    type = "int16",   scale = 1; 
+                 name = "zx2y2shim",  type = "int16",   scale = 1;
+                 name = "zxyshim",    type = "int16",   scale = 1; 
+                 name = "x3shim",     type = "int16",   scale = 1; 
+                 name = "y3shim",     type = "int16",   scale = 1)
+
+endproc(info)  
+
+###################################################
+# Give the list of variable names stored in
+# flash read them back. Assumes each variable
+# is a 24 bit signed integer
+# Each info entry should include a name, a data
+# type and a scale factor.
+###################################################
+
+procedure(loadShimsFromDSP, self, info)
+
+   sz = size(info)
+   par = dspread("p",0xD3F000,84*3)
+   out = list(0)
+   for(k = 0 to sz-1)
+      name = info[k]->name
+      type = info[k]->type
+      scale = info[k]->scale
+      if(type == "int16")
+         b0 = par[k*3+0]   & 0x00FF
+         b1 = par[k*3+1] & 0x00FF
+         b2 = par[k*3+2] & 0x00FF
+         v = b0 + b1*2^8 + b2*2^16
+         if(v & 0x800000)
+            v = v-2^24
+         endif
+         out = out + ["$name$ = $v/scale$"]
+      elseif(type == "uint16")
+         b0 = par[k*3+0]   & 0x00FF
+         b1 = par[k*3+1] & 0x00FF
+         b2 = par[k*3+2] & 0x00FF
+         v = b0 + b1*2^8 + b2*2^16
+         out = out + ["$name$ = $v/scale$"]
+      elseif(type == "int32")
+         b0 = par[k*3+0]   & 0x00FF
+         b1 = par[k*3+1] & 0x00FF
+         b2 = par[k*3+2] & 0x00FF
+         b3 = par[k*3+3] & 0x00FF
+         v = b0 + b1*2d^8 + b2*2d^16 + b3*2d^24
+         if(v & 0x80000000)
+            v = v-2^32
+         endif
+         out = out + ["$name$ = $v/scale$"]
+      elseif(type == "uint32")
+         b0 = par[k*3+0]   & 0x00FF
+         b1 = par[k*3+1] & 0x00FF
+         b2 = par[k*3+2] & 0x00FF
+         b3 = par[k*3+3] & 0x00FF
+         v = b0 + b1*2d^8 + b2*2d^16 + b3*2d^24
+         out = out + ["$name$ = $v/scale$"]
+      endif
+   next(k)
+
+endproc(out)
+
+###################################################
+# Save the contents of the variables in list par
+# described in structure info to the DSP Flash
+###################################################
+
+procedure(saveShimsToDSP, self, info, par) 
+
+
+   print("\n")
+ # Pack the parameters into 24 bit words
+   sz = size(par)
+   parOut = matrix(sz)
+   szParList = size(parOut)
+   for(k = 0 to sz-1)
+     (name1,value) = splitpar(par[k])
+      name2 = info[k]->name
+      if(name1 == name2)
+         type = info[k]->type
+         scale = info[k]->scale 
+         if(type == "int16")
+            value = round(:FloatToInt16(eval(value)*scale))
+            par[c] = single((value&0x0000FF00)/(2^8))
+            par[c+1] = single(value&0x000000FF)
+            parOut[k] = value
+            pr "\n   $k$ $hex(parOut[k],24,\"u\")$"
+         elseif(type == "int32")
+            value    = round(:DoubleToInt32(eval(value+"d")*scale))
+            par[c]   = single((value&0xFF000000)/(2^24))
+            par[c+1] = single((value&0x00FF0000)/(2^16))
+            par[c+2] = single((value&0x0000FF00)/(2^8))
+            par[c+3] = single((value&0x000000FF))
+
+            value = eval(value)*scale
+            parOut[k] = value
+            pr "\n   $k$ $hex(parOut[k],32,\"u\")$"
+         endif
+      endif
+   next(k)
+
+# Copy parameters to DSP y-memory
+   dspwrite("y",0,parOut)
+
+# Run program to copy from DSP y-memory to DSP FLASH
+   cd("$appdir$\\Macros\UCS-Update\KeaParameterUpdater")
+   pp = dspreadpp("saveShims.p")
+   dspwrite("p",0x2000,pp)
+   status = dsprunpp(0x2000)
+
+   pr "\n\n   Parameters save to DSP FLASH\n"
+
+endproc()
+
+############################################
+# Convert a signed double to a 2s complement 
+# 48 bit integer
+############################################
+
+procedure(DoubleToInt48,n)
+
+   n = round(n)
+   if(n > 0x7FFFFFFFFFFF)
+      n = 0x7FFFFFFFFFFF
+   elseif(n < 0)
+      n = 0x1000000000000+n  
+      if(n < 0x800000000000)
+         n = 0x800000000000
+      endif
+   endif
+
+endproc(n)
+
+############################################
+# Convert a signed double to an unsigned 
+# 48 bit integer
+############################################
+
+procedure(DoubleToUInt48,n)
+
+   n = round(n)
+   if(n > 0xFFFFFFFFFFFF)
+      n = 0xFFFFFFFFFFFF
+   elseif(n < 0)
+      n = 0
+   endif
+
+endproc(n)
+
+############################################
+# Convert a signed double to a 2s complement 
+# 32 bit integer
+############################################
+
+procedure(DoubleToInt32,n)
+
+   n = round(n)
+   if(n > 0x7FFFFFFF)
+      n = 0x7FFFFFFF
+   elseif(n < 0)
+      n = 0x100000000+n  
+      if(n < 0x80000000)
+         n = 0x80000000
+      endif
+   endif
+
+endproc(n)
+
+############################################
+# Convert a signed double to an unsigned 
+# 32 bit integer
+############################################
+
+procedure(DoubleToUInt32,n)
+
+   n = round(n)
+   if(n > 0xFFFFFFFF)
+      n = 0xFFFFFFFF
+   elseif(n < 0)
+      n = 0
+   endif
+
+endproc(n)
+
+############################################
+# Convert a signed float to a 2s complement 
+# 24 bit integer
+############################################
+
+procedure(FloatToInt24,n)
+
+   n = round(n)
+   if(n > 0x7FFFFF)
+      n = 0x7FFFFF
+   elseif(n < 0)
+      n = 0x1000000+n  
+      if(n < 0x800000)
+         n = 0x800000
+      endif
+   endif
+
+endproc(n)
+
+
+############################################
+# Convert an unsigned float to an unisgned  
+# 24 bit integer
+############################################
+
+procedure(FloatToUInt24,n)
+
+   n = round(n)
+   if(n > 0xFFFFFF)
+      n = 0xFFFFFF
+   elseif(n < 0)
+      n = 0  
+   endif
+
+endproc(n)
+
+
+############################################
+# Convert a signed float to a 2s complement 
+# 16 bit integer
+############################################
+
+procedure(FloatToInt16,n)
+
+   n = round(n)
+   if(n > 0x7FFF)
+      n = 0x7FFF
+   elseif(n < 0)
+      n = 0x10000+n  
+      if(n < 0x8000)
+         n = 0x8000
+      endif
+   endif
+
+endproc(n)
+
+############################################
+# Convert an unsigned float to a 2s  
+# complement 16 bit integer
+############################################
+
+procedure(FloatToUInt16,n)
+
+   n = round(n)
+   if(n > 0xFFFF)
+      n = 0xFFFF
+   elseif(n < 0)
+      n = 0  
+   endif
+
+endproc(n)
+
+############################################
+# Convert an signed float to an 2s  
+# complement 8 bit integer
+############################################
+
+procedure(FloatToInt8,n)
+
+   n = round(n)
+   if(n > 0xFF)
+      n = 0xFF
+   elseif(n < 0)
+      n = 0x100+n  
+      if(n < 0x80)
+         n = 0x80
+      endif
+   endif
+
+endproc(n)
+
+
+############################################
+# Convert an unsigned float to an unisgned
+# 8 bit integer
+############################################
+
+procedure(FloatToUInt8,n)
+
+   n = round(n)
+   if(n > 0xFF)
+      n = 0xFF
+   elseif(n < 0)
+      n = 0  
+   endif
+
+endproc(n)
+

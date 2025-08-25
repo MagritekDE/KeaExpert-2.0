@@ -1,0 +1,22 @@
+procedure(isdir_test1,verbose,delay)
+
+   bakdir = getcwd()
+   cd(getmacropath())
+
+   if(isdir("nodir"))
+      return(0, "Invalid result for isdir_test # 1")
+   endif
+
+   mkdir("tempdir")
+
+   if(isdir("tempdir") == 0)
+      return(0, "Invalid result for isdir_test # 2")
+   endif
+
+   rmdir("tempdir")
+   cd("bakdir")
+
+endproc(1,"")
+
+
+

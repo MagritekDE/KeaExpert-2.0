@@ -1,0 +1,33 @@
+# fileinfo function test
+procedure(fileinfo_test1,verbose,delay)
+
+# Make a file
+
+   y = noise(1024)+i
+   export1dpar("ab", "binary",  "xyrc", "complex",
+              "fls", "float", "machine", "bigend",
+              "fileheader",0)  
+   export1d(y, "data") 
+   t1 = time()
+   sz = size(y)*8
+   if(fileinfo("data","length") != sz)
+      return(0, "Invalid result for: fileinfo #1")
+   endif
+   pause(1)
+   t2 = time() - t1
+pr "ERROR HERE!\n"
+#   if(abs(fileinfo("data","age")-t2) > t2/100)
+#      return(0, "Invalid result for: fileinfo #2")
+#   endif
+
+   if(fileinfo("data1","length") != 1e29)
+      return(0, "Invalid result for: fileinfo #3")
+   endif  
+
+   if(fileinfo("data1","age") != 1e29)
+      return(0, "Invalid result for: fileinfo #4")
+   endif  
+
+   rmfile("data")
+
+endproc(1,"")

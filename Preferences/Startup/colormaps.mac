@@ -1,0 +1,198 @@
+procedure(colormaps)
+   
+   # Hot scale
+   N = 181
+   n = (N-1)/3
+   hot = matrix(3,N)
+   for(k = 0 to n-1)
+      hot[0,k] = k/n
+      hot[0,k+n] = 1
+      hot[0,k+2*n] = 1
+      hot[1,k] = 0
+      hot[1,k+n] = k/n
+      hot[1,k+2*n] = 1
+      hot[2,k] = 0
+      hot[2,k+n] = 0
+      hot[2,k+n*2] = k/n
+   next(k)
+   assign("hot",hot,"global")
+   varstatus("hot","hidden")
+   
+   # Rainbow scale
+   N = 201
+   n = (N-1)/5
+   rainbow = matrix(3,N)
+   for(k = 0 to n-1)
+      rainbow[0,k] = 0
+      rainbow[0,k+n] = 0
+      rainbow[0,k+n*2] = 0
+      rainbow[0,k+n*3] = k/n
+      rainbow[0,k+n*4] = 1
+   
+      rainbow[1,k] = 0
+      rainbow[1,k+n] = k/n
+      rainbow[1,k+n*2] = 1
+      rainbow[1,k+n*3] = 1
+      rainbow[1,k+n*4] = 1-k/n
+   
+      rainbow[2,k] = k/n
+      rainbow[2,k+n] = 1
+      rainbow[2,k+n*2] = 1-k/n
+      rainbow[2,k+n*3] = 0
+      rainbow[2,k+n*4] = 0
+   next(k)
+   assign("rainbow",rainbow,"global")
+   varstatus("rainbow","hidden")
+   
+   # Grey scale
+   N = 101
+   n = N-1
+   grey = matrix(3,N)
+   grey[0,[0:n-1]] = ([0:1:n-1]/n)'
+   grey[1,[0:n-1]] = ([0:1:n-1]/n)'
+   grey[2,[0:n-1]] = ([0:1:n-1]/n)'
+   assign("grey",grey,"global")
+   varstatus("grey","hidden")
+   
+   # Cyan-Yellow scale
+   N = 201
+   n = (N-1)/4
+   hotandcold = matrix(3,N)
+   for(k = 0 to n-1)
+      hotandcold[0,k] = 0         # Cyan to blue
+      hotandcold[0,k+n] = 0       # Blue to black
+      hotandcold[0,k+n*2] = k/n   # Black to red
+      hotandcold[0,k+n*3] = 1     # Red to yellow
+   
+      hotandcold[1,k] = 1-k/n
+      hotandcold[1,k+n] = 0
+      hotandcold[1,k+n*2] = 0
+      hotandcold[1,k+n*3] = k/n
+   
+      hotandcold[2,k] = 1
+      hotandcold[2,k+n] = 1-k/n
+      hotandcold[2,k+n*2] = 0
+      hotandcold[2,k+n*3] = 0
+   next(k)
+   hotandcold[0,N-1] = 1 # 0 centered scale
+   assign("hotandcold",hotandcold,"global")
+   varstatus("hotandcold","hidden")
+
+   # Blue-red scale
+   N = 202
+   redwhiteblue = matrix(3,N)
+   for(k = 0 to 200)  
+      if(k <= 50)
+         redwhiteblue[0,k] = 0 
+         redwhiteblue[1,k] = 0        
+         redwhiteblue[2,k] = k/100+0.5  
+      elseif(k > 50 & k <= 100)
+         redwhiteblue[0,k] = (k-50)/50 
+         redwhiteblue[1,k] = (k-50)/50       
+         redwhiteblue[2,k] = 1      
+      elseif(k > 100 & k <= 150) 
+         redwhiteblue[0,k] = 1  
+         redwhiteblue[1,k] = (150-k)/50       
+         redwhiteblue[2,k] = (150-k)/50
+      elseif(k > 150) 
+         redwhiteblue[0,k] = (200-k)/100+0.5   
+         redwhiteblue[1,k] = 0       
+         redwhiteblue[2,k] = 0
+
+       endif
+   next(k)
+   redwhiteblue[0,100] = 1 # 
+   redwhiteblue[1,100] = 1 # 
+   redwhiteblue[2,100] = 1 # 
+   redwhiteblue[0,N-1] = 1 # 0 centered scale
+   assign("redwhiteblue",redwhiteblue,"global")
+   varstatus("redwhiteblue","hidden")
+   
+   # Full spectrum
+   N = 257
+   spectrum = matrix(3,N)
+   for(k = 0 to 255)
+   
+      if(k < 32)
+         spectrum[0,k] = 0  # dark blue to blue
+         spectrum[1,k] = 0        
+         spectrum[2,k] = k/64+0.5        
+      elseif(k >= 32 & k < 96) 
+         spectrum[0,k] = 0         # blue to cyan
+         spectrum[1,k] = (k-32)/64        
+         spectrum[2,k] = 1 
+      elseif(k >= 96 & k < 160) 
+         spectrum[0,k] = (k-96)/64   # cyan to yellow
+         spectrum[1,k] = 1        
+         spectrum[2,k] = (160-k)/64 
+      elseif(k >= 160 & k < 224) 
+         spectrum[0,k] = 1   # yellow to red
+         spectrum[1,k] = (224-k)/64        
+         spectrum[2,k] = 0 
+      elseif(k >= 224) 
+         spectrum[0,k] = (255-k)/64+0.5   # yellow to red
+         spectrum[1,k] = 0        
+         spectrum[2,k] = 0 
+      endif
+   next(k)
+   spectrum[0,256] = 1 # 0 centered scale
+   assign("spectrum",spectrum,"global")
+   varstatus("spectrum","hidden")
+   
+   # Copper coloured scale
+   N = 129
+   copper = matrix(3,N)
+   
+   for(k = 0 to 128)  
+      if(k < 100)
+         copper[0,k] = k/99
+         copper[1,k] = 0.8*k/128        
+         copper[2,k] = 0.5*k/128        
+      elseif(k >= 100) 
+         copper[0,k] = 1     
+         copper[1,k] = 0.8*k/128        
+         copper[2,k] = 0.5*k/128 
+       endif
+   next(k)
+   copper[0,128] = 0 # Normal scale
+   assign("copper",copper,"global")
+   varstatus("copper","hidden")
+   
+   colorscales = ["copper","grey","hot","rainbow","hotandcold","spectrum"]
+   assign("colorscales",colorscales,"global")
+   varstatus("colorscales","hidden","readwrite","permanent")
+  # cmap(rainbow)
+
+# Simple colours
+
+   red     = [255,0,0]
+   yellow  = [255,255,0]
+   magenta = [255,0,255]
+   green   = [0,255,0]
+   cyan    = [0,255,255]
+   blue    = [0,0,255]
+   black   = [0,0,0]
+   white   = [255,255,255]
+
+   
+   assign("red",red,"global")
+   assign("yellow",yellow,"global")
+   assign("magenta",magenta,"global")
+   assign("green",green,"global")
+   assign("cyan",cyan,"global")
+   assign("blue",blue,"global")
+   assign("black",black,"global")
+   assign("white",white,"global")
+
+   varstatus("red","hidden")
+   varstatus("yellow","hidden")
+   varstatus("magenta","hidden")
+   varstatus("green","hidden")
+   varstatus("cyan","hidden")
+   varstatus("blue","hidden")
+   varstatus("black","hidden")
+   varstatus("white","hidden")
+
+
+endproc()
+

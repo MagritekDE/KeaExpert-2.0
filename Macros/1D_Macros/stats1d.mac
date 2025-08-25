@@ -1,0 +1,92 @@
+####################################################
+#                  stats1d.mac
+#
+# Calculate the average and standard
+# deviation of current 1D data.
+# Two options are possible:
+#
+# 1. If a rectangle is present analyse the region 
+#    bounded by the rectangle.
+# 2. If no rectangle present use the currently
+#     visible region.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+procedure(stats1d)
+   (x,y) = getplotdata("1d")
+   if(x == null)
+      message("Information","No 1D plot data!")
+      return
+   endif
+
+# Check for rectangle
+   (x1,y1,x2,y2) = getrect()
+   if(x1 != -1)
+      (x1,x2) = findindex(x,x1,x2)
+      ys = submatrix(y,x1,x2)
+   else
+      (x1,x2) = zoom1d("getargs")
+      (x1,x2) = findindex(x,x1,x2)
+      ys = submatrix(y,x1,x2)
+   endif
+
+# Analyse the data
+   :info(ys,x1)
+
+endproc()
+
+##########################################
+# Calculate the average and standard
+# deviation of the vector v
+##########################################
+
+procedure(info,v,xs)
+
+   N = size(v)
+   s = sum(v)
+   avg = s/N
+   sd = sqrt(sum((v-avg)^2)/N)
+   (mx,x,y) = max(real(v))
+   (mn,x,y) = min(real(v))
+
+   pr("\n\n   Statistics for 1D data set\n")
+   pr("\n   Offset     = $xs$ points")
+   pr("\n   Dimension  = $N$ points")
+   pr("\n   s.d.       = $sd,2.4g$")
+   pr("\n   average    = $avg,2.3g$")
+   pr("\n   sum        = $s,2.3g$")
+   pr("\n   max (real) = $mx,2.3g$")
+   pr("\n   min (real) = $mn,2.3g$\n")
+
+endproc(avg,sd)
+
+##########################################
+# Calculate the standard deviation
+# of the vector v
+##########################################
+
+procedure(getsd,v)
+
+   N = size(v)
+   s = sum(v)
+   avg = s/N
+   sd = sqrt(sum((v-avg)^2)/(N-1))
+   
+endproc(sd)
+
+##########################################
+# Calculate the RMS
+# of the vector v
+##########################################
+
+procedure(getrms,v)
+
+   N = size(v)
+   s = sum(v)
+   sd = sqrt(sum(v^2)/(N-1))
+   
+endproc(sd)

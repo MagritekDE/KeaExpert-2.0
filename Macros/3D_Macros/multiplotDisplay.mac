@@ -1,0 +1,265 @@
+####################################################
+#             multiplotDisplay.mac
+#
+# Display all the slices of a 3D data set in 
+# separate 2D plots.
+#  
+# Author: C Eccles
+#
+# Copyright (c) Magritek February 2008
+####################################################
+
+procedure(multiplotDisplay)
+
+   n = :windowdefinition()
+   :set_menu()
+   :update_smx_text()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("3D Multiplot Display", -1, -1, 264, 233)
+
+      # Define all controls with basic parameters
+       statictext(1, 23, 27, "left", "3D matrix ")
+       statictext(2, 29, 41, "left", "to view")
+       textmenu(3, 83, 31, 120, 200,
+          :update_smx_text();)
+       statictext(4, 76, 71, "right", "Dimensions")
+       statictext(5, 111, 71, "center", "0")
+       statictext(6, 143, 71, "right", "by")
+       statictext(7, 164, 71, "center", "0")
+       statictext(8, 196, 71, "right", "by")
+       statictext(9, 217, 71, "center", "0")
+       groupbox(10, "Input matrix", 4, 4, 246, 94)
+       groupbox(11, "Multi-plot layout", 4, 102, 246, 84)
+       statictext(12, 155, 130, "right", "Horizontal plots")
+       statictext(13, 155, 154, "right", "Vertical plots")
+       textbox(14, 164, 127, 26)
+       textbox(15, 163, 151, 26)
+       button(16, 19, 196, 60, 28, "Display",
+          :display();)
+       button(17, 100, 196, 60, 28, "Help",
+          :showhelp();)
+       button(18, 179, 196, 60, 28, "Exit",
+          closewindow(0);)
+       radiobuttons(19, 45, 126, 18, "vertical", "xy,xz,yz", "xy",
+            :update_smx_text();
+            :display();)
+       statictext(20, 39, 124, "right", "xy")
+       statictext(21, 39, 142, "right", "xz")
+       statictext(22, 39, 161, "right", "yz")
+       button(23, 212, 32, 18, 20, "U",
+          :set_menu();
+          :update_smx_text();)
+       statictext(24, 218, 128, "center", "Show")
+       checkbox(25, 214, 158, "no,yes", "no",
+            :display();)
+       statictext(26, 218, 141, "center", "slice nr")
+
+     # Set other control parameters
+       setpar(n,3,"tab_number",1,
+                   "menu",["m3d_interp","m3d"])
+       setpar(n,14,"tab_number",2)
+       setpar(n,15,"tab_number",3)
+       setpar(n,16,"tab_number",4)
+       setpar(n,17,"tab_number",5)
+       setpar(n,18,"tab_number",6)
+
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\3D","multiplotDisplay.htm")
+endproc()
+
+####################################################
+# Initialise menu names
+####################################################
+
+procedure(set_menu)
+
+   menu3d = matrixlist(4)
+   if(size(menu3d) > 0)
+      setpar(0,3,"menu",menu3d)
+      setpar(0,3,"text",menu3d[0])
+   else
+      setpar(0,5,"text",0)
+      setpar(0,7,"text",0)
+      setpar(0,9,"text",0)
+      return
+   endif
+
+endproc()
+
+####################################################
+# Update the submatrix plot dimensions
+####################################################
+
+procedure(update_smx_text)
+
+   name = getpar(0,3,"text")
+   if(name == "")
+      return
+    endif
+   mat = alias(name,"eval") 
+  (w,h,d) = size(mat)
+
+   setpar(0,5,"text",w)
+   setpar(0,7,"text",h)
+   setpar(0,9,"text",d)
+
+   dir = getpar(0,19,"text")
+
+   if(dir == "xy")
+      (nx,ny) = :getmatrixdim(d)
+   elseif(dir == "xz")
+      (nx,ny) = :getmatrixdim(h)
+   elseif(dir == "yz")
+      (nx,ny) = :getmatrixdim(w)
+  endif
+
+   setpar(0,14,"text",nx)
+   setpar(0,15,"text",ny)
+     
+
+endproc()
+
+####################################################
+# Display the multiplot
+# If arguments are passed you can use this
+# procedure as a backdoor
+#
+# name ... matrix to plot
+# dir .... plane ("xy", "xz", "yz")
+# nx ..... number of images in horizontal direction
+# ny ..... number of images in vertical direction
+# ssn .... show slice number (optional)
+####################################################
+
+procedure(display,name,dir,nx,ny,ssn)
+
+   if(nrArgs == 4)
+      ssn = "no"
+   endif
+
+   if(nrArgs == 0)
+      nx = getpar(0,14,"value")
+      ny = getpar(0,15,"value")
+      name = getpar(0,3,"text")
+      mat = alias(name,"eval") 
+      dir = getpar(0,19,"text")
+      ssn = getpar(0,25,"text")
+   else
+      mat = name
+   endif
+
+   if(vartype(mat) == "cmatrix3d")
+      rmat = real(mat)
+   else
+      rmat = mat
+   endif
+
+  (w,h,d) = size(mat)
+   tot = nx*ny
+
+   if(dir == "xy")
+      r = (tot == d)
+   elseif(dir == "xz")
+      r = (tot == h)
+   elseif(dir == "yz")
+      r = (tot == w)
+  endif
+
+   if(r == 0)
+      message("Error","Invalid number of subplots","error")
+      return
+   endif
+
+   if(nx*ny > 1000)
+      message("Error","Too many subplots!","error")
+      return
+   endif
+
+# Get current plot parameters
+# These will be applied to each subplot
+   (curx,cury) = curplot("2d")->position
+   rng = autorange()
+   (rmin,rmax) = imagerange()
+   (nl,mode) = contour()
+
+   showborder("false")
+   multiplot("2d",nx,ny)
+   draw2d("false")
+   c = 0
+   for(y = 1 to ny)
+      for(x = 1 to nx)
+         curplot("2d",x,y)
+         if(dir == "xy")
+            image(mat[~,~,c])
+         elseif(dir == "xz")
+            image(mat[~,c,~])
+         elseif(dir == "yz")
+            image(mat[c,~,~])
+        endif
+        contour(nl,mode)
+        if(ssn == "no")     
+           title("")
+        else
+           title("text","$c$","color",[255,255,255])
+        endif
+        autorange(rng)
+        imagerange(rmin,rmax)
+        c = c + 1
+      next(x)
+   next(y)
+   draw2d("true")
+
+   if(curx <= nx & cury <= ny) 
+      curplot("2d",curx,cury)
+   else
+      curplot("2d",1,1)
+   endif
+
+endproc()
+
+
+####################################################
+# Figure out the "best" multiplot dimensions
+# by finding the product nx * ny which results 
+# in the "squarest" plot array.
+####################################################
+
+procedure(getmatrixdim,d)
+
+   ideal = sqrt(d)
+
+   minErr = 1e6
+   if(ideal == trunc(ideal))
+      return(ideal,ideal)
+   else
+      for(k = 1 to 100)
+         if(d/k == trunc(d/k))
+            error = abs(d/k-k)
+            if(error < minErr)
+                minErr = error
+                best = k
+            endif
+          endif
+      next
+      nx = best
+      ny = d/best
+   endif
+
+endproc(nx,ny)

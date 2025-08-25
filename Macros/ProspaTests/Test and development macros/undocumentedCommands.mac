@@ -1,0 +1,76 @@
+# Lists all undocumented Prospa commands; internal and DLL
+# Last modified 29 Mar 2018
+# CDE
+
+procedure(undocumentCommands)
+   
+   # List all undocumented Prospa commands
+   cd("$appdir$\\Documentation\Commands")
+   lst = listcom()
+   undoc = [""]
+   for(k = 0 to size(lst)-1)
+     cmd = lst[k]
+     if(not(isfile("$cmd$.htm")))
+        undoc = undoc + cmd
+     endif
+   next(k)
+   pr undoc
+   pr size(undoc)
+   
+   # List all undocumented DLL commands
+   DLLs = caseset(listdlls("names"),"lower")
+   nrDLLs = size(DLLs)
+   undocCnt = 0
+   
+   cd("$appdir$\\Documentation\DLLs")
+   dirList = caseset(getdirlist("."),"lower")
+   print(dirList)
+   print("\n ---- Undocumented DLLs ----\n")
+   for(k = 0 to size(DLLs)-1)
+   
+      cmdList = :getDLLCmdList(DLLs[k])
+      nrCmds = size(cmdList)
+
+      if(getlistindex(dirList,DLLs[k]) == -1)
+         print("\n   No help for DLL '$DLLs[k]$' ($nrCmds$ commands)\n")
+         undocCnt = undocCnt + nrCmds
+      else
+         fileList = getfilelist(DLLs[k])
+         if(fileList != null)
+            fileList = caseset(fileList,"lower")
+            for(m = 0 to nrCmds-1)
+               if(getlistindex(fileList,cmdList[m]+".htm") == -1)
+                   print("\n   Help for DLL command '$cmdList[m]$' in library '$DLLs[k]$' missing")
+                   undocCnt = undocCnt + 1
+              endif
+            next(m)  
+         else
+            print("\n   No help for commands in DLL library '$DLLs[k]$'")
+            undocCnt = undocCnt + nrCmds
+         endif        
+      endif   
+   
+   next(k)
+
+   print("\n   *** Undocument DLL commands = $undocCnt$ ***\n")
+
+endproc()
+
+# Get a list of all commands in library 'dll'
+procedure(getDLLCmdList, dll)
+
+   printtostring(out)
+   listdlls(dll)
+   out = closeprint()
+   lines = parse(out,"\n")
+   
+   cmdLst = list(0)
+   for(k = 0 to size(lines)-1)  
+      if(issubstr(lines[k],"..."))
+         cmd = scanstr(lines[k],"%1 ...*")
+         cmdLst = cmdLst + cmd
+      endif
+   next(k)
+
+endproc(cmdLst)
+   

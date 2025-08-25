@@ -1,0 +1,159 @@
+procedure(getpar_test1,verbose,delay)
+
+# Make a window and show it
+   n = :windowdefinition()
+   showwindow(n)
+
+# Extract the control values
+   lst = getctrlvalues(n)
+   assignlist(lst)
+   pause(1)
+
+# Get the control values
+  colorbox1 = getpar(n,1,"color")
+  checkbox1 = getpar(n,2,"text")
+  rbutton1  = getpar(n,3,"text")
+  slider1   = getpar(n,4,"value")
+  textbox1  = getpar(n,5,"text")
+  textbox2  = getpar(n,6,"value")
+  textmenu1 = getpar(n,7,"text")
+  textmenu2 = getpar(n,8,"value")
+  stext1    = getpar(n,9,"text")
+
+
+# Text that all returned control values are as expected
+   if(textmenu1 != "option2")
+      return(0, "Invalid result for: getpar() textmenu #1")
+   endif
+
+   if(textmenu2 != 3)
+      return(0, "Invalid result for: getpar() textmenu #1")
+   endif
+
+   if(textbox1 != "string")
+      return(0, "Invalid result for: getpar() textbox string #1")
+   endif
+
+   if(textbox2 != 100)
+      return(0, "Invalid result for: getpar() textbox number #1")
+   endif
+
+   if(slider1 != 50)
+      return(0, "Invalid result for: getpar() slider position #1")
+   endif
+
+   if(rbutton1 != "b")
+      return(0, "Invalid result for: getpar() radiobutton text #1")
+   endif
+
+   if(checkbox1 != "yes")
+      return(0, "Invalid result for: getpar() checkbox text #1")
+   endif
+
+   if(colorbox1 != [0,255,0,0])
+      return(0, "Invalid result for: getpar() colorbox value #1")
+   endif
+pr "PROBLEM HERE WITH getpar COLOR\n"
+   if(stext1 != "some text")
+      return(0, "Invalid result for: getpar() statictext string #1")
+   endif
+
+# Extract that all control names are as expected
+  colorbox1 = getpar(n,1,"name")
+  checkbox1 = getpar(n,2,"name")
+  rbutton1  = getpar(n,3,"name")
+  slider1   = getpar(n,4,"name")
+  textbox1  = getpar(n,5,"name")
+  textbox2  = getpar(n,6,"name")
+  textmenu1 = getpar(n,7,"name")
+  textmenu2 = getpar(n,8,"name")
+  stext1    = getpar(n,9,"name")
+
+   if(textmenu1 != "textmenu1")
+      return(0, "Invalid result for: getpar() textmenu #2")
+   endif
+
+   if(textmenu2 != "textmenu2")
+      return(0, "Invalid result for: getpar() textmenu #2")
+   endif
+
+   if(textbox1 != "textbox1")
+      return(0, "Invalid result for: getpar() textbox string #2")
+   endif
+
+   if(textbox2 != "textbox2")
+      return(0, "Invalid result for: getpar() textbox number #2")
+   endif
+
+   if(slider1 != "slider1")
+      return(0, "Invalid result for: getpar() slider position #2")
+   endif
+
+   if(rbutton1 != "rbutton1")
+      return(0, "Invalid result for: getpar() radiobutton text #2")
+   endif
+
+   if(checkbox1 != "checkbox1")
+      return(0, "Invalid result for: getpar() checkbox text #2")
+   endif
+
+   if(colorbox1 != "colorbox1")
+      return(0, "Invalid result for: getpar() colorbox value #2")
+   endif
+
+   if(stext1 != "stext1")
+      return(0, "Invalid result for: getpar() statictext string #2")
+   endif
+
+# Check some special values
+
+
+# Wait a moment and close the window
+   pause(1)
+
+   closewindow(n)
+
+endproc(1,"")
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("getpar test", -1, -1, 225, 157)
+
+      # Define all controls with basic parameters
+       colorbox(1, 27, 23, 22, 22, [255,0,0])
+       checkbox(2, 36, 64, "no,yes", "no")
+       radiobuttons(3, 81, 27, 20, "horizontal", "a,b,c", "a")
+       slider(4, 31, 96, 100, 20, "horizontal")
+       textbox(5, 150, 15, 40)
+       textbox(6, 150, 40, 40)
+       textmenu(7, 150, 65, 60, 200)
+       textmenu(8, 150, 90, 60, 200)
+       statictext(9, 81, 55, "left","some text")
+
+     # Set other control parameters
+       setpar(n,1,"color",[0,255,0])
+       setpar(n,2,"text","yes")
+       setpar(n,3,"text","b")
+       setpar(n,4,"value",50)
+       setpar(n,5,"text","string")
+       setpar(n,6,"text","100")
+       setpar(n,7,"menu",["option1","option2","option3"])
+       setpar(n,8,"menu",["1","2","3"])
+       setpar(n,7,"text","option2")
+       setpar(n,8,"text","3")
+
+       setpar(n,1,"name","colorbox1")
+       setpar(n,2,"name","checkbox1")
+       setpar(n,3,"name","rbutton1")
+       setpar(n,4,"name","slider1")
+       setpar(n,5,"name","textbox1")
+       setpar(n,6,"name","textbox2")
+       setpar(n,7,"name","textmenu1")
+       setpar(n,8,"name","textmenu2")
+       setpar(n,9,"name","stext1")
+
+      
+
+endproc(n)

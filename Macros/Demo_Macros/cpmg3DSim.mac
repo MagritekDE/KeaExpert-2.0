@@ -1,0 +1,192 @@
+# Simulate a CPMG with 5 us 90 pulses and 10 s 180 pulses with a 100 us echo time
+# the linewidth can be set
+
+procedure(CPMGSim)
+
+   if(getobj(1)->macroName() == "original.mac")
+      mac = "original-3D"
+      mac()
+   endif
+
+   plotviewversion(3)
+
+# Uncomment for movie
+ # movie("cvid","$desktop$\\CPMG.avi",50)
+
+
+# Time step
+    dt = 1e-7
+
+# Relaxation times
+    T1 = 1d
+    T2 = 1e-4
+
+# z field distribution
+    lw = 35e3  # Linewidth
+    delBz = lw*2*pi/gamma
+    nSpins = 10
+    nSteps = 1051
+    IBz = delBz*(double(linspace(-1,1,nSpins)))
+    PL = 50
+    ET = 200
+    fac = 50/PL
+
+
+# Spin data
+    Mx = dmatrix(nSpins)
+    My = dmatrix(nSpins)
+    Mz = dmatrix(nSpins) + 1
+
+# Time data
+    Mxt = dmatrix(nSteps)
+    Myt = dmatrix(nSteps)
+    Mzt = dmatrix(nSteps)
+    Mzt[0] = 1
+
+# Field data per spin
+    Bx = dmatrix(nSpins)
+    By = dmatrix(nSpins)
+    Bz = dmatrix(nSpins)
+
+# Time axis in microseconds
+    t = dmatrix(nSteps)
+
+    time(0)
+
+    k = 0
+
+# Step over time increments
+    for(N = 0 to nSteps-1)
+
+#pause(0.001)
+       t[N] = N*dt
+
+        inPulse = 0
+
+       if(N < PL)
+          Bx[~] = 1.174339e-3d
+          inPulse = 1
+       else
+          Bx[~] = 0
+       endif
+
+       if(N == PL+k*(ET+PL)+PL+ET/2)
+         k = k + 1
+       endif
+
+       if(N >= PL+k*(ET+PL)+ET/2 & N < PL+k*(ET+PL)+ET/2+PL)
+          By[~] = 1.174339e-3d*2
+          inPulse = 1
+       else
+          By[~] = 0
+       endif
+
+       if(inPulse)
+          Bz[~] = 0
+       else
+          Bz = IBz
+       endif
+
+      :visualize(Mx,My,Mz,Bx,By,Bz)
+
+      Mxt[N] = sum(Mx)
+      Myt[N] = sum(My)
+      Mzt[N] = sum(Mz)
+      (Mx,My,Mz) = :rungeKutta(Mx,My,Mz,Bx,By,Bz,T1,T2,dt)
+
+    next(N)
+
+ #  pr time()
+   M = single(Myt) + j*single(Mxt)
+   mx = max(single(Myt))
+   plot(t*1e3,M/mx) 
+   hold("off")
+   xlabel("Time (ms)")
+   ylabel("Amplitude")
+   title("Simulated CPMG")
+
+# Uncomment for movie
+ #  endmovie()
+
+endproc()
+
+
+procedure(rungeKutta,Mx,My,Mz,Bx,By,Bz,T1,T2,H)
+
+       ANx = gamma*(My.*Bz-Mz.*By)-Mx/T2
+       ANy = gamma*(Mz.*Bx-Mx.*Bz)-My/T2
+       ANz = gamma*(Mx.*By-My.*Bx)-(Mz-1)/T1
+       xArg = Mx+0.5*H*ANx
+       yArg = My+0.5*H*ANy
+       zArg = Mz+0.5*H*ANz
+       BNx = gamma*(yArg.*Bz-zArg.*By)-xArg/T2
+       BNy = gamma*(zArg.*Bx-xArg.*Bz)-yArg/T2
+       BNz = gamma*(xArg.*By-yArg.*Bx)-(zArg-1)/T1
+       xArg = Mx+0.5*H*BNx
+       yArg = My+0.5*H*BNy
+       zArg = Mz+0.5*H*BNz
+       CNx = gamma*(yArg.*Bz-zArg.*By)-xArg/T2
+       CNy = gamma*(zArg.*Bx-xArg.*Bz)-yArg/T2
+       CNz = gamma*(xArg.*By-yArg.*Bx)-(zArg-1)/T1
+       xArg = Mx+H*CNx
+       yArg = My+H*CNy
+       zArg = Mz+H*CNz
+       DNx = gamma*(yArg.*Bz-zArg.*By)-xArg/T2
+       DNy = gamma*(zArg.*Bx-xArg.*Bz)-yArg/T2
+       DNz = gamma*(xArg.*By-yArg.*Bx)-(zArg-1)/T1
+       Mx = Mx+H*(ANx+2*BNx+2*CNx+DNx)/6
+       My = My+H*(ANy+2*BNy+2*CNy+DNy)/6
+       Mz = Mz+H*(ANz+2*BNz+2*CNz+DNz)/6
+
+endproc(Mx,My,Mz)
+
+procedure(visualize, Mx, My, Mz, Bx, By, Bz)
+
+ 
+   draw3d("false")
+   clear3d
+   aa3d("off")
+ 
+# Set up view
+   rotate3d(64,0.9,-130)
+   viewdistance(220)
+   shift3d(0,-10,0)
+   scale = 30
+   fac = 0.95
+   bx = max(Bx)
+   by = max(By)
+   bz = max(Bz)
+
+   cylinder([0,0,0],[0,0,30*fac],0.4,[0,1,0])
+   cone([0,0,30*fac],[0,0,30],1,[0,1,0])
+
+   if(bx > 0)
+      cylinder([0,0,0],[30*fac,0,0],0.4,[0,1,1])
+      cone([30*fac,0,0],[30,0,0],1,[0,1,1])
+   endif
+
+   if(by > 0)
+      cylinder([0,0,0],[0,30*fac,0],0.4,[0,1,1])
+      cone([0,30*fac,0],[0,30,0],1,[0,1,1])
+   endif
+
+   for(spin = 0 to size(Mx)-1) 
+
+      x = single(Mx[spin]*scale)
+      y = single(My[spin]*scale)
+      z = single(Mz[spin]*scale)
+
+      x2 = x        
+      cylinder([0,0,0],[x*fac,y*fac,z*fac],0.4,[1,0,0])
+      cone([x*fac,y*fac,z*fac],[x,y,z],1,[1,0,0])
+  
+   next(spin)
+
+   sphere([0,0,0],30,[1,1,0,0.3],200)
+
+   draw3d("true")
+
+# Uncomment for movie
+  # addframe()
+ 
+endproc()

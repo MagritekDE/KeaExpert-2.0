@@ -1,0 +1,91 @@
+############################################################
+#
+# A pulse sequence suitable for determining the resonant
+# frequency using a simple pulse and collect sequence
+#
+# pulse - delay - acq
+#
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, x, y, ctrl, vartype)
+  interface = ["nucleus",           "Nucleus",                 "tb", "readonly_string";
+               "b1Freq1H",          "B1 Frequency (MHz)",      "tb", "freq";
+               "peakPositionPPM",   "Peak position (ppm)",     "tb", "float";
+               "90Amplitude1H",     "Pulse amplitude (dB)",    "tb", "pulseamp";
+               "pulseLength1H",     "Pulse length (us)",       "tb", "pulselength";
+               "acqDelay",          "Pulse acqu. delay (us)",  "tb", "sdelay";
+               "findFromDefaults",  "Use default freq",        "cb", "no,yes";
+               "repTime",           "Repetition time (ms)",    "tb", "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = ["n1         = nrPnts",
+                    "a1         = 90Amplitude1H",
+                    "d1         = pulseLength1H",
+                    "d2         = acqDelay",
+                    "totPnts    = nrPnts",
+                    "totTime    = acqTime",
+                    "spoilAmp   = 5000",
+                    "nxShim     = xshim",
+                    "nyShim     = yshim",
+                    "nzShim     = zshim",
+                    "ny         = (yshim-1.0*spoilAmp)",
+                    "nx         = (xshim-1.0*spoilAmp)",
+                    "nz         = (zshim-1.0*spoilAmp)"]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Acquisition",
+           "Processing_Std","Display_Hz","File Settings"]
+
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+  # A normal pulse and collect experiment
+   pulse(1,a1,p1,d1)            # RF pulse
+   delay(d2)                    # Ringdown delay
+   acquire("overwrite",n1)      # Acquire FID
+   # Kill residual magnetisation so we can repeat faster
+   Spoiler:XYZ(nx, ny, nz, nxShim, nyShim, nzShim, 50000, 10000)
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0,1,2,3;   # Pulse phase
+                0,1,2,3]   # Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->getXChannelParameters("1H")
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
+
+   par = ["rxGain        = $modelPar->rxGain$",
+          "pulseLength1H = $PulseLength_1H$",
+          "90Amplitude1H = $PowerLevel_1H$",
+          "b1Freq1H      = $Frequency_1H$"]
+
+endproc(par)

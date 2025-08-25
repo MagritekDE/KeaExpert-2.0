@@ -1,0 +1,28 @@
+# Exports 2D plot real or complex data to an ascii file
+
+procedure(export2DAscii)
+
+# Get the data from the plot
+  (m,x,y) = getplotdata("2d")
+
+   if(m == null)
+      message("Error","No plot data present","error")
+      return
+   endif
+
+# Get size of data set
+   (w,h) = size(m)
+
+# Get export file name
+   name = getfilename("save", "Export a 2D plot file in ASCII format", "Text files", "txt")
+
+# Export the data
+   if(vartype(m) == "matrix2d")
+      export2dpar("ab","ascii","xyrc","real","delimiter","space")
+      export2d(m,name)  
+   else
+      export2dpar("ab","ascii","xyrc","complex","delimiter","space")
+      export2d(m,name)  
+   endif
+
+endproc()

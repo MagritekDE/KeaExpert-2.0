@@ -1,0 +1,73 @@
+####################################################
+# Perform the waltzdecoupling sequence
+#
+# waltzdec(channel, loops, ampDec, d90, d180, d270, d360, p1, p2)
+#
+#   channel: 1/2
+#   loops: number of loops to perform
+#   ampDec: decoupling amplitude in dB
+#   d90,180,270,360 : decoupling pulse lengths
+#   p1,p2: pulse phases
+#
+#   Duration = ((24*d90 + (5 + 1)*9)*4 + 1)*loops + 11 
+#
+####################################################
+
+procedure(waltzdec, channel, loops, ampDec, d90, d180, d270, d360, pPlus, pMinus)
+
+   if(wvFX3Info->mode == "run")
+
+      waltzstart(channel)
+      loop("lpwd1", loops)
+         :WaltzQ(channel, ampDec, d90, d180, d270, d360, pPlus,  pMinus)
+         :WaltzQ(channel, ampDec, d90, d180, d270, d360, pMinus, pPlus)
+         :WaltzQ(channel, ampDec, d90, d180, d270, d360, pMinus, pPlus)
+         :WaltzQ(channel, ampDec, d90, d180, d270, d360, pPlus,  pMinus)
+      endloop("lpwd1")
+      waltzend(channel)
+           
+   elseif(wvFX3Info->mode == "time")
+
+      cnt = gSeq->psInfo->loopCnt
+      tm = ((24*d90 + (5 + 1)*9)*4 + 1)*loops + 11
+      gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + tm
+      gSeq->psInfo->command = gSeq->psInfo->command + ["waltzdec, $channel$, $loops$, $ampDec$, $d90$, $d180$, $d270$, $d360$, $pPlus$, $pMinus$"]
+
+   elseif(wvFX3Info->mode == "compile")
+
+      addPSParameters(loops, ampDec, d90, d180, d270, d360, pPlus, pMinus)
+
+   endif
+
+endproc()
+
+# Timing adjusted to match DSP version (just a bit shorter)
+# Duration = 24*d90 + (5 + 1)*9 
+
+procedure(WaltzQ, channel, ampDec, d90, d180, d270, d360, phasePlus, phaseMinus)
+
+# ------ Q1
+   waltzdecpulse(channel, ampDec, phaseMinus, d270)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phasePlus,  d360)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phaseMinus, d180)
+   delay(1)
+
+# ------ Q2
+   waltzdecpulse(channel, ampDec, phasePlus, d270)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phaseMinus, d90)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phasePlus, d180)
+   delay(1)
+
+# ------ Q3
+   waltzdecpulse(channel, ampDec, phaseMinus, d360)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phasePlus,  d180)
+   delay(1)
+   waltzdecpulse(channel, ampDec, phaseMinus, d270)
+   delay(1)
+
+endproc()

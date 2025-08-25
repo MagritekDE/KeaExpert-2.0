@@ -1,0 +1,153 @@
+####################################################
+#                applyFunction
+#
+# Apply a function to the current 1D data set
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2005
+#
+#####################################################
+
+
+####################################################
+# Create, initialize and display the dialog
+####################################################
+
+procedure(applyFunction)
+
+   n = :windowdefinition()
+   windowvar(wv_x,wv_y)
+   setpar(0,1,"text","y")
+   :initialise()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Apply a function to the 1D plot", -1, -1, 389, 97)
+
+      # Define all controls with basic parameters
+       windowvar(wv_y,wv_x)
+       textbox(1, 18, 20, 230)
+       button(2, 13, 53, 45, 30, "Apply",
+          :apply();)
+       button(3, 160, 53, 45, 30, "Help",
+          :showhelp();)
+       statictext(4, 301, 24, "left", "width:")
+       statictext(6, 285, 42, "left", "variables: x,y,w")
+       statictext(7, 333, 24, "left", "0")
+       button(9, 209, 53, 45, 30, "Exit",
+          closewindow(0);)
+       button(10, 111, 53, 45, 30, "Undo",
+          :undo();)
+       button(11, 62, 53, 45, 30, "Update",
+          :initialise();)
+       groupbox(12, "Plot parameters", 268, 1, 111, 91)
+       groupbox(13, "", 4, 1, 259, 91)
+       getmessage(14,
+         :process_message();)
+
+     # Set other control parameters
+       setpar(n,2,"mode","default")
+
+endproc(n)
+
+
+####################################################
+# Display help file
+####################################################
+
+procedure(showhelp)
+   help("Macros\\1D","applyFunction.htm")
+endproc()
+
+
+####################################################
+# Initialise the gui based on current 2D plot
+####################################################
+
+procedure(initialise)
+
+   (x,y) = getplotdata("1d")
+   if(x != null)
+      w = size(y)
+      setpar(0,7,"text",w)
+   else
+      setpar(0,7,"text",0)
+   endif
+
+endproc()
+
+####################################################
+# Apply the same function to each row
+####################################################
+
+procedure(apply)
+
+# Extract the data from the plot
+  (x,y) = getplotdata("1d")
+   if(y == null)
+     message("Error","No 1D plot data","error")
+     return()
+   endif
+
+# Save the data for undo operationx
+   wv_y = y
+   wv_x = x
+
+# Record the current 1D plot state
+   (txt,lx,ly,x1,x2,y1,y2) = 1dpar:get()
+
+# Extract the function to apply
+   func = getpar(0,1,"text")
+
+# Apply this function to each row
+   w = size(y)
+   if(w != 0)
+      yf = eval(func)
+      draw1d("false")
+         plot(x,yf)
+         1dpar:set(txt,lx,ly,x1,x2)
+      draw1d("true")
+   endif
+
+endproc()
+
+####################################################
+# User has drawn a rectangle so update GUI
+####################################################
+
+procedure(process_message)
+
+   (src,cmd) = getpar(0,14,"text")
+
+   if(src == "1D Plot")
+      :initialise()
+   endif
+
+endproc()
+
+####################################################
+# Restore the matrix before last row op
+####################################################
+
+procedure(undo)
+
+   if(wv_y != null)
+      (txt,lx,ly,x1,x2) = 1dpar:get()
+      draw1d("false")
+         plot(wv_x,wv_y)
+         1dpar:set(txt,lx,ly,x1,x2)
+      draw1d("true")
+   endif
+
+endproc()
+      

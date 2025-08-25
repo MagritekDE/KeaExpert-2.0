@@ -1,0 +1,39 @@
+###################################################################################
+###################################################################################
+
+procedure(acquire, mode, nrPnts, arg1=null, arg2=null)
+
+   if(gSeq->psInfo->skipCmds == 0)
+
+      args = getargnames()
+      cnt = gSeq->psInfo->loopCnt
+      if(mode == "integrateandscale")
+   
+         if(nrArgs == 3)
+            dwellTime = gSeq->psInfo->guipar->dwellTime
+            gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + nrPnts*dwellTime
+            gSeq->psInfo->command = gSeq->psInfo->command + ["acquire,$mode$,$nrPnts$,$dwellTime$,$args[0]$"]
+         else
+            duration = arg2
+            gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+            gSeq->psInfo->command = gSeq->psInfo->command + ["acquire,$mode$,$nrPnts$,$duration$,$args[0]$,$args[1]$"]
+         endif
+   
+      else
+      
+         if(nrArgs == 2)
+            dwellTime = gSeq->psInfo->guipar->dwellTime
+            gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + nrPnts*dwellTime
+            gSeq->psInfo->command = gSeq->psInfo->command + ["acquire,$mode$,$nrPnts$,$dwellTime$,$args[0]$"]
+         else
+            duration = arg1
+            gSeq->psInfo->durationNStk[cnt] = gSeq->psInfo->durationNStk[cnt] + duration
+            gSeq->psInfo->command = gSeq->psInfo->command + ["acquire,$mode$,$nrPnts$,$duration$,$args[0]$,$args[1]$"]
+         endif
+   
+      endif
+
+   endif
+
+endproc()
+

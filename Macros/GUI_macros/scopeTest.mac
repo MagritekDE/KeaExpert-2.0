@@ -1,0 +1,161 @@
+# Display a simple interface for capturing data from a scope connected
+# by NI-VISA
+procedure(scopeTest)
+
+   n = :windowdefinition()
+   windowvar(stop,update,ch,SCOPE)
+   update = 0
+   ch = 1
+   setpar(n,5,"text",ch)
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Tektronix Scope", -1, -1, 588, 343, "resizable")
+
+      plot1d(1,5,5,"ww-100","wh-30")
+      # Define all controls with basic parameters
+      button(2, "ww-75", 20, 60, 29, "Grab",:getAndDisplayData())
+      button(3, "ww-75", 60, 60, 29, "Stop",stop = 1)
+      button(9, "ww-75", 100, 60, 29, "Query",:queryScope())
+      statictext(4, "ww-75", 157, "left", "CH")
+      textbox(5, "ww-57", 154, 20, 29, "vertical")
+      updown(6, "ww-35", 150, 20, 29, "vertical",:changeChannel())
+
+      statusbox(7,"ww/3","ww*0.6667","ww-45","-1")
+
+      menu(8, "bkgMenu", "Copy plot\tCtrl+C", func1d("copy plot"))
+
+      setpar(n,6,"base", 1,
+               "value", 1,
+               "stepsize", 1,
+               "nrsteps", 3)
+
+      setpar(n,1,"traceMenu",8)
+      setpar(n,1,"bkgMenu",8)
+      setwindowpar(n,"statusbox",6)
+      setwindowpar(n,"show_menu","false")
+      setwindowpar(n,"titleupdate","false")
+
+endproc(n)
+
+
+# Modify the viewed channel
+procedure(changeChannel)
+
+   ch = getpar(0,6,"value")
+   setpar(0,5,"text",ch)
+   update = 1
+
+endproc()
+
+# Run the data collection in a separate thread
+procedure(startScope)
+
+   stop = 0
+   thread(":getAndDisplayData")
+
+endproc()
+
+# NI-Visa test macro
+
+procedure(getAndDisplayData)
+   
+   try
+      SCOPE = visagetdevicename("?*C040709::INSTR")
+   catch
+      message("Error","No connection to instrument - aborting.","error")
+      return
+   endtry
+
+   setwindowpar(0,"title","Tektronix Scope TDS 2014B")
+
+   visawrite(SCOPE, ":DATA:SOURCE CH$ch$")
+   
+   parent = getobj(0,1)
+   plt = parent->multiplot(1,1)
+
+   plt->autorange("off")
+
+
+      vis = visaquery(SCOPE, ":SELECT:CH$ch$?")
+      vis = eval(vis[0:-2]) # Remove \n
+      if(vis == 1)
+  
+          # Read the horizontal scale
+         xscale = visaquery(SCOPE, ":HORizontal:MAIn:SCALE?")
+         xscale = eval(xscale[0:-2]) # Remove \n
+         
+         # Read the vertical scale
+         yscale =  visaquery(SCOPE, ":CH$ch$:SCAle?")
+         yscale = eval(yscale[0:-2]) # Remove \n
+
+         # Read the x offset
+         xoffset =  visaquery(SCOPE, ":HORizontal:MAIn:POSition?")
+         xoffset = eval(xoffset[0:-2]) # Remove \n
+      pr xoffset
+         # Read the y offset
+         yoffset = visaquery(SCOPE, ":CH$ch$:POSition?")
+         yoffset = eval(yoffset[0:-2]) # Remove \n
+      
+         # Get the number of points to transfer
+         length = visaquery(SCOPE,":WFMPre:NR_Pt?")
+         length = eval(length[0:-2]) # Remove \n
+      
+         # Read the data allowing for a block header
+         data = visaquery(SCOPE,":CURVE?",length+10,"array8")
+      
+         # Extract size of block header and length of data set
+         digits = eval(asciitostr(data[1]))
+         length = eval(asciitostr(data[2:digits+1]))
+         
+         # Extract trace data
+         data = data[digits+2:]
+      
+         # Set up x-axis units
+         if(xscale >= 500e-6)
+            xUnitsScale = 1e3
+            xUnits = "ms"
+         else
+            xUnitsScale = 1e6
+            xUnits = "\G(m)s"
+         endif
+      
+         # Make axes
+         xaxis = (linspace(0,10*xscale,size(data)) - 5*xscale + xoffset)*xUnitsScale
+         fact = 4*yscale/100
+      
+         # Plot it
+         plt->draw("false")
+         plt->plot(xaxis,fact*data-yoffset*yscale)
+         plt->axes->xrange([xaxis[0],xaxis[-1]])
+         plt->axes->yrange([-4*yscale-yoffset*yscale,4*yscale-yoffset*yscale])
+         plt->axes->xtickspacing(xscale*xUnitsScale/5)
+         plt->axes->xticksperlabel(5)
+         plt->axes->ytickspacing(yscale/5)
+         plt->axes->yticksperlabel(5)
+         plt->grid->xgrid("on")
+         plt->grid->ygrid("on")
+         plt->xlabel("Time ($xUnits$)")
+         plt->ylabel("Volts")
+         plt->title("Scope Data")
+         plt->draw("true")
+   else
+
+      plt->clear()
+
+   endif
+
+ 
+endproc()
+
+
+
+   
+
+
+

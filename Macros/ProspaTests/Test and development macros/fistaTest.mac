@@ -1,0 +1,34 @@
+procedure(fistaTest)
+
+   szIn = 500
+
+# Generate input axes and data
+   xAxis = linvec(1, 99, szIn)/100
+   yAxis = linvec(1, 99, szIn)/100
+   mIn = (exp(-xAxis*10))'*(exp(-yAxis*3)) + @
+         (exp(-xAxis*3)) '*(exp(-yAxis*10)) + @
+         (exp(-xAxis*30))'*(exp(-yAxis*30))
+
+# Generate output axes
+   szOut = 100
+   xSpec = logvec(1, 99, szOut)/100
+   ySpec = logvec(1, 99, szOut)/100
+   solution = dmatrix(szOut,szOut)
+   smth = 0.001
+   nrIterations = 5000
+
+# General kernels
+   xK = exp(-xAxis'*(1/xSpec))
+   yK = exp(-yAxis'*(1/ySpec))
+
+# Do the inversion
+   mInvert = fista(double(mIn),double(xK),double(yK),double(solution),
+                   double(smth),nrIterations)
+
+# Display the result
+   plt = curplot("2d")
+   plt->image(mInvert,[xSpec[0],xSpec[-1]],[ySpec[0],ySpec[-1]])
+   plt->axes->xmapping("log")
+   plt->axes->ymapping("log")
+
+endproc()

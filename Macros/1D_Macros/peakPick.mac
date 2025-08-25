@@ -1,0 +1,94 @@
+################################################################
+# Returns a list of peak positions and amplitudes
+# Crtitera are:
+# Peak must be above a noise level
+# Points either side of the peak must be lower than peak
+# Peak prominence must be greater than specified threshold (0-1)
+
+# Test routine - works on currently display 1D plot data
+# Noise is taken from 1/10 of each end of the data set
+################################################################
+
+procedure(peakPickTest)
+
+   prominence = 0.50 # Peaks must exhibit this prominence
+   thresholdFactor = 10 # Peak must be this much higher than noise level
+   
+   plt = curplot("1d")
+   plt->rmlines()
+  (x,y) = plt->getdata("all")
+   w = size(x)
+   y = real(y)
+   noiseLevel = thresholdFactor*(sd(y[0:round(0.1*w)]) + sd(y[round(0.9*w):-1]))/2
+
+   (x,y) = plt->getdata("current")
+   plt->addline(x[0],noiseLevel,x[-1],noiseLevel,[0,128,0])
+   (position,amplitude) = :peakPick(plt, x,real(y),noiseLevel,prominence)
+   position = position[1:-1]
+   amplitude = amplitude[1:-1]
+   print("\n ------------- Peak List -------------\n")
+   print("\n Peak\t\tIndex\tFrequency\tAmplitude\n\n")
+   for(k = 0 to size(position)-1)
+      print("  $k$\t\t$position[k]$\t$x[position[k]]$\t$amplitude[k]$\n")
+   next(k)
+
+endproc()
+
+############################################################
+# Main entry point. Pass:
+# plt - plot reference
+# x,y - data
+# noiseThreshold - ignore data below this
+# prominence - peaks must have this prominence (0-1)
+#
+############################################################
+
+procedure(peakPick, plt, x, y, noiseThreshold, prominence)
+
+   w = size(x)
+   position =  [0]
+   amplitude =  [0]
+   mx = max(y)
+   
+   for(k = 1 to w-2)
+      if(y[k] > noiseThreshold & y[k-1] < y[k] & y[k+1] < y[k]) # Local peak
+         if(:checkProminence(k,x,y,prominence)) # Check prominence
+            pr("\nFound peak at $x[k]$")
+            plt->addline(x[k],y[k]*1.1,x[k],y[k]*1.1+mx/20,[255,0,0])
+            position = join(position,[k])
+            amplitude = join(amplitude,[y[k]])
+         endif
+      endif
+   next(k)
+   pr("\n")
+
+endproc(position,amplitude)
+
+procedure(checkProminence, pos, x, y, prominence)
+
+   w = size(x)
+   val = y[pos]
+
+   for(k = pos+1 to w-2) # Search to higher indices 
+      if(y[k] < prominence*val) # Below prominence threshold?
+         exitfor
+      endif
+      if(y[k] > y[k-1] & y[k] > y[k+1]) # y[k] is a peak
+         if(y[k] > val) # y[k] is higher than y[pos]
+            return(0)   # If y[pos] is so not a peak
+         endif
+      endif
+   next(k)
+
+   for(k = pos-1 to 1 step -1) # Search to lower indices 
+      if(y[k] < prominence*val) # Below prominence threshold?
+         exitfor
+      endif
+      if(y[k] > y[k-1] & y[k] > y[k+1]) # y[k] is a peak
+         if(y[k] > val) # y[k] is higher than y[pos]
+            return(0)   # If y[pos] is so not a peak  
+         endif
+      endif
+   next(k)
+
+endproc(1) # Ok its a peak

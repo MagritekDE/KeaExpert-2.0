@@ -1,0 +1,116 @@
+################################################
+#            removeVariables.3d
+#
+# Interatively remove 3D matrix variables.
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek December 2006
+################################################
+
+
+procedure(removeVariables3d)
+
+   n = :windowdefinition()
+   :updateWindow()
+   showwindow(n)
+
+endproc()
+
+####################################################
+# Define the dialog to extract the parameters
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Remove 3D variables", -1, -1, 335, 178)
+
+      # Define all controls with basic parameters
+       listbox(1, 12, 29, 238, 136)
+       statictext(2, 130, 8, "center", "Matrices to remove")
+       button(3, 265, 55, 54, 33, "Remove One",
+          :removeOne();)
+       button(4, 266, 137, 54, 27, "Exit",
+          closewindow(0);)
+       button(5, 266, 99, 54, 27, "Update",
+          :updateWindow();)
+       button(6, 265, 11, 54, 33, "Remove All",
+          :removeAll();)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Update the window with the current 3D matrices
+####################################################
+
+procedure(updateWindow)
+
+   menu3d = matrixlist(4)
+   s = size(menu3d)
+   if(s > 0)
+      varlist = list(s)
+      for (k = 0 to s-1)
+         v = eval(menu3d[k])
+         (w,h,d) = size(v)
+         if(vartype(v) == "matrix3d")
+            varlist[k] = menu3d[k] + " - $w$ x $h$ x $d$ real points"
+         else
+            varlist[k] = menu3d[k] + " - $w$ x $h$ x $d$ complex points"
+         endif
+      next(k)
+      setpar(0,1,"list",varlist)
+   else
+     setpar(0,1,"list",[""])
+   endif
+
+endproc()
+
+
+####################################################
+# Remove all the 3D variables
+####################################################
+
+procedure(removeAll)
+
+   varList = getpar(0,1,"list")
+
+   if(varList != null)
+      result = query("Warning","Are you sure you want to remove all variables?")
+      if(result == "yes")
+         s = size(varList)
+         name = list(1)
+         for(k = 0 to s-1)
+            name[0] = scanstr(varList[k],"%1 *")
+            rmvar(name[0])
+         next(k)  
+         :updateWindow()
+      endif
+   else
+      message("Warning","No variables to remove")
+   endif
+
+endproc()
+
+####################################################
+# Remove one of the 3D variables
+####################################################
+
+procedure(removeOne)
+
+   name = list(1)
+   str = getpar(0,1,"text")
+   if(str != null)
+      name[0] = scanstr(str,"%1 *") 
+      result = query("Warning","Are you sure you want to remove matrix '$name[0]$'?")
+      if(result == "yes")
+         rmvar(name[0])
+         :updateWindow()
+      endif
+   else
+      message("Warning","No variable selected")
+   endif
+
+endproc()

@@ -1,0 +1,173 @@
+#####################################################
+# Procedures to load native Prospa data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# isdata:        returns 1 if Prospa data 0 otherwise
+# getname:       returns name of data file
+# getparameters: returns data parameter list
+# getdata:       returns data
+#
+######################################################
+
+#############################################
+# Return a list of file types supported by 
+# Prospa
+#############################################
+
+procedure(types)
+
+  lst = ["Prospa"]
+
+endproc(lst)
+
+#############################################
+# Prospa data can load without exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("no")
+
+#############################################
+# Return 1 is the type if data in the current
+# directory is Prospa, 0 otherwise
+#############################################
+
+procedure(isdata)
+
+  is_1d = isfile("*.1d")
+  is_2d = isfile("*.2d")
+  is_3d = isfile("*.3d") 
+
+  if(is_1d | is_2d | is_3d)
+     return(1)
+  endif
+
+endproc(0)
+
+#############################################
+# Returns name of first Prospa data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+   lst = getfilelist(".")
+   sz = size(lst)
+
+   if(isfile("*.1d"))
+     for(k = 0 to sz-1)
+        if(getext(lst[k]) == "1d")
+           return(lst[k])
+        endif
+     next(k)
+   elseif(isfile("*.2d"))
+     for(k = 0 to sz-1)
+        if(getext(lst[k]) == "2d")
+           return(lst[k])
+        endif
+     next(k)
+   elseif(isfile("*.3d"))
+     for(k = 0 to sz-1)
+        if(getext(lst[k]) == "3d")
+           return(lst[k])
+        endif
+     next(k)
+   endif
+
+endproc("")
+
+#############################################
+# Return Prospa file parameters
+#
+# Note: header format (all long integers)
+#
+# y[0] = owner = 'PROS' = 1347571584
+# y[1] = type  = 'DATA' = 1145132160
+# y[2] = vers  = 'V1.0' = 1446063616
+# y[3] = ntype = 500/501 = real/complex
+# y[4] = 1dim
+# y[5] = 2dim
+# y[6] = 3dim
+# data ... (floats)
+#############################################
+
+procedure(getparameters, dataFile)
+
+
+# Read and interpret header
+   (1dim,2dim,3dim,4dim,nrType) = getfilesize(dataFile)
+
+# Check for Prospa data file
+   if(1dim == 0)
+      p = ["unknown=unknown"]
+      return
+   endif
+
+# Fix some other parameters
+   filetype = "Prospa"
+   dig_shift = 0
+   4dim = 1
+
+# Build parameter list
+   p = ["1dim = $1dim$",
+        "2dim = $2dim$",
+        "3dim = $3dim$",
+        "4dim = $4dim$",
+        "1dzf = $1dim$",
+        "2dzf = $2dim$",
+        "3dzf = $3dim$",
+        "4dzf = $4dim$",
+        "nrType = \"$nrType$\"",
+        "fileType = \"$filetype$\"",
+        "matrixIn = \"\""
+         "1dfltr = \"none\"",
+         "2dfltr = \"none\"",
+         "3dfltr = \"none\"",
+         "1dft = \"FTEcho\"",
+         "2dft = \"FTEcho\"",
+         "3dft = \"FTEcho\"",
+         "digShift = $dig_shift$"]
+
+
+endproc(p)
+
+
+#############################################
+# Load Prospa data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+
+
+   if(nrTypeXY == "Y")
+      mat = load(dataFile)
+      if(3dim > 1)
+         assign("curmatrix_3d",matrixIn,"global")
+      elseif(2dim > 1)
+         assign("curmatrix_2d",matrixIn,"global")
+      else
+         assign("curmatrix_1d",matrixIn,"global")
+      endif
+      assign(matrixIn,mat,"global")
+      assign("curmatrix",matrixIn,"global")
+   else
+      (x,y) = load(dataFile)
+      assign("curmatrix_1dx","$matrixIn$x","global")
+      assign("curmatrix_1dy","$matrixIn$y","global")
+      assign("$matrixIn$x",x,"global")
+      assign("$matrixIn$y",y,"global")
+      assign("curmatrix_x","$matrixIn$x","global")
+      assign("curmatrix_y","$matrixIn$y","global")
+   endif
+  
+
+endproc()
+
+
+

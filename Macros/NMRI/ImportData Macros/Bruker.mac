@@ -1,0 +1,240 @@
+#####################################################
+# Procedures to load native Bruker data
+# Required procedures:
+# 
+# types:         returns list of supported data types
+# isdata:        returns 1 if Bruker data 0 otherwise
+# getname:       returns name of data file
+# getparameters: returns data parameter list
+# getdata:       returns data
+#
+#####################################################
+
+#############################################
+# Return a list of file types supported by 
+# Bruker
+#############################################
+
+procedure(types)
+
+  lst = ["AMX","Avance"]
+
+endproc(lst)
+
+#############################################
+# Return 1 is the type of data in the current
+# directory is Bruker 0 otherwise
+#############################################
+
+procedure(isdata)
+
+  is_fid     = isfile("fid")
+  is_ser     = isfile("ser")
+  is_data    = isfile("data")
+  is_acqus   = isfile("acqus")
+  is_acqu2s  = isfile("acqu2s")
+  is_acqu3s  = isfile("acqu3s")
+
+  if(isfile("acqp")) # Paravision file
+     return(0)
+  endif
+
+  if((is_fid | is_ser | is_data) & (is_acqus | is_acqu2s | is_acqu3s))
+    return(1)
+  endif
+
+endproc(0)
+
+#############################################
+# Bruker data can load without exp.par file
+#############################################
+
+procedure(needexppar)
+
+
+endproc("no")
+
+#############################################
+# Returns name of Bruker data file
+# blank otherwise
+#############################################
+
+procedure(getname)
+
+  if(isfile("fid"))
+     return("fid")
+  elseif(isfile("ser"))
+     return("ser")
+  elseif(isfile("data"))
+     return("data")
+  endif
+
+endproc("")
+
+#############################################
+# Return Bruker parameters
+#############################################
+
+procedure(getparameters, dataFile)
+
+# Work out the number of dimensions
+# based on the files present
+   is_acqus   = isfile("acqus")
+   is_acqu2s  = isfile("acqu2s")
+   is_acqu3s  = isfile("acqu3s")
+
+   if(is_acqus & not(is_acqu2s) & not(is_acqu3s))
+     dim = "1D"
+   elseif(is_acqus & is_acqu2s & not(is_acqu3s))
+     dim = "2D"
+   elseif(is_acqus & is_acqu2s & is_acqu3s)
+     dim = "3D"
+   endif
+
+# Extract the file dimensions
+   1dim = 1; 2dim = 1; 3dim = 1
+   1dim = :getnumpar("acqus","TD")
+
+   byteOrder = :getnumpar("acqus","BYTORDA")
+
+   if(dim == "2D" | dim == "3D")
+      2dim = :getnumpar("acqu2s","TD")
+   endif
+
+   if(dim == "3D")
+      3dim = :getnumpar("acqu3s","TD")
+   endif
+
+   if(byteOrder == 1)
+      filetype = "Avance"
+   else
+      filetype = "AMX"
+   endif
+
+# Get any digital shift
+   dig_shift = :getdigitalshift("acqus") 
+
+# Modify the first dimension to 
+# reflect number of complex points
+   1dim = 1dim/2
+
+   if(1dim%128 != 0)
+     1dim = (trunc(1dim/128)+1)*128
+   endif
+   
+# Get title (removing newlines)
+   if(isfile("title"))
+      titleText = load("title","text") 
+      titleText = replacestr(titleText,"\n"," ") 
+      titleText = replacestr(titleText,"\r","") 
+   else
+      titleText = "not found"
+   endif
+
+# Build the parameter list
+   p = ["1dim = $1dim$",
+        "2dim = $2dim$",
+        "3dim = $3dim$",
+        "4dim = 1",
+        "1dzf = $1dim$",
+        "2dzf = $2dim$",
+        "3dzf = $3dim$",
+        "4dzf = 1",
+        "fileType = \"$filetype$\"",
+        "matrixIn = \"\"",
+        "1dfltr = \"none\"",
+        "2dfltr = \"none\"",
+        "3dfltr = \"none\"",
+        "1dft = \"FTEcho\"",
+        "2dft = \"FTEcho\"",
+        "3dft = \"FTEcho\"",
+        "digShift = $dig_shift$",
+        "nrType = \"complex\"",
+        "title = \"$titleText$\""]
+
+endproc(p)
+
+#############################################
+# Load Bruker data and store to global
+# variable curmatrix and curmatrix.1d/2d/3d
+#############################################
+
+procedure(getdata,dataFile,pl)
+
+   assignlist(pl)
+   setdataformat(fileType,nrType)
+
+   if(3dim > 1)
+      mat = import3d(dataFile,1dim,2dim,3dim)
+      assign("curmatrix_3d",matrixIn,"global")
+   elseif(2dim > 1)
+      mat = import2d(dataFile,1dim,2dim)
+      assign("curmatrix_2d",matrixIn,"global")
+   else
+      mat = import1d(dataFile,1dim)
+      assign("curmatrix_1d",matrixIn,"global")
+   endif
+   assign(matrixIn,mat,"global")
+   assign("curmatrix",matrixIn,"global")
+  
+endproc()
+
+#############################################
+# Procedures locally used by this macro
+#############################################
+
+#############################################
+# Extracts a numeric parameter from a Bruker 
+# file returns -1 if parameter not found
+#############################################
+
+procedure(getnumpar,file,name)
+
+   txt = load(file,"text")
+
+   arg = scanstr(txt,"*$$$name$=%1\r\n")
+   if(arg == null)
+      arg = scanstr(txt,"*$$$name$=%1\n")
+   endif
+
+   if(arg != null)
+      val = eval(arg)
+   else
+      val = -1
+   endif
+
+endproc(val)
+
+
+#############################################
+# Determine the digital shift for the data
+# set. Support depends on table date
+#############################################
+
+procedure(getdigitalshift,file)
+
+   decim = :getnumpar(file,"DECIM")
+   dspfvs = :getnumpar(file,"DSPFVS")
+
+   if(decim == 1)
+      return(0)
+   endif
+
+   dir = getcwd()
+   cd(getmacropath())
+   import2dpar("ab", "ascii", "xyrc","real") 
+   shifts = import2d("digital_filter.dat",5,22)
+   (w,h) = size(shifts)
+   cd(dir)
+
+   x = findindex(shifts[~,0],dspfvs)
+   y = findindex(shifts[0,~]',decim)
+   if(x == w-1 & y = h-1)
+      message("Error","Unsupported digital filter parameters.\rDigital shift set to zero.","error")
+   endif
+
+endproc(shifts[x,y])
+
+
+
+

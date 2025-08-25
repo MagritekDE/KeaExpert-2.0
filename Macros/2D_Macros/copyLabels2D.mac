@@ -1,0 +1,105 @@
+####################################################
+#                         copylabels.mac
+#
+# Copy all labels from one plot to another
+#
+# Author: C Eccles
+#
+# Copyright (c) Magritek March 2012
+#
+#####################################################
+
+procedure(copyLabels)
+
+   n = :windowdefinition()
+   showwindow(n)
+   copied = 0
+
+endproc()
+
+####################################################
+# Generate the window interface
+####################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("2D copy/paste labels", -1, -1, 193, 82)
+
+      # Define all controls with basic parameters
+       windowvar(copied,ti,lx,ly)
+       button(1, 11, 8, 95, 27, "Copy labels",
+          :copy_labels();)
+       button(2, 11, 43, 95, 27, "Paste labels",
+          :paste_labels();)
+       button(3, 120, 8, 54, 27, "Help",
+          :show_help();)
+       button(4, 120, 43, 54, 27, "Exit",
+          closewindow(0);)
+
+     # Set other control parameters
+endproc(n)
+
+####################################################
+# Display help file
+####################################################
+
+procedure(show_help)
+   help("Macros\\1D","copylabels.htm")
+endproc()
+
+
+####################################################
+# Copy the current zoom region to window variables
+####################################################
+
+procedure(copy_labels)
+
+# Make sure data is present in the intial region
+  plt = curplot("2d")
+
+  ti = plt->title
+  lx = plt->xlabel
+  ly = plt->ylabel
+
+  copied = 1
+
+endproc()
+
+####################################################
+# Paste the region stored in window variables
+####################################################
+
+procedure(paste_labels)
+
+# Make sure a region has been copied
+   if(copied == 0)
+      message("Error","Labels needs to be copied first")
+      return()
+   endif
+
+  plt = curplot("2d")
+
+# Copy the title
+   plt->title->text(ti->text)
+   plt->title->size(ti->size)
+   plt->title->font(ti->font)
+   plt->title->color(ti->color)
+   plt->title->style(ti->style)
+
+# Copy the xlabel
+   plt->xlabel->text(lx->text)
+   plt->xlabel->size(lx->size)
+   plt->xlabel->font(lx->font)
+   plt->xlabel->color(lx->color)
+   plt->xlabel->style(lx->style)
+
+# Copy the ylabel
+   plt->ylabel->text(ly->text)
+   plt->ylabel->size(ly->size)
+   plt->ylabel->font(ly->font)
+   plt->ylabel->color(ly->color)
+   plt->ylabel->style(ly->style)
+
+endproc()

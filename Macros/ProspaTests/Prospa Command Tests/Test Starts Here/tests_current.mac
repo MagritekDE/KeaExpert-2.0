@@ -1,0 +1,65 @@
+# Steps through all folders in the Prospa Tests folder
+# with names which match the command names and running
+# macros that it finds there.
+
+procedure(tests)
+
+   cd(getmacropath())
+   notStarted = 1
+   startTest = "ex_test1.mac"
+   verbose = 1
+   delay = 0.2
+   missed = 0
+   comp = 0
+   # Store all prospa commands to a list
+   cmds = listcom()
+
+   # Step through each folder in the following directory
+   cd ("..")
+   nCmds = size(cmds)
+   pr "\n\n##### Tests started #####\n\n"
+   for(n = 0 to nCmds-1)
+     folder = "$cmds[n]$"
+     if(isdir(folder) != 0)
+
+         cd(folder)
+         tests = getfilelist(".")
+         nTests = size(tests)
+         if(nTests > 0)
+            for(m = 0 to nTests-1) 
+               if(notStarted)
+                  if(tests[m] == startTest)
+                     notStarted = 0
+                  endif
+               else   
+                  pr("  '$folder$' tests started\n")
+                  if(getext(tests[m]) == "mac") 
+                     macro = tests[m]
+                     macro(verbose,delay)
+                  endif
+                  pr("  '$folder$' tests completed\n\n")
+               endif
+            next(m)
+           comp = comp + 1
+         else
+           if(notStarted == 0)
+              pr("  No tests for '$folder$'!!!!\n\n")
+              missed = missed + 1
+            endif
+         endif
+         cd("..")
+
+      else
+        pr("Test folder for command '$cmds[n]$' is missing\n")
+      endif
+   
+   next(n)
+
+  pr ("$comp$ tests completed\n")
+  pr ("$missed$ tests missing\n")
+
+endproc()
+
+     
+
+

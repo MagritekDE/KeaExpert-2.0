@@ -1,0 +1,38 @@
+procedure(color3d_test1,verbose,delay)
+  
+clear3d
+k = [0:2:1000]
+x = sin(k/10).*exp(-k/150)
+y = cos(k/10).*exp(-k/150)
+z = k/800
+color3d([1,1,0])
+lines3d(x,y,z)
+color3d([1,0,0])
+
+segments3d([0,0,0,0,0,2;
+            0,0,0,2,0,0;
+            0,0,0,0,2,0])
+
+viewdistance(10)
+rotate3d(50,330,230)
+pause(delay)
+
+clear3d
+(w,h) = size(rainbow)
+rad = 10
+viewdistance(60)
+
+for(k = 0 to h/2-1)
+   x = rad*sin(2*pi*2*k/h)
+   y = rad*cos(2*pi*2*k/h)
+   m = [0,x,0,y,0,0]
+   r = rainbow[0,k*2]
+   g = rainbow[1,k*2]
+   b = rainbow[2,k*2]
+   color3d([r,g,b])
+   segments3d(m)
+next(k)
+pause(delay)
+
+
+endproc(1,"")

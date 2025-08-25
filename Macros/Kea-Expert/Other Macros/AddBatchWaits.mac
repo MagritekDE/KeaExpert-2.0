@@ -1,0 +1,88 @@
+###########################################################
+# Add wait commands between each experiment
+###########################################################
+
+procedure(AddWaits)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      :addWaitsToBatch()
+   endif
+
+endproc()
+
+###########################################################
+# Add waits before each non-Wait command
+###########################################################
+
+procedure(addWaitsToBatch)
+
+# Check for modification
+   if(gParam->parChangedFlag)
+      if(query("Warning","A parameter has been changed in the current experiment.\rDo you want to update the acqu.par file before adding waits?") == "yes")
+         gBatch->updateProtocol()
+      else
+         gBatch->updateProtocol(update=0)
+      endif
+   endif
+
+   entries = gView->batch->list
+
+   sz = size(entries)-1
+   newEntries = list(0)
+
+# Ask for a new wait time to use
+   delayStr = gettext("Choose a wait time in seconds","60",10)
+   if(delayStr == "cancel")
+      return
+   endif
+
+   newExptNr = sz*2 # New experiment number counter working backwards  
+
+   if(isdir(gBatch->batchFolder))
+
+      bak = getcwd()
+
+      cd(gBatch->batchFolder)
+      
+   # Loop over the existing entries adding waits 
+      for(k = sz to 1 step -1) 
+         entry = entries[k]
+         values = parse(entry,"|")
+         if(size(values) == 3 & k > 0 & values[0] != "WaitTime")
+            protocol = values[0]
+            comment = values[1]
+            exptNr = values[2]
+            newEntries = newEntries + "$protocol$|$comment$|$newExptNr$"
+            oldName = "$exptNr$ $protocol$ ($comment$)"
+            newName = "$newExptNr$ $protocol$ ($comment$)"
+            movefile(oldName,newName) 
+            newExptNr = newExptNr - 1
+
+            newEntries = newEntries + "WaitTime|$delayStr$ s|$newExptNr$"
+            newName = "$newExptNr$ WaitTime ($delayStr$ s)"
+            mkdir(newName)
+            printtofile("$newName$\\acqu.par")
+               print("waitTimeValue = $delayStr$")
+            closeprint()
+            newExptNr = newExptNr - 1
+
+         else
+            protocol = values[0]
+            comment = values[1]
+            newEntries = newEntries + "$protocol$|$comment$" 
+         endif
+    
+      next(k)
+   
+      gBatch->displayBatchList(newEntries)
+      gBatch->saveCurrentList() 
+
+      cd(bak)  
+
+   endif
+
+               
+endproc()
+

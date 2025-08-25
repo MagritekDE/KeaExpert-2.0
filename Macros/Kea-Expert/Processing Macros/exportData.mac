@@ -1,0 +1,124 @@
+###########################################################################
+# Export 1D or 2D data to a .1d/2d binary file or a CSV text file
+# Note that multiple trace files will be stored as multiple 1D files.
+# 'arg' can the dimension (1 or 2) or a plot reference.
+###########################################################################
+
+procedure(exportData, arg)
+
+
+# Allow editing
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   endif
+
+# Extract the plot reference
+   if(vartype(arg) == "plot")
+      plt = arg
+   else
+      plt = curplot(arg)
+   endif
+   if(plt == null)
+      return
+   endif
+   n = :windowdefinition(plt->dim)
+   windowvar(wvPlt)
+   wvPlt = plt
+   setwindowpar(n,"type","dialog")
+   assignctrls(n)
+   result = showdialog(n)
+
+endproc(result)
+
+procedure(windowdefinition,dim)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Export current data as ...", -1, -1, 246, 128, "resizable")
+
+      # Define all controls with basic parameters
+      radiobuttons(1, 59, 21, 20, "vertical", "bin,txt,dx", "bin")
+      statictext(2, 80, 21, "left", "Binary file (.$dim$)")
+      statictext(3, 80, 41, "left", "Text file (.csv)")
+      statictext(4, 80, 61, "left", "JCamp file (.dx)")
+      button(5, 20, "wh-38", 51, 27, "Export",:export())
+      button(6, 90, "wh-38", 51, 27, "Help",message("Info","No help yet","info");)
+      button(7, 160, "wh-38", 51, 27, "Cancel",closedialog("cancel"))
+
+     # Set other control parameters
+      setpar(n,1,"objID","typeCtrl")
+
+     # Set other window parameters
+endproc(n)
+
+procedure(export)
+
+   path = wvPlt->filepath
+   if(isdir(path))
+      cd(path)
+   endif
+   if(wvPlt->dim == "1d") # 1D file
+      (x,y) = wvPlt->getdata()
+      if(typeCtrl->text == "bin")
+         
+         file = getfilename("Save","Select export folder and filename","Binary","1d")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         save(file,x,y)
+      elseif(typeCtrl->text == "txt")
+         file = getfilename("Save","Select export folder and filename","Text","csv")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         if(vartype(y) == "cmatrix1d")
+            m = matrix(3,size(y))
+            m[0,~] = (x)'
+            m[1,~] = real(y)'
+            m[2,~] = imag(y)'
+         else
+            m = matrix(2,size(y))
+            m[0,~] = (x)'
+            m[1,~] = (y)'
+         endif 
+         export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+         export2d(m,file)
+      else
+         file = getfilename("Save","Select export folder and filename","Text","dx","nmr_fid.dx")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         export1DtoJCamp(file,wvPlt)
+      endif
+
+   else # 2D file
+      m = wvPlt->getdata()
+      if(typeCtrl->text == "bin")
+         file = getfilename("Save","Select export folder and filename","Binary","2d")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         save(file,m)
+      elseif(typeCtrl->text == "txt")
+         file = getfilename("Save","Select export folder and filename","Text","csv")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         if(vartype(m) == "cmatrix2d")
+            export2dpar("ab","ascii","xyrc","complex","delimiter","comma")
+         else
+            export2dpar("ab","ascii","xyrc","real","delimiter","comma")
+         endif  
+         export2d(m,file) 
+      else
+         file = getfilename("Save","Select export folder and filename","Text","dx","nmr_fid.dx")
+         if(file == "cancel")
+            return("cancel")
+         endif
+         export2DtoJCamp(file,wvPlt)
+      endif
+   endif
+
+   closedialog("ok")
+   
+endproc()

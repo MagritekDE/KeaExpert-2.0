@@ -1,0 +1,75 @@
+procedure(processing)
+
+   n = window("Processing", -1, -1, 530, 120)
+   :definecontrols(n)
+   showwindow(n)
+
+endproc()
+
+
+procedure(definecontrols,n)
+
+   # Define all controls with basic parameters
+    statictext(1, 171, 18, 110, 13, "right", "Show time domain data")
+    checkbox(2, 180, 19, "no,yes", "no",
+         fnTim = findobj(0,"name","showTimeDomain");
+         fnFlt = findobj(0,"name","filter");
+         ucsCtrl:enableControls(fnTim+1,fnTim+6,fnTim);
+         if(getpar(0,fnTim,"text") == "yes");
+         ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+         endif;)
+    statictext(3, 36, 53, 22, 13, "right", "Filter")
+    checkbox(4, 41, 53, "no,yes", "no",
+         fn = findobj(0,"name","filter");
+         ucsCtrl:enableControls(fn+1,fn+3,fn);)
+    textmenu(5, 62, 48, 108, 200)
+    button(6, 176, 48, 22, 22, "...",
+       filters();)
+    statictext(7, 170, 84, 112, 13, "right", "Time domain magnitude")
+    checkbox(8, 180, 85, "none,mag", "none")
+    divider(9, 219, 10, 3, 100, "vertical")
+    statictext(10, 291, 18, 54, 13, "right", "Auto-phase")
+    checkbox(11, 259, 39, "no,yes", "no")
+    button(12, 240, 74, 51, 28, "Analyze",
+       :analyze();)
+    divider(13, 308, 10, 3, 100, "vertical")
+    statictext(14, 469, 18, 138, 13, "right", "Show frequency domain data")
+    checkbox(15, 477, 19, "no,yes", "no",
+         fn = findobj(0,"name","showFreqDomain");
+         ucsCtrl:enableControls(fn+1,fn+4,fn);)
+    statictext(16, 421, 52, 92, 13, "right", "Display range (kHz)")
+    textbox(17, 431, 48, 59)
+    statictext(18, 469, 84, 139, 13, "right", "Frequency domain magnitude")
+    checkbox(19, 477, 85, "none,mag", "none")
+
+  # Set other control parameters
+    setpar(n,2,"valueID","showTimeDomain")
+    setpar(n,4,"valueID","filter")
+    setpar(n,5,"valueID","filterType",
+               "menu",[""])
+    setpar(n,8,"valueID","tdPhaseCorr")
+    setpar(n,9,"tag","disable")
+    setpar(n,11,"valueID","autoPhase")
+    setpar(n,13,"tag","disable")
+    setpar(n,15,"valueID","showFreqDomain")
+    setpar(n,17,"valueID","dispRange")
+    setpar(n,19,"valueID","fdPhaseCorr")
+
+endproc(19,"processing+display")
+
+# Procedure to update state GUI based on certain variables
+
+procedure(tabPressed)
+
+   if(wvExpStatus != "run");
+      fnTim = findobj(0,"name","showTimeDomain");
+      fnFrq = findobj(0,"name","showFreqDomain");
+      fnFlt = findobj(0,"name","filter");
+      ucsCtrl:enableControls(fnTim+1,fnTim+6,fnTim);
+      ucsCtrl:enableControls(fnFrq+1,fnFrq+4,fnFrq);
+      if(getpar(0,fnTim,"text") == "yes");
+         ucsCtrl:enableControls(fnFlt+1,fnFlt+2,fnFlt);
+      endif;
+    endif;
+
+endproc()

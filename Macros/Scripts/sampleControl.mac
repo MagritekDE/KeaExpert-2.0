@@ -1,0 +1,416 @@
+################################################################################
+# Tests the opertion of the sample changer.
+#
+#################################################################################
+
+###########################################################
+# Class declarations
+# gData : seData
+# gView : seView
+# gPlot : sePlot
+###########################################################
+
+procedure(sampleControl, parameters=null)
+
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else
+      import(getmacroname(),getmacroPath(),"global") # TODO was window
+      :backdoor(parameters)
+   endif
+
+endproc()
+
+#####################################################################
+# Core procedure
+#####################################################################
+
+procedure(backdoor, parameters)
+
+# Only one instance allowed
+   if(gData->SI != null)
+      return
+   endif
+
+# Define the global variable holding window information
+   gData->SI = struct(parentNr=gView->wn)
+
+# Make the window
+   n = :makeInPlaceUI()
+
+endproc()
+
+#####################################################################
+# Hide the normal controls and replace them with the autosample
+# controls
+#####################################################################
+
+procedure(makeInPlaceUI)
+   
+# Display normal plot zoom
+   if(gPlot->plotZoomMode == "expand")
+      gPlot->togglePlotSizes()
+   endif
+
+   wn = gView->wn
+
+ # Hide normal controls
+   gView->selectInterface("userDefined")
+
+ # Refresh window
+   drawwin(wn)
+
+ # Set the window up so we can add additional controls
+   seteditwin(wn,"fast")
+
+ # Add the autosampler controls
+   (nrCtrl,exitNr) = :definecontrols(wn)
+   assignctrls(wn)
+
+# Check for connection
+   if(gData->connected == 0)
+      setpar(wn,5,"enable","false")
+      setpar(wn,6,"enable","false")
+      setpar(wn,7,"enable","false")
+      setpar(wn,8,"enable","false")
+   endif
+   
+# Load the list box entries from preferences file
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+   loaded = 0
+   if(isfile("sampleNames.par"))
+      try
+         names = list(21)
+         names[0] = ["Slot|Sample Name"]
+         sampleNames = load("sampleNames.par")
+         for(k = 1 to 20)
+            names[k] = "$k$|$sampleNames[k-1]$"
+         next(k)
+         loaded = 1
+      catch
+         pr lasterror()
+      endtry
+   endif
+
+# Default entries
+   if(loaded == 0)
+      names = list(21)
+      names[0] = ["Slot|Sample Name"]
+      for(k = 1 to 20)
+         names[k] = "$k$|--------"
+      next(k)
+   endif
+
+# Display entries
+   slotLabelCtrl->list(names)
+   slotLabelCtrl->color([0,0,128,0])
+
+   cd(bak)
+ 
+# Define some persistent variables  
+   gData->SI->lastUICtrl = nrCtrl
+   gData->SI->exitCtrl = exitNr
+
+ # Stop adding controls
+   seteditwin(-wn,"fast")
+
+ # All finished so make the controls visible
+ # with suitable offsets
+   xoff = 70
+   yoff = 20
+   for(k = 1 to gData->SI->lastUICtrl)
+      if(isobj(wn,k))
+         x = getpar(wn,k,"x")
+         setpar(wn,k,"x",x+xoff)
+         y = getpar(wn,k,"y")
+         setpar(wn,k,"y",y+yoff)
+         setpar(wn,k,"visible","true")
+      endif
+   next(k)
+
+ # Fix the divider position
+   gData->SI->dividerPos = gView->cliDiv->yexp()
+   gData->SI->dividerLimits = gView->cliDiv->limits()
+   gView->cliDiv->limits([300,10000])
+   gView->cliDiv->yexp("300")
+   gView->cliDiv->enable("false")
+
+ # Make sure all control sizes are correct
+   adjustctrls(0)
+
+endproc(wn)
+
+#####################################################################
+# Define the auto-sampler tester user interface
+#####################################################################
+
+procedure(definecontrols,n)
+
+   statictext(1, -30, -10, "left", "AUTOSAMPLER CONTROLLER")
+ #  statictext(2, 15, 23, "left", "Slot")
+ #  statictext(3, 50, 23, "left", "Sample Name")
+   listbox(4, 11, 30, 220, 211,sampleControl:sampleListCallback())
+   button(5, 250, 44, 86, 34, "Load selected sample",
+      idx = slotLabelCtrl->index();
+      sampleControl:autoSampleControl("selectSample",idx-1);)
+   button(6, 250, 84, 86, 34, "Return sample\nto rotor",
+      sampleControl:autoSampleControl("returnSample");)
+   button(7, 250, 124, 86, 34, "Arm Position?",
+      sampleControl:autoSampleControl("armPosition");)
+   button(8, 250, 164, 86, 34, "Current sample?",
+      sampleControl:autoSampleControl("rotorPosition");)
+   button(9, 250, 204, 86, 34, "Close",
+      sampleControl:exitScriptUI();)
+   menu(10, "menu", "Edit comment ...", sampleControl:editSampleName())
+
+   progressbar(11,356,30,12,211,"vertical")
+
+     # Set other control parameters
+   setpar(n,1,"fgcolor",[128,0,0])
+ #  setpar(n,2,"fgcolor",[0,128,0])
+ #  setpar(n,3,"fgcolor",[0,128,0])
+   setpar(n,4,"nrcolumns",2,
+              "colwidth",[0.15,0.85],
+              "menu",10,
+              "objID","slotLabelCtrl")
+
+endproc(11,9) # Number of controls and close button number
+
+##################################################################
+# User has selected an item in the list - all the name to be
+# changed
+##################################################################
+
+procedure(sampleListCallback)
+
+   if(parentCtrl->zindex == 0) # Ignore title
+      return
+   endif
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      :editSampleName()
+   endif
+
+endproc()
+
+##################################################################
+# Allow the user to change the sample name
+##################################################################
+
+procedure(editSampleName)
+
+   if(slotLabelCtrl->zindex == 0) # Ignore title
+      return
+   endif
+
+   if(slotLabelCtrl->text == null)
+      message("Information","Please select an item to modify","info")
+   else
+      idx = slotLabelCtrl->zindex()
+      (number,oldName) = scanstr(slotLabelCtrl->text,"%1|%2")
+      newName = gettext("New sample name",oldName,20)
+      if(newName != "cancel")
+         if(issubstr(newName,",") | issubstr(newName,"(") | issubstr(newName,")") | not(isvalidfilename(newName)))
+            message("Error","The comment cannot include the following symbols:\r ( ) , < > : \" / \ | ? *","error")
+            return
+         endif
+         if(size(newName) == 0)
+            newName = "--------"
+         elseif(newName[0] == " " | newName[0] == "\t")
+            message("Error","Sample name cannot start with a space","error")
+            return
+         endif
+         lst = slotLabelCtrl->list
+         idx = slotLabelCtrl->zindex
+         lst[idx] = "$number$|$newName$"
+         slotLabelCtrl->list(lst)
+         slotLabelCtrl->color([0,0,128,0])
+         slotLabelCtrl->zindex(idx)
+      endif
+   endif
+
+endproc()
+
+##################################################################
+# Run the autosampler commands
+##################################################################
+
+procedure(autoSampleControl, cmd, arg)
+
+   gView->disableControls()
+
+   if(nrArgs == 1)
+      arg = ""
+   endif
+
+   print("\n   Running command '$cmd$($arg$)'. Please wait ...\n")
+   th = thread("sampleControl:execute",cmd, arg)
+   for(k = 1 to 100)
+      pause(30/100,"sleep")
+      setpar(0,11,"value",k)
+      if(not(threadrunning(th)))
+         exitfor
+      endif
+   next(k)
+   threadwait(th)
+   setpar(0,11,"value",100)
+   print("   Command complete\n")
+
+   gView->enableControls()
+
+endproc()
+
+##################################################################
+# Execute the command specified in 'args' using the AutoSample
+# C# executable.
+##################################################################
+
+procedure(execute, cmd, arg)
+
+   bak = getcwd()
+   cd("$appdir$\\Spinsolve special programs\\Autosampler")
+
+   if(cmd == "selectSample")
+      r = execandwait("AutoSamplerCSharpCLI.exe","armPosition")
+      if(r < 100)
+         if(r != 0) # At bottom so first retrieve the sample
+            r = execandwait("AutoSamplerCSharpCLI.exe","up")
+         endif
+         r = execandwait("AutoSamplerCSharpCLI.exe","rotate $arg$")
+         r = execandwait("AutoSamplerCSharpCLI.exe","down")
+         if(r != 0)
+            print("\n   Autosampler Error ($r$)!\n")
+         endif
+      else
+         print("\n   Autosampler Error ($r$)!\n")
+      endif
+
+   elseif(cmd == "returnSample")
+      r = execandwait("AutoSamplerCSharpCLI.exe","armPosition")  
+      if(r < 100)
+         if(r != 0) # At bottom so first retrieve the sample
+            r = execandwait("AutoSamplerCSharpCLI.exe","up")
+            if(r != 0)
+               print("\n   Autosampler Error ($r$)!\n")
+            endif
+         else
+            print("\n   No sample in magnet\n")
+         endif
+      else
+         print("\n   Autosampler Error ($r$)!\n")
+      endif
+
+   else # Arm position and rotor position
+      r = execandwait("AutoSamplerCSharpCLI.exe",cmd)
+      if(r < 100)
+         if(cmd == "armPosition")
+            if(r == 0)
+               print("\n   At top\n")
+            elseif(r == 3)
+               print("\n   At bottom\n")
+            else
+               print("\n   Autosampler Error ($r$)!\n")
+            endif
+         elseif(cmd == "rotorPosition")
+            lst = slotLabelCtrl->list
+            (nr,name) = scanstr(lst[r+1],"%1|%2")
+            slotLabelCtrl->zindex(r+1)
+            print("\n   At position $r+1$ sample name '$name$'\n")
+         else
+            if(r != 0)
+               print("\n   Autosampler Error ($r$)!\n")
+            endif
+         endif
+      else
+         print("\n   Autosampler Error ($r$)!\n")
+      endif
+   endif
+
+   cd(bak)
+
+endproc()
+
+##################################################################
+# Restore the normal UI when wanting to return to the normal 
+# interface.
+# Note that the close button is not removed until everything else
+# is done just in case it is called again.
+##################################################################
+
+procedure(exitScriptUI)
+
+# Save the list box entries
+   bak = getcwd()
+   cd(prefdir)
+   cd("SpinsolveParameters")
+
+# Save a simple list in gData
+   lst = slotLabelCtrl->list
+   filledEntries = list(0)
+   gData->sampleNames = list(20)
+   for(k = 0 to 19)
+      (number,name) = scanstr(lst[k+1],"%1|%2")  
+      gData->sampleNames[k] = name
+      if(name != "--------")
+         filledEntries = filledEntries + name
+      endif
+   next(k)
+
+# Make a sample name list without blanks and add to sample name menu 
+# Also update the current sample name with selected name from slot control
+   try
+      (number,sampleName) = scanstr(slotLabelCtrl->text,"%1|%2") 
+   catch
+      sampleName = ""
+   endtry
+   curName = gView->sampleNameCtrl->text
+   gSample->sampleList = filledEntries
+   gView->sampleNameCtrl->menu(filledEntries)
+   if(sampleName != "")
+      gView->sampleNameCtrl->text(sampleName)
+   else
+      gView->sampleNameCtrl->text(curName)
+   endif
+
+# Save the samplename list to a file
+   save("sampleNames.par",gData->sampleNames)
+   cd(bak)
+
+# Display normal plot zoom
+   if(gPlot->plotZoomMode == "expand")
+      gPlot->togglePlotSizes()
+   endif
+  gView->mainWin->draw("false")
+
+# Delete all the script controls (except exit button)
+   for(k = 1 to gData->SI->lastUICtrl)
+      if(isobj(0,k) & (k != gData->SI->exitCtrl))
+         rmobj(0,k)
+      endif
+   next(k)
+
+# Hide the exit button
+   setpar(0,gData->SI->exitCtrl,"visible","false")
+
+# Show all the normal controls
+   gView->selectInterface("normal")
+
+# Restore the CLI divider
+   gView->cliDiv->yexp(gData->SI->dividerPos)
+   gView->cliDiv->limits(gData->SI->dividerLimits)
+   gView->cliDiv->enable("true")
+
+# Make sure everything is in the right place
+   adjustctrls(0)
+
+# Remove exit control 
+   rmobj(0,gData->SI->exitCtrl)   
+   gData->SI = null               
+   gView->mainWin->draw("true")
+
+endproc()
+
+
+
