@@ -1114,8 +1114,6 @@ procedure(readSpecPar, parList=null, guiCall=0, returnRaw=0, par=null)
 
    endtry
 
- #  hwCap = eval(getlistvalue(lst,"HardwareCap"))
-
    # If called from this UI then update interface to show corrected setpoints
    if(guiCall == 1)   
       setctrlvalues(0,lst)
@@ -1285,7 +1283,14 @@ procedure(windowdefinition, device)
          :makeUIV200(par);
          setctrlvalues(0,list(par));
          tabs->currentpage(0);
-         getobj(0)->draw("true"))
+         getobj(0)->draw("true");
+         if(isvar("gData->connected"));
+            gData->specParameters = struct(:readSpecPar(null,2));
+            gData->specID = gData->specParameters->SystemID;  
+             if(isvar("wvFX3Info"));
+               wvFX3Info->dspPar = gData->specParameters;
+            endif; 
+         endif)
 
       button(2, "ww-80", 58, 71, 42, "Write $gData->procType$ parameters",
         # bak = getcwd();
