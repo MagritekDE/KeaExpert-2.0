@@ -140,16 +140,21 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          return(0)
       endif
 
-    # Collect the data
-      (status,data) = ucsRun:getData(totPnts,guipar)
+    # Run the pulse program
+      status = ucsRun:runExperiment(guipar)
+
+    # See if stop button/escape key pressed
       if(status != "ok")
          return(0)
       endif
 
+    # Read the data from the spectrometer
+      data = ucsRun:readData(totPnts, guipar)
+
     # Filter the data
       data = data .* flt
 
-    # Accumlate the data
+    # Accumulate the data
       sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
 
     # Calculate and display noise level
