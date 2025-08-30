@@ -488,29 +488,35 @@ endproc(spectrum)
 # Output: cdata .... calibrated data
 #         
 ###################################################################
- 
-procedure(calibrate, cdata, guipar)
+
+procedure(calibrateData, cdata, guipar)
 
   # Extract the gui variables
    assignlist(guipar)
 
-  # Calibrate
    if(wvUnits != "raw")
-     # Apply transceiver rx channel gain
-      cdata = cdata/wvRxCal 
 
+     rxCal = gData->specParameters->receiverCal
+     rxAmpCor = gData->specParameters->rxAmpCor
+     preampGain = gData->specParameters->preampGain
+
+     # Apply transceiver rx channel gain
+      cdata = cdata/rxCal 
      # Apply rx amplifier gain
-      if(wvApplyRxampFactor == "yes")
+       if(wvApplyRxampFactor == "yes")
          gain1dB = 3.0*eval("0x$rxGain1$")-10.0
          gain2dB = 3.0*eval("0x$rxGain2$")-10.0
          gainTot =  10^((gain1dB+gain2dB)/20)
-         cdata = cdata*wvRxAmpCor/gainTot
+         cdata = cdata*rxAmpCor/gainTot
       endif
 
      # Apply preamp gain factor
       if(wvApplyPreampFactor == "yes")
-         cdata = cdata/wvPreampGain
-      endif
+         cdata = cdata/preampGain
+      endif 
+ 
+     # Correct for digital filtering
+      cdata = cdata*gData->digFilterCor
 
      # Apply units
       if(wvUnits == "uV")
@@ -891,16 +897,16 @@ procedure(runExperiment, guipar)
   # Extract the gui variables
    assignlist(guipar)
 
-   if(gData->procType == "FX3")
-
-     # Set the status flag to green (running)
-      if(isvar("ppStatus"))
-         if(gExpt->triggerFTDI)
-            ppStatus->color([255,0,255])
-         else
-            ppStatus->color([0,255,0])
-         endif
+  # Set the status flag to green (running)
+   if(isvar("ppStatus"))
+      if(gExpt->triggerFTDI)
+         ppStatus->color([255,0,255])
+      else
+         ppStatus->color([0,255,0])
       endif
+   endif
+
+   if(gData->procType == "FX3")
 
       # Send pulse program to FX3
       wvFX3Info->duration = gFX3->writePulseProgram()
@@ -914,17 +920,16 @@ procedure(runExperiment, guipar)
          status = "ok"
       endif
 
-     # Set the status flag to blue (processing)
-      if(isvar("ppStatus"))
-         ppStatus->color([0,0,255])
-      endif
-
-   else
+   else # For the DSP just run the pulse program
 
       status = dsprunpp(0x2000,1)
 
    endif
 
+ # Set the status flag to blue (processing)
+   if(isvar("ppStatus"))
+      ppStatus->color([0,0,255])
+   endif
 
 endproc(status)
 
@@ -950,38 +955,9 @@ procedure(readData, N, guipar)
       cdata = rtoc(D)
    endif
 
-  # Calibrate
-   if(wvUnits != "raw")
-     # Apply transceiver rx channel gain
-      cdata = cdata/wvRxCal 
-     # Apply rx amplifier gain
-       if(wvApplyRxampFactor == "yes")
-         rxGainV2 = ((gData->specParameters->HardwareCap2 & 2d^12) > 0)
-         if(rxGainV2) # Check this!
-            gain1dB = 3.0*eval("0x$rxGain1$")-10.0
-            gainTot =  10^((gain1dB)/20)
-         else
-            gain1dB = 3.0*eval("0x$rxGain1$")-10.0
-            gain2dB = 3.0*eval("0x$rxGain2$")-10.0
-            gainTot =  10^((gain1dB+gain2dB)/20)
-         endif
-         cdata = cdata*wvRxAmpCor/gainTot
-      endif
-
-     # Apply preamp gain factor
-      if(wvApplyPreampFactor == "yes")
-         cdata = cdata/wvPreampGain
-      endif
-
-     # Apply units
-      if(wvUnits == "uV")
-         cdata = cdata*1000
-      endif
-
-   endif
+   cdata = :calibrateData(cdata, guipar)
 
    wvDataModified = "true" # Data can now be saved on abort
-
 
 endproc(cdata)
 
@@ -1118,29 +1094,8 @@ procedure(getData,N,guipar)
   # Unpack real and imaginary data from D and store in a complex data set
    cdata = rtoc(D)
 
-  # Calibrate
-   if(wvUnits != "raw")
-     # Apply transceiver rx channel gain
-      cdata = cdata/wvRxCal 
-     # Apply rx amplifier gain
-       if(wvApplyRxampFactor == "yes")
-         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
-         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
-         gainTot =  10^((gain1dB+gain2dB)/20)
-         cdata = cdata*wvRxAmpCor/gainTot
-      endif
-
-     # Apply preamp gain factor
-      if(wvApplyPreampFactor == "yes")
-         cdata = cdata/wvPreampGain
-      endif
-
-     # Apply units
-      if(wvUnits == "uV")
-         cdata = cdata*1000
-      endif
-
-   endif
+   # Calibrate the data
+   cdata = :calibrateData(cdata, guipar)
 
    wvDataModified = "true" # Data can now be saved on abort
 
@@ -1805,7 +1760,7 @@ procedure(setPPPhase,p,idx,pcArray,pcIndex)
    (pw,ph) = size(pcArray)
    idx = idx % pw
 
-   if(gData->procType == "DSP")
+   if(gData->procType == "DSP") # Modify parameter list with new phase values
 
       if(vartype(pcIndex) == "matrix1d")
          for(k = 0 to ph-2)
@@ -1816,7 +1771,7 @@ procedure(setPPPhase,p,idx,pcArray,pcIndex)
       endif
       pAcq  = pcArray[idx,ph-1]
 
-   else # Make explicit phase parameter list for FX3
+   else # Make explicit phase parameter list for FX3 - store in wvFX3Info->phaseList
       if(gFX3->useUpdateTable)
          t1 = time()
          updates = wvFX3Info->updateTable # Work with a local copy - much faster
@@ -2260,10 +2215,11 @@ procedure(trackB0, guipar, ppList, nrPntsIn, dwellTimeIn)
 endproc(ppList)
 
 #######################################################
-# Update the DSP parameters
+# Update the DSP parameters or for the FX3 make the
+# pulse program event table.
 #######################################################
 
-procedure(updatePPParameters,ppList, guipar, port=0)
+procedure(updatePPParameters,ppList, guipar)
 
    if(gData->procType == "DSP")
       dspwrite("x",0x00,ppList)
@@ -2276,6 +2232,7 @@ procedure(updatePPParameters,ppList, guipar, port=0)
    endif
 
 endproc()
+
 
 #######################################################
 # Combine parameter update, timing check, sequence
