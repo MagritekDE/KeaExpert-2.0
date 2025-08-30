@@ -474,7 +474,7 @@ procedure(initAndExecPP, self, path, macroName, guipar, wv_rel, wv_var, wv_pp_li
              "wvApplyRxampFactor  = \"$calibrateForRxAmp$\"",
              "wvPreampGain        = $preampGain$",
              "wvRxAmpCor          = $rxAmpCorrection$",
-             "wvRxCal             = 660",
+             "wvRxCal             = $rxCalibration$",
              "wv_pp_name          = \"$wv_pp_name$\"",
              "wvMaxDutyCycle      = $maxDutyCycle$",
              "wvMaxPSDutyCycle    = $maxPSDutyCycle$",
@@ -1015,30 +1015,7 @@ procedure(runPulseProgram, self, N, guipar)
    endif
 
   # Calibrate
-   if(wvUnits != "raw")
-     # Apply transceiver rx channel gain
-      cdata = cdata/wvRxCal 
-     # Apply rx amplifier gain
-       if(wvApplyRxampFactor == "yes")
-         gain1dB = 3.0*eval("0x$rxGain1$")-10.0
-         gain2dB = 3.0*eval("0x$rxGain2$")-10.0
-         gainTot =  10^((gain1dB+gain2dB)/20)
-         cdata = cdata*wvRxAmpCor/gainTot
-      endif
-
-     # Apply preamp gain factor
-      if(wvApplyPreampFactor == "yes")
-         cdata = cdata/wvPreampGain
-      endif
-
-     # Apply units
-      if(wvUnits == "uV")
-         cdata = cdata*1000
-      endif
-
-      cdata = cdata*gData->digFilterCor
-
-   endif
+   cdata = ucsRun:calibrateData(cdata, guipar)
 
    wvDataModified = "true" # Data can now be saved on abort
 
