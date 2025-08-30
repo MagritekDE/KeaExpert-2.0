@@ -134,23 +134,25 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
    endtry
 
 # Save the final acquisition parameters
-   if(saveData == "true")
-      if(isvar("exptNr"))
-         dir = "$dataDirectory$\\$expName$\\$exptNr$"   
-      elseif(isvar("expNr"))
-         dir = "$dataDirectory$\\$expName$\\$expNr$"  
-      else       
-         dir = "$dataDirectory$\\$expName$"
-      endif   
-      mkdir(dir)
-      file = "$dir$\\acqu.par"
-      fileBak = "$dir$\\acqu.par.bak"
-      try  
-         save(file,sortlist(guipar),"truedoubles")
-         copyfile(file,fileBak) # Backup file
-      catch
-         message("Warning","Can't save acqu.par in folder:\r$dir$\rIs is write protected?","warning")
-      endtry
+   if(isvar("saveData"))
+      if(saveData == "true")
+         if(isvar("exptNr"))
+            dir = "$dataDirectory$\\$expName$\\$exptNr$"   
+         elseif(isvar("expNr"))
+            dir = "$dataDirectory$\\$expName$\\$expNr$"  
+         else       
+            dir = "$dataDirectory$\\$expName$"
+         endif   
+         mkdir(dir)
+         file = "$dir$\\acqu.par"
+         fileBak = "$dir$\\acqu.par.bak"
+         try  
+            save(file,sortlist(guipar),"truedoubles")
+            copyfile(file,fileBak) # Backup file
+         catch
+            message("Warning","Can't save acqu.par in folder:\r$dir$\rIs is write protected?","warning")
+         endtry
+      endif
    endif
 
 # Determine pulse program suffix 
@@ -509,7 +511,7 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
          endif
          c = c + 3
       elseif(var[0] == "b") # An 8 bit TTL byte
-         p[c] = eval(var)*2^8
+         p[c] = eval(var)*2^16
          for(q = 0 to size(wv_var)-1)
             if(var == wv_var[q])
                varIndex[q] = c
