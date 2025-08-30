@@ -543,6 +543,11 @@ procedure(defineRxCalibrationPage)
 
 # Update the entries using the preferences file
    lst = ucsFiles:loadPref()
+   if(gData->specParameters != null)
+      lst = setlistvalue(lst,"rxCalibration","$gData->specParameters->receiverCal$")
+      lst = setlistvalue(lst,"preampGain","$gData->specParameters->preampGain$")
+      lst = setlistvalue(lst,"rxAmpCor","$gData->specParameters->rxAmpCor$")
+   endif
    setctrlvalues(0,lst)
 
 # Make the new controls visible
@@ -551,6 +556,11 @@ procedure(defineRxCalibrationPage)
          setpar(n,k,"visible","true")
       endif
    next(k)
+   
+   setpar(n,19,"enable","false")
+   setpar(n,23,"enable","false")
+   setpar(n,27,"enable","false")
+
 
 # Note which page we are on
    wvCurrentPage = "preferences"
