@@ -1,0 +1,136 @@
+########################################################
+#                T1T2_pp.mac
+#
+# T1-T2 correlation experiment for the RCA
+#
+# 180 - delay - 90 - delay - {180 - delay - acqu - {180 - delay} }
+#
+# This pulse sequence will implement an inversion
+# recovery experiment to encode for T1 followed by 
+# a CPMG echo train to measure T2. The CPMG train
+# includes dummy pulses to allow for long acquisition
+# times while still using small echo times.
+#
+# a1 ... amplitude of 180 pulse
+# a2 ... amplitude of 90 pulse
+# p1 ... phase of first 180 pulse
+# p2 ... phase of 90 pulse
+# p3 ... phase of CPMG 180 pulses
+# d1 ... width of pulses
+# d2 ... delay between 90 and CPMG 180
+# d3 ... delay between CPMG 180 and acquisition
+# d4 ... delay between acquisition start and next CPMG 180 
+# d5 ... delay between CPMG 180 dummy pulses
+# n1 ... number of echos to collect
+# n2 ... number of data points to collect per echo
+# n3 ... number of 180 dummy pulses per echo
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrlType, varType)
+  interface = ["b1FreqCh1",       "B1 Frequency (MHz)",   "tb", "freq";
+               "90AmplitudeCh1",  "90 amp. (dB)",         "tb", "pulseamp";
+               "180AmplitudeCh1", "180 amp. (dB)",        "tb", "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",    "tb", "pulselength";
+               "minTau",          "Min. tau (ms)",        "tb", "ldelayms";
+               "maxTau",          "Max. tau (ms)",        "tb", "ldelayms";
+               "tauSteps",        "Tau steps",            "tb", "integer";
+               "delaySpacing",    "Log spacing",          "cb", "lin,log";
+               "autoPhase",       "Auto-phase",           "cb", "no,yes";
+               "phaseMethod",     "Minimize imag. s.d.",  "cb", "maxreal,minsd";
+               "echoShift",       "Echo shift (us)",      "tb",  "float,[-20,20]";
+               "echoTime",        "Echo-time (us)",       "tb", "sdelay";
+               "nrEchoes",        "No. of echoes",        "tb", "integer,[0,50000]";
+               "dummyEchoes",     "Dummy echoes",         "tb", "integer,[0,5000]";
+               "ieTime",          "Inter-expt. time (ms)","tb", "reptime"]
+
+
+# Relationships to determine remaining variable values
+   relationships = ["a90 = 90AmplitudeCh1",
+                    "a180 = 180AmplitudeCh1",
+                    "dRF = pulseLengthCh1",
+                    "w180_90 = minTau*1000-dRF-pgo-0.5",
+                    "d90_180 = echoTime/2-dRF-pgo-0.5",
+                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
+                    "dAcq = echoTime-dRF-pgo-d180_acq-1",
+                    "dDummy = echoTime-dRF-pgo",
+                    "nEchoes = nrEchoes",
+                    "nPnts = nrPnts",
+                    "nDummy = dummyEchoes",
+                    "nxShim = 0", # x shim value
+                    "nyShim = 0", # y shim value
+                    "nzShim = 0", # z shim value
+                    "noShim = 0", # o shim value
+                    "totPnts = nrEchoes",
+                    "totTime = nrEchoes*echoTime*(dummyEchoes+1)"]
+
+  tabs = ["Pulse_sequence","Progress","Acquisition","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["w180_90"]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   gradon(x,nxShim)                 # Set x shim
+   gradon(y,nyShim)                 # Set y shim
+   gradon(z,nzShim)                 # Set z shim 
+   gradon(o,noShim)                 # Set o shim 
+
+   cleardata(nEchoes)
+   pulse(mode,a180,p1,dRF)         # 180 pulse
+
+   wait(w180_90)                   # 180 - 90 delay (T1 encode)
+
+   pulse(mode,a90,p2,dRF)          # 90 pulse
+
+   delay(d90_180)                  # 90 - 180 delay
+
+# CPMG loop with dummy pulses
+   loop(l1,nEchoes)
+      pulse(mode,a180,p3,dRF)             # 180 pulse
+      delay(d180_acq)                     # 180 - acq delay
+      acquire("integrate",nPnts,dAcq)     # Integrate echo and wait
+      loop(l2,nDummy)                     # Dummy echo loop
+         pulse(mode,a180,p3,dRF)          # 180 pulse
+         delay(dDummy)                    # Dummy echo time delay
+      endloop(l2)
+   endloop(l1)
+
+   lst = endpp() # Return parameter list
+
+   phaseList = [0,2,0,2; # +x,-x,+x,-x : 180 phase
+                0,0,2,2; # +x,+x,-x,-x : 90 phase
+                1,1,1,1; # +y,+y,+y,+y : 180 phase
+                0,0,2,2] # +x,+x,-x,-x : Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = KeaParameterUpdater:readSpecPar()
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain           = $rxOptGaindB$",
+          "pulseLengthCh1   = $pulseLengthCh1*2$",
+          "90AmplitudeCh1   = $pulseAmplitudeCh1$",
+          "180AmplitudeCh1  = $pulseAmplitudeCh1$",
+          "b1FreqCh1        = $frequencyCh1$"]
+
+endproc(par)
