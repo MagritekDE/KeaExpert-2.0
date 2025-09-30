@@ -1,0 +1,78 @@
+########################################################
+#
+# Spin echo + CPMG detection.
+# www.magritek.com, March 2013
+# Prospa V3.12
+#
+########################################################
+
+
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",    "tbwv",   "freq",
+               "repTime",      "Repetition time (ms)", "0","1.6",   "tbwv",   "float,[20,1e8]",
+
+               "90Amplitude",  "90 amplitude (dB)",    "1","0",     "tb",     "float,[-72,-6]",
+               "180Amplitude", "180 amplitude (dB)",   "1","1",     "tb",     "pulseamp",
+               "pulseLength",  "Pulse length (us)",    "1","2",     "tb",     "float,[1,500]",
+
+               "echoTime",     "Echotime (us)",        "2","0",     "tb",     "sdelay",
+               "nrEchoes",     "Number of echoes",     "2","1",     "tb",     "integer,[1,16000]",
+               "echoShift",    "Echo shift (us)",      "2","2",     "tb",     "float,[-20,20]",
+               "gradient",     "Gradient (kHz/mm)",    "2","4",     "tbw",    "float",
+
+               "DEst",         "D (10-9 m^2/s)",       "3","0",     "tb",     "float",
+               "tauMin",       "tau min (ms)",         "3","1",     "tb",     "float,[0.001,100]",
+               "tauMax",       "tau max (ms)",         "3","2",     "tb",     "float,[0.001,100]",
+               "nrPntsTau",    "Number of tau incr.",  "3","3",    "tb",     "integer,[1,1000]",
+               "index",        "Time increment",       "3","4",    "tm",     "[\"lin\",\"exp\"]"]
+
+  tabs = ["Pulse sequence","Acquisition","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = 90Amplitude",
+                    "a2 = 180Amplitude",
+                    "d1 = pulseLength",
+                    "d2 = 1000*tauMin+echoTime/2-d1-pgo",
+                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4 = echoTime-d1-pgo-d3",
+                    "d5 = 1000*tauMin-d1-pgo",
+                    "n1 = nrEchoes",
+                    "n2 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["d5","d2"]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   cleardata(64000)
+
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d5)               # tau
+   pulse(mode,a2,p2,d1)    # 90 pulse
+   delay(d2)               # tau+ TE/2
+
+   loop(l1,n1)
+      pulse(mode,a2,p3,d1)        # 180 internal pulse
+      delay(d3)                   # 180 - acq delay
+      acquire("sum",n2,d4)     # Acquire echo and wait
+   endloop(l1)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0,2,0,2;
+               1,1,3,3;
+               1,1,1,1;
+               0,2,0,2]
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
