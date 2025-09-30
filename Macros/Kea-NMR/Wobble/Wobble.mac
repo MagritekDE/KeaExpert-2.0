@@ -104,7 +104,6 @@ endproc(seqInfo)
 # pcIndex .... indices of phase parameters in ppList
 # varIndex ... indices of variable parameters in ppList
 #
-# June 2022
 #######################################################
 
 procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
@@ -124,26 +123,32 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 # Accumulate scan
    for(scan = 0 to nrScans-1)
 
-    # Note the time at scan start
-      t1 = time()  
-
     # Set phases for this scan
       (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
 
     # Send phase parameters to DSP
-      ucsRun:updatePPParameters(ppList,guipar,wvPort)  
+      ucsRun:updatePPParameters(ppList,guipar)  
 
-    # Collect the data
-      (status,data) = ucsRun:getData(totPnts,guipar)
+    # Wait for the repetition time to complete
+      check = ucsRun:checkTiming(guipar,scan,pcList)
+      if(check == "abort")
+         :resetRelay()
+         return(0)
+      endif
 
+    # Run the pulse program
+      status = ucsRun:runExperiment(guipar)
+
+    # See if stop button/escape key pressed
       if(status != "ok")
          :resetRelay()
          return(0)
       endif
-   
-      if(scan >= 0) # The first scan won't be displayed as this sets the relay
 
-         #data = :averagePoints(data,nFreqSteps)
+    # Read the data from the spectrometer
+      data = ucsRun:readData(totPnts, guipar)
+
+      if(scan >= 0) # The first scan won't be displayed as this sets the relay
 
        # Accumlate the data
          sumData = ucsRun:accumulate(accumulate,0,sumData,data)
@@ -151,13 +156,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
        # Graph the data
          :graphData(prf, mag(sumData/nrPnts),single(freqAxis),scan,guipar)
 
-         # Check timing
-         check = ucsRun:checkTimeAndAbort(guipar,t1,scan,pcList)
-         if(check == "abort")
-            :resetRelay()
-            return(0)
-         elseif(check == "finish")
-            scan = scan + 1
+       # Check if complete button pressed
+         if(check == "finish")
+            scan = scan+1
             exitfor()
          endif
 
@@ -274,7 +275,7 @@ procedure(graphData, pd, fidData,f,n,guipar)
       (valMax,xMax) = max(dat)
 
       pd->plot(f,mag(fidData*sf))
-      pd->title("Probe amplitude reflection vs. frequency (minimum at $f[xMin],2.4f$ MHz)")
+      pd->title("Probe amplitude reflection vs. frequency (minimum at $f[xMin],2.4f$ MHz) Scan: $n+1$")
       pd->xlabel("Frequency (MHz)")
       pd->ylabel("$yTxt$ ($timeUnits$)")
 
@@ -305,20 +306,4 @@ procedure(graphData, pd, fidData,f,n,guipar)
    pd->draw("true")
 
 endproc()
-
-###################################################################
-# Average over the number of points per step returning
-# nFreqSteps of data
-###################################################################
-
-procedure(averagePoints, data, nrSteps)
-
-   nrPnts = size(data)/nrSteps
-   data = mag(data)
-   dataOut = matrix(nrSteps)
-   for(k = 0 to nrSteps-1)
-      dataOut[k] = sum(data[k*nrPnts:k*nrPnts+nrPnts-1])
-   next(k)
-
-endproc(dataOut)
 
