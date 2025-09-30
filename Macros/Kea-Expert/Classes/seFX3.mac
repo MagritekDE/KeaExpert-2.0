@@ -417,6 +417,7 @@ procedure(initAndExecPP, self, path, macroName, guipar, wv_rel, wv_var, wv_pp_li
 
 # Check that b1Freq/2 is defined
    if(not(isvar("b1FreqCh1")) & not(isvar("b1FreqCh2")))
+      print("\n   b1FreqCh1/b1FreqCh2 not defined in sequence\n")
       throw("b1FreqCh1/b1FreqCh2 not defined in sequence")
    endif
 
@@ -459,9 +460,7 @@ procedure(initAndExecPP, self, path, macroName, guipar, wv_rel, wv_var, wv_pp_li
    endif
 
 # Get the start (spectrometer initialisation) code and fill in the missing information. Store the result in wvFX3Info
-   rxGainStr = self->loadTRexStartCode(b1FreqCh1, b1FreqCh2, freqRx, flatFilter, rxGain, dwellTime, rxPhase, specialMode)
-
-# In the simple Prospa environment these were window
+   rxGainStr = self->loadTRexStartCode(b1FreqCh1, b1FreqCh2, freqRx, flatFilter, rxGain, dwellTime, rxPhase, specialMode)# In the simple Prospa environment these were window
 # variables. Here they are added to guipar. We will
 # keep these names for backward compatibility
    par =    ["wvAutoScale         = \"$autoScale$\"",
