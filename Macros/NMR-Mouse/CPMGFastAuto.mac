@@ -1,0 +1,96 @@
+#####################################################################
+# This example script sets pin 3 (AD1) on the TTL trigger box
+# to high and then returns. 
+# It could be used to trigger a batch process.
+#####################################################################
+
+procedure(CPMGFastAuto, parameters=null) 
+ 
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else # Add the experiment with interface
+      if(parameters == null)
+         parameters = ["sensor=\"PM25\"","probe=\"1H-L\"","probeHead=\"PM25-20mm\"","nrScans=4", "nrEchoes=16", "repTime=500", "resolution=90", "refSignal=5",
+                       "depths=4500","maxDepth=5500"] 
+      endif
+      gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["",             "Main",                    "dv",       "",          "",
+                 "sensor",       "Sensor",                  "tm_wide",  "string",    "[\"PM5\", \"PM10\", \"PM25\"]", 
+                 "probe",        "Probe",                   "tm_wide",  "string",    "[\"1H-L\", \"1H-S\"]", 
+                 "probeHead",    "Probe-head",              "tm_wide",  "string",    "[\"PM25-20mm\", \"PM25-10mm\"]", 
+                 "resolution",   "Resolution (um)",         "tb",       "float",     "", 
+                 "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
+                 "nrScans",      "Number of scans",         "tb",       "integer",   "",
+                 "nrEchoes",     "Number of echoes",        "tb",       "integer",   "[1,8192]",
+                 "refSignal",    "Normalization",           "tb",       "float",     "",
+                  "",            "Depths",                  "dv",       "",          "",
+                 "depths",       "Depth list (um)",         "tm",       "integer",   "[4500,2700,1300]",
+                 "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
+                 "",             "Edit depth list",         "bt",       "string",    "editDepths()",
+                 "position",     "Current position (um)",   "tb",       "readonly_string",  ""]
+
+
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+###########################################################
+# Move the lift to the service position
+###########################################################
+
+procedure(editDepths)
+
+   editorWin()
+
+endproc()
+
+################################################################
+# Come here when the run button is pressed
+################################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   depthList = getobj(0,findobj(0,"name","depths"))->menu
+
+   cd(getmacropath())
+   cd("ProbeHeads")
+   cd(sensor)
+   cd(probe)
+   exptPar = load(probeHead+".par")
+   exptPar = sortlist(mergelists(list(parameters),exptPar))
+
+# Get the plot layout
+   plotProc = "CPMGInt_Interface:plot_run_layout"
+   plotLayout = plotProc()
+   InitPlot(plotLayout)
+
+# Move to home
+   MouseMove:homeBD()
+   pr "\n   Mouse going home ...\n"
+   pause(0.0035*(maxDepth)+ 0.5)  # Wait for home completion
+
+   oldDepth = 0
+
+   nrSteps = size(depthList)
+   for(k = 0 to nrSteps-1)
+      newDepth = -eval(depthList[k])
+      offset = newDepth-oldDepth
+      MouseMove:MoveBD(offset,oldDepth)
+      oldDepth = newDepth
+      RunExpt("CPMGFast", exptPar)
+   next(k)
+
+endproc()
