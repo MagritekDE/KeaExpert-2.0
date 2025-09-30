@@ -1,0 +1,68 @@
+; DSPIO.asm
+; io routines for DSP/USB interface
+
+        section io_routines
+
+        org     p:
+A_PCRD   EQU     $FFFFAF         ; Port D Control register
+A_PRRD   EQU     $FFFFAE         ; Port D Direction Data Register
+A_PDRD   EQU     $FFFFAD         ; Port D GPIO Data Register
+A_PCRE   EQU     $FFFF9F         ; Port E Control register
+A_PRRE   EQU     $FFFF9E         ; Port E Direction Register
+A_PDRE   EQU     $FFFF9D         ; Port E Data Register
+
+Wait100 nop     ;including the JSR T=100nS
+        nop
+        nop
+        nop
+        rts
+  
+
+Frymem                         ;on entry A contains a pointer to
+        global  Frymem         ;the memory transfer structure
+        move    r0,x:(r6)+      ;Save registers
+        move    a1,r0           ;Make ro point to the structure
+        move    y:(r0),a1       ;load word from Y memory
+rymeme
+        move    x:-(r6),r0
+        rts
+        
+FsetPort                       ;on entry A contains a pointer to
+        global  FsetPort         ;the memory transfer structure
+        move    y0,x:(r6)+
+        movep	x:A_PDRE,y0  ; /* Port E Data Register */
+        tst		b
+        .IF		<ne>	THEN
+        or		y0,a
+        .ELSE
+		eor		#63,a
+		and		y0,a 
+		.ENDI
+		movep	a1,x:A_PDRE ; /* Port E Data Register */
+        move 	x:-(r6),y0
+        rts
+
+FsetPDir                      ;on entry A contains a pointer to
+        global  FsetPDir         ;the memory transfer structure
+        tst		a
+        .IF		<ne>	THEN
+        movep	#$00,x:A_PCRD
+        movep	#$3e,x:A_PRRD
+        movep	#$02,x:A_PDRD	;/* Enable JTAG buffer */ 
+        movep	#$07,x:A_PDRE
+        .ELSE 
+        movep	#$00,x:A_PCRD
+        movep	#$3f,x:A_PRRD
+        movep	#$00,x:A_PDRD   ;/* Disable JTAG buffer */ 
+        movep	#$00,x:A_PDRE
+		.ENDI
+        rts
+        
+FreadTDOBit
+		global  FreadTDOBit         ;the memory transfer structure
+		clr		a
+        movep 	x:A_PDRD,a1
+        and		#>1,a
+        tst 	a
+        rts
+        endsec

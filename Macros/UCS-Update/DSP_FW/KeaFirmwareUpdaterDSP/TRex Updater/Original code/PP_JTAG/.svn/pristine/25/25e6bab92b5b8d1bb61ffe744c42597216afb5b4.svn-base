@@ -1,0 +1,52 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+-include ../makefile.init
+
+RM := rm -f
+
+# All of the sources participating in the build are defined here
+-include sources.mk
+-include subdir.mk
+-include lib/subdir.mk
+-include XSVF/subdir.mk
+-include objects.mk
+
+-include ../makefile.defs
+
+# Add inputs and outputs from these tool invocations to the build variables 
+
+# All Target
+all: pre-build main-build
+
+# Main-build Target
+main-build: run.cld
+
+# Tool invocations
+run.cld: $(OBJS)
+	@echo 'Building target: $@'
+	@echo 'Invoking: 56K GCC  Linker'
+	g563c -crt "C:\Work\DSP\crt0pulseprogs\crt0.cln" -j "-M" -mx-memory -o "run.cld" $(OBJS) $(LIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
+	$(MAKE) --no-print-directory post-build
+
+# Other Targets
+clean:
+	$(RM) $(OBJS)$(EXECUTABLES) run.cld
+	-@echo ' '
+
+pre-build:
+	make clean
+	-@echo ' '
+
+post-build:
+	-@echo '"srec run.cld","cldinfo  run.cld"'
+	-C:\Work\DSP\PP_JTAG\record.bat
+	-@echo ' '
+
+.PHONY: all clean dependents
+.SECONDARY: main-build pre-build post-build
+
+-include ../makefile.targets

@@ -1,0 +1,15 @@
+cd("D:\Magritek\Products\Kea\Hardware\DSP firmware\Kea2\Kea2dspusb\Release")
+
+fwp = dspreadpp("kea2dspusb.p")
+dspwrite("y",0x10000,fwp)
+fwx = dspreadpp("kea2dspusb.x")
+dspwrite("y",0x12000,fwx)
+
+cd("D:\Magritek\Products\Kea\Hardware\DSP firmware\FWupdate")
+
+pp = dspreadpp("FWupdate.p")
+dspwrite("p",0x2000,pp)
+
+status = dsprunpp(0x2000)
+
+

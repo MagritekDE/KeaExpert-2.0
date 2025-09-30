@@ -1,0 +1,788 @@
+#########################################################
+# Allow the updating of the different types of firmware
+# used by the Kea spectrometer
+#
+# Author C Eccles/ R Tamrzadeh, 
+# Magritek March 2019-2022
+#
+# Change log:
+# v1.3
+#  1. added support and compatibility check for TReX 4.1 (676/484 pin version)
+# v1.4
+#  1. Added support for TRex 2 as well
+#
+#########################################################
+
+procedure(KeaFirmwareUpdater, mode="normal", pref=null)
+
+   n = :windowdefinition(mode, pref)
+   assignctrls(n)
+   setwindowpar(n,"sizelimits",[346,-1,343,-1])
+   setwindowpar(n,"statusbox",6)
+   :loadPar()
+   :setFWType()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition, mode, pref)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Kea Firmware Updater v1.4", -1, -1, 360, 383, "resizable")
+
+      # Define all controls with basic parameters
+      windowvar(wvPref,fwTypeCtrl,fwListCtrl,statusCtrl,writeToFlashCtrl,wvProcType)
+      wvPref = pref
+      wvProcType = "DSP"
+
+      button(1, "ww-71", 178, 62, 32, "Update Firmware",
+         :updateFirmware();)
+      if(mode == "normal")
+         button(2, "ww-71", 307, 62, 32, "Close",
+         :savePar();
+         :exitMacro();)
+      else
+         button(2, "ww-71", 327, 62, 32, "Close",
+         :savePar();
+         :closeTest(wvPref);)
+      endif
+
+      button(3, "ww-71", 264, 62, 32, "Help",
+         help("Macros\Kea-Update","DSPFirmwareUpdater.htm");)
+      button(4, "ww-71", 135, 62, 32, "Current Version",
+         :readCurrentVersion();)
+      button(5, "ww-71", 221, 62, 32, "Reset\rDSP",
+         :resetDSP();)
+      statusbox(6)
+      statictext(7, 20, 118, "left", "Firmware versions available:")
+      checkbox(8, "ww-90", 59, "no,yes", "yes")
+      statictext(9, "ww-53", 39, "right", "Write to flash")
+      listbox(11, 20, 136, "ww-99", "wh-176")
+      radiobuttons(12, 168, 39, 20, "vertical", "DSP,TRex", "DSP",
+           :setFWType();)
+      statictext(13, 160, 40, "right", "DSP")
+      statictext(14, 160, 59, "right", "Transceiver")
+      groupbox(16, "Kea Module", 20, 14, "ww-30", 92)
+
+     # Set other control parameters
+      setpar(n,6,"objID","statusCtrl")
+      setpar(n,8,"objID","writeToFlashCtrl",
+                  "valueID","writeToFlash")
+      setpar(n,11,"objID","fwListCtrl")
+      setpar(n,12,"objID","fwTypeCtrl",
+                  "valueID","fwType")
+
+     # Set other window parameters
+endproc(n)
+
+#######################################################
+# Display the list of firmware file for a specific 
+# firmware type
+#######################################################
+
+procedure(setFWType)
+
+   if(fwTypeCtrl->text == "DSP")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterDSP\\DSP Firmware"
+   elseif(fwTypeCtrl->text == "TRex")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterDSP\\Transceiver Firmware"
+   else
+      fwTypeCtrl->text("DSP")
+      dir = "$getmacropath()$\\KeaFirmwareUpdaterDSP\\DSP Firmware"
+   endif
+   fws = getdirlist(dir)
+   fwListCtrl->list(fws)
+
+endproc()
+
+
+
+#######################################################
+# Read the current firmware version 
+# from the spectrometer
+#######################################################
+
+procedure(readCurrentVersion)
+
+   try
+      data = dspread("x",0,10)
+   catch
+      message("Error","No connection to spectrometer.\rIs Kea connected and switched on?","error")
+      return
+   endtry
+   if(fwTypeCtrl->text == "DSP")
+      :readDSPFWVersion()
+   elseif(fwTypeCtrl->text == "TRex")
+      :readTRexFWVersion()
+   elseif(fwTypeCtrl->text == "Lock")
+      :readLockFWVersion()
+   elseif(fwTypeCtrl->text == "TempCtrl")
+      :readTempCtrlFWVersion()
+   endif
+
+endproc()
+
+#######################################################
+# DSP version
+#######################################################
+
+procedure(readDSPFWVersion)
+
+   try
+      (fwMagVer1,fwMinVer1) = dspfwversion()
+      (fwMagVer2,fwMinVer2) = dspfwversion()
+      if(fwMagVer1 == fwMagVer2)
+         verStr = hex(fwMagVer1)
+         statusCtrl->text("Firmware type = 0x$verStr[2:]$ Version number = $fwMinVer2$")
+         return("$fwMagVer1$")
+      else
+         message("Error","This firmware does not support this function.","error")
+      endif
+   catch
+      message("Error","Reset the spectrometer and try again","error")
+   endtry
+
+endproc("")
+
+#######################################################
+# Transceiver version
+#######################################################
+
+procedure(readTRexFWVersion)
+   try
+      HWver = dspread("x",0x020082,1)
+      FWver = dspread("x",0x020083,1)
+      statusCtrl->text("Firmware version: $FWver[0]$, hardware version: $HWver[0]$")
+      return("$FWver[0]$")
+   catch
+      message("Error","No connection to spectrometer?","error")
+   endtry
+
+endproc("")
+
+
+
+
+
+#######################################################
+# Update the firmware
+#######################################################
+
+procedure(updateFirmware)
+
+   try
+      data = dspread("x",0,10)
+   catch
+      message("Error","No connection to spectrometer.\rIs Kea connected and switched on?","error")
+      return
+   endtry
+
+   if(fwTypeCtrl->text == "DSP")
+      :updateDSPFirmware()
+   elseif(fwTypeCtrl->text == "TRex")
+     # if(writeToFlashCtrl->text == "yes")
+         :updateTRexFirmware(writeToFlashCtrl->text)
+     # endif
+     # :updateTRexFirmware("no")
+   elseif(fwTypeCtrl->text == "Lock")
+      :updateLockFirmware()
+   elseif(fwTypeCtrl->text == "TempCtrl")
+    #  if(writeToFlashCtrl->text == "yes")
+         :updateTempCtrlFirmware(writeToFlashCtrl->text)
+    #  endif
+    #  :updateTempCtrlFirmware("no")
+   endif
+
+   :resetDSP()
+
+endproc()
+
+###################################################
+# Update the firmware
+###################################################
+
+procedure(updateDSPFirmware)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+   bak = getcwd()
+
+   dir = "$getmacropath()$\\KeaFirmwareUpdater\\DSP Firmware"
+
+   if(isdir(dir))
+      cd(dir)
+
+      fwName = fwListCtrl->text
+      if(fwName == null)
+          message("Error","Please select a firmware version","error")
+          return
+      endif
+
+      if(isdir(fwName))
+         cd(fwName)
+         pCnt = 0
+         xCnt = 0
+         v1Cnt = 0
+         v2Cnt = 0
+         fLst = getfilelist(".")
+         for(k = 0 to size(fLst)-1)
+             if(getext(fLst[k]) == "p")
+               pName = fLst[k]
+               pCnt = pCnt + 1
+               v1Cnt = v1Cnt + 1 
+             elseif(getext(fLst[k]) == "p2")
+               pName = fLst[k]
+               pCnt = pCnt + 1
+               v2Cnt = v2Cnt + 1 
+             elseif(getext(fLst[k]) == "x")
+               xName = fLst[k]
+               xCnt = xCnt + 1
+               v1Cnt = v1Cnt + 1
+             elseif(getext(fLst[k]) == "x2")
+               xName = fLst[k]
+               xCnt = xCnt + 1
+               v2Cnt = v2Cnt + 1
+             endif
+         next(k)
+
+         if(pCnt == 1 & xCnt == 1) # Check that only one of each file
+
+            if(isfile(pName) & isfile(xName))
+
+               try
+                  dspread("x",0,10)
+               catch
+                  message("No connection to Kea","Make sure that the Kea DLL is installed,\rthe Kea is switched on and the\rUSB interface is connected and working.","error")
+                  return
+               endtry
+
+               if(query("Confirm Firmware Update","This will load DSP firmware:\r\r'$fwName$'\r\ron to your Kea. Proceed?") == "no")
+                  return
+               endif
+               
+               
+               # Read the new firmware files
+               pp = dspreadpp(pName)
+               px = dspreadpp(xName)
+               dspwrite("y",0x30000,pp)
+               dspwrite("y",0x32000,px)
+
+               cd("$getmacropath()$\\$rmext(getmacroname())$\\DSP Updater")
+         
+               # Check Firmware compatibility and get matching firmware updater
+               try
+                  (fwMagVer1,fwMinVer1) = dspfwversion()
+                  pr fwMagVer1
+               catch
+                  message("Error","Reset the spectrometer and try again","error")
+                  return
+               endtry
+               pr fwMagVer1, v1Cnt
+#               if((fwMagVer1 == 0x75 | fwMagVer1 == 0x1D) & v2Cnt == 2)        # DSP56321 Hardware
+#                  pw = dspreadpp("FWupdate12.p")
+#                  pr "   Found new HW and FW. Using new flash routine.\n"
+#               elseif((fwMagVer1 == 0x65 | fwMagVer1 == 0x0D) & v1Cnt == 2)   # DSP56309 Hardware
+#                  pw = dspreadpp("FWupdate12.p")
+#                  pr "   Found old HW and FW. Using old flash routine.\n"
+#               else
+#                  message("Error","Firmware version is not compatible to your hardware","error")
+#                  return                  
+#               endif
+                  pw = dspreadpp("FWupdate12.p")
+
+               # Run the firmware updater.
+               dspwrite("p",0x2000,pw)
+               dsprunpp(0x2000)
+               
+               message("Information","Firmware updated!","info")
+               :readCurrentVersion()
+            else
+               message("Error","Both .p and .x files must be present","error")
+            endif   
+
+         else
+            message("Error","Too many firmware files - should only be 2","error")
+            return
+         endif # Are *.p and *.x present
+
+      endif # Is fwName?
+
+   endif # Is fwPath?
+
+   cd(bak)
+
+endproc()
+
+# Reset the DSP (alternative to pressing reset button
+
+procedure(resetDSP)
+
+   try
+      data = dspread("x",0,10)
+   catch
+      message("Error","No connection to spectrometer.\rIs Kea connected and switched on?","error")
+      return
+   endtry
+
+   cd("$getmacropath()$\\$rmext(getmacroname())$\\DSP Updater")
+   pw = dspreadpp("reset.p")
+   # Run the DSP reset program.
+   dspwrite("p",0x2000,pw)
+   dsprunpp(0x2000)
+     
+endproc()
+
+###########################################################
+#
+# Run the transceiver firmware update sequence
+#
+###########################################################
+
+procedure(updateTRexFirmware,writeToFlash)
+
+   # This program will only work with the new DSP 
+   Hardversion = 1.4
+   DSPmemsize = 0x44000 
+   time(0)
+   w = guiwinnr()
+
+   fwFolder = "$getmacropath()$\\KeaFirmwareUpdaterDSP\\Transceiver Firmware"
+
+   fwDir = fwListCtrl->text
+   if(fwDir == null)
+      :updatetext("Firmware version not selected.","abort")
+   endif
+
+   if(isdir(fwFolder) == 0)
+      :updatetext("Firmware folder not found.","abort")
+   endif
+   cd(fwFolder)
+
+   if(isdir(fwDir) == 0)
+      :updatetext("Firmware directory not found.","abort")
+   endif
+   cd(fwDir)
+
+   if(writeToFlash == "yes")
+      lst = ls("*Flash*.xsvf")
+      if(size(lst) != 1)
+         :updatetext("Expecting one firmware flash file","abort")
+      endif
+      
+   else
+      lst = ls("*FPGA*.xsvf")
+      if(size(lst) != 1)
+         :updatetext("Expecting one firmware FPGA file","abort")
+      endif
+   endif
+
+   fwName = lst[0]
+
+  # Run Update 
+   if(isfile(fwName) )
+      pr "\n"
+      :updatetext("Connecting to DSP")
+      try
+       current_hardware_version = dspread("x",0x020082,1)
+      catch
+         message("Error","No connection to spectrometer?","error")
+         return
+      endtry
+      pr fwName,current_hardware_version
+      current_hardware_version = current_hardware_version[0]
+# current_hardware_version = 3 # Force hardware version in some cases
+
+      pr("   Hardware version = $current_hardware_version$\n")
+      if(current_hardware_version == 4)
+         if(issubstr(fwName,"676"))
+            pr "   Compatiblity check: found hardware version 4 and matching firmware.\n"
+         else
+            message("Error","The selected firmware is not compatible with your hardware: HW=4, FW=2/3.","error")
+            return
+         endif
+         :processTRexV3or4(fwFolder,fwDir,fwName,writeToFlash)
+
+      elseif (current_hardware_version == 3 | current_hardware_version == 450)
+         if(issubstr(fwName,"484"))
+            pr "   Compatiblity check: found hardware version 3 and matching firmware."   
+         else
+            message("Error","The selected firmware is not compatible with your hardware: HW=3, FW=2/4.","error")
+            return
+         endif
+         :processTRexV3or4(fwFolder,fwDir,fwName,writeToFlash)
+
+      elseif(current_hardware_version == 2)
+         if(issubstr(fwName,"676") | issubstr(fwName,"484"))
+            message("Error","The selected firmware is not compatible with your hardware: HW=2, FW=3/4.","error")
+            return
+         else
+            pr "Compatiblity check: found hardware version 2 and matching firmware."   
+         endif
+         :processTRexV2(fwFolder,fwDir,fwName,writeToFlash)
+
+      endif
+
+      pr ("   Time taken = $time()$\n")
+
+   else
+
+     :updatetext("File ERROR")
+  
+   endif
+
+
+endproc()
+
+
+procedure(processTRexV2, fwFolder, fwDir, fwName, writeToFlash)
+
+   DSPmemsize = 2^18 
+
+   macrofile = "run.p"
+
+   cd("$getmacropath()$\\$rmext(getmacroname())$\\TRex Updater")
+   pp = dspreadpp(macrofile)
+   dspwrite("p",0x2000,pp)
+   :updatetext("Processing Data")
+   cd(fwFolder)
+   cd(fwDir)
+   t1 = time();
+   import1dpar("ab","binary","xyrc","real","fls","short","machine","bigend")
+   d1 = import1d(fwName)
+   lx = size(d1)+1
+   size_xsvf_file = lx*2
+   MAXSIZE = trunc((lx/3))+1
+   FILESIZE = MAXSIZE*2
+    if( FILESIZE >= DSPmemsize)
+      :updatetext("XSVF file is too big","abort")
+   endif; 
+   d1 = zerofill(d1,MAXSIZE*3,"end")
+   d2 = matrix(MAXSIZE*2)
+   
+   d1 = d1.*(d1 > 0) + (0xffff - inv(d1)).*(d1 < 0)
+   for(x1 = 0 to (MAXSIZE-1))
+      d2[2*x1]   = single((d1[3*x1]   & 0x0000ff00 )*2^8 | (d1[3*x1]   & 0x000000ff )*2^8 | (d1[3*x1+1] & 0x0000ff00 )/(2^8))
+      d2[2*x1+1] = single((d1[3*x1+1] & 0x000000ff )*2^16 | (d1[3*x1+2] & 0x0000ff00 ) | (d1[3*x1+2] & 0x000000ff ))
+   next(x1)
+   t2 = time();
+   tprocess = t2-t1
+   :updatetext("Uploading to DSP")
+   dspwrite("y",0x10000,d2)
+   p = matrix(32,1);
+   dspwrite("x",0x00,p)
+   t3= time();
+   Twrite = t3-t2
+   if(writeToFlash == "yes")
+      :updatetext("Transferring to FLASH - please wait ...")
+   else
+      :updatetext("Transferring to FPGA - please wait ...")
+   endif
+   r = dsprunpp(0x2000) # Run pulse program
+   if(r = 1 | r = 2)
+      :updatetext("DSP Problem please re-run")
+      abort("Problem running DSP program please try again if problem persists see manual");
+   endif;
+   p = dspread("x",0x00,32)
+   memcount = p[28];
+   ERROR = p[29]
+   if(ERROR = 1) 
+      :updatetext("Error: Unknown Error")
+   elseif(ERROR = 2) 
+      :updatetext("Error: TDO MISMATCH")
+   elseif(ERROR = 3)
+      :updatetext("Error: Max Retries")
+   elseif(ERROR = 4)
+      :updatetext("Error: Illegal Cmd")
+   elseif(ERROR = 5)
+      :updatetext("Error: Illegal State")
+   elseif(ERROR = 6)
+      :updatetext("Error: Data Overflow")
+   elseif(ERROR = 7)
+      :updatetext("Error: Error Last")
+   else
+      if(writeToFlash == "yes")
+         :updatetext("FLASH updated")
+      else
+         :updatetext("FPGA updated")
+      endif
+      hardware_version = p[30]
+      #:updatetext("hardware ver=$hardware_version$")
+      pause(0.5)
+      software_build = dspread("x",0x020083,1)
+      :updatetext("Firmware version:$software_build$")
+   endif
+
+endproc()
+
+
+procedure(processTRexV3or4, fwFolder, fwDir, fwName, writeToFlash)
+
+   DSPmemsize = 0x44000 
+
+   macrofile = "trex4_jtag.p"
+
+   dspwrite("y",0,[0,0,0,0]) # set internal address count to 0 to detect first run
+   
+   cd("$getmacropath()$\\$rmext(getmacroname())$\\TRex Updater")
+   pp = dspreadpp(macrofile)
+   dspwrite("p",0x2000,pp)
+   :updatetext("Processing Data")
+   cd(fwFolder)
+   cd(fwDir)
+   t1 = time();
+   import1dpar("ab","binary","xyrc","real","fls","short","machine","bigend")
+   d1 = import1d(fwName)
+   lx = size(d1)+1
+   #size_xsvf_file = lx*2
+   MAXSIZE = trunc((lx/3))+1
+   FILESIZE = MAXSIZE*2
+   d1 = zerofill(d1,MAXSIZE*3,"end")
+   d1 = d1.*(d1 > 0) + (0xffff - inv(d1)).*(d1 < 0)
+   if( FILESIZE >= DSPmemsize)
+      oversizeFactor = ceil(FILESIZE/DSPmemsize)
+      pr "   File size too big. Splitting it in at least $oversizeFactor$ parts.\n"
+      d2 = :prepareFWblock(d1,0,DSPmemsize,FILESIZE)
+   else      
+      d2 = matrix(MAXSIZE*2)
+      for(x1 = 0 to (MAXSIZE-1))
+         d2[2*x1]   = single((d1[3*x1]   & 0x0000ff00 )*2^8 | (d1[3*x1]   & 0x000000ff )*2^8 | (d1[3*x1+1] & 0x0000ff00 )/(2^8))
+         d2[2*x1+1] = single((d1[3*x1+1] & 0x000000ff )*2^16 | (d1[3*x1+2] & 0x0000ff00 ) | (d1[3*x1+2] & 0x000000ff ))
+      next(x1)
+   endif;
+   t2 = time();
+   tprocess = t2-t1
+   :updatetext("Uploading to DSP")
+   dspwrite("y",0x10000,d2)
+   p = matrix(32,1);
+   dspwrite("x",0x00,p)
+   t3= time();
+   Twrite = t3-t2
+   if(writeToFlash == "yes")
+      :updatetext("Transferring to FLASH - please wait ...")
+   else
+      :updatetext("Transferring to FPGA - please wait ...")
+   endif
+   pr "   Running program to erase FPGA and transfer block no. 1 ...\n"
+   r = dsprunpp(0x2000) # Run pulse program
+   if(r = 1 | r = 2)
+      :updatetext("DSP Problem please re-run")
+      abort("Problem running DSP program please try again if problem persists see manual");
+   endif;
+
+   p = dspread("x",0x00,32)
+   memcount = p[28]
+   ERROR = p[29]
+
+   blockNo = 2
+   while(ERROR = 8)
+      bytesProcessed = dspread("y",0,1)
+      #pr bytesProcessed
+      #pr hex(dspread("y",0x40000,16))
+      currentAddressPointer = dspread("y",0x3,1)
+      #pr hex(currentAddressPointer)
+      currentWord = dspread("y", currentAddressPointer[0], 1)
+      #pr hex(currentWord)
+      currentByteDA = dspread("y",1,1)
+      #pr currentByteDA
+      pr "   Preparing next block starting from address 0x$hex(floor(bytesProcessed[0]/3))$ ($bytesProcessed[0]$)\n"
+      d2 = :prepareFWblock(d1,bytesProcessed[0],DSPmemsize,FILESIZE)
+      :updatetext("Uploading to DSP")
+      dspwrite("y",0x10000,d2)
+      nextWord = dspread("y", 0x10000, 1)
+      #pr hex(nextWord)
+      #pr hex(dspread("y",0x10000,16))
+      pr "   Transferring block no. $blockNo$...\n"
+      :updatetext("Transferring block $blockNo$ to FLASH - please wait ...")
+      dsprunpp(0x2000) # Run pulse program
+      p = dspread("x",0x00,32)
+      memcount = p[28]
+      ERROR = p[29]
+      blockNo = blockNo + 1
+   endwhile
+      #pr "DONE! BytesProcessed - filesize = $memcount-2*lx$\n"
+
+   if(ERROR = 1) 
+      :updatetext("Error: Unknown Error")
+   elseif(ERROR = 2) 
+      :updatetext("Error: TDO MISMATCH")
+   elseif(ERROR = 3)
+      :updatetext("Error: Max Retries")
+   elseif(ERROR = 4)
+      :updatetext("Error: Illegal Cmd")
+   elseif(ERROR = 5)
+      :updatetext("Error: Illegal State")
+   elseif(ERROR = 6)
+      :updatetext("Error: Data Overflow")
+   elseif(ERROR = 7)
+      :updatetext("Error: Error Last")
+   else
+      if(writeToFlash == "yes")
+         :updatetext("FLASH updated")
+      else
+         :updatetext("FPGA updated")
+      endif
+      hardware_version = p[30]
+      #:updatetext("hardware ver=$hardware_version$")
+      pause(0.5)
+      software_build = dspread("x",0x020083,1)
+      :updatetext("Firmware version:$software_build$")
+   endif
+
+endproc()
+
+procedure(prepareFWblock, inputData, startAddr8, numWords, lastAddr)
+
+   # inputData word size is 16 bits, outputData word size is 24 bits
+   # this function processes 48 bits from 3 input data words and puts them into 2 ouput data words
+   outputData = matrix(numWords)
+   startAddr8 = floor(startAddr8/3)*3
+   startAddr16 = floor(startAddr8/2)
+   byteShift = (startAddr8/3)%2 # only when the 24bit address is even the start of the 16bit block is aligned
+                                # when it is odd, there is a 1 byte misalignment
+
+   endAddr16 = startAddr16 + (numWords/2*3)
+   lastAddr16 = lastAddr/2*3
+   if (endAddr16 > lastAddr16-1)
+      pr "   Last block found. Setting endAddr to lastAddr.\n"
+      numWords = (lastAddr-startAddr8/3)
+   endif
+   if (byteShift=0)
+      for(x1 = 0 to (numWords-1) step 2)
+         y1 = x1/2*3 + startAddr16    # translates x1 24bit addressing to y1 16bit addressing
+                                      # and adds offset address of previously process data
+         outputData[x1]   = single((inputData[y1]   & 0x0000ff00 )*2^8 | (inputData[y1]   & 0x000000ff )*2^8 | (inputData[y1+1] & 0x0000ff00 )/(2^8))
+         outputData[x1+1] = single((inputData[y1+1] & 0x000000ff )*2^16 | (inputData[y1+2] & 0x0000ff00 ) | (inputData[y1+2] & 0x000000ff ))
+      next(x1)
+   else
+      szIn = size(inputData)
+      szOut = size(outputData)
+      for(x1 = 0 to (numWords-1) step 2)
+         y1 = x1/2*3 + startAddr16    # translates x1 24bit addressing to y1 16bit addressing
+                                      # and adds offset address of previously process data
+         outputData[x1]   = single((inputData[y1] & 0x000000ff )*2^16 | (inputData[y1+1]   & 0x0000ff00 ) | (inputData[y1+1] & 0x000000ff ))
+         if(y1+2 < szIn & y1+3 < szIn)
+            outputData[x1+1] = single((inputData[y1+2] & 0x0000ff00 )*2^8 | (inputData[y1+2] & 0x000000ff )*2^8 | (inputData[y1+3] & 0x0000ff00 )/(2^8))
+         elseif(y1+2 < szIn & y1+3 >= szIn)
+            print("Partial fill error\n")
+         endif
+
+      next(x1)
+   
+   endif
+
+endproc(outputData)
+
+###################################################
+# Write progress to status bar and to CLI use
+# a message box if there is an error
+###################################################
+
+procedure(updatetext,txt,abortTxt)
+
+   if( isvar("abortTxt") )
+      message("Error",txt)
+      abort(txt)
+   else
+      statusCtrl->text(txt)
+    #  pr "   $txt$\n"
+   endif
+   
+endproc()
+
+
+###################################################
+# Load the firmware folder information and update
+# the firmware list
+###################################################
+
+procedure(loadPar)
+
+# Check for saved firmware folder
+  bak = getcwd()
+   dir = "$prefdir$\\KeaParameters"
+   found = 0
+   if(isdir(dir))
+      cd(dir)
+      if(isfile("firmWare.par"))
+        lst = load("firmWare.par")
+        assignlist(lst)
+        setctrlvalues(0,lst)
+        found = 1
+      endif
+   endif
+
+# Default is to use the macros DSPFirmware folder
+   if(found==0)
+      path = "$getmacropath()$\\DSPFirmware"
+      lst = ["fwPath = \"$path$\""]
+      setctrlvalues(0,lst)
+   endif
+   cd(bak)
+
+# Display the list of firmware folders
+   :setFWType()
+
+   writeToFlashCtrl->text("yes")
+   writeToFlashCtrl->enable("false")
+  # setpar(0,1,"enable","false")
+
+endproc()
+
+
+###################################################
+# Save the firmware folder information and update
+# the firmware list
+###################################################
+
+procedure(savePar)
+
+   bak = getcwd()
+   dir = "$prefdir$\\KeaParameters"
+   mkdir(dir)
+   cd(dir)
+   lst = getctrlvalues(0)
+   save("firmWare.par",lst)
+   cd(bak)
+
+endproc()
+
+
+procedure(exitMacro)
+
+   if(getwindowpar(0,"mainWindow") == "true")
+      exit()
+   else
+      closewindow(0)
+   endif
+
+endproc()
+
+procedure(closeTest, pref)
+
+   bak = getcwd()
+   dir = "$pref->dataBaseDirectory$\\$pref->keaDataDirectory$\\DSP Tests"
+   mkdir(dir)
+   cd(dir)
+
+   dspVer = :readDSPFWVersion()
+   tRexVer = :readTRexFWVersion()
+
+   printtofile("DSP_FW_Info.par")
+   print("testTime = \"$getdate()$ $gettime(\"%2d:%02d\")$\"\n")
+   nrProg = (dspVer == "29") +  (tRexVer == "152")
+
+   if(nrProg == 2)
+      print("status = \"alltested\"\n")
+   elseif(nrProg > 0)
+      print("status = \"sometested\"\n")
+   else
+      print("status = \"untested\"\n")
+   endif
+   closeprint()
+
+   cd(bak)
+   sendmessage("FirmwareUpdater","alltested")
+   closewindow(0)
+
+endproc()

@@ -1,0 +1,172 @@
+###########################################################
+#
+# FFT Capture
+#
+###########################################################
+procedure(firmware)
+ n = window("T-ReX Firmware Updater V2.0", -1, -1, 297, 165)
+
+      # Define all controls with basic parameters
+        windowvar(sample_time,memory_size,defaultfilename,defaultdir,win_num1,win_type1,dir_driveScan,timeLeft,timeRight)
+       button(1, 202, 42, 70, 33, "Update Firmware",
+          :runpp();)
+       listbox(2, 21, 42, 171, 103)
+       textbox(3, 21, 15, 171)
+       button(4, 202, 15, 69, 20, "Open File",
+          :openfilename();)
+
+     # Set other control parameters
+       
+
+       showwindow(n)
+   setpar(n,3,"name","Filename")
+   setpar(0,2,"list",[""]);
+   defaultdir = getmacropath()
+   defaultfilename =  defaultdir + "\\default.par"
+ :load_parameters(defaultfilename)
+endproc(n)
+
+procedure(load_parameters,filename)
+   if( not( isvar("filename") ) )
+      filename = getfilename("load", "Load a parameter file", "par files", "par")
+   endif;
+   if(isfile(filename))
+      lst = load(filename)
+      setctrlvalues(0,lst)
+      assignlist(lst)
+   endif
+endproc()
+
+procedure(save_parameters,filename)
+   lst = getctrlvalues(0)
+   save(filename,lst) 
+   pr "Parameters saved";
+endproc()
+
+procedure(openfilename)
+   filename = getpar(0, 3, "text")
+   filename = getfilename("load", "Load a XSVF file", " files", "xsvf",filename)
+    
+   dir = getcwd();
+   if( filename != "cancel" )
+      setpar(0, 3, "text",dir + "\\" + filename)  
+   endif
+endproc()
+
+procedure(updatetext,text1,abort1)
+   clist = getpar(0, 2, "list");
+   if(size(clist) = 1)
+      clist = [text1, "..."];
+   else
+      clist = insertinlist(clist,text1,size(clist)-1)
+   endif
+   setpar(0, 2, "list", clist);
+   setpar(0, 2, "index", size(clist));
+   if( isvar("abort1") )
+      message("Error",text1); 
+      abort(text1);
+   endif;
+   
+   
+endproc()
+###########################################################
+#
+# Run the sequence
+#
+###########################################################
+
+
+procedure(runpp)
+   # This program will only work with the new DSP 
+   Hardversion = 1.4;
+   DSPmemsize = 2^18;
+   filename1 = getpar(0, 3, "text")
+   w = guiwinnr("getargs")
+   pr "Running\n"
+   setpar(0, 2, "list", [""]);
+   
+  # Run Update 
+   if( isfile(filename1) )
+      :updatetext("Connecting to DSP")
+     #  current_hardware_version = dspread("x",0x020082,1)
+     #  current_hardware_version = current_hardware_version[0]
+     #    pr current_hardware_version
+     # if( (Hardversion != (current_hardware_version/10)) & (current_hardware_version != 0))
+      #   :updatetext("Wrong hardware version","abort")
+      #endif; 
+      #macrofile = "c:\\work\\DSP\\PP_JTAG\\run.p"
+      macrofile = getmacropath() + "\\PP_JTAG\\run.p"
+      pp = dspsrec(macrofile)
+      dspwrite("p",0x2000,pp)
+      
+      :updatetext("Processing Data")
+      t1 = time();
+      import1dpar("ab","binary","xyrc","real","fls","short","machine","bigend")
+      d1 = import1d(filename1);
+      lx = size(d1)+1
+      size_xsvf_file = lx*2
+      MAXSIZE = trunc((lx/3))+1
+      FILESIZE = MAXSIZE*2
+       if( FILESIZE >= DSPmemsize)
+         :updatetext("XSVF file is too big","abort")
+      endif; 
+      d1 = zerofill(d1,MAXSIZE*3,"end")
+      d2 = matrix(MAXSIZE*2)
+      
+      d1 = d1.*(d1 > 0) + (0xffff - inv(d1)).*(d1 < 0)
+      for(x1 = 0 to (MAXSIZE-1))
+         d2[2*x1]   = (d1[3*x1]   & 0x0000ff00 )*2^8 | (d1[3*x1]   & 0x000000ff )*2^8 | (d1[3*x1+1] & 0x0000ff00 )/(2^8)
+         d2[2*x1+1] = (d1[3*x1+1] & 0x000000ff )*2^16 | (d1[3*x1+2] & 0x0000ff00 ) | (d1[3*x1+2] & 0x000000ff )
+      next(x1)
+      t2 = time();
+      tprocess = t2-t1
+      pr tprocess
+      :updatetext("Uploading to DSP")
+      dspwritepar("y",0x10000,d2)
+      p = matrix(32,1);
+      dspwritepar("x",0x00,p)
+      t3= time();
+      Twrite = t3-t2
+      pr Twrite
+      :updatetext("Transfering to flash...")
+      r = dsprunpp(0x2000) # Run pulse program
+      if(r = 1 | r = 2)
+         :updatetext("DSP Problem please re-run")
+         abort("Problem running DSP program please try again if problem persits see manual");
+      endif;
+      t4 = time();
+      trun = t4-t3
+      pr trun
+      p = dspread("x",0x00,32)
+      memcount = p[28];
+      ERROR = p[29]
+      if(ERROR = 1) 
+         :updatetext("Error: Unknown Error")
+      elseif(ERROR = 2) 
+         :updatetext("Error: TDO MISMATCH")
+      elseif(ERROR = 3)
+         :updatetext("Error: Max Retries")
+      elseif(ERROR = 4)
+         :updatetext("Error: Illegal Cmd")
+      elseif(ERROR = 5)
+         :updatetext("Error: Illegal State")
+      elseif(ERROR = 6)
+         :updatetext("Error: Data Overflow")
+      elseif(ERROR = 7)
+         :updatetext("Error: Error Last")
+      else
+         hardware_version = p[30]
+         #:updatetext("hardware ver=$hardware_version$")
+         pause(1);
+         software_build = dspread("x",0x020083,1)
+         :updatetext("Firmware version:$software_build$")
+         :updatetext("Write successful")
+
+      endif
+           
+   else
+      :updatetext("File ERROR")
+   endif;
+      pr "\n"
+    :save_parameters(defaultfilename);
+endproc()
