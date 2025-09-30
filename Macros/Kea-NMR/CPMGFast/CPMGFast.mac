@@ -1,6 +1,6 @@
 #########################################################
 # 
-# CPMGInt
+# CPMGFast
 #
 # CPMG pulse sequence in which each echo is summed to 
 # return a single complex number per echo.
@@ -23,17 +23,17 @@
 #
 #########################################################
 
-procedure(CPMGInt, parameters=null)
+procedure(CPMGFast, parameters=null)
 
    macroLocation = getmacropath()
    parentPath = getbasepath(macroLocation)
 
    if(iskeypressed("shift"))
-      PulseProgramCompiler(guiwinnr(),null,parentPath,"CPMGInt")
+      PulseProgramCompiler(guiwinnr(),null,parentPath,"CPMGFast")
    elseif(iskeypressed("control"))
-      gView->showExperimentHelp("CPMGInt")
+      gView->showExperimentHelp("CPMGFast")
    else
-      gExpt->addExperiment(parentPath,"CPMGInt",parameters)
+      gExpt->addExperiment(parentPath,"CPMGFast",parameters)
    endif
 
 endproc()
@@ -89,7 +89,7 @@ procedure(getseqpar)
           "totTime  = echoTime*nrEchoes"]
    var = [""]
    pp_list = ["nEchoes","a90","p1","dRF","d90_180","l1","a180","p2","d180_acq","nPnts","dAcq"]
-   pp_name = "CPMGInt.p"
+   pp_name = "CPMGFast.p"
    phase_list = [2,0,2,0;3,1,1,3;2,0,2,0]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
