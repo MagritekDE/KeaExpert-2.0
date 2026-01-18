@@ -129,6 +129,31 @@ procedure(commonHelp)
 endproc()
 
 ###############################################################################
+# Enable or disable the common parameter checkboxes depending on the
+# 'Use common parameters' checkbox setting
+###############################################################################
+
+procedure(commonParCallback)
+
+   getobj(0)->draw("false")
+   if(getpar(0,203,"text") == "no")
+       for(k = 206 to 271)
+         if(getpar(0,k,"objtype") != "divider")
+            setpar(0,k,"enable","false")
+         endif
+      next(k) 
+   else
+       for(k = 206 to 271)
+         if(getpar(0,k,"objtype") != "divider")
+            setpar(0,k,"enable","true")
+         endif
+      next(k)    
+   endif
+   getobj(0)->draw("true")
+
+endproc()
+
+###############################################################################
 # Copy an item from the std experiments to the user defined menu list
 ###############################################################################
 
@@ -165,81 +190,6 @@ endproc()
 
 
 ###############################################################################
-# Edit a name to appear on the menu bar
-###############################################################################
-
-procedure(editEntry)
-
-   entries = lb->list()
-   entry = lb->text
-   if(entry != null)
-      idx = lb->zindex()
-      (path,name) = scanstr(entry,"%1|%2")
-      name = gettext("Choose new name for menu",name,20)
-      if(name != "cancel")
-         entry = "$path$|$name$"
-         entries[idx] = entry
-         lb->list(entries)
-         lb->color([0,0,128,0])
-      endif
-   else
-      message("Information","Please select the row to be edited.","info")
-   endif
-
-endproc()
-
-###############################################################################
-# Callback for menu file list
-###############################################################################
-
-procedure(lbCallback)
-
-   if(parentCtrl->zindex == 0)
-      return
-   endif
-
-   evt = parentCtrl->event
-   if(evt == "double_click_down")
-      :editEntry()
-   endif()
-
-endproc()
-
-###############################################################################
-# Callbacks for menu list
-###############################################################################
-
-procedure(lbStdCallback)
-
-   if(parentCtrl->zindex == 0)
-      return
-   endif
-
-   evt = parentCtrl->event
-   if(evt == "double_click_down")
-      :copyItem()
-   endif()
-
-endproc()
-
-###############################################################################
-# Load the default preferences
-###############################################################################
-
-procedure(loadDefaults)
-
-   if(query("Warning","This will overwrite the Kea preferences with the default values - continue?") == "yes")
-      cd(prefdir)
-      mkdir("KeaParameters\\Preferences")
-      src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPreferences.par"
-      dst = "$prefdir$\\KeaParameters\\Preferences\\ucsPreferences.par"
-      copyfile(src,dst)
-   endif
-
-endproc()
-
-
-###############################################################################
 # Define an interface to choose which parameters will be 'common' i.e. updated
 # from the common parameter file when loading an experiment into the main interface
 # New nuclei can be added to the list below
@@ -255,8 +205,11 @@ procedure(defineCommonParameterPage)
    x4 = "ww*0.66+8"
    x5 = "ww*0.5"
    x6 = "ww*0.5+8"
+   x7 = "ww*0.33+30"
+   x8 = "ww*0.66+30"
+   wTB = 60
 
-   par = structarray(23)
+   par = structarray(39)
 
    par[0] = struct(ctrl="bt", label="Save",     callback=":savePref", w=42, h=26, x="ww-109", y=5, tooltip="Save changes to this page.", inPanel=0);
 
@@ -265,75 +218,196 @@ procedure(defineCommonParameterPage)
    par[2] = struct(ctrl="cb", label="Use common parameters",       name="useCommonPar", callback=":commonParCallback",  xCB=x6, xST=x5,  y=24);
    par[3] = struct(ctrl="dv",  y=48);
 
-
+# Button
    par[4] = struct(ctrl="bt", label="<=",     callback=":returnToMain", w=30, h=25, x=10, y=5, icon="leftarrow.png", tooltip="Return to main preferences page.", inPanel=0);
-   par[5] = struct(ctrl="cb", label="Repetition time",       name="repTime",         xCB=x1, xST=x2,  y=1*yStep+yOff);
-   par[6] = struct(ctrl="cb", label="Inter-experiment time", name="ieTime",          xCB=x1, xST=x2,  y=2*yStep+yOff);
-   par[7] = struct(ctrl="cb", label="Acquisition delay",     name="acqDelay",        xCB=x4, xST=x3,  y=1*yStep+yOff);
-   par[8] = struct(ctrl="cb", label="Echo time",             name="echoTime",        xCB=x4, xST=x3,  y=2*yStep+yOff);
 
-   cnt = 9
+# Check-boxes
+   par[5] = struct(ctrl="cb", label="Repetition time",       name="cp_repTime",      xCB=x1, xST=x2,  y=1*yStep+yOff);
+   par[6] = struct(ctrl="cb", label="Inter-experiment time", name="cp_ieTime",          xCB=x1, xST=x2,  y=2*yStep+yOff);
+   par[7] = struct(ctrl="cb", label="Acquisition delay",     name="cp_acqDelay",        xCB=x4, xST=x3,  y=1*yStep+yOff);
+   par[8] = struct(ctrl="cb", label="Echo time",             name="cp_echoTime",        xCB=x4, xST=x3,  y=2*yStep+yOff);
+
+# Text-boxes
+   par[9]  = struct(ctrl="tb",  label="",                     name="cpv_repTime",        xTB=x7, xST=x2,   y=1*yStep+yOff-4,  w=wTB, type="float")
+   par[10] = struct(ctrl="tb",  label="",                     name="cpv_ieTime",         xTB=x7, xST=x2,   y=2*yStep+yOff-4,  w=wTB, type="float")
+   par[11] = struct(ctrl="tb",  label="",                     name="cpv_acqDelay",       xTB=x8, xST=x2,   y=1*yStep+yOff-4,  w=wTB, type="float")
+   par[12] = struct(ctrl="tb",  label="",                     name="cpv_echoTime",       xTB=x8, xST=x2,   y=2*yStep+yOff-4,  w=wTB, type="float")
+
+
+   cnt = 13
    cnt2 = 4
+# Divider
+   par[cnt+0] = struct(ctrl="dv",  y=(cnt2-1)*yStep+yOff);
 
-   par[9] = struct(ctrl="dv",  y=(cnt2-1)*yStep+yOff);
-   par[10] = struct(ctrl="cb", label="B1 frequency (ch-1)",    name="b1FreqCh1",          xCB=x1, xST=x2,  y=(cnt2+0)*yStep+yOff);
-   par[11] = struct(ctrl="cb", label="90 amplitude (ch-1)",    name="90AmplitudeCh1",   xCB=x1, xST=x2,  y=(cnt2+1)*yStep+yOff);
-   par[12] = struct(ctrl="cb", label="180 amplitude (ch-1)",   name="180AmplitudeCh1",  xCB=x1, xST=x2,  y=(cnt2+2)*yStep+yOff);
-   par[13] = struct(ctrl="cb", label="Pulse length (ch-1)",    name="pulseLengthCh1",   xCB=x1, xST=x2,  y=(cnt2+3)*yStep+yOff);
+# Check-boxes
+   par[cnt+1] = struct(ctrl="cb", label="B1 frequency (ch-1)",   name="cp_b1FreqCh1",          xCB=x1, xST=x2,  y=(cnt2+0)*yStep+yOff);
+   par[cnt+2] = struct(ctrl="cb", label="90 amplitude (ch-1)",   name="cp_90AmplitudeCh1",     xCB=x1, xST=x2,  y=(cnt2+1)*yStep+yOff);
+   par[cnt+3] = struct(ctrl="cb", label="180 amplitude (ch-1)",  name="cp_180AmplitudeCh1",    xCB=x1, xST=x2,  y=(cnt2+2)*yStep+yOff);
+   par[cnt+4] = struct(ctrl="cb", label="Pulse length (ch-1)",   name="cp_pulseLengthCh1",     xCB=x1, xST=x2,  y=(cnt2+3)*yStep+yOff);
 
-   par[14] = struct(ctrl="cb", label="B1 frequency (ch-2)",    name="b1FreqCh2",          xCB=x4, xST=x3,  y=(cnt2+0)*yStep+yOff);
-   par[15] = struct(ctrl="cb", label="90 amplitude (ch-2)",    name="90AmplitudeCh2",   xCB=x4, xST=x3,  y=(cnt2+1)*yStep+yOff);
-   par[16] = struct(ctrl="cb", label="180 amplitude (ch-2)",   name="180AmplitudeCh2",  xCB=x4, xST=x3,  y=(cnt2+2)*yStep+yOff);
-   par[17] = struct(ctrl="cb", label="Pulse length (ch-2)",    name="pulseLengthCh2",   xCB=x4, xST=x3,  y=(cnt2+3)*yStep+yOff);
+# Text-boxes
+   par[cnt+5] = struct(ctrl="tb",  label="",                     name="cpv_b1FreqCh1",             xTB=x7, xST=x2,   y=(cnt2+0)*yStep+yOff-4,  w=wTB, type="double")
+   par[cnt+6] = struct(ctrl="tb",  label="",                     name="cpv_90AmplitudeCh1",              xTB=x7, xST=x2,   y=(cnt2+1)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+7] = struct(ctrl="tb",  label="",                     name="cpv_180AmplitudeCh1",            xTB=x7, xST=x2,   y=(cnt2+2)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+8] = struct(ctrl="tb",  label="",                     name="cpv_pulseLengthCh1",            xTB=x7, xST=x2,   y=(cnt2+3)*yStep+yOff-4,  w=wTB, type="float")
 
-   par[18] = struct(ctrl="dv",  y=(cnt2+4)*yStep+yOff);
+   cnt = 22
 
-   par[19] = struct(ctrl="cb", label="x-shim",    name="xShim",   xCB=x1, xST=x2,  y=(cnt2+5)*yStep+yOff);
-   par[20] = struct(ctrl="cb", label="y-shim",    name="yShim",   xCB=x1, xST=x2,  y=(cnt2+6)*yStep+yOff);
+# Check-boxes
+   par[cnt+0] = struct(ctrl="cb", label="B1 frequency (ch-2)",   name="cp_b1FreqCh2",          xCB=x4, xST=x3,  y=(cnt2+0)*yStep+yOff);
+   par[cnt+1] = struct(ctrl="cb", label="90 amplitude (ch-2)",   name="cp_90AmplitudeCh2",     xCB=x4, xST=x3,  y=(cnt2+1)*yStep+yOff);
+   par[cnt+2] = struct(ctrl="cb", label="180 amplitude (ch-2)",  name="cp_180AmplitudeCh2",    xCB=x4, xST=x3,  y=(cnt2+2)*yStep+yOff);
+   par[cnt+3] = struct(ctrl="cb", label="Pulse length (ch-2)",   name="cp_pulseLengthCh2",     xCB=x4, xST=x3,  y=(cnt2+3)*yStep+yOff);
 
-   par[21] = struct(ctrl="cb", label="z-shim",    name="zShim",   xCB=x4, xST=x3,  y=(cnt2+5)*yStep+yOff);
-   par[22] = struct(ctrl="cb", label="o-shim",    name="oShim",   xCB=x4, xST=x3,  y=(cnt2+6)*yStep+yOff);
+# Text-boxes
+   par[cnt+4] = struct(ctrl="tb",  label="",                     name="cpv_b1FreqCh2",             xTB=x8, xST=x3,   y=(cnt2+0)*yStep+yOff-4,  w=wTB, type="double")
+   par[cnt+5] = struct(ctrl="tb",  label="",                     name="cpv_90AmplitudeCh2",              xTB=x8, xST=x3,   y=(cnt2+1)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+6] = struct(ctrl="tb",  label="",                     name="cpv_180AmplitudeCh2",            xTB=x8, xST=x3,   y=(cnt2+2)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+7] = struct(ctrl="tb",  label="",                     name="cpv_pulseLengthCh2",            xTB=x8, xST=x3,   y=(cnt2+3)*yStep+yOff-4,  w=wTB, type="float")
+
+   cnt = 30
+# Divider
+   par[cnt+0] = struct(ctrl="dv",  y=(cnt2+4)*yStep+yOff);
+
+# Check-boxes
+   par[cnt+1] = struct(ctrl="cb", label="x-shim",                name="cp_xShim",                xCB=x1, xST=x2,  y=(cnt2+5)*yStep+yOff);
+   par[cnt+2] = struct(ctrl="cb", label="y-shim",                name="cp_yShim",                xCB=x1, xST=x2,  y=(cnt2+6)*yStep+yOff);
+   par[cnt+3] = struct(ctrl="cb", label="z-shim",                name="cp_zShim",                xCB=x4, xST=x3,  y=(cnt2+5)*yStep+yOff);
+   par[cnt+4] = struct(ctrl="cb", label="o-shim",                name="cp_oShim",                xCB=x4, xST=x3,  y=(cnt2+6)*yStep+yOff);
+
+# Text-boxes
+   par[cnt+5] = struct(ctrl="tb",  label="",                     name="cpv_xShim",              xTB=x7, xST=x2,   y=(cnt2+5)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+6] = struct(ctrl="tb",  label="",                     name="cpv_yShim",              xTB=x7, xST=x2,   y=(cnt2+6)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+7] = struct(ctrl="tb",  label="",                     name="cpv_zShim",             xTB=x8, xST=x3,   y=(cnt2+5)*yStep+yOff-4,  w=wTB, type="float")
+   par[cnt+8] = struct(ctrl="tb",  label="",                     name="cpv_oShim",             xTB=x8, xST=x3,   y=(cnt2+6)*yStep+yOff-4,  w=wTB, type="float")
 
    for(k = 0 to size(par)-1)
       info = par[k]
       if(isvar("info->name"))
          if(par[k]->name != "useCommonPar")
-            par[k]->name = "commonPar_" + par[k]->name  
+            if(par[k]->name[0:2] == "cp_")
+               par[k]->name = "commonPar_" + par[k]->name[3:]  
+            elseif(par[k]->name[0:3] == "cpv_")
+               par[k]->name = par[k]->name[4:]  
+            endif
          endif 
       endif
    next(k)
    :makeControls(par, 1)
 
-# Update the entries using the preferences file
+# Update the entries using the preferences file ...
    lst = ucsFiles:loadPref()
    setctrlvalues(0,lst)
+# and the common parameter file
+   lst = ucsFiles:loadCommonPar()
+   setctrlvalues(0,lst)
+# Update the check bixes
    :commonParCallback()
 
    wvCurrentPage = "preferences"
 
 endproc()
 
+
+
 ###############################################################################
-# Callback for the common parameter button
+# Define the receiver calibration and display units
 ###############################################################################
 
-procedure(commonParCallback)
+procedure(defineGeneralPage)
 
-   getobj(0)->draw("false")
-   if(getpar(0,203,"text") == "no")
-       for(k = 206 to 230)
-         if(getpar(0,k,"objtype") == "check box")
-            setpar(0,k,"enable","false")
-         endif
-      next(k) 
-   else
-       for(k = 206 to 230)
-         if(getpar(0,k,"objtype") == "check box")
-            setpar(0,k,"enable","true")
-         endif
-      next(k)    
-   endif
-   getobj(0)->draw("true")
+   n = wvThisWinNr
+   :removeAllControls()
+   seteditwin(n,"fast")
+
+       # Define all controls with basic parameters
+      button(1, 10, 5, 26, 26, "<=",
+         :returnToMain();)
+      statictext(2, "ww*0.5", 10, "center", "General parameters")
+      button(3, "ww-98", 5, 42, 26, "Save",
+         :savePref();)
+      button(4, "ww-52", 5, 42, 26, "Help",
+         pr("\n   Choose the user permissions\n   to limit ability to perform certain functions.\n");)
+      statictext(5, 245, 218, "right", "Allow to update firmware:")
+      statictext(6, 376, 70, "left", "User interface")
+      checkbox(7, 250, 152, "no,yes", "no")
+      checkbox(8, 250, 174, "no,yes", "no")
+      checkbox(9, 250, 196, "no,yes", "no")
+      groupbox(10, "", 10, 40, 325, "wh-50")
+      statictext(11, 42, 70, "left", "Permissions")
+      checkbox(12, 250, 218, "no,yes", "no")
+      statictext(13, 245, 174, "right", "Allow to trash complete data sets:")
+      statictext(14, 245, 152, "right", "Allow to overwrite default parameter files:")
+      statictext(15, 245, 196, "right", "Allow to overwrite spectrometer parameters:")
+      statictext(16, 245, 130, "right", "Show test protocols (restart required):")
+      statictext(17, 245, 108, "right", "Allow script editing:")
+      checkbox(18, 250, 130, "no,yes", "no")
+      checkbox(19, 250, 108, "no,yes", "no")
+      statictext(20, 578, 96, "right", "Windows 7 buttons (restart required):")
+      checkbox(21, 583, 96, "default,win7", "default")
+      statictext(22, 376, 149, "left", "Temperature and lock history")
+      statictext(23, 578, 175, "right", "Record history (restart required):")
+      checkbox(24, 583, 175, "false,true", "false")
+      statictext(25, 376, 208, "left", "Production setting")
+      statictext(26, 578, 234, "right", "Display production tools:")
+      checkbox(27, 583, 234, "false,true", "false")
+      statictext(28, 245, 240, "right", "Allow off-line sequence development:")
+      checkbox(29, 250, 240, "false,true", "false")
+
+      groupbox(30, "", 345, 40, "ww-355", "wh-50")
+
+      statictext(31, 578, 116, "right", "Provide parameter list help (restart required):")
+      checkbox(32, 583, 116, "no,yes", "no")
+
+      statictext(33, 245, 262, "right", "Allow importer editing:")
+      checkbox(34, 250, 262, "no,yes", "no")
+
+      cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
+
+     # Set other control parameters
+      setpar(n,1,"tooltip","Return to main preferences page.","icon","leftarrow.png")
+      setpar(n,2,"fgcolor",[128,0,0])
+      setpar(n,3,"tooltip","Update the menu and save to file.")
+      setpar(n,6,"fgcolor",[0,128,0])
+      setpar(n,7,"valueID","canOverWriteDefaultPar",
+                  "tooltip","Two new items appear in the file menu allowing the default and minimum paramete")
+      setpar(n,8,"valueID","canOverTrashData",
+                  "tooltip","Allow the user to move experimental data to the trash.")
+      setpar(n,9,"valueID","canWriteDSPPar",
+                  "tooltip","Allow the user to update the DSP parameters (MAKE A BACKUP FIRST!).")
+      setpar(n,11,"fgcolor",[0,128,0])
+      setpar(n,12,"valueID","canOverWriteFirmware",
+                  "tooltip","Allow the user to update the system firmware (MAGRITEK STAFF ONLY!).")
+      setpar(n,18,"valueID","showTestProtocols",
+                  "tooltip","Display a few extra protocols in the Monitor menu. Needs a restart.")
+      setpar(n,19,"valueID","canEditScripts",
+                  "tooltip","Allow some scripts to be viewed for editing by holding down the shift key.")
+      setpar(n,21,"valueID","uiSkin")
+      setpar(n,22,"fgcolor",[0,128,0])
+      setpar(n,24,"valueID","recordHistory")
+      setpar(n,25,"fgcolor",[0,128,0])
+      setpar(n,27,"valueID","productionMode")
+      setpar(n,29,"valueID","offLineDevelop",
+                  "tooltip","Allow the user to access a copy of the Kea parameters on file when not connected.")
+
+      setpar(n,32,"valueID","showParameterHelp")
+      setpar(n,34,"valueID","canEditImporter")
+
+   seteditwin(-n,"fast")
+
+# Update the entries using the preferences file
+   lst = ucsFiles:loadPref()
+   setctrlvalues(0,lst)
+
+# Make the new controls visible
+   for(k = 1 to 34)
+      if(isobj(n,k))
+         setpar(n,k,"visible","true")
+      endif
+   next(k)
+
+# Note which page we are on
+   wvCurrentPage = "preferences"
 
 endproc()
 
@@ -570,109 +644,6 @@ endproc()
 
 
 ###############################################################################
-# Define the receiver calibration and display units
-###############################################################################
-
-procedure(defineGeneralPage)
-
-   n = wvThisWinNr
-   :removeAllControls()
-   seteditwin(n,"fast")
-
-       # Define all controls with basic parameters
-      button(1, 10, 5, 26, 26, "<=",
-         :returnToMain();)
-      statictext(2, "ww*0.5", 10, "center", "General parameters")
-      button(3, "ww-98", 5, 42, 26, "Save",
-         :savePref();)
-      button(4, "ww-52", 5, 42, 26, "Help",
-         pr("\n   Choose the user permissions\n   to limit ability to perform certain functions.\n");)
-      statictext(5, 245, 218, "right", "Allow to update firmware:")
-      statictext(6, 376, 70, "left", "User interface")
-      checkbox(7, 250, 152, "no,yes", "no")
-      checkbox(8, 250, 174, "no,yes", "no")
-      checkbox(9, 250, 196, "no,yes", "no")
-      groupbox(10, "", 10, 40, 325, "wh-50")
-      statictext(11, 42, 70, "left", "Permissions")
-      checkbox(12, 250, 218, "no,yes", "no")
-      statictext(13, 245, 174, "right", "Allow to trash complete data sets:")
-      statictext(14, 245, 152, "right", "Allow to overwrite default parameter files:")
-      statictext(15, 245, 196, "right", "Allow to overwrite spectrometer parameters:")
-      statictext(16, 245, 130, "right", "Show test protocols (restart required):")
-      statictext(17, 245, 108, "right", "Allow script editing:")
-      checkbox(18, 250, 130, "no,yes", "no")
-      checkbox(19, 250, 108, "no,yes", "no")
-      statictext(20, 578, 96, "right", "Windows 7 buttons (restart required):")
-      checkbox(21, 583, 96, "default,win7", "default")
-      statictext(22, 376, 149, "left", "Temperature and lock history")
-      statictext(23, 578, 175, "right", "Record history (restart required):")
-      checkbox(24, 583, 175, "false,true", "false")
-      statictext(25, 376, 208, "left", "Production setting")
-      statictext(26, 578, 234, "right", "Display production tools:")
-      checkbox(27, 583, 234, "false,true", "false")
-      statictext(28, 245, 240, "right", "Allow off-line sequence development:")
-      checkbox(29, 250, 240, "false,true", "false")
-
-      groupbox(30, "", 345, 40, "ww-355", "wh-50")
-
-      statictext(31, 578, 116, "right", "Provide parameter list help (restart required):")
-      checkbox(32, 583, 116, "no,yes", "no")
-
-      statictext(33, 245, 262, "right", "Allow importer editing:")
-      checkbox(34, 250, 262, "no,yes", "no")
-
-      cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps.")
-
-     # Set other control parameters
-      setpar(n,1,"tooltip","Return to main preferences page.","icon","leftarrow.png")
-      setpar(n,2,"fgcolor",[128,0,0])
-      setpar(n,3,"tooltip","Update the menu and save to file.")
-      setpar(n,6,"fgcolor",[0,128,0])
-      setpar(n,7,"valueID","canOverWriteDefaultPar",
-                  "tooltip","Two new items appear in the file menu allowing the default and minimum paramete")
-      setpar(n,8,"valueID","canOverTrashData",
-                  "tooltip","Allow the user to move experimental data to the trash.")
-      setpar(n,9,"valueID","canWriteDSPPar",
-                  "tooltip","Allow the user to update the DSP parameters (MAKE A BACKUP FIRST!).")
-      setpar(n,11,"fgcolor",[0,128,0])
-      setpar(n,12,"valueID","canOverWriteFirmware",
-                  "tooltip","Allow the user to update the system firmware (MAGRITEK STAFF ONLY!).")
-      setpar(n,18,"valueID","showTestProtocols",
-                  "tooltip","Display a few extra protocols in the Monitor menu. Needs a restart.")
-      setpar(n,19,"valueID","canEditScripts",
-                  "tooltip","Allow some scripts to be viewed for editing by holding down the shift key.")
-      setpar(n,21,"valueID","uiSkin")
-      setpar(n,22,"fgcolor",[0,128,0])
-      setpar(n,24,"valueID","recordHistory")
-      setpar(n,25,"fgcolor",[0,128,0])
-      setpar(n,27,"valueID","productionMode")
-      setpar(n,29,"valueID","offLineDevelop",
-                  "tooltip","Allow the user to access a copy of the Kea parameters on file when not connected.")
-
-      setpar(n,32,"valueID","showParameterHelp")
-      setpar(n,34,"valueID","canEditImporter")
-
-   seteditwin(-n,"fast")
-
-# Update the entries using the preferences file
-   lst = ucsFiles:loadPref()
-   setctrlvalues(0,lst)
-
-# Make the new controls visible
-   for(k = 1 to 34)
-      if(isobj(n,k))
-         setpar(n,k,"visible","true")
-      endif
-   next(k)
-
-# Note which page we are on
-   wvCurrentPage = "preferences"
-
-endproc()
-
-
-
-###############################################################################
 # Define experiment path options
 ###############################################################################
 
@@ -747,6 +718,31 @@ procedure(dragNDropMenu, path, file, ext, objNr)
 
 endproc()
 
+
+###############################################################################
+# Edit a name to appear on the menu bar
+###############################################################################
+
+procedure(editEntry)
+
+   entries = lb->list()
+   entry = lb->text
+   if(entry != null)
+      idx = lb->zindex()
+      (path,name) = scanstr(entry,"%1|%2")
+      name = gettext("Choose new name for menu",name,20)
+      if(name != "cancel")
+         entry = "$path$|$name$"
+         entries[idx] = entry
+         lb->list(entries)
+         lb->color([0,0,128,0])
+      endif
+   else
+      message("Information","Please select the row to be edited.","info")
+   endif
+
+endproc()
+
 ###############################################################################
 # The close or exit button in the title bar has been selected.
 # Check for unsaved preferences.
@@ -760,6 +756,56 @@ procedure(exitProcedure)
       :checkSearchPathChanges()
    elseif(wvCurrentPage == "preferences")
       :checkPreferenceChanges()
+   endif
+
+endproc()
+
+###############################################################################
+# Callback for menu file list
+###############################################################################
+
+procedure(lbCallback)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      :editEntry()
+   endif()
+
+endproc()
+
+###############################################################################
+# Callbacks for menu list
+###############################################################################
+
+procedure(lbStdCallback)
+
+   if(parentCtrl->zindex == 0)
+      return
+   endif
+
+   evt = parentCtrl->event
+   if(evt == "double_click_down")
+      :copyItem()
+   endif()
+
+endproc()
+
+###############################################################################
+# Load the default preferences
+###############################################################################
+
+procedure(loadDefaults)
+
+   if(query("Warning","This will overwrite the Kea preferences with the default values - continue?") == "yes")
+      cd(prefdir)
+      mkdir("KeaParameters\\Preferences")
+      src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPreferences.par"
+      dst = "$prefdir$\\KeaParameters\\Preferences\\ucsPreferences.par"
+      copyfile(src,dst)
    endif
 
 endproc()
@@ -912,30 +958,6 @@ procedure(makeControls, par, mkPanel)
 endproc()
 
 ###############################################################################
-# Help for the nuclei page
-###############################################################################
-
-procedure(nucleiHelp)
-
-   pr("\n   Define parameters which are used to calculate the frequency of\n   different nuclear-spins. These are used when performing a\n   calibration. Also define the default PPM offsets for each spin type.")
-
-endproc()
-
-
-###############################################################################
-# Remove all the controls from the window
-###############################################################################
-
-procedure(removeAllControls)
-
-   objs = getobj(wvThisWinNr)->ctrllist()
-   for(k = 0 to size(objs)-1)
-      rmobj(wvThisWinNr,objs[k])
-   next(k)
-
-endproc()
-
-###############################################################################
 # Move an item down in the listbox 'lb'
 ###############################################################################
 
@@ -989,6 +1011,30 @@ procedure(moveItemUp)
    else
       message("Information","Please selecrt the row to be moved.","info")
    endif
+
+endproc()
+
+###############################################################################
+# Help for the nuclei page
+###############################################################################
+
+procedure(nucleiHelp)
+
+   pr("\n   Define parameters which are used to calculate the frequency of\n   different nuclear-spins. These are used when performing a\n   calibration. Also define the default PPM offsets for each spin type.")
+
+endproc()
+
+
+###############################################################################
+# Remove all the controls from the window
+###############################################################################
+
+procedure(removeAllControls)
+
+   objs = getobj(wvThisWinNr)->ctrllist()
+   for(k = 0 to size(objs)-1)
+      rmobj(wvThisWinNr,objs[k])
+   next(k)
 
 endproc()
 
@@ -1058,17 +1104,67 @@ procedure(returnToMain)
 
 endproc()
 
+###############################################################################
+# Save the current page of preferences to the preferences file leaving other
+# parameters unchanged. Also update the history list if the save hierarchy has
+# changed. Make sure the file version number is up to date.
+###############################################################################
+
+procedure(savePref)
+
+# Load the current preferences file
+   pref = ucsFiles:loadPref()
+   folderHierarchyOld = getlistvalue(pref,"folderHierarchy")
+# Get the preference parameters for the current page
+   lst = getctrlvalues(0)
+   folderHierarchyNew = getlistvalue(lst,"folderHierarchy")
+# Merge the two keeping the current page parameters
+   pref = mergelists(lst,pref)
+# If this is the common parameter page then update the common parameters as well
+   :updateCommonPar(pref)
+# Save the updated preferences
+   ucsFiles:savePref(pref)
+   print("\n   Preferences saved\n")
+# Make sure these new preferences are available to the rest of the program
+   gData->preferences = struct(pref)
+   assignlist(pref)
+   gData->permissions = mkparstruct(["canOverTrashData","canOverWriteDefaultPar","canOverWriteFirmware",
+                                     "canWriteDSPPar","showTestProtocols","canEditScripts","canEditImporter"])
+   gData->useCommonPar = getlistvalue(pref,"useCommonPar")
+   if(folderHierarchyNew != folderHierarchyOld)
+      gView->loadHistoryList()
+      if(size(gView->history->list) > 1)
+         gView->history->zindex(1)
+      endif
+   endif
+
+   gData->productionMode = productionMode
+   gData->recordHistory = recordHistory
+   gData->offLineDevelop = offLineDevelop
+
+#   if(recordHistory == "true")
+#      gExpt->startPeriodicChecks()
+#   elseif(recordHistory == "false")
+#      gExpt->stopChecking()
+#   endif
+
+endproc()
+
 ##############################################
 # Update the common parameter list by 
-# modifying the common parameter to match
+# modifying the common parameters to match
 # the items selected in the preferences
-# dialog.
+# dialog. If this page is not visible the
+# file will remain unchanged
 ##############################################
 
-procedure(setCommonPar,lst)
+procedure(updateCommonPar,lst)
 
+# Common will specify which parameters are common
+# Common values will have their new values
    common = getsublist(lst,"commonPar_")
    common = rmprefix(common,"commonPar_")
+   commonValues = getsublist(lst,getlistnames(common))
    parList = list(0)
 
 # From this list extract just those parameters which are selected
@@ -1093,7 +1189,9 @@ procedure(setCommonPar,lst)
    if(isfile("$name$Common.par"))  
       cp = load("$name$Common.par")
       cp = rmfromlist(cp,"common")
+   # Update the list of common parameters and their values
       cp = cp + ["common = $parList$"]
+      cp =  mergelists(commonValues,cp)
       save("$name$Common.par",sortlist(cp))
       if(isvar("gData"))
          save("$gData->specID$Common.par",sortlist(cp))
@@ -1107,46 +1205,6 @@ procedure(setCommonPar,lst)
    endif
    cd(dir)
 
-
-endproc()
-
-###############################################################################
-# Save the current page of preferences to the preferences file leaving other
-# parameters unchanged. Also update the history list if the save hierarchy has
-# changed. Make sure the file version number is up to date.
-###############################################################################
-
-procedure(savePref)
-
-   pref = ucsFiles:loadPref()
-   folderHierarchyOld = getlistvalue(pref,"folderHierarchy")
-   lst = getctrlvalues(0)
-   folderHierarchyNew = getlistvalue(lst,"folderHierarchy")
-   pref = mergelists(lst,pref)
-   :setCommonPar(pref)
-   ucsFiles:savePref(pref)
-   print("\n   Preferences saved\n")
-   gData->preferences = struct(pref)
-   assignlist(pref)
-   gData->permissions = mkparstruct(["canOverTrashData","canOverWriteDefaultPar","canOverWriteFirmware",
-                                     "canWriteDSPPar","showTestProtocols","canEditScripts","canEditImporter"])
-   gData->useCommonPar = getlistvalue(pref,"useCommonPar")
-   if(folderHierarchyNew != folderHierarchyOld)
-      gView->loadHistoryList()
-      if(size(gView->history->list) > 1)
-         gView->history->zindex(1)
-      endif
-   endif
-
-   gData->productionMode = productionMode
-   gData->recordHistory = recordHistory
-   gData->offLineDevelop = offLineDevelop
-
-#   if(recordHistory == "true")
-#      gExpt->startPeriodicChecks()
-#   elseif(recordHistory == "false")
-#      gExpt->stopChecking()
-#   endif
 
 endproc()
 
@@ -1283,26 +1341,6 @@ procedure(updateSearchPaths, paths)
 
 endproc()
 
-###############################################################################
-# Display the preferences in an editor
-###############################################################################
-
-procedure(viewPreferences)
-
-   bak = getcwd()
-   mkdir("KeaParameters\\Preferences")
-   cd("$prefdir$\\KeaParameters\\Preferences")
-   file = "ucsPreferences.par" 
-   if(isfile(file))
-      EditorWin()
-      ed(file)
-   else
-      print("\n   Preferences file not found\n")
-   endif
-   cd(bak)   
-
-endproc()
-
 
 ###############################################################################
 # Display the common parameters in an editor
@@ -1325,4 +1363,22 @@ procedure(viewCommon)
 
 endproc()
 
+###############################################################################
+# Display the preferences in an editor
+###############################################################################
 
+procedure(viewPreferences)
+
+   bak = getcwd()
+   mkdir("KeaParameters\\Preferences")
+   cd("$prefdir$\\KeaParameters\\Preferences")
+   file = "ucsPreferences.par" 
+   if(isfile(file))
+      EditorWin()
+      ed(file)
+   else
+      print("\n   Preferences file not found\n")
+   endif
+   cd(bak)   
+
+endproc()
