@@ -753,7 +753,7 @@ procedure(graphXYFit,prg,
 
 # Normalize
    if(normalize == "yes")
-      E0 = E[0]
+      E0 = fit[0]
    else
       E0 = 1
    endif
@@ -838,6 +838,8 @@ procedure(fitAndGraph,prg,
           yErr,xTxt,yTxt,pTitle,pFitTitle,guipar,
           fitColor=null, dataShape=null)
 
+   normalize = "no"
+
 # Add additional parameters if present
    if(isvar("guipar"))
       assignlist(guipar)
@@ -867,11 +869,6 @@ procedure(fitAndGraph,prg,
       pFitTitle = "Fit result = RESULT"
    endif
 
-   normalize = "no"
-   result = ""
-   resultOut = ""
-   r = struct()
-
 # Generate error bar info
    if(yErr != null)
       error  = matrix(N,2)
@@ -889,9 +886,12 @@ procedure(fitAndGraph,prg,
    abscissa = x[0:N-1]
 
  # Get a best fit if possible
+   result = ""
+   resultOut = ""
+   r = struct()
    try
      if(fitType == "T2")
-        (fit,E0,T,E0err,Terr) = t2fit(abscissa,E)
+        (fit,E0,T,E0err,Terr) = t2fit(abscissa,real(E))
         result = errorstr(T,Terr,1)
         resultOut = result
         r->E0 = E0
@@ -899,7 +899,7 @@ procedure(fitAndGraph,prg,
         r->E0err = E0err
         r->T2err = Terr
      elseif(fitType == "T1IR")
-        (fit,E0,T,E0err,Terr) = t1fit(abscissa,E,"ir")
+        (fit,E0,T,E0err,Terr) = t1fit(abscissa,real(E),"ir")
         result = errorstr(T,Terr,1)
         resultOut = result
         r->E0 = E0
@@ -907,7 +907,7 @@ procedure(fitAndGraph,prg,
         r->E0err = E0err
         r->T1err = Terr
      elseif(fitType == "T1VD")
-        (fit,E0,T,E0err,Terr) = t1fit(abscissa,E,"vd")
+        (fit,E0,T,E0err,Terr) = t1fit(abscissa,real(E),"vd")
         result = errorstr(T,Terr,1)
         resultOut = result
         r->E0 = E0
@@ -915,15 +915,16 @@ procedure(fitAndGraph,prg,
         r->E0err = E0err
         r->T1err = Terr
      elseif(fitType == "exp")
-        (fit,E0,T,E0err,Terr) = t2fit(abscissa,E)
+        (fit,E0,T,E0err,Terr) = t2fit(abscissa,real(E))
         result = "(E_(0) = $E0,2.1f$: T = $T,2.1f$)" 
         resultOut = "\n   Single exponential fit:\n\n      E0 = $errorstr(E0,E0err,1)$, T = $errorstr(T,Terr,1)$\n"
         r->E0 = E0
         r->T1 = T
         r->E0err = E0err
         r->Terr = Terr
+        r->fit = fit
      elseif(fitType == "biexp")
-        (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,E)
+        (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,real(E))
         E0 = Ea + Eb
         result = "exp_(1) ($Ea,2.1f$: $Ta,2.1f$),   exp_(2) ($Eb,2.1f$: $Tb,2.1f$)" 
         resultOut = "\n   Bi-exponential fit:\n\n      Exp. 1 : $errorstr(Ea,EaErr,2)$, $errorstr(Ta,TaErr,2)$\n      Exp. 2 : $errorstr(Eb,EbErr,2)$, $errorstr(Tb,TbErr,2)$\n"
@@ -936,7 +937,7 @@ procedure(fitAndGraph,prg,
         r->TaErr = TaErr
         r->TbErr = TbErr
      elseif(fitType == "grad")
-        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,E,0,(lDelta+gradRamp)/1e6,bDelta/1e6,"no")
+        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,real(E),0,(lDelta+gradRamp)/1e6,bDelta/1e6,"no")
         result = errorstr(D,Derr,1)
         resultOut = result
         r->E0 = E0
@@ -944,7 +945,7 @@ procedure(fitAndGraph,prg,
         r->E0Err = E0err
         r->DErr = Derr
      elseif(fitType == "gradlin")
-        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,E,0,(lDelta+gradRamp)/1e3,bDelta/1e3,"no")
+        (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,real(E),0,(lDelta+gradRamp)/1e3,bDelta/1e3,"no")
         result = errorstr(D,Derr,1)
         resultOut = result
         r->E0 = E0
@@ -953,7 +954,7 @@ procedure(fitAndGraph,prg,
         r->DErr = Derr
         ldel = (lDelta+gradRamp)/1e3
         bdel = bDelta/1e3
-        abscissa = (gamma^2*abscissa^2*ldel^2*(bdel-ldel/3))*1e-9;
+        abscissa = (gamma^2*abscissa^2*ldel^2*(bdel-ldel/3))*1e-9
      else
         E0 = E[0]
      endif
@@ -970,8 +971,8 @@ procedure(fitAndGraph,prg,
       fc = caseset(yTxt[0],"lower")
       yTxt = fc + yTxt[1:]
       yTxt = "Normalized $yTxt$"
+      E0 = real(E[0])
    endif
-
 
  # Display raw data and best fit comparison
    prg->draw("false")
@@ -988,14 +989,14 @@ procedure(fitAndGraph,prg,
 
     # Display raw data
       if(yErr != null)
-         prg->plot(abscissa,E/E0,
+         prg->plot(abscissa,y/E0,
                   "ebar_array",error/E0,
                   "ebar_color",dataColor,
                   "tracetype","none",
                   "symbolshape",dataShape,
                   "symbolcolor",dataColor)
       else
-         prg->plot(abscissa,E/E0,
+         prg->plot(abscissa,y/E0,
                   "tracetype","none",
                   "symbolshape",dataShape,
                   "symbolcolor",dataColor)
