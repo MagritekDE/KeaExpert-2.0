@@ -24,10 +24,11 @@ procedure(SpinsolvePreferences)
   
    n = window("Kea-Expert Preferences", -1, -1, 700, 320, "resizable")
    import(getmacroname(),getmacropath(),"window")
-   windowvar(wvThisWinNr,wvCurrentPage,wvExptPathModified)
+   windowvar(wvThisWinNr,wvCurrentPage,wvExptPathModified,wvInitialParameters)
    wvThisWinNr = n
    wvExptPathModified = 0
    wvCurrentPage = "main"
+   wvInitialParameters = null
    :defineMainInterface()
    showwindow(n)
    setwindowpar(n,"exit_procedure",":exitProcedure")
@@ -97,9 +98,7 @@ endproc()
 procedure(checkPreferenceChanges)
 
    newPref = sortlist(getctrlvalues(0))
-   allOldPref = ucsFiles:loadPref()
-   oldPref = sortlist(getsublist(allOldPref,getlistnames(newPref)))
-   if(newPref != oldPref)
+   if(newPref != wvInitialParameters)
       if(query("Warning","Preference information has been changed - save first?") == "yes")
          :savePref()
       endif
@@ -299,11 +298,13 @@ procedure(defineCommonParameterPage)
    lst = ucsFiles:loadPref()
    setctrlvalues(0,lst)
 # and the common parameter file
-   lst = ucsFiles:loadCommonPar()
+   lst = ucsFiles:loadCommonPar("allParameters")
    setctrlvalues(0,lst)
-# Update the check bixes
+# Update the common parameter check-boxes
    :commonParCallback()
-
+# Record the initial parameters
+   wvInitialParameters = sortlist(getctrlvalues(0))
+# Note the current page
    wvCurrentPage = "preferences"
 
 endproc()
@@ -406,6 +407,8 @@ procedure(defineGeneralPage)
       endif
    next(k)
 
+# Record the initial parameters
+   wvInitialParameters = sortlist(getctrlvalues(0))
 # Note which page we are on
    wvCurrentPage = "preferences"
 
@@ -553,6 +556,9 @@ procedure(defineNuclearParameterPage)
    lst = ucsFiles:loadPref()
    setctrlvalues(0,lst)
 
+# Record the initial parameters
+   wvInitialParameters = sortlist(getctrlvalues(0))
+# Note the current page
    wvCurrentPage = "preferences"
 
 endproc()
@@ -635,7 +641,8 @@ procedure(defineRxCalibrationPage)
    setpar(n,23,"enable","false")
    setpar(n,27,"enable","false")
 
-
+# Record the initial parameters
+   wvInitialParameters = sortlist(getctrlvalues(0))
 # Note which page we are on
    wvCurrentPage = "preferences"
 
@@ -703,6 +710,9 @@ procedure(defineSaveExperimentPage)
       endif
    next(k)
 
+# Record the initial parameters
+   wvInitialParameters = sortlist(getctrlvalues(0))
+# Note the current page
    wvCurrentPage = "preferences"
 
 endproc()
@@ -1121,12 +1131,14 @@ procedure(savePref)
 # Merge the two keeping the current page parameters
    pref = mergelists(lst,pref)
 # If this is the common parameter page then update the common parameters as well
-   :updateCommonPar(pref)
+# and remove the common parameters from the preferences list
+   pref = :updateCommonPar(pref)
 # Save the updated preferences
    ucsFiles:savePref(pref)
    print("\n   Preferences saved\n")
 # Make sure these new preferences are available to the rest of the program
    gData->preferences = struct(pref)
+
    assignlist(pref)
    gData->permissions = mkparstruct(["canOverTrashData","canOverWriteDefaultPar","canOverWriteFirmware",
                                      "canWriteDSPPar","showTestProtocols","canEditScripts","canEditImporter"])
@@ -1142,11 +1154,9 @@ procedure(savePref)
    gData->recordHistory = recordHistory
    gData->offLineDevelop = offLineDevelop
 
-#   if(recordHistory == "true")
-#      gExpt->startPeriodicChecks()
-#   elseif(recordHistory == "false")
-#      gExpt->stopChecking()
-#   endif
+# Update the initial parameters now have saved the changes
+   wvInitialParameters = sortlist(getctrlvalues(0))
+
 
 endproc()
 
@@ -1164,10 +1174,12 @@ procedure(updateCommonPar,lst)
 # Common values will have their new values
    common = getsublist(lst,"commonPar_")
    common = rmprefix(common,"commonPar_")
-   commonValues = getsublist(lst,getlistnames(common))
+   commonNames = getlistnames(common)
+   commonValues = getsublist(lst,commonNames)
+
    parList = list(0)
 
-# From this list extract just those parameters which are selected
+# From this list extract just those parameters which are selected (names only)
    for(k = 0 to size(common)-1)
       (name,state) = splitpar(common[k])
       if(state == "yes")
@@ -1205,8 +1217,15 @@ procedure(updateCommonPar,lst)
    endif
    cd(dir)
 
+# Strip out the common parameteres which are not selected
+   for(k = 0 to size(commonNames)-1)
+      idx = getlistindex(lst,commonNames[k])
+      if(idx >= 0)
+         lst = rmfromlist(lst,idx)
+      endif
+   next(k)
 
-endproc()
+endproc(lst)
 
 ###############################################################################
 # Update the user menus and search paths
