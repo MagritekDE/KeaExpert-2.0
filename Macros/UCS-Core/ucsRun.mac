@@ -149,15 +149,16 @@ procedure(autoPhase,data,method,startPhase=null)
    
       pdata0 = nd * exp(i*ph/180*pi)
       r0 = sd(imag(pdata0)) # Range 0
-      v0 = max(real(pdata0))
+      v0 = sum(real(pdata0))
+
       while(dp > 0.01) # Stop when step is 0.01 degrees
    # pr "ph = $ph$ dp = $dp$\n"
          pdata1 = nd * exp(i*(ph-dp)/180*pi)
          pdata2 = nd * exp(i*(ph+dp)/180*pi)
          r1 = sd(imag(pdata1)) # rms 1
          r2 = sd(imag(pdata2)) # rms 2
-         v1 = max(real(pdata1))
-         v2 = max(real(pdata2))
+         v1 = sum(real(pdata1))
+         v2 = sum(real(pdata2))
          if(v0 < 0) # First time data 0 is invalid
             if(v1 > 0 & v2 < 0) # data 1 is only one valid
                if(r1 < minr)
