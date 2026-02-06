@@ -173,9 +173,11 @@ endproc(0)
 
 #################################################################
 # Load the list of common parameters
+# If mode is 'justCommon' (the default) then just return those 
+# parameters labelled as common, otherwise return all parameters
 #################################################################
 
-procedure(loadCommonPar)
+procedure(loadCommonPar, mode="justCommon")
 
    lst = list(0)
    calibrated = 1
@@ -185,23 +187,25 @@ procedure(loadCommonPar)
    cd("KeaParameters\\Common")
    if(isfile("$gData->specID$Common.par"))
       lst = load("$gData->specID$Common.par")
-      assignlist(lst)
-      if(isvar("common") == 0)
-         common = ["b1FreqCh1",  
-                   "b1FreqCh2", 
-                   "pulseLengthCh1",  
-                   "pulseLengthCh2", 
-                   "90AmplitudeCh1",
-                   "90AmplitudeCh2",  
-                   "180AmplitudeCh1",
-                   "180AmplitudeCh2",
-                   "xShim",
-                   "yShim",
-                   "zShim",
-                   "oShim"]
+      if(mode == "justCommon")
+         assignlist(lst)
+         if(isvar("common") == 0)
+            common = ["b1FreqCh1",  
+                      "b1FreqCh2", 
+                      "pulseLengthCh1",  
+                      "pulseLengthCh2", 
+                      "90AmplitudeCh1",
+                      "90AmplitudeCh2",  
+                      "180AmplitudeCh1",
+                      "180AmplitudeCh2",
+                      "xShim",
+                      "yShim",
+                      "zShim",
+                      "oShim"]
+         endif
+         lst = getsublist(lst,common + ["calibrated"])
+         lst = lst + ["common = $common$"]
       endif
-      lst = getsublist(lst,common + ["calibrated"])
-      lst = lst + ["common = $common$"]
    else
       try
          specPar = gData->specParameters
