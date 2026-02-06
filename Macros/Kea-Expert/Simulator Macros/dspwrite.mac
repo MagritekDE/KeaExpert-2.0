@@ -1,0 +1,100 @@
+procedure(dspwrite,memBank,address,vec,port)
+
+   if(memBank == "x")
+      if(address == 0) # Write NMR parameters
+
+         sz = size(vec);
+
+         tx = vec[13]*65536.0d + vec[14]
+         freq = tx/42949672.96d
+         SimulationInfo->b1Freq = freq
+
+         if(SimulationInfo->flatFilter)
+            SimulationInfo->dwellTime = vec[2]/50.0
+         else
+            SimulationInfo->dwellTime = vec[2]/100.0
+         endif
+
+         SimulationInfo->receiverPhase = vec[17]/65535.0*2*pi
+         idx = round(vec[0]/256)*16+round(vec[1]/256)
+         rxAmpGain = 10.0^(:getRxGain(idx)/20.0)
+         gainFIR = 1.50682
+         B_max = 4*log2(2*vec[2])+16.0
+         filterGain = gainFIR*2^(ceil(B_max)-B_max)
+         SimulationInfo->receiverGain = 660/filterGain*rxAmpGain*65/1.25/1000.0
+
+         if(SimulationInfo->name == "1pulse")
+            pulseAmp = vec[SimulationInfo->pulseAmpIndex]
+            pulseLength = (vec[SimulationInfo->pulseLengthIndex]+1.0)/50.0
+            SimulationInfo->pulseIntegral = pulseAmp*pulseLength
+            pulsePhase = vec[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
+            SimulationInfo->pulsePhase = pulsePhase 
+            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
+         elseif(SimulationInfo->name == "monitornoise")
+            pulseAmp = vec[SimulationInfo->pulseAmpIndex]
+            pulseLength = (vec[SimulationInfo->pulseLengthIndex]+1.0)/50.0
+            SimulationInfo->pulseIntegral = pulseAmp*pulseLength
+            pulsePhase = vec[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
+            SimulationInfo->pulsePhase = pulsePhase 
+            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
+         elseif(SimulationInfo->name == "t1ir" | SimulationInfo->name == "t1irsp")
+            pulse90Amp = vec[SimulationInfo->pulse90AmpIndex]
+            pulse90Length = (vec[SimulationInfo->pulse90LengthIndex]+1.0)/50.0
+            SimulationInfo->pulseIntegral = pulse90Amp*pulse90Length
+            pulse90Phase = vec[SimulationInfo->pulse90PhaseIndex]/65536.0*2*pi
+            SimulationInfo->pulsePhase = pulse90Phase 
+            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
+            SimulationInfo->t1Delay = :getLongDelay(vec,SimulationInfo->T1DelayIndex)
+         endif
+      endif
+   endif
+
+   if(memBank == "y" & address == 0x10) # Write filter info
+      sz = size(vec)
+      SimulationInfo->flatFilter = (sz != 1)
+   endif
+
+endproc()
+
+###############################################################
+# Convert a long delay 'w' starting at position index in vec
+# into microseconds
+# Need to check this more carefully against DSP code
+###############################################################
+
+procedure(getLongDelay, vec, index)
+
+   w0 = vec[index]
+   w1 = vec[index+1]
+   w2 = vec[index+2]
+
+   if(w0 == 0)
+      dly = w1*10 + 190
+   else
+      dly = w1*10 + w0*(w2*10+50) + 160
+   endif
+
+endproc(dly/1000)
+
+
+procedure(getRxGain,val)
+
+   rxTable =  [0x00,0x01,0x02,0x03,0x04,0x05,
+               0x15,0x25,0x35,0x45,0x55,0x65,
+               0x75,0x85,0x95,0xA5,0xB5,0xC5,
+               0xD5,0xE5,0xF5,0xF6,0xF7,0xF8,
+               0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF]
+
+   sz = size(rxTable)
+
+   idx=0
+   for(k = 0 to sz-1)
+      if(val == rxTable[k])
+         idx = k
+         exitfor()
+      endif
+   next(k)
+
+   rxGain = idx*3-20
+
+endproc(rxGain)

@@ -1,5 +1,5 @@
 ###########################################################
-# Sequence class for SpinsolveExpert.
+# Sequence class for KeaExpert.
 #
 # This replaces and simplifies parts of the ucsCtrl macro
 #
@@ -64,8 +64,7 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
    wv_pp_name = seqInfo->pp_name
    wv_phase_list = seqInfo->phase_list
 
-# Setup simulator pulse list
- #  self->setUpSimulator(wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list)
+# Check for FX3 spectrometer
    if(gData->procType == "FX3")
       if(nrArgs == 3)
          r = gFX3->initAndExecPP(ppPath, ppName)
@@ -73,6 +72,11 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
          r = gFX3->initAndExecPP(ppPath, ppName, guipar,wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list)
       endif
       return(r)
+   endif
+
+# Setup simulator pulse list
+   if(gData->procType == "Simulator")
+      self->setUpSimulator(wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list)
    endif
 
 # Initialise the repetition time variables (used by ucsRun:checkTiming)
@@ -203,7 +207,7 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
       dspwrite("y",filterAdrs,fc)
    catch
       pr lasterror()
-      message("No connection to Spinsolve","Make sure that the Spinsolve DLL is installed,\rthe Spinsolve is switched on and the\rUSB interface is connected and working.","error")
+      message("No connection to Kea","Make sure that the Kea DLL is installed,\rthe Kea is switched on and the\rUSB interface is connected and working.","error")
       throw("")
    endtry
 
@@ -781,7 +785,7 @@ procedure(getRxParameters,self)
    nrTaps   = size(fc)-6
    fc       = fc[6:nrTaps+5]
 
-# Try and write the filter coefficients to the Spinsolve
+# Try and write the filter coefficients to the Kea
    dspwrite("y",self->filterAdrs,fc,self->usbPort)
 
 # Calculate receiver gain factor due to FPGA filter settings         
@@ -989,7 +993,7 @@ procedure(setUpSimulator,self,rel,var,pp_list,pp_name,phase_list)
       setupps("1pulse",[28,29,30,31])
    elseif(name == "findf0")
       setupps("1pulse",[28,29,30,31])
-   elseif(name == "t1ir" | name == "t1")
+   elseif(name == "t1ir" | name == "t1" | name == "t1-ir-add")
       setupps("t1ir",[28,33,30,35,38,39,30,31])
    elseif(name == "t1irsp")
       setupps("t1ir",[28,33,30,35,38,39,30,31])
