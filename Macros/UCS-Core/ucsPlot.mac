@@ -847,10 +847,8 @@ procedure(fitAndGraph,prg,
 
    if(fitColor == null)
       fitColor = wvFitCurveColor
-      dataColor = wvDataSymbolColor
-   else
-      dataColor = fitColor
    endif
+   dataColor = wvDataSymbolColor
 
    if(dataShape == null)
       dataShape = wvDataSymbolShape
@@ -898,6 +896,7 @@ procedure(fitAndGraph,prg,
         r->T2 = T
         r->E0err = E0err
         r->T2err = Terr
+        r->fit = fit
      elseif(fitType == "T1IR")
         (fit,E0,T,E0err,Terr) = t1fit(abscissa,real(E),"ir")
         result = errorstr(T,Terr,1)
@@ -906,6 +905,7 @@ procedure(fitAndGraph,prg,
         r->T1 = T
         r->E0err = E0err
         r->T1err = Terr
+        r->fit = fit
      elseif(fitType == "T1VD")
         (fit,E0,T,E0err,Terr) = t1fit(abscissa,real(E),"vd")
         result = errorstr(T,Terr,1)
@@ -914,10 +914,11 @@ procedure(fitAndGraph,prg,
         r->T1 = T
         r->E0err = E0err
         r->T1err = Terr
+        r->fit = fit
      elseif(fitType == "exp")
         (fit,E0,T,E0err,Terr) = t2fit(abscissa,real(E))
         result = "(E_(0) = $E0,2.1f$: T = $T,2.1f$)" 
-        resultOut = "\n   Single exponential fit:\n\n      E0 = $errorstr(E0,E0err,1)$, T = $errorstr(T,Terr,1)$\n"
+        resultOut = "\n   Single exponential fit:\n      E0 = $errorstr(E0,E0err,1)$, T = $errorstr(T,Terr,1)$\n"
         r->E0 = E0
         r->T1 = T
         r->E0err = E0err
@@ -927,7 +928,7 @@ procedure(fitAndGraph,prg,
         (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,real(E))
         E0 = Ea + Eb
         result = "exp_(1) ($Ea,2.1f$: $Ta,2.1f$),   exp_(2) ($Eb,2.1f$: $Tb,2.1f$)" 
-        resultOut = "\n   Bi-exponential fit:\n\n      Exp. 1 : $errorstr(Ea,EaErr,2)$, $errorstr(Ta,TaErr,2)$\n      Exp. 2 : $errorstr(Eb,EbErr,2)$, $errorstr(Tb,TbErr,2)$\n"
+        resultOut = "\n   Bi-exponential fit:\n      Exp. 1 : $errorstr(Ea,EaErr,2)$, $errorstr(Ta,TaErr,2)$\n      Exp. 2 : $errorstr(Eb,EbErr,2)$, $errorstr(Tb,TbErr,2)$\n"
         r->Ea = Ea
         r->Eb = Eb
         r->Ta = Ta
@@ -936,6 +937,7 @@ procedure(fitAndGraph,prg,
         r->EbErr = EbErr
         r->TaErr = TaErr
         r->TbErr = TbErr
+        r->fit = fit
      elseif(fitType == "grad")
         (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,real(E),0,(lDelta+gradRamp)/1e6,bDelta/1e6,"no")
         result = errorstr(D,Derr,1)
@@ -944,6 +946,7 @@ procedure(fitAndGraph,prg,
         r->D = D
         r->E0Err = E0err
         r->DErr = Derr
+        r->fit = fit
      elseif(fitType == "gradlin")
         (fit,E0,D,E0err,Derr) = diffit("grad",abscissa,real(E),0,(lDelta+gradRamp)/1e3,bDelta/1e3,"no")
         result = errorstr(D,Derr,1)
@@ -955,6 +958,7 @@ procedure(fitAndGraph,prg,
         ldel = (lDelta+gradRamp)/1e3
         bdel = bDelta/1e3
         abscissa = (gamma^2*abscissa^2*ldel^2*(bdel-ldel/3))*1e-9
+        r->fit = fit
      else
         E0 = E[0]
      endif
