@@ -43,9 +43,8 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 # Check for a USB connection to a Kea and load the spectrometer
 # and common parameters. Save in gData->specParameters and gData->commonPar
    if(uiMode == "normal")
-      uiTitle = SelectKea:backdoor()
+      SelectKea:backdoor()
    elseif(uiMode[0:3] == "view")
-      uiTitle = ""
       r = parse(uiMode,",")
       gData->procType = ""
       gData->specID = r[1]
@@ -62,7 +61,7 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 
 # Make the main user interface
    gPlot->loadPlotPref()
-   n = gView->makeUI(uiTitle)
+   n = gView->makeUI()
 
 # Check if we are running from the pex file rather than Prospa
 # If so make new window 'n' the main window
@@ -90,6 +89,9 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 
 # Make sure we an access class procedures from editor
    :defineClassAssociations()
+
+# Update title
+   gView->checkUSBConnection()
 
 # Close the splash screen
    closewindow(ssw)
