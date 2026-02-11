@@ -18,7 +18,7 @@ procedure(init, self)
 endproc()
 
 ######################################################################
-# Read the SPA number for the spectrometer at port
+# Read the ID number for the spectrometer at port
 ######################################################################
 
 procedure(readSpecID, self, port=5)
@@ -29,7 +29,7 @@ procedure(readSpecID, self, port=5)
       return("")
    endtry
 
-   par = dspread("p",0xD3FF00, 84*3)
+   par = dspread("p",0xD3FC00, 84*3) # Old version D3FF00
 
    for(k = 0 to size(par)-1)
       par[k] = (par[k]&0x0000FF)
@@ -41,7 +41,10 @@ procedure(readSpecID, self, port=5)
       return(name)
    elseif(parVersion == 126)
       name = asciitostr(par[12:27])
-      return("")
+      return(name)
+   elseif(parVersion == 127)
+      name = asciitostr(par[3:18])
+      return(name)
    endif
 
 endproc("")
