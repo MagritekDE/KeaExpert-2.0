@@ -50,7 +50,7 @@ procedure(windowdefinition, internal)
       button(6, 210, 60, 45, 24, "Select",:updateDSPPort())
       button(7, 260, 30, 40, 24, "None",:chooseNothing())
       if(internal)
-         button(8, 260, 60, 40, 24, "Cancel",closedialog())
+         button(8, 260, 60, 40, 24, "Cancel",closedialog(""))
       endif
       groupbox(9, "", 10, 4, 295, 95)
 
@@ -162,9 +162,6 @@ procedure(updateFX3Port)
       gFX3->port = fx3setport()
       gData->procType = "FX3"
       :updateParametersAndTitle("FX3",connected=1)
-      if(isvar("wvSpecType"))
-        # CheckLockAndTemperature:backdoor(1,1)
-      endif
       gData->sseOpen = 0
    catch
       pr lasterror()
@@ -274,12 +271,12 @@ procedure(backdoor)
    for(k = 0 to 9)
       try
          dspread("x",0,1,k)
-        # dspsetport(k)
          cntDSP = cntDSP + 1
          gData->procType = "DSP"
       catch
       endtry
    next(k)
+
 
 # Count connected FX3s
    cntFX3 = fx3count()
@@ -305,8 +302,8 @@ procedure(backdoor)
          fx3open(lastGood)
          gFX3->port = fx3setport()
       endif
-      uiTitle = :updateParametersAndTitle(gData->procType, connected=1)
-      return(uiTitle)
+      :updateParametersAndTitle(gData->procType, connected=1)
+      return()
    endif
 
 # If no spectrometers are available then just load normally
@@ -316,15 +313,15 @@ procedure(backdoor)
       gData->specID = "NoConnection"
       gData->connected = 0
       gData->sseOpen = 0
-      uiTitle = :updateParametersAndTitle(gData->procType, connected=0)
-      return(uiTitle)
+      :updateParametersAndTitle(gData->procType, connected=0)
+      return()
 
    endif
 
 # Otherwise provide a dialog to choose the spectrometer (or no connection))
    SelectKea(internal=0)
 
-endproc("")
+endproc()
 
 #######################################################
 # Read the spectrometer parameter list and common
@@ -365,5 +362,5 @@ procedure(updateParametersAndTitle, procType, connected)
       setwindowpar(gView->wn,"title", uiTitle)
    endif
 
-endproc(uiTitle)
+endproc()
 
