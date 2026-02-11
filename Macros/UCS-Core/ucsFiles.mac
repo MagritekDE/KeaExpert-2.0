@@ -982,6 +982,38 @@ procedure(saveParameters, forceSave)
 endproc()
 
 ##############################################################
+# Save the string to the notes file
+##############################################################
+
+procedure(saveToNotes, str, guipar)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+   if(not(isvar("saveData")))
+      saveData = "true"
+   endif
+
+  if(saveData == "true")
+
+   # Move to data output folder
+      bak = getcwd()
+      cd(dataDirectory) 
+      mkdir(expName)
+      cd(expName)
+
+   # Make/move into a possible numbered subdirectory
+      :handleSubFolders(guipar)
+
+   # Save the text
+      save("Experiment-Notes.txt",str)
+
+   endif
+
+endproc()
+
+
+##############################################################
 # Save the plot to "$name$.pt1"
 ##############################################################
 
