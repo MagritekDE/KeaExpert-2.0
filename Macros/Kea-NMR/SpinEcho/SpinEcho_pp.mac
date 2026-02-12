@@ -20,7 +20,7 @@ procedure(pulse_program,dir,mode,pars)
                 "180AmplitudeCh1", "180 amplitude (dB)",    "tb",  "pulseamp";
                 "pulseLengthCh1",  "Pulse length (us)",     "tb",  "float,[1,500]";
                 "echoTime",        "Echotime (us)",         "tb",  "sdelay";
-                "echoShift",       "Echo shift (us)",       "tb",  "float,[-20,20]";
+                "acqDelay",        "Acqusition delay (us)", "tb",  "float,[1,20000]";
                 "repTime",         "Repetition time (ms)",  "tb",  "float,[20,1e8]"]
 
    groups = ["Pulse_sequence","Acquisition","Processing_Std","File_Settings"]
@@ -34,7 +34,7 @@ procedure(pulse_program,dir,mode,pars)
                     "a180           = 180AmplitudeCh1",
                     "dRF            = pulseLengthCh1",
                     "d90_180        = echoTime/2-dRF/2-pgo-2",
-                    "d180_acq       = 100", #echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
+                    "d180_acq       = acqDelay",
                     "dAcq           = echoTime-dRF-pgo-d180_acq-2",
                     "nPnts          = nrPnts",
                     "totPnts        = nrPnts",
@@ -54,6 +54,7 @@ procedure(pulse_program,dir,mode,pars)
    pulse(mode,a90,p1,dRF)        # 90 RF pulse
    delay(d90_180)                # 90 - 180 delay
    pulse(mode,a180,p2,dRF)       # 180 RF pulse
+
    delay(d180_acq)               # 180 - acq delay
    acquire("append",nPnts)       # Acquire echo and wait
    
