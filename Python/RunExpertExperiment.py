@@ -1,5 +1,9 @@
-# Demonstrates how to start SpinsolveExpert and then run different experiments or commands
-# via Windows message passing. Tested using Python 3.8 with Anaconda
+# Demonstrates how to start KeaExpert and then run different experiments or commands
+# via Windows message passing. Tested usinng a Python environment installing
+# packages: matplotlib, numpy and pywin32
+# Note that KeaExpert must be able to run the desired experiments with just
+# the default and common parameters! see makePyEnv.bat
+# Tested with Python 3.12.3
 import win32con, win32api, win32gui, win32ui
 import ctypes, ctypes.wintypes
 import subprocess,time
