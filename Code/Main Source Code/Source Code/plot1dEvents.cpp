@@ -436,7 +436,7 @@ LRESULT CALLBACK PlotEventsProc(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPa
 
      // If the plot region is not new then ...
      // Select a rectangle if in SELECT_RECT mode or the control key is pressed
-         if((pp->mouseMode == SELECT_RECT) | (wParam & MK_CONTROL))
+         if((pp->mouseMode == SELECT_RECT) || (wParam & MK_CONTROL))
          {
              MouseMode curMode = pp->mouseMode;
              pp->mouseMode = SELECT_RECT;
