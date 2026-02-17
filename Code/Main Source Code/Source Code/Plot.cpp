@@ -507,9 +507,9 @@ short Plot::SelectRegion(HWND hWnd, short xs0, short ys0)
 
                gScrollWheelEvent = false;
                scrnSelectRect.left    = xs0;
-               scrnSelectRect.top     = ys0;
+					scrnSelectRect.top     = ys0;
                scrnSelectRect.right   = xs1;
-               scrnSelectRect.bottom  = ys1;
+					scrnSelectRect.bottom  = ys1;
                InvalidateRect(hWnd,0,false);
                UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
 			   }
@@ -529,9 +529,9 @@ short Plot::SelectRegion(HWND hWnd, short xs0, short ys0)
 
 // Record screen coordinates of rectangle (for later removal)
    scrnSelectRect.left    = xs0;
-   scrnSelectRect.top     = ys0;
+	scrnSelectRect.top     = ys0;
    scrnSelectRect.right   = xs1;
-   scrnSelectRect.bottom  = ys1;
+	scrnSelectRect.bottom  = ys1;
 
 // Send message to GUI
 	if(this == Plot2D::curPlot())
@@ -541,6 +541,123 @@ short Plot::SelectRegion(HWND hWnd, short xs0, short ys0)
 
    return(OK);
 }
+
+
+/*****************************************************************************************
+* Select a horizontal region by clicking and dragging the mouse
+****************************************************************************************/
+
+short Plot::SelectHorizOrVertRegion(HWND hWnd, short xs0, short ys0, bool horizontal, short &start, short &end)
+{
+	MSG msg;
+	short xs1, ys1;
+	long xmin, xmax, ymin, ymax;
+	char str[MAX_STR];
+	extern bool gScrollWheelEvent;
+
+	// Get region limits
+	xmin = dimensions.left();
+	ymin = dimensions.top();
+	xmax = dimensions.left() + dimensions.width();
+	ymax = dimensions.top() + dimensions.height();
+
+	// Check for valid starting point inside plot region
+	if (xs0 < xmin || xs0 > xmax || ys0 < ymin || ys0 > ymax)
+		return(ABORT);
+
+	gScrollWheelEvent = false;
+
+	// Initalise begin and end coordinates
+	xs1 = xs0;
+	ys1 = ys0;
+
+	// Force window to capture mouse events
+	SetCapture(hWnd);
+	rectSelected = true;
+
+	// Track the cursor as the region is selected with the mouse             	
+	while (true)
+	{
+		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+		{
+			if (msg.hwnd == hWnd)
+			{
+				if (msg.message == WM_LBUTTONUP ||  // Region has been selected
+					msg.message == WM_LBUTTONDOWN)  // Very unlikely case - if pop-up window has interrupted process
+				{
+					break;	// Exit while loop
+				}
+
+				else if (msg.message == WM_MOUSEMOVE && msg.hwnd == hWnd) // Mouse is moving so track
+				{
+					if ((msg.wParam & MK_LBUTTON) == 0) // If left button up is somehow missed.
+						break;
+
+					xs1 = LOWORD(msg.lParam);  // Get cursor position
+					ys1 = HIWORD(msg.lParam);
+
+					if (xs1 < xmin) xs1 = xmin; // Check for out of bounds cursor location
+					if (xs1 > xmax) xs1 = xmax; // and limit to plot border.
+					if (ys1 < ymin) ys1 = ymin;
+					if (ys1 > ymax) ys1 = ymax;
+
+					gScrollWheelEvent = false;
+					if (horizontal)
+					{
+						scrnSelectRect.left = xs0;
+						scrnSelectRect.top = ymin;
+						scrnSelectRect.right = xs1;
+						scrnSelectRect.bottom = ymax;
+					}
+					else
+					{
+						scrnSelectRect.left = xmin;
+						scrnSelectRect.top =  ys0;
+						scrnSelectRect.right = xmax;
+						scrnSelectRect.bottom = ys1;
+					}
+
+					InvalidateRect(hWnd, 0, false);
+					UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+				}
+			}
+		}
+	}
+
+	// Release mouse from window
+	ReleaseCapture();
+
+	// Ignore an empty rectangle
+	if ((horizontal && (xs0 == xs1)) || 
+		(!horizontal && (ys0 == ys1)))
+	{
+		ResetSelectionRectangle();
+		return(OK);
+	}
+
+	// Record screen coordinates of rectangle (for later removal)
+	if (horizontal)
+	{
+		scrnSelectRect.left = xs0;
+		scrnSelectRect.top = ymin;
+		scrnSelectRect.right = xs1;
+		scrnSelectRect.bottom = ymax;
+		start = xs0;
+		end = xs1;
+	}
+	else
+	{
+		scrnSelectRect.left = xmin;
+		scrnSelectRect.top = ys0;
+		scrnSelectRect.right = xmax;
+		scrnSelectRect.bottom = ys1;
+		start = ys0;
+		end = ys1;
+	}
+
+	return(OK);
+}
+
 
 /*****************************************************************************************
 * Select a rectangular region in a plot. Results are returned in screen

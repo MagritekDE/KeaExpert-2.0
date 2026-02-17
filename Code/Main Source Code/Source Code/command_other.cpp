@@ -229,6 +229,8 @@ extern int DisplayProcInfo(Interface* itfc, char args[]);
 extern int GetArgument(Interface* itfc, char args[]);
 extern int FindProspaWindows(Interface* itfc, char args[]);
 extern int DefinePlotCallback(Interface* itfc, char args[]);
+extern int Get1DXRange(Interface* itfc, char args[]);
+extern int Get1DYRange(Interface* itfc, char args[]);
 
 int CopyToClipBoard(Interface *itfc, char args[]);
 
@@ -478,7 +480,9 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("getselection",       GetTextSelection,        GUI_CMD,                              "STR text = getselection()");
    prospaCommandRegistry->add("gettime",            GetTimeOfDay,            TIME_CMD,                             "STR time = gettime([STR format])");
    prospaCommandRegistry->add("getwindowpar",       GetWindowParameter,      GUI_CMD,                              "VARIANT parameter_value = getwindowpar(INT window_nr, STR parameter_name)");
-   prospaCommandRegistry->add("getx",               Get1DCoordinate,         GUI_CMD | ONED_CMD,                   "FLOAT x = getx([\"value\"]) or INT x = getx(\"index\" or (INT idx, FLOAT xpos) = getx(\"both\")");
+   prospaCommandRegistry->add("getx",               Get1DCoordinate,         GUI_CMD | ONED_CMD,                   "FLOAT x = getx([\"value\"]) or INT x = getx(\"index\") or (INT idx, FLOAT xpos) = getx(\"both\")");
+   prospaCommandRegistry->add("getxrange",          Get1DXRange,             GUI_CMD | ONED_CMD,                   "(FLOAT xv1, xv2) = getxrange([\"value\"]) or (INT xi1, xi2]) = getxrange(\"index\") or (FLOAT xv1, xv2, INT xi1, xi2]) = getxrange(\"both\")");
+   prospaCommandRegistry->add("getyrange",          Get1DYRange,             GUI_CMD | ONED_CMD,                   "(FLOAT y1, FLOAT y2) = getyrange()"); 
    prospaCommandRegistry->add("getxy",              Get2DCoordinate,         GUI_CMD | TWOD_CMD,                   "(INT x, INT y) = getxy(STR \"vert/horiz/cross\", STR \"index/value\")");
    prospaCommandRegistry->add("grid",               ModifyGrid,              GUI_CMD | TWOD_CMD,                   "grid(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("gridctrl",           MakeGridCtrl,            GUI_CMD,                              "OBJ name = gridctrl(INT control_nr, INT x, INT y, INT width, INT height, INT cols, INT rows)");

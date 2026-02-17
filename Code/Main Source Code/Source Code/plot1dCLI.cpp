@@ -1079,9 +1079,9 @@ int Get1DCoordinate(Interface *itfc, char args[])
        
 // Get some variables defined
 	PlotDimensions dim (cur1DPlot->GetTop(),
-		cur1DPlot->GetLeft(), 
-		cur1DPlot->GetWidth(),
-		cur1DPlot->GetHeight());
+	cur1DPlot->GetLeft(), 
+	cur1DPlot->GetWidth(),
+	cur1DPlot->GetHeight());
    
 	xmin = dim.left();
 	ymin = dim.top();
@@ -1236,6 +1236,390 @@ int Get1DCoordinate(Interface *itfc, char args[])
       itfc->retVar[2].MakeAndSetFloat(cur1DPlot->pointSelection.xData); 
       itfc->nrRetValues = 2;
    }
+
+   return(OK);
+}
+
+
+/**********************************************************************************************************
+* Allow the user to select a 1D x range. Drag a coloured rectangle over the region.
+* Returns the x coordinates.
+*
+* Syntax  (x1,x2) = getxrange("index"/"value"/"both")
+* *
+* The default argument is value
+***********************************************************************************************************/
+
+int Get1DXRange(Interface* itfc, char args[])
+{
+   MSG msg;
+   short x1, y1;
+   long xmin, xmax, ymin, ymax;
+   bool drawing = false;
+   CText mode = "value";
+   short r;
+   HCURSOR outofboundsCursor;
+   HCURSOR trackingCursor;
+
+   extern bool gScrollWheelEvent;
+
+   Plot1D* cur1DPlot = Plot1D::curPlot();
+
+   // Don't bother if there is no 1D plot   
+   if (!cur1DPlot)
+      return(0);
+
+   // Don't bother if there is no trace
+   if (!(Plot1D::curPlot()->curTrace()))
+      return(0);
+
+   // See if user wants to use index mode
+   if ((r = ArgScan(itfc, args, 0, "mode", "e", "t", &mode)) < 0)
+      return(r);
+
+   if (r == 1 && (mode != "index" && mode != "value" && mode != "both"))
+   {
+      ErrorMessage("invalid mode");
+      return(ERR);
+   }
+
+   // Set cursor to steer user toward 1D plot
+   outofboundsCursor = OneDCursor;
+   trackingCursor = LoadCursor(NULL, IDC_ARROW);
+   SetCursor(outofboundsCursor);
+
+   // Get some variables defined
+   PlotDimensions dim(cur1DPlot->GetTop(),
+   cur1DPlot->GetLeft(),
+   cur1DPlot->GetWidth(),
+   cur1DPlot->GetHeight());
+
+   xmin = dim.left();
+   ymin = dim.top();
+   xmax = xmin + dim.width();
+   ymax = ymin + dim.height();
+
+   HWND hWnd = cur1DPlot->win;
+
+   gBlockWaitCursor = true;
+   gScrollWheelEvent = false;
+
+   // Make sure the event queue is processed before capturing the cursor
+   // This ensures the button which initiated this call is deactivated
+   // This loop is exited after we have left the button and repainted it
+   if (itfc->obj && itfc->obj->type == BUTTON)
+   {
+      int state = 0;
+      bool hasLeft = false;
+
+      if (itfc->obj->hWnd)
+      {
+         state = SendMessage(itfc->obj->hWnd, BM_GETSTATE, 0, 0);
+         // TextMessage("Button nr = % d\n", itfc->obj->nr());
+      }
+
+      PushButtonInfo* info = (PushButtonInfo*)itfc->obj->data;
+      if (info->hovering || (state & BST_HOT))
+      {
+         while (true)
+         {
+            if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+            {
+               if ((msg.message == WM_MOUSELEAVE && itfc->obj->hWnd))
+               {
+                  InvalidateRect(itfc->obj->hWnd, 0, true);
+                  hasLeft = true;
+               }
+               // In case the leave event was missed
+               if (msg.message == WM_MOUSEMOVE && msg.hwnd != itfc->obj->hWnd)
+               {
+                  SendMessage(itfc->obj->hWnd, WM_MOUSELEAVE, NULL, NULL);
+               }
+               // Try and prevent events going to other buttons - not always working though??
+               if (msg.hwnd != itfc->obj->hWnd)
+               {
+                  TranslateMessage(&msg);
+                  DispatchMessage(&msg);
+               }
+
+               if (hasLeft && msg.message == WM_PAINT)
+                  break;
+            }
+         }
+      }
+   }
+
+   // Force plot window to capture mouse events
+   SetCapture(hWnd);
+
+   // Draw cursor until user presses left mouse button
+   bool button_pressed = false;
+   while (true)
+   {
+      if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+      {
+         if (msg.hwnd == hWnd)
+         {
+            if (msg.message == WM_MOUSEMOVE && msg.wParam == 0) // Track movement
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+
+               // Check for out of bounds mouse movement			   
+               if (x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+                  SetCursor(outofboundsCursor);
+               else
+                  SetCursor(trackingCursor);
+
+               if (x1 <= xmin) x1 = xmin + 1;
+               if (x1 >= xmax) x1 = xmax - 1;
+               if (y1 <= ymin) y1 = ymin + 1;
+               if (y1 >= ymax) y1 = ymax - 1;
+
+               cur1DPlot->pointSelection.xScrn = x1;
+
+               InvalidateRect(hWnd, 0, false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+            }
+
+            else if (msg.message == WM_LBUTTONDOWN && !button_pressed) // Record final coordinates and amplitude
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+
+               // Check for out of bounds mouse movement			   
+               if (x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+               {
+                  MessageBeep(MB_OK);
+                  continue;
+               }
+
+               cur1DPlot->pointSelection.xScrn = x1;
+
+               InvalidateRect(hWnd, 0, false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+
+               button_pressed = true;
+
+               break;
+            }
+         }
+      }
+   }
+   gBlockWaitCursor = false;
+
+   SetCursor(VertDivCursor);
+   ReleaseCapture();
+
+   cur1DPlot->pointSelection.xScrn = -1;
+
+   short xa,xb;
+   Plot1D::curPlot()->SelectHorizOrVertRegion(hWnd, x1, y1, true, xa, xb);
+
+   SetCursor(LoadCursor(NULL, IDC_ARROW));
+
+// Update the display to remove the cursor
+   InvalidateRect(hWnd, 0, false);
+   UpdateWindow(hWnd);
+
+// Return the values
+   if (mode == "index")
+   {
+      itfc->retVar[1].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToIndex(xa));
+      itfc->retVar[2].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToIndex(xb));
+      itfc->nrRetValues = 2;
+   }
+   else if (mode == "value")
+   {
+      itfc->retVar[1].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToData(xa));
+      itfc->retVar[2].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToData(xb));
+      itfc->nrRetValues = 2;
+   }
+   else
+   {
+      itfc->retVar[1].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToIndex(xa));
+      itfc->retVar[2].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToIndex(xb));
+      itfc->retVar[3].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToData(xa));
+      itfc->retVar[4].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->xAxis()->scrnToData(xb));
+      itfc->nrRetValues = 4;
+   }
+
+   return(OK);
+}
+
+/**********************************************************************************************************
+* Allow the user to select a 1D y range. Drag a coloured rectangle over the region.
+* Returns the y coordinates.
+*
+* Syntax  (y1,y2) = getyrange()
+* 
+***********************************************************************************************************/
+
+int Get1DYRange(Interface* itfc, char args[])
+{
+   MSG msg;
+   short x1, y1;
+   long xmin, xmax, ymin, ymax;
+   bool drawing = false;
+   short r;
+   HCURSOR outofboundsCursor;
+   HCURSOR trackingCursor;
+
+   extern bool gScrollWheelEvent;
+
+   Plot1D* cur1DPlot = Plot1D::curPlot();
+
+   // Don't bother if there is no 1D plot   
+   if (!cur1DPlot)
+      return(0);
+
+   // Don't bother if there is no trace
+   if (!(Plot1D::curPlot()->curTrace()))
+      return(0);
+
+   // Set cursor to steer user toward 1D plot
+   outofboundsCursor = OneDCursor;
+   trackingCursor = LoadCursor(NULL, IDC_ARROW);
+   SetCursor(outofboundsCursor);
+
+   // Get some variables defined
+   PlotDimensions dim(cur1DPlot->GetTop(),
+   cur1DPlot->GetLeft(),
+   cur1DPlot->GetWidth(),
+   cur1DPlot->GetHeight());
+
+   xmin = dim.left();
+   ymin = dim.top();
+   xmax = xmin + dim.width();
+   ymax = ymin + dim.height();
+
+   HWND hWnd = cur1DPlot->win;
+
+   gBlockWaitCursor = true;
+   gScrollWheelEvent = false;
+
+   // Make sure the event queue is processed before capturing the cursor
+   // This ensures the button which initiated this call is deactivated
+   // This loop is exited after we have left the button and repainted it
+   if (itfc->obj && itfc->obj->type == BUTTON)
+   {
+      int state = 0;
+      bool hasLeft = false;
+
+      if (itfc->obj->hWnd)
+      {
+         state = SendMessage(itfc->obj->hWnd, BM_GETSTATE, 0, 0);
+         // TextMessage("Button nr = % d\n", itfc->obj->nr());
+      }
+
+      PushButtonInfo* info = (PushButtonInfo*)itfc->obj->data;
+      if (info->hovering || (state & BST_HOT))
+      {
+         while (true)
+         {
+            if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+            {
+               if ((msg.message == WM_MOUSELEAVE && itfc->obj->hWnd))
+               {
+                  InvalidateRect(itfc->obj->hWnd, 0, true);
+                  hasLeft = true;
+               }
+               // In case the leave event was missed
+               if (msg.message == WM_MOUSEMOVE && msg.hwnd != itfc->obj->hWnd)
+               {
+                  SendMessage(itfc->obj->hWnd, WM_MOUSELEAVE, NULL, NULL);
+               }
+               // Try and prevent events going to other buttons - not always working though??
+               if (msg.hwnd != itfc->obj->hWnd)
+               {
+                  TranslateMessage(&msg);
+                  DispatchMessage(&msg);
+               }
+
+               if (hasLeft && msg.message == WM_PAINT)
+                  break;
+            }
+         }
+      }
+   }
+
+   // Force plot window to capture mouse events
+   SetCapture(hWnd);
+
+   // Draw cursor until user presses left mouse button
+   bool button_pressed = false;
+   while (true)
+   {
+      if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+      {
+         if (msg.hwnd == hWnd)
+         {
+            if (msg.message == WM_MOUSEMOVE && msg.wParam == 0) // Track movement
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+
+               // Check for out of bounds mouse movement			   
+               if (x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+                  SetCursor(outofboundsCursor);
+               else
+                  SetCursor(trackingCursor);
+
+               if (x1 <= xmin) x1 = xmin + 1;
+               if (x1 >= xmax) x1 = xmax - 1;
+               if (y1 <= ymin) y1 = ymin + 1;
+               if (y1 >= ymax) y1 = ymax - 1;
+
+               cur1DPlot->pointSelection.yScrn = y1;
+
+               InvalidateRect(hWnd, 0, false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+            }
+
+            else if (msg.message == WM_LBUTTONDOWN && !button_pressed) // Record final coordinates and amplitude
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+
+               // Check for out of bounds mouse movement			   
+               if (x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+               {
+                  MessageBeep(MB_OK);
+                  continue;
+               }
+
+               cur1DPlot->pointSelection.yScrn = y1;
+
+               InvalidateRect(hWnd, 0, false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+
+               button_pressed = true;
+
+               break;
+            }
+         }
+      }
+   }
+   gBlockWaitCursor = false;
+
+   SetCursor(VertDivCursor);
+   ReleaseCapture();
+
+   cur1DPlot->pointSelection.xScrn = -1;
+
+   short ya, yb;
+   Plot1D::curPlot()->SelectHorizOrVertRegion(hWnd, x1, y1, false, ya, yb);
+
+   SetCursor(LoadCursor(NULL, IDC_ARROW));
+
+   // Update the display to remove the cursor
+   InvalidateRect(hWnd, 0, false);
+   UpdateWindow(hWnd);
+
+   // Return the values
+   itfc->retVar[1].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->yAxis()->scrnToData(ya));
+   itfc->retVar[2].MakeAndSetFloat(Plot1D::curPlot()->curTrace()->yAxis()->scrnToData(yb));
+   itfc->nrRetValues = 2;
 
    return(OK);
 }

@@ -155,6 +155,7 @@ public:
 	
 	void  ResetSelectionRectangle(void);
 	virtual short SelectRegion(HWND, short, short);
+	virtual short SelectHorizOrVertRegion(HWND, short, short, bool, short&, short&);
    virtual short GetDataAtCursor(HWND hWnd, short xs0, short ys0);
 	virtual void HideSelectionRectangle(HDC);
 	virtual short ZoomRegion(void);
