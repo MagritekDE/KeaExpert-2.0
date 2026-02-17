@@ -1,5 +1,9 @@
-# Demonstrates how to start SpinsolveExpert and then run different experiments or commands
-# via Windows message passing. Tested using Python 3.8 with Anaconda
+# Demonstrates how to start KeaExpert and then run different experiments or commands
+# via Windows message passing. Tested usinng a Python environment installing
+# packages: matplotlib, numpy and pywin32
+# Note that KeaExpert must be able to run the desired experiments with just
+# the default and common parameters! see makePyEnv.bat
+# Tested with Python 3.12.3
 import win32con, win32api, win32gui, win32ui
 import ctypes, ctypes.wintypes
 import subprocess,time
@@ -95,17 +99,18 @@ def PlotData(fig,row,col,idx,x,y,zoom,title):
     ax = fig.add_subplot(row,col,idx)
     ax.plot(x, y)
     plt.title(title)
-    plt.xlim(zoom[0],zoom[1])
+    if(zoom != None):
+        plt.xlim(zoom[0],zoom[1])
     fig.canvas.draw()
     fig.show()
     plt.pause(0.05)
 
-# Open SpinsolveExpert - needs V2.0 or later
-# Prospa executable and SpinsolveExpert macro location - change as required
-prospa = 'C:\\Users\\Craig\\Projects\\Expert 2.0 DSP-FX3 - V143\\prospa.exe'
-startMacro = 'C:\\Users\\Craig\\Projects\\Expert 2.0 DSP-FX3 - V143\\Macros\\Spinsolve-Expert\\SpinsolveExpertInterface.pex'
-# Start Prospa ('false' for hidden 'true' for visible). Give it time to load
-subprocess.Popen([prospa, startMacro,'"false"'])
+# Open KeaExpert - needs V2.0 or later
+# Prospa executable and KeaExpert macro location - change as required
+prospa = 'C:\\Users\\Craig\\Projects\\Expert-Kea  2.0 DSP-FX3 - V143 MASTER\\prospa.exe'
+startMacro = 'C:\\Users\\Craig\\Projects\\Expert-Kea  2.0 DSP-FX3 - V143 MASTER\\Macros\\Kea-Expert\\KeaExpertInterface.pex'
+# Start Prospa ('hidden' for hidden 'normal' for visible). Give it time to load
+subprocess.Popen([prospa, startMacro,'"normal"'])
 time.sleep(4)
 # Find the Prospa window
 prospaWin = win32gui.FindWindowEx(0, 0, 'MAIN_PROSPAWIN', None)
@@ -115,36 +120,27 @@ com = Comms(prospaWin)
 
 print("Experiments started\n")
 # Load the first experiment in to the interface
-com.RunProspaMacro(b'Proton(["nrScans = 1"])')
+com.RunProspaMacro(b'CPMGAdd(["nrScans = 64","echoTime=150","nrPnts=64"])')
 # Change the current file comment
-com.RunProspaMacro(b'gView->sampleNameCtrl->text("Propylbenzoate")')
+com.RunProspaMacro(b'gView->sampleNameCtrl->text("Test")')
 # Run the first experiment
 com.RunProspaMacro(b'gExpt->runExperiment()')
 #Get data location
 dir = com.returnMessage
 os.chdir(dir)
 # Load the data
-(xa, ya) = LoadFile('data.1d')
-fig = plt.figure(1)
-# Perform the Fourier transform
-delT = (xa[1]-xa[0])/1000
-sz = np.size(xa)
-faxis = np.linspace(-0.5/delT,0.5/delT,sz)
-spectrum = np.fft.fftshift(np.fft.fft(ya))
+(xa, ya) = LoadFile('rawCPMGAdd.1d')
 # Plot the result
-PlotData(fig,2,1,1,faxis,spectrum,[-1000,1000],'Proton FID for "Propylbenzoate"')
+fig = plt.figure(1)
+PlotData(fig,2,1,1,xa,ya,None,'CPMGAdd')
 
 # Load and run the second experiment
-com.RunProspaMacro(b'Carbon(["nrScans = 1"])')
+com.RunProspaMacro(b'CPMGFast(["nrScans = 128","echoTime=100","nrPnts=4","dwellTime=0.5","nrEchoes=300","fitMode=\\"realTime\\"", "fitType=\\"exp\\""])')
 com.RunProspaMacro(b'gExpt->runExperiment()')
 dir = com.returnMessage
 os.chdir(dir)
-(xa, ya) = LoadFile('data.1d')
-delT = (xa[1]-xa[0])/1000
-sz = np.size(xa)
-faxis = np.linspace(-0.5/delT,0.5/delT,sz)
-spectrum = np.fft.fftshift(np.fft.fft(ya))
-PlotData(fig,2,1,2,faxis,spectrum,[-1000,1000],'Carbon FID for "Propylbenzoate"')
+(xa, ya) = LoadFile('rawCPMG.1d')
+PlotData(fig,2,1,2,xa,ya,None,'CPMGFast')
 
 print("Experiments finished\n")
 
@@ -153,13 +149,6 @@ com.RunProspaMacro(b'showwindow(0)')
 time.sleep(2)
 com.RunProspaMacro(b'exit(1)')
 
-# # Keep plots
+#  Keep plots
 plt.show()
 
-# Some other commands
-
-# com.RunProspaMacro(b'ReactionMonitoring(["nrSteps = 5","nrScans = 2","ppmRange = [-2,12]", "repTime=2000"])')
-# com.RunProspaMacro(b'gExpt->runExperiment()')
-# print(com.returnMessage)
-#RunProspaMacro(win,b'QuickShim(["peakPositionPPM = 1","startMethod=\\"last\\"","shimMethod=\\"order12\\""])')
-#RunProspaMacro(win,b'LockAndCalibrate(["refPeakPPM = 1"])')

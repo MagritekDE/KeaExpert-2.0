@@ -139,7 +139,6 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 # Allocate data for outputs
    sumData = cmatrix(totPnts)
    sumDataAP = cmatrix(totPnts)
-   fitTxt = ""
 
 # Calculate a suitable time axes
    tAxis = ([0:1:totPnts-1]/totPnts)*totTime + echoTime
@@ -191,6 +190,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
                sumDataAP = sumData/nrPnts
             endif
 
+            result = null
+            stats = null   
+
           # Display the data
             ucsPlot:graphTime(pt1,tAxis/1000,sumDataAP,scan,guipar,
                              "Echo integrals SCANS","Time (ms)","Average echo amplitude (\G(m)V)")
@@ -233,17 +235,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    next(scan)
 
-# Print fit result
-   if(fitTxt != "")
-     pr("$fitTxt$")
-   endif
-
-# Save the stats
-  ucsFiles:saveToNotes(stats+result, guipar)
-
 # Save the data
   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"simpleReport")
-  ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"simpleReport")
+   if(stats != null)
+      ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"simpleReport")
+      ucsFiles:saveToNotes(stats+result, guipar)
+   endif
 
 # Return result structure when called from backdoor
    result = struct()
