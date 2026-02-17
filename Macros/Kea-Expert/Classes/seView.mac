@@ -1023,7 +1023,7 @@ procedure(defineMainWindow, self, width, height, cn)
    self->editStatusCtrl = statusbox(cn+2,"ww-50","ww","-1")
    setpar(n, cn+2,"syntaxWindow","")
 
-   setwindowpar(n,"sizelimits",[1355,10000,500,10000])
+   setwindowpar(n,"sizelimits",[1280,10000,500,10000])
    setwindowpar(n,"exit_procedure","gView->exitProcedure")
    setwindowpar(n,"titleupdate","false")
    setwindowpar(n,"title","Kea-Expert V$self->versionNr$")
@@ -1423,13 +1423,13 @@ procedure(defineMenus, self)
              "Separator",,
              "user macro menu", "$appdir$\\Macros\\BatchCommands")
 
-   specialNr = batchNr + 1
-   menu(specialNr, "Samples", 
-             "Menu Help",     help("Macros\\Kea-Expert","SamplesMenu.htm"),
-             "Separator",,
-             "Sample control ...", SampleControl())
+#   specialNr = batchNr + 1
+#   menu(specialNr, "Samples", 
+#             "Menu Help",     help("Macros\\Kea-Expert","SamplesMenu.htm"),
+#             "Separator",,
+#             "Sample control ...", SampleControl())
 
-   divider3Nr = specialNr + 1
+   divider3Nr = batchNr + 1
    menu(divider3Nr, "|")
 
    helpNr = divider3Nr + 1
@@ -1453,9 +1453,9 @@ procedure(defineMenus, self)
 # are selected.
 
    if(divider2Nr-1 >= divider1Nr+1)
-      self->exptMenu = join([divider1Nr+1:divider2Nr-1],[divider2Nr, batchNr, specialNr, divider3Nr,helpNr])
+      self->exptMenu = join([divider1Nr+1:divider2Nr-1],[divider2Nr, batchNr, divider3Nr,helpNr])
    else
-      self->exptMenu = ([divider2Nr, batchNr, specialNr, divider3Nr,helpNr])
+      self->exptMenu = ([divider2Nr, batchNr, divider3Nr,helpNr])
    endif
 
    self->textEditCoreMenu   = [fileNr, textEditNr, plotViewNr, experimentNr, scriptNr, windowsNr, divider1Nr]
@@ -1564,7 +1564,7 @@ procedure(defineStatusAndViewPanel, self)
 # Status controls #####################################
    xoff = xoff + self->progressWidth + 10
    yoff = 10
-   self->statusWidth = 200
+   self->statusWidth = 120
    self->statusHeight = 84
    groupbox(self->cn, "Status", xoff, yoff, self->statusWidth, self->statusHeight)
    ppStatus = colorbox(self->cn+1, xoff+19, yoff+26, 16, 16, [255,255,255,255])
@@ -1575,21 +1575,22 @@ procedure(defineStatusAndViewPanel, self)
    setpar(0,self->cn+2,"tooltip","Receiver Overflow Indicator\rRed: overflow")
    statictext(self->cn+3, xoff+40, yoff+28, "left", "Experiment")
    statictext(self->cn+4, xoff+40, yoff+50, "left", "Rx overflow")
-   lockStatus = colorbox(self->cn+5, xoff+110, yoff+26, 16, 16, [255,255,255,255])
-   self->lockStatus = lockStatus
-   setpar(0,self->cn+5,"tooltip","Lock status\rGreen: locked\rYellow: checking\rRed: not locked")
-   tempStatus = colorbox(self->cn+6, xoff+110, yoff+48, 16, 16, [255,255,255,255])
-   self->tempStatus = tempStatus
-   setpar(0,self->cn+6,"tooltip","Green: within spec\rYellow: checking\rRed: out of spec")
-   statictext(self->cn+7, xoff+130, yoff+28, "left", "Lock")
-   statictext(self->cn+8, xoff+130, yoff+50, "left", "Temperature")
-   self->cn = self->cn +9
+ #  lockStatus = colorbox(self->cn+5, xoff+110, yoff+26, 16, 16, [255,255,255,255])
+ #  self->lockStatus = lockStatus
+ #  setpar(0,self->cn+5,"tooltip","Lock status\rGreen: locked\rYellow: checking\rRed: not locked")
+ #  tempStatus = colorbox(self->cn+6, xoff+110, yoff+48, 16, 16, [255,255,255,255])
+ #  self->tempStatus = tempStatus
+ #  setpar(0,self->cn+6,"tooltip","Green: within spec\rYellow: checking\rRed: out of spec")
+ #  statictext(self->cn+7, xoff+130, yoff+28, "left", "Lock")
+  # statictext(self->cn+8, xoff+130, yoff+50, "left", "Temperature")
+   self->cn = self->cn + 5
 
 # View controls #####################################
    xoff = xoff + self->statusWidth + 10
    yoff = 10
    self->viewHeight = 84
-   groupbox(self->cn, "View", xoff, yoff, "ww-1204", self->viewHeight)
+   groupbox(self->cn, "View", xoff, yoff, "ww-1125", self->viewHeight)
+#   groupbox(self->cn, "View", xoff, yoff, "ww-1204", self->viewHeight)
    self->enlargePlotCtrl = button(self->cn+1, xoff+49, yoff+20, 37, 25, "Enlarge",
       gPlot->togglePlotSizes();)
    self->plotCycleCtrl = button(self->cn+2, xoff+10, yoff+48, 37, 25, "View",
