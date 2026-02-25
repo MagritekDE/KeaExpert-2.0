@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Prospa
-AppVerName=Prospa V3.128 + KeaExpert V2.02.10 (25-March-2025)
+AppVerName=Prospa V3.128 + KeaExpert V2.02.12 (26-Feb-2026)
 AppPublisher=Magritek
 AppPublisherURL=http://www.magritek.com
 AppSupportURL=http://www.magritek.com
@@ -20,11 +20,11 @@ WizardImageFile=..\largeIcon.bmp
 WizardImageStretch=no
 WizardSmallImageFile=..\smallIcon.bmp
 OutputDir="..\Installer Output\KeaExpert"
-OutputBaseFilename="KeaExpert V2.02.10 (25-March-2025)"
+OutputBaseFilename="KeaExpert V2.02.12 (26-Feb-2026)"
 
 UsePreviousAppDir=no
 ;InfoBeforeFile="KeaExpertInfoBeforeInstall.txt"
-InfoAfterFile="KeaExpertInfoAfterInstall.txt"
+;InfoAfterFile="KeaExpertInfoAfterInstall.txt"
 ;PrivilegesRequired=admin
 PrivilegesRequired=none
 
@@ -52,8 +52,8 @@ Source: "..\Preferences\Windows\original.par";                    DestDir: "{app
 Source: "..\Preferences\Windows\lastProspaLayout.mac";            DestDir: "{app}\Preferences\Windows"; Flags: ignoreversion recursesubdirs
 Source: "..\Preferences\Core Macros\*";                           DestDir: "{app}\Preferences\Core Macros"; Excludes: *.txt; Flags : ignoreversion recursesubdirs
 Source: "..\Preferences\Startup\*";                               DestDir: "{app}\Preferences\Startup"; Excludes: "userMenus*.lst, directories*.mac"; Flags : ignoreversion recursesubdirs
-Source: "..\Preferences\Startup\userMenus-KeaExpert.lst";   DestDir: "{app}\Preferences\Startup"; DestName: "userMenus.lst"; Flags: ignoreversion recursesubdirs
-Source: "..\Preferences\Startup\directories-KeaExpert.mac"; DestDir: "{app}\Preferences\Startup"; DestName: "directories.mac"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Startup\userMenus-Kea.lst";   DestDir: "{app}\Preferences\Startup"; DestName: "userMenus.lst"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Startup\directories.mac"; DestDir: "{app}\Preferences\Startup"; DestName: "directories.mac"; Flags: ignoreversion recursesubdirs
 Source: "..\movePref.bat";                                        DestDir: "{app}";                     Flags: ignoreversion;
                    
 ; Menu options
@@ -78,56 +78,29 @@ Source: "..\Macros\Windows_Layout\original-3D.mac";             DestDir: "{app}\
 Source: "..\Macros\Windows_Layout\KeaExpert.mac";         DestDir: "{app}\Macros\Windows_Layout"; DestName: "KeaExpert.mac"; Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Demo_Macros\*";                              DestDir: "{app}\Macros\Demo_Macros";    Excludes: "solenoid_coil.mac, segments_test2.mac, vortices.mac"; Flags: ignoreversion recursesubdirs
 
-; Tester Macros
-;Source: "..\Macros\CarbonTest\*"; DestDir: "{app}\Macros\CarbonTest"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-;Source: "..\Macros\FluorineTest\*"; DestDir: "{app}\Macros\FluorineTest"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-;Source: "..\Macros\ProtonTest\*"; DestDir: "{app}\Macros\ProtonTest"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-;Source: "..\Macros\XChannelTest\*"; DestDir: "{app}\Macros\XChannelTest"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-;Source: "..\Macros\LockTest\*"; DestDir: "{app}\Macros\LockTest"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-
-; DSP specific test macros
-;Source: "..\Macros\DSPTests\*"; DestDir: "{app}\Macros\DSPTests"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
-
-; FX3 specific test macros
-;Source: "..\Macros\FX3Tests\*"; DestDir: "{app}\Macros\FX3Tests"; Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs   
 
 ; Kea Macros
-Source: "..\Macros\Kea-Expert\*";                DestDir: "{app}\Macros\Kea-Expert"; Excludes: *old.mac, Thumbs.db, *.docx;Flags: ignoreversion recursesubdirs;
-Source: "..\Macros\UCS-Core\*";                        DestDir: "{app}\Macros\UCS-Core";         Flags: ignoreversion recursesubdirs;
-Source: "..\Macros\UCS-PP\*";                          DestDir: "{app}\Macros\UCS-PP";           Excludes: "CompileKeaPulseProgram.mac"; Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Suppression\*";                     DestDir: "{app}\Macros\Suppression";      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\SelectivePulses\*";                 DestDir: "{app}\Macros\SelectivePulses";      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Diffusion\*";                       DestDir: "{app}\Macros\Diffusion";        Flags: ignoreversion recursesubdirs; Excludes: PGSTEWetSup*
-Source: "..\Macros\Proton\*";                          DestDir: "{app}\Macros\Proton";           Excludes: *.py, *PyDefault.par, CosyWetCDec*, WETT2Filter*, WETSuppression*;  Flags: ignoreversion recursesubdirs   
-Source: "..\Macros\ProtonExamples\*";                  DestDir: "{app}\Macros\ProtonExamples";   Excludes: *.py, *PyDefault.par, CosyWetCDec*, WETT2Filter*, WETSuppression*;  Flags: ignoreversion recursesubdirs   
-Source: "..\Macros\Boron\*";                           DestDir: "{app}\Macros\Boron";            Excludes: *.py, *PyDefault.par, *super;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Carbon\*";                          DestDir: "{app}\Macros\Carbon";           Excludes: *.py, *PyDefault.par, *super;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\CarbonMLEV\*";                      DestDir: "{app}\Macros\CarbonMLEV";       Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Fluorine\*";                        DestDir: "{app}\Macros\Fluorine";         Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Phosphorus\*";                      DestDir: "{app}\Macros\Phosphorus";       Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Lithium\*";                         DestDir: "{app}\Macros\Lithium";          Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Silicon\*";                         DestDir: "{app}\Macros\Silicon";          Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Sodium\*";                          DestDir: "{app}\Macros\Sodium";           Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Nitrogen\*";                        DestDir: "{app}\Macros\Nitrogen";         Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Imaging\*";                         DestDir: "{app}\Macros\Imaging";          Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\X\*";                               DestDir: "{app}\Macros\X";                Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\NUS\*";                             DestDir: "{app}\Macros\NUS";              Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
-Source: "..\Macros\NOAH\*";                            DestDir: "{app}\Macros\NOAH";             Excludes: *.py, *PyDefault.par;  Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-Expert\*";                      DestDir: "{app}\Macros\Kea-Expert";                  Excludes: *old.mac, Thumbs.db, *.docx;Flags: ignoreversion recursesubdirs;
+Source: "..\Macros\UCS-Core\*";                        DestDir: "{app}\Macros\UCS-Core";                    Flags: ignoreversion recursesubdirs;
+Source: "..\Macros\UCS-PP\*";                          DestDir: "{app}\Macros\UCS-PP";                      Excludes: "CompileKeaPulseProgram.mac"; Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\1Pulse\*";                  DestDir: "{app}\Macros\Kea-NMR\1Pulse";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMG\*";                    DestDir: "{app}\Macros\Kea-NMR\CPMG";                Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGAdd\*";                 DestDir: "{app}\Macros\Kea-NMR\CPMGAdd";             Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGAmplitudeSweep\*";      DestDir: "{app}\Macros\Kea-NMR\CPMGAmplitudeSweep";  Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGDurationSweep\*";       DestDir: "{app}\Macros\Kea-NMR\CPMGDurationSweep";   Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGFast\*";                DestDir: "{app}\Macros\Kea-NMR\CPMGFast";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\MonitorNoise\*";            DestDir: "{app}\Macros\Kea-NMR\MonitorNoise";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\SpinEcho\*";                DestDir: "{app}\Macros\Kea-NMR\SpinEcho";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\T1-IR-Add\*";               DestDir: "{app}\Macros\Kea-NMR\T1-IR-Add";           Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\Wobble\*";                  DestDir: "{app}\Macros\Kea-NMR\Wobble";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+;Source: "..\Macros\Kea-MRI\*";                         DestDir: "{app}\Macros\Kea-MRI";          Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-Tests\*";                       DestDir: "{app}\Macros\Kea-Tests";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Setup\*";                           DestDir: "{app}\Macros\Setup";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\PSExamples\*";                      DestDir: "{app}\Macros\PSExamples";       Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\UCS-Update\*";                      DestDir: "{app}\Macros\UCS-Update";       Excludes: *.py, *PyDefault.par, V 43f*, PP_JTAG\*, Kea*, Lock Updater\*, KeaFirmwareUpdater.mac, KeaFirmwareUpdater\*;  Flags: ignoreversion recursesubdirs
+Source: "..\Macros\UCS-Update\*";                      DestDir: "{app}\Macros\UCS-Update";       Excludes: *.py, *PyDefault.par, V 43f*, PP_JTAG\*, Spinsolve*, Lock Updater\*;  Flags: ignoreversion recursesubdirs
 Source: "..\Macros\BatchCommands\*";                   DestDir: "{app}\Macros\BatchCommands";    Flags: ignoreversion
 Source: "..\Macros\UserScripts\*";                     DestDir: "{app}\Macros\UserScripts";      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\TestScripts\*";                     DestDir: "{app}\Macros\TestScripts";      Flags: ignoreversion
-Source: "..\Macros\Scripts\lockAndCalibrate.mac";      DestDir: "{app}\Macros\Scripts"; DestName: "lockAndCalibrate.mac";     Flags: ignoreversion
-Source: "..\Macros\Scripts\adjustPresatPhase.mac";     DestDir: "{app}\Macros\Scripts"; DestName: "adjustPresatPhase.mac";    Flags: ignoreversion
-Source: "..\Macros\Scripts\importStandardShim.mac";    DestDir: "{app}\Macros\Scripts"; DestName: "importStandardShim.mac";   Flags: ignoreversion
-Source: "..\Macros\Scripts\exportExpertShim.mac";      DestDir: "{app}\Macros\Scripts"; DestName: "exportExpertShim.mac";     Flags: ignoreversion
-Source: "..\Macros\Scripts\loadExpertShim.mac";        DestDir: "{app}\Macros\Scripts"; DestName: "loadExpertShim.mac";       Flags: ignoreversion
-Source: "..\Macros\Scripts\sampleControl.mac";         DestDir: "{app}\Macros\Scripts"; DestName: "sampleControl.mac";        Flags: ignoreversion
-Source: "..\Macros\Scripts\checkShim.mac";             DestDir: "{app}\Macros\Scripts"; DestName: "checkShim.mac";            Flags: ignoreversion
-Source: "..\Macros\Scripts\loadUserShim.mac";          DestDir: "{app}\Macros\Scripts"; DestName: "loadUserShim.mac";         Flags: ignoreversion
-Source: "..\Macros\Scripts\RunPilot.mac";              DestDir: "{app}\Macros\Scripts"; DestName: "RunPilot.mac";             Flags: ignoreversion
+;Source: "..\Macros\TestScripts\*";                     DestDir: "{app}\Macros\TestScripts";      Flags: ignoreversion
 Source: "..\Macros\Python\*";                          DestDir: "{app}\Macros\Python";                                        Flags: ignoreversion
 
 ; Macro libraries
@@ -165,27 +138,21 @@ Source: "..\Documentation\Macros\NNLS\*";              DestDir: "{app}\Documenta
 Source: "..\Documentation\Macros\Kea-Expert\*";  DestDir: "{app}\Documentation\Macros\Kea-Expert";    Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pptx, *.pdf"
 Source: "..\Documentation\Macros\Pulse Programming\*"; DestDir: "{app}\Documentation\Macros\Pulse Programming";   Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
 Source: "..\Documentation\Macros\Post Processing\*";  DestDir: "{app}\Documentation\Macros\Post Processing";      Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
-Source: "..\Documentation\Macros\Proton\*";            DestDir: "{app}\Documentation\Macros\Proton";              Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
-Source: "..\Documentation\Macros\Carbon\*";            DestDir: "{app}\Documentation\Macros\Carbon";              Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
-Source: "..\Documentation\Macros\Fluorine\*";          DestDir: "{app}\Documentation\Macros\Fluorine";            Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
-Source: "..\Documentation\Macros\Phosphorus\*";        DestDir: "{app}\Documentation\Macros\Phosphorus";          Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
-Source: "..\Documentation\Macros\X\*";                 DestDir: "{app}\Documentation\Macros\X";                   Flags: ignoreversion recursesubdirs; Excludes: "*.xml, *.thmx, *.doc, *.docx, *.pdf"
 Source: "..\Documentation\helplist_UCS.lst";           DestDir: "{app}\Documentation"; DestName: "helplist.lst";  Flags: ignoreversion
 
 ; PDF Documents
 Source: "..\PDFs\Pulse Programming Guide (FX3).pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
 Source: "..\PDFs\Pulse Programming Guide (DSP).pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
 Source: "..\PDFs\Prospa programming manual.pdf";                                      DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
-Source: "..\PDFs\KeaExpert - User Manual V2.02.04.pdf";                         DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
+Source: "..\PDFs\KeaExpert - User Manual V2.02.pdf";                         DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
 Source: "..\PDFs\KeaExpert release notes.pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion
 
 ; DLLs
 Source: "..\DLLs\DSPWinUSBRun.dll";        DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\UCSPPRun.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+Source: "..\DLLs\Kea2PPRun.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FX3PPRun.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\MSP430Run.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FX3USBRun.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\UCSLockPPRun.dll";        DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FTPRun.dll";              DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FTDIRun.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\ftd2xx.dll";              DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
@@ -195,9 +162,8 @@ Source: "..\DLLs\SerialRun.dll";           DestDir: "{app}\DLLs"; Flags: ignorev
 Source: "..\DLLs\SplineRun.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 ;Source: "..\DLLs\SQLiteRun.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\BiotRun.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\sseUtilitiesRun.dll";     DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 ; DLLs for linear prediction
-Source: "..\DLLs\LinearPredictionRun.dll"; DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\LinearPredictionRun.dll"; DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FastLinearPredictionRun.dll"; DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\libgcc_s_dw2-1.dll";      DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\libgfortran-3.dll";       DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
@@ -207,15 +173,13 @@ Source: "..\DLLs\libblas.dll";             DestDir: "{app}\DLLs"; Flags: ignorev
 Source: "..\DLLs\msvcp110.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\msvcr110.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 
+; Python code for running Expert
+Source: "..\Python\RunExpertExperiment.py";            DestDir: "{app}\Python"; Flags: ignoreversion recursesubdirs
+
 ; Example data
 ;Source: "..\Example Data\Demos\*"; DestDir: "{app}\Example Data\Demos"; Flags: ignoreversion recursesubdirs
 
 ; Special programs
-Source: "..\Kea special programs\GetShimParameters\*"; DestDir: "{userappdata}\Prospa\Preferences V3.4\KeaParameters\GetShimParameters"; Flags: ignoreversion recursesubdirs;
-Source: "..\Kea special programs\GetShimParameters\*"; DestDir: "{app}\Kea special programs\GetShimParameters"; Flags: ignoreversion recursesubdirs;
-Source: "..\Kea special programs\Autosampler\*";         DestDir: "{app}\Kea special programs\Autosampler"; Flags: ignoreversion recursesubdirs;
-Source: "..\Kea special programs\SetShimParameters\*";   DestDir: "{userappdata}\Prospa\Preferences V3.4\KeaParameters\SetShimParameters"; Flags: ignoreversion recursesubdirs;
-Source: "..\Kea special programs\SetShimParameters\*";   DestDir: "{app}\Kea special programs\SetShimParameters"; Flags: ignoreversion recursesubdirs;
 Source: "..\Kea special programs\TTLController\*";       DestDir: "{app}\Kea special programs\TTLController"; Flags: ignoreversion recursesubdirs;
 
 ; Icons
