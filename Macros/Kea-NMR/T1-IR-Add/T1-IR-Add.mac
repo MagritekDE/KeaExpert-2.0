@@ -187,6 +187,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          dly = round(dArray[d])-d1-pgo
          tm = dArray[d]/1000
       endif
+
     # Update the pulse program amplitudes and delay
       ppList = ucsRun:setPPAmplitude(ppList,varIndex[0],ampdB1)
       ppList = ucsRun:setPPAmplitude(ppList,varIndex[1],ampdB2)
@@ -250,7 +251,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
     # Integrate the time domain data
       if(d == -3) # Get noise estimate
          try
-            error  = sd(real(sumData/nrScans))*sqrt(nrPnts)
+            error  = sd(imag(sumData/nrScans))
          catch
             message("Error","Integration width or frequency resolution is too small.","error")
             return(0)
@@ -335,12 +336,14 @@ procedure(expectedDuration, guipar)
       dArray = linspace(minDelay,maxDelay,nrSteps)*1000
    endif
 
-   totDelayTime = sum(dArray)+minDelay*1000 # Include dummy
-   nrDummys = 1
-   psTime = GetPulseProgramDuration("T1iet",1,guipar)*1000
+   totDelayTime = sum(dArray) + minDelay*1000 + 2*maxDelay*3*1000 # Include 3 prep scans
+
+   nrPrepScans = 3
+   psTime = GetPulseProgramDuration("T1-IR-Add",1,guipar)*1000
    psTime = psTime - minDelay*10000 # Base ps duration
    psTime = psTime + nrPnts*10 # Data collection time estimate
-   totScans = (nrSteps+nrDummys)*nrScans
+   totScans = (nrSteps+nrPrepScans)*nrScans
+
    duration = (totScans*(psTime+ieTime*1000) + nrScans*totDelayTime)/1e6
 
 endproc(duration)
