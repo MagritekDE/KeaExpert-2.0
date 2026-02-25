@@ -44,19 +44,39 @@ procedure(serviceBD)
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 2",
-             "TTL2 = 2",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 2",
+                "TTL2 = 2",
+                "d1 = 20000",
+                "d2 =  1000"]
+
+   else
+
+         guipar = ["b1Freq1H = 1",
+                   "bandwidthFile = 1.0",
+                   "flatFilter = \"yes\"",
+                   "rxPhase = 0",
+                   "rxGain = 40",
+                   "nrScans =1",
+                   "repTime = 10",
+                   "noHPA = \"true\"",
+                   "usePhaseCycle = \"no\"",
+                   "TTL1 = ttltranslate(2)",
+                   "TTL2 = ttltranslate(2)",
+                   "d1 = 20000",
+                   "d2 =  1000"]
+
+   endif
 
    guipar=setlistvalue(guipar,"steps","1")
    guipar=setlistvalue(guipar,"n","-1")
@@ -79,19 +99,35 @@ procedure(homeBD)
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 8",
-             "TTL2 = 8",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 8",
+                "TTL2 = 8",
+                "d1 = 20000",
+                "d2 =  1000"]
+   else
+        guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(3)",
+                "TTL2 = ttltranslate(3)",
+                "d1 = 20000",
+                "d2 =  1000"] 
+   endif
 
    guipar=setlistvalue(guipar,"steps","1")
    guipar=setlistvalue(guipar,"n","-1")
@@ -133,7 +169,6 @@ procedure(moveBD, distance=null, position=null)
    y = abs(y)
 
    if(sign(distance) > 0) # Move up
-
       slowSteps = trunc((y-50*trunc(y/50))/10)
       :moveUpFast(trunc(y/50),n,position)
       position = position + 50*trunc(y/50)
@@ -161,19 +196,38 @@ procedure(moveUp, steps, n, p )
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 1",
-             "TTL2 = 1",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 1",
+                "TTL2 = 1",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(5)",
+                "TTL2 = ttltranslate(5)",
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
 
    guipar=setlistvalue(guipar,"steps","$steps$")
    guipar=setlistvalue(guipar,"n","$n$")
@@ -195,19 +249,35 @@ procedure(moveUpFast, steps, n, p)
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 4",
-             "TTL2 = 1",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 4",
+                "TTL2 = 1",
+                "d1 = 1000",
+                "d2 = 1000"]
+   else
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(6)", 
+                "TTL2 = ttltranslate(5)", 
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
 
    guipar=setlistvalue(guipar,"steps","$steps$")
    guipar=setlistvalue(guipar,"n","$n$")
@@ -229,19 +299,38 @@ procedure(moveDown, steps, n, p)
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 32",
-             "TTL2 = 32",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 32",
+                "TTL2 = 32",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(4)",
+                "TTL2 = ttltranslate(4)",
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
 
    guipar=setlistvalue(guipar,"steps","$steps$")
    guipar=setlistvalue(guipar,"n","$n$")
@@ -263,19 +352,39 @@ procedure(moveDownFast, steps, n, p)
 
    dir = getmacropath()
 
-   guipar = ["b1Freq1H = 1",
-             "bandwidthFile = 1.0",
-             "flatFilter = \"yes\"",
-             "rxPhase = 0",
-             "rxGain = 40",
-             "nrScans =1",
-             "repTime = 10",
-             "noHPA = \"true\"",
-             "usePhaseCycle = \"no\"",
-             "TTL1 = 4",
-             "TTL2 = 32",
-             "d1 = 20000",
-             "d2 =  1000"]
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 4",
+                "TTL2 = 32",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(6)",
+                "TTL2 = ttltranslate(4)",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   endif
 
    guipar=setlistvalue(guipar,"steps","$steps$")
    guipar=setlistvalue(guipar,"n","$n$")
