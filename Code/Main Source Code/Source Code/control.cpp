@@ -2163,6 +2163,24 @@ int MakeErrorString(Interface* itfc ,char args[])
 	if((r = ArgScan(itfc,args,2,"number, error, [resolution], [mode switch], [destination]","eeeee","ffdds",&number,&error,&res,&modeSwitch,destination)) < 0)
 		return(r); 
 
+   if (error == Inf)
+   {
+      sprintf(out, "%g ±i nf",number);
+      itfc->retVar[1].MakeAndSetString(out);
+      itfc->nrRetValues = 1;
+      TextMessage("Inf error detected in errorstr\n");
+      return(OK);
+   }
+   else if(error == NaN)
+   {
+      sprintf(out, "%g ± nan",number);
+      itfc->retVar[1].MakeAndSetString(out);
+      itfc->nrRetValues = 1;
+      TextMessage("NaN error detected in errorstr\n");
+      return(OK);
+   }
+
+
 	// Make sure the number of significant digits in the error is at least 1 and not too many
 	if(res < 1 || res > 7)
 	{
@@ -2196,6 +2214,11 @@ int MakeErrorString(Interface* itfc ,char args[])
 	if(exponentNum < modeSwitch && exponentNum > -modeSwitch)
 	{
 		digits = res-1-exponentErr;
+      if (digits > 10)
+      {
+         ErrorMessage("invalid number of digits in errorstr");
+         return(ERR);
+      }
 		if(!strcmp(destination,"plot"))
 		{
 			if(digits >= 0) // Error is less than number
@@ -2459,7 +2482,7 @@ int ListCachedProcedures(Interface *itfc,  char args[])
 	   {
          ProcedureInfo *procInfo = (ProcedureInfo*)var->GetData();
 
-			if(macroFilter == "" | macroFilter == procInfo->macroName)
+			if(macroFilter == "" || macroFilter == procInfo->macroName)
 			{
 				if(procInfo->macroName != macro)
 					TextMessage("   Macro = '%s' (Path = '%s')\n",procInfo->macroName,procInfo->macroPath);
