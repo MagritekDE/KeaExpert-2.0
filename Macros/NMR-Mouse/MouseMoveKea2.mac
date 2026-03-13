@@ -1,0 +1,433 @@
+#####################################################################
+# This example script sets pin 3 (AD1) on the TTL trigger box
+# to high and then returns. 
+# It could be used to trigger a batch process.
+#####################################################################
+
+procedure(MouseMoveKea, parameters=null) 
+ 
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else # Add the experiment with interface
+      if(parameters == null)
+         parameters = ["distance=0","position=0"] 
+      endif
+      gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
+   endif
+
+endproc()
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   if(moveMode == "service")
+
+      :serviceBD()
+
+   elseif(moveMode == "home")
+
+      :homeBD()
+
+   else
+
+      :moveBD(position)
+
+   endif
+
+
+endproc()
+
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   ctrlLayout = ["exptDiv",      "Move mode",                 "dv",  "",                 "",
+                 "moveMode",     "Move to",                   "rb",  "string", "18,home,service,distance,home,service,distance",
+                 "exptDiv",      "Distance control/feedback", "dv",  "",                 "",
+                 "distance",     "Distance to move",          "tb",  "float",            "",
+                 "position",     "Current position (um)",     "tb",  "readonly_string",  ""]
+
+   plotLayout = listto2d(["pt1"])
+
+endproc(ctrlLayout, plotLayout)
+
+###########################################################
+# Move the lift to the service position
+###########################################################
+
+procedure(serviceBD)
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 2",
+                "TTL2 = 2",
+                "d1 = 20000",
+                "d2 =  1000"]
+
+   else
+
+         guipar = ["b1Freq1H = 1",
+                   "bandwidthFile = 1.0",
+                   "flatFilter = \"yes\"",
+                   "rxPhase = 0",
+                   "rxGain = 40",
+                   "nrScans =1",
+                   "repTime = 10",
+                   "noHPA = \"true\"",
+                   "usePhaseCycle = \"no\"",
+                   "TTL1 = ttltranslate(2)",
+                   "TTL2 = ttltranslate(2)",
+                   "d1 = 20000",
+                   "d2 =  1000"]
+
+   endif
+
+   guipar=setlistvalue(guipar,"steps","1")
+   guipar=setlistvalue(guipar,"n","-1")
+   guipar=setlistvalue(guipar,"p","0")
+   guipar=setlistvalue(guipar,"modir","100")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+endproc()
+
+
+###########################################################
+# Move the lift to the home position
+###########################################################
+
+procedure(homeBD)
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 8",
+                "TTL2 = 8",
+                "d1 = 20000",
+                "d2 =  1000"]
+   else
+        guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(3)",
+                "TTL2 = ttltranslate(3)",
+                "d1 = 20000",
+                "d2 =  1000"] 
+   endif
+
+   guipar=setlistvalue(guipar,"steps","1")
+   guipar=setlistvalue(guipar,"n","-1")
+   guipar=setlistvalue(guipar,"p","0")
+   guipar=setlistvalue(guipar,"modir","100")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+   n = findobj(0,"name","position")
+   if(n > 0)
+      setpar(0,n,"text","0")
+   endif
+
+endproc()
+
+###########################################################
+# Move the lift a certain distance up or down relative to 
+# the current position
+###########################################################
+
+procedure(moveBD, distance=null, position=null)
+
+   if(position == null)
+      assignlist(getctrlvalues(0))
+   endif
+
+   n = findobj(0,"name","position")
+   if(n > 0)
+      position = getpar(0,n,"value")
+   endif
+
+   y = distance
+   if(y == 0)
+      return
+   endif
+   y = abs(y)
+
+   if(sign(distance) > 0) # Move up
+      slowSteps = trunc((y-50*trunc(y/50))/10)
+      :moveUpFast(trunc(y/50),n,position)
+      position = position + 50*trunc(y/50)
+      :moveUp(slowSteps,n,position)
+      position = position + 10*slowSteps
+
+   else # Move down
+
+      slowSteps = trunc((y-50*trunc(y/50))/10)
+      :moveDownFast(trunc(y/50),n,position)
+      position = position - 50*trunc(y/50)
+      :moveDown(slowSteps,n,position)
+      position = position - 10*slowSteps
+
+  endif
+
+endproc()
+
+
+###########################################################
+#  Move the lift up in small steps
+###########################################################
+
+procedure(moveUp, steps, n, p )
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 1",
+                "TTL2 = 1",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(5)",
+                "TTL2 = ttltranslate(5)",
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
+
+   guipar=setlistvalue(guipar,"steps","$steps$")
+   guipar=setlistvalue(guipar,"n","$n$")
+   guipar=setlistvalue(guipar,"p","$p$")
+   guipar=setlistvalue(guipar,"modir","2")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+endproc()
+
+###########################################################
+#  Move the lift up in large steps
+###########################################################
+
+procedure(moveUpFast, steps, n, p)
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 4",
+                "TTL2 = 1",
+                "d1 = 1000",
+                "d2 = 1000"]
+   else
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(6)", 
+                "TTL2 = ttltranslate(5)", 
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
+
+   guipar=setlistvalue(guipar,"steps","$steps$")
+   guipar=setlistvalue(guipar,"n","$n$")
+   guipar=setlistvalue(guipar,"p","$p$")
+   guipar=setlistvalue(guipar,"modir","1")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+endproc()
+
+###########################################################
+#  Move the lift down in small steps
+###########################################################
+
+procedure(moveDown, steps, n, p)
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 32",
+                "TTL2 = 32",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(4)",
+                "TTL2 = ttltranslate(4)",
+                "d1 = 1000",
+                "d2 = 1000"]
+   endif
+
+   guipar=setlistvalue(guipar,"steps","$steps$")
+   guipar=setlistvalue(guipar,"n","$n$")
+   guipar=setlistvalue(guipar,"p","$p$")
+   guipar=setlistvalue(guipar,"modir","4")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+endproc()
+
+###########################################################
+#  Move the lift down in large steps
+###########################################################
+
+procedure(moveDownFast, steps, n, p)
+
+   dir = getmacropath()
+
+   if(gData->procType == "FX3")
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = 4",
+                "TTL2 = 32",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   else
+
+      guipar = ["b1Freq1H = 1",
+                "bandwidthFile = 1.0",
+                "flatFilter = \"yes\"",
+                "rxPhase = 0",
+                "rxGain = 40",
+                "nrScans =1",
+                "repTime = 10",
+                "noHPA = \"true\"",
+                "usePhaseCycle = \"no\"",
+                "TTL1 = ttltranslate(6)",
+                "TTL2 = ttltranslate(4)",
+                "d1 = 1000",
+                "d2 = 1000"]
+
+   endif
+
+   guipar=setlistvalue(guipar,"steps","$steps$")
+   guipar=setlistvalue(guipar,"n","$n$")
+   guipar=setlistvalue(guipar,"p","$p$")
+   guipar=setlistvalue(guipar,"modir","3")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+   twoTTLpulses:backdoor(guipar)
+
+
+endproc()
+
+
+########################################################
+# Just cycle the progress bar once each 5 seconds
+# since we don't know when the trigger will come
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   d = 0.1
+
+endproc(d)
