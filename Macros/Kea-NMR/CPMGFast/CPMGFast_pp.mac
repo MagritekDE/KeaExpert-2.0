@@ -15,7 +15,7 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name,   label, ctrlType, varType)
-  interface = ["b1FreqCh1",        "B1 Frequency (MHz)", "tb",  "freq";
+  interface = ["b1FreqCh1",      "B1 Frequency (MHz)",   "tb",  "freq";
                "90AmplitudeCh1", "90 amplitude (dB)",    "tb",  "float,[-85,-6]";
                "180AmplitudeCh1","180 amplitude (dB)",   "tb",  "float,[-85,0]";
                "pulseLengthCh1", "Pulse length (us)",    "tb",  "float,[1,500]";
@@ -34,9 +34,12 @@ procedure(pulse_program,dir,mode,pars)
                     "a90      = 90AmplitudeCh1",
                     "a180     = 180AmplitudeCh1",
                     "dRF      = pulseLengthCh1",
-                    "d90_180  = echoTime/2-dRF/2-pgo-2",
-                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
-                    "dAcq     = echoTime-dRF-pgo-d180_acq-2",
+#                    "d90_180  = echoTime/2-dRF/2-pgo-2",
+#                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
+#                    "dAcq     = echoTime-dRF-pgo-d180_acq-2",
+                    "d90_180  = echoTime/2-dRF-pgo",
+                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat+echoShift",
+                    "dAcq     = echoTime-dRF-pgo-d180_acq",
                     "nEchoes  = nrEchoes",
                     "nPnts    = nrPnts",
                     "totPnts  = nrEchoes",
