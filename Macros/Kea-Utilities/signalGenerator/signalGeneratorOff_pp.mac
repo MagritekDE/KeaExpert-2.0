@@ -1,0 +1,39 @@
+############################################################
+#
+# Switches off the rf pulse
+#
+############################################################
+
+procedure(pulse_program,dir,mode)
+
+# Interface description (name, label, x, y, ctrl, vartype)
+  interface = ["b1Freq",           "B1 Frequency (MHz)",    "0","0", "tbw","freq",
+               "amplitude",        "Sign amplitude (dB)",   "1","0", "tb","pulseamp"]
+
+# Relationships to determine remaining variable values
+   relationships = ["a1 = amplitude",
+                    "repTime = 100",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the tabs and their order
+   tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   txoff()
+
+   lst = endpp("e") # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0;   # Pulse phase
+                0]   # Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

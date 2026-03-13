@@ -1,0 +1,52 @@
+############################################################
+#
+# Generates an continuous RF signal
+# WARNING: does not work with internal RF amplifier since
+# the internal amplifier is pulse only.
+# When using external amplifier make sure it can take
+# CW signals of the supplied amplitude. 
+# (Otherwise it will overheat).
+#
+############################################################
+
+procedure(pulse_program,dir,mode)
+
+# Interface description (name, label,  ctrl, vartype)
+  interface = ["b1Freq",      "Output Frequency (MHz)", "tb",    "freq";
+               "delFreq",     "Frequency +/- kHz",      "tb",    "float";
+               "freqPlus",    "+",                      "bt",    "updateFreq(1)";
+               "freqMinus",   "-",                      "bt",    "updateFreq(-1)";
+               "amplitude",   "Signal amplitude (dB)",  "tb",    "pulseamp";
+               "delAmp",      "Amp +/- dB",             "tb",    "float";
+               "ampPlus",     "+",                      "bt",    "updateAmp(1)";
+               "ampMinus",    "-",                      "bt",    "updateAmp(-1)";
+               "stopGen",     "Stop output",            "bt",    "stopGenerator()"]
+
+# Relationships to determine remaining variable values
+   relationships = ["b1FreqCh1 = b1Freq",
+                    "a1 = amplitude",
+                    "repTime = 100",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime",
+                    "specialMode = \"siggen\""]
+
+# Define the tabs and their order
+  # tabs = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File Settings"]
+   tabs = ["Pulse_sequence","Acquisition"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   txon("e","a1","p1")    # Switch on RF
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0;   # Pulse phase
+                0]   # Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
