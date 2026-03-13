@@ -3,10 +3,8 @@
 # SSE
 #
 # Stimulated spin echo + CPMG detection.
-# www.magritek.com, March 2013
-# Prospa V3.12
 #
-# Copyright (c) Magritek Ltd 2025
+# Copyright (c) Magritek Ltd 2026
 #
 # U.I. V5
 #########################################################
@@ -72,9 +70,9 @@ endproc(r)
 
 procedure(getseqpar)
 
-   rel = ["a1 = 90Amplitude",
-          "a2 = 180Amplitude",
-          "d1 = pulseLength",
+   rel = ["a1 = 90AmplitudeCh1",
+          "a2 = 180AmplitudeCh1",
+          "d1 = pulseLengthCh1",
           "d2 = 1000*tauMin+echoTime/2-d1-pgo",
           "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
           "d4 = echoTime-d1-pgo-d3",
@@ -85,14 +83,13 @@ procedure(getseqpar)
           "totPnts = nrPnts",
           "totTime = acqTime"]
    var = ["d5","d2"]
-   pp_list = ["a1","p1","d1","d5","p2","w1","p3","d2","n1","l1","a2","p4","d3","n2","d4"]
+   pp_list = ["n2","a1","p1","d1","d5","p2","w1","p3","d2","n1","l1","a2","p4","d3","d4"]
    pp_name = "SSE.p"
    phase_list = [0,2,0,2,0,2,0,2,1,3,1,3,1,3,1,3;0,0,2,2,0,0,2,2,0,0,2,2,0,0,2,2;0,0,0,0,2,2,2,2,0,0,0,0,2,2,2,2;1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0;2,0,0,2,0,2,2,0,1,3,3,1,3,1,1,3]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
 
 endproc(seqInfo)
- # :printOptTauMaxSSE();
 
 
 #######################################################
@@ -112,272 +109,232 @@ endproc(seqInfo)
 
 procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
 
-
 # Make all gui parameters available
    assignlist(guipar)
 
-# Check RF duty cycle
+# Check total RF duty cycle
 # for PM25----------------------------------------------
-       if(pulseLength*nrEchoes/repTime>1.6)
+       if(pulseLengthCh1*nrEchoes/repTime>1.6)
 # for PM5----------------------------------------------
-    #    if(pulseLength*nrEchoes/repTime>3)
+    #    if(pulseLengthCh1*nrEchoes/repTime>3)
     message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
     return(0)
   endif
 
-# Check for p.s. duty cycle should be < 20%
-  if(d1/(echoTime) > 0.25)
+# Check that p.s. duty cycle <= 25%
+  if(d1/echoTime > 0.25)
       message("Error","Duty cycle is too high in pulse sequence!\rshould be < 25%\rIncrease echo time\ror reduce pulse length.","error")
       return(0)
    endif
 
+# See if any delays are too short
+   if(:checkDelays(["d1","d2","d3","d5","w1"],
+                   [d1,d2,d3,d5,w1],
+                   [1,1,1,1,1]))
+      return(0)
+   endif
 
-
-   if(0==:checkDelay(d1,1)); return; endif
-   if(0==:checkDelay(d2,1)); return; endif
-   if(0==:checkDelay(d3,1)); return; endif
-   if(d4-keaNMR:getAcqTime(guipar) < 1)
+# Check we have left enough time to collect the data
+   if(d4-ucsRun:getAcqTime(guipar) < 1)
       message("Error","Pulse sequence timing error!\rReduce acquisition time or increase echotime.","error")
       return(0)
    endif
 
-   if(0==:checkDelay(d5,1)); return; endif
-   if(0==:checkDelay(w1,1)); return; endif
+# Calculate suitable time axis
+   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000   # (us)
 
-
-
-# Storage for output data
-   
+# Allocate space for output data
    sumData = cmatrix(totPnts)
 
-# calculate the time axis 
-   totalTime = matrix(totPnts)
-   totalTime = ([0:1:totPnts-1]/totPnts)*totTime*1000
-
+# Allocate space for the tau axes
    tauAxis  = matrix(nrPntsTau)
    tauAxis2 = matrix(nrPntsTau)
    
-   gradientTperMeter= gradient/42.57
-# the factor 1000 is to change from seconds to ms 
+# Generate the tau axis
+   gradientTperMeter = gradient/42.57
+   # The factor 1000 is to change from seconds to ms 
    t2Diff = 1000*(DEst*1e-9*(DELTA/1000)*(gamma*gradientTperMeter)^2)^(-1/2)
-
-   amax = exp(-(tauMin/t2Diff)^2)
-   amin = exp(-(tauMax/t2Diff)^2)
-   astep= (amax-amin)/(nrPntsTau-1)
+   amax  = exp(-(tauMin/t2Diff)^2)
+   amin  = exp(-(tauMax/t2Diff)^2)
+   astep = (amax-amin)/(nrPntsTau-1)
 
    for(m = 0 to nrPntsTau-1)
-    #lineal time increment
-      if(index=="lin")
+    # Linear time increment
+      if(index == "lin")
         tauAxis[m] = tauMin+ m*(tauMax-tauMin)/(nrPntsTau-1) 
       endif 
-   #exponetial time increment
-      if(index=="exp") 
+    # exponential time increment
+      if(index == "exp") 
         tauAxis[m] = t2Diff*(-loge(amax-astep*(m)))^(1/2)
       endif
    next(m)
 
-   if (tauMax >3*t2Diff); tauAxis[nrPntsTau-1]= tauMax; endif
+   if (tauMax > 3*t2Diff)
+      tauAxis[nrPntsTau-1]= tauMax
+   endif
 
-   tauAxis2[~] = 1e-18*(gamma*gradientTperMeter)^2*( DELTA*(tauAxis[~])^2 + 2/3*(tauAxis[~])^3)
+# Generate the tau2 axis
+   tauAxis2 = 1e-18*(gamma*gradientTperMeter)^2*( DELTA*(tauAxis)^2 + 2/3*tauAxis^3)
 
    try
-      if(excecutedBackdoor == "yes")
+      if(executedBackdoor == "yes")
      # pr "SEE excuted via backdoor\n"
       endif 
    catch
-      excecutedBackdoor = "no"
+      executedBackdoor = "no"
       refSignal = 1
-      multiplot("1d",3,1)
+      (prFID,prLin,prLog) = ucsPlot:getPlotReferences()
    endtry
 
-   # Reset the timer
-   time(0)  
+   ampAxis = matrix(nrPntsTau)
 
-   ampAxis    = matrix(nrPntsTau)
-
-   #loop for the 2D experiment
+  # Loop over the tau values to form a 2D data set
    for(m = 0 to nrPntsTau-1)
       
+   # Calculate the new delays
       tauD = 1000*tauAxis[m]
-  
-      d5 = tauD -d1-pgo-1.5
-      d2 = tauD +echoTime/2-d1-pgo-1.5
+      d5 = tauD - d1 - pgo - 1.5
+      d2 = tauD + echoTime/2 - d1 - pgo - 1.5
+   # Check for errors
+      if((d2 < 0.5) | (d2 > 10000))
+          pr "\n delay (d2 = $d2$ us) is out of range \n" 
+          return
+       endif
+      if((d5 < 0.5) | (d5 > 10000))
+          pr "\n delay (d5 = $d5$ us) is out of range \n" 
+          return
+      endif
+   # Update the delays in the parameter list
+      ppList = ucsRun:setPPDelay(ppList,varIndex[0],d5)
+      ppList = ucsRun:setPPDelay(ppList,varIndex[1],d2)
 
-      if((d2<0.5)|(d2>10000));  pr "\n delay (d2 = $d2$ us) is out of range \n" ;   return; endif
-      if((d5<0.5)|(d5>10000));  pr "\n delay (d5 = $d5$ us) is out of range \n" ;   return; endif
-    
-      ppList = keaRun:setPPDelay(ppList,varIndex[0],d5)
-      ppList = keaRun:setPPDelay(ppList,varIndex[1],d2)
-
-
-  # reset sumData
+   # Reset sumData
       sumData = cmatrix(totPnts)
    
-   # Accumulate scan
+   # Accumulate scans
       for(scan = 0 to nrScans-1)
      
-       # Note the time at scan start
-         t1 = time()   
-   
        # Set phases for this scan
-         (ppList,pAcq) = keaRun:setPPPhase(ppList,scan,pcList,pcIndex)
+         (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
    
-       # Send phase parameters to DSP
-          dspwrite("x",0x00,ppList,wvPort)
+       # Send all parameter values to spectrometer (DSP)/generate event table (FX3)
+         ucsRun:updatePPParameters(ppList,guipar)
    
-       # Collect the data
-         (status,data) = keaRun:getData(totPnts,guipar)
+       # Wait for the repetition time to complete
+         check = ucsRun:checkTiming(guipar,scan,pcList)
+         if(check == "abort")
+            return(0)
+         endif
+
+       # Run the p.p. and collect the data
+         (status,data) = ucsRun:getData(totPnts,guipar)
           data = data/nrEchoes
+
+       # See if stop button/escape key pressed
           if(status != "ok")
             return(0)
           endif
    
        # Accumlate the data
-         sumData = keaRun:accumulate(accumulate,pAcq,sumData,data)
+         sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
    
-        :graphTime2(sumData/refSignal,scan,totalTime,m,guipar)
+       # Plot the FID 
+         ucsPlot:graphTime(prFID,tAxis,sumData/refSignal,scan,guipar)
        
-      # Check timing
-     check = keaRun:checkTimeAndAbort(guipar,t1,scan,pcList)
-     if(check == "abort")
-        return(0)
-     elseif(check == "finish")
-        scan = scan + 1
-        exitfor()
-     endif
+       # Check if complete button pressed
+         if(check == "finish")
+            exitfor()
+         endif 
 
       next(scan)
 
-      sumData = sumData/nrScans/refSignal
-      ampAxis[m]  = sum(real(sumData))/nrPnts
+    # Scale the data and save in amplitude axis array
+      sumData = sumData/(nrScans*refSignal)
+      ampAxis[m] = sum(real(sumData))/nrPnts
 
-# "lineal vs lineal" plot
-       curplot("1d",2,1)
-       drawplot("false")  
-       plot(tauAxis,ampAxis,
-             "tracetype", "lines",
-             "tracecolor",wvDataSymbolColor,
-             "symbolshape","opensquare",
-             "symbolcolor",wvDataSymbolColor)
-       xlabel("\G(d) [ms]") 
-       ylabel("Probe output amplitude (raw)")
-       title("Echo decay")
+    # Linear amplitude vs. tau plot
+      prLin->draw("false")  
+      prLin->plot(tauAxis,ampAxis,
+          "tracetype", "lines",
+          "tracecolor",wvDataSymbolColor,
+          "symbolshape","opensquare",
+          "symbolcolor",wvDataSymbolColor)
+      prLin->xlabel("\G(d) [ms]") 
+      prLin->ylabel("Probe output amplitude (raw)")
+      prLin->title("Echo decay")
+      prLin->draw("true")  
 
-# log vs. tau^2 plot
-
-       curplot("1d",3,1)
-       plot(tauAxis2,ampAxis/ampAxis[0],
-             "tracetype", "lines",
-             "tracecolor",wvDataSymbolColor,
-             "symbolshape","opensquare",
-             "symbolcolor",wvDataSymbolColor)
-       xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
-       ylabel("Signal amplitude")
-       title("Spin Echo decay")
-       drawplot("true")
-
-      drawplot("false")
+    # Normalised amplitude vs. log tau^2 plot
+      prLog->draw("false")
+      prLog->plot(tauAxis2,ampAxis/ampAxis[0],
+          "tracetype", "lines",
+          "tracecolor",wvDataSymbolColor,
+          "symbolshape","opensquare",
+          "symbolcolor",wvDataSymbolColor)
+      prLog->xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
+      prLog->ylabel("Signal amplitude")
+      prLog->title("Spin Echo decay")
+      prLog->draw("true")
       
-      if(saveData == "true")
-         :saveData(guipar,tauAxis,tauAxis2,ampAxis)
-         if(m=nrPntsTau-1)
-            # Output information to the CLI
-            pr "\n  data saved in:"
-            pr "\n  $dataDirectory$\\$expName$\\$expNr$"
-         endif
- 
-      endif
-  if check==("finish")
+      
+
+#      if(saveData == "true")
+#         :saveData(guipar,tauAxis,tauAxis2,ampAxis)
+#         if(m = nrPntsTau-1)
+#            # Output information to the CLI
+#            pr "\n  data saved in:"
+#            pr "\n  $dataDirectory$\\$expName$\\$expNr$"
+#         endif
+# 
+#      endif
+
+    # Check if complete button pressed
+      if(check == "finish")
          exitfor()
-  endif
+      endif
+
    next(m)
 
-   if(excecutedBackdoor=="yes")
-       return(tauAxis,ampAxis)
+   ucsFiles:savePlot(prLin,:getPlotInfo("pt2"),guipar,"noReport")
+   ucsFiles:savePlot(prLog,:getPlotInfo("pt3"),guipar,"noReport")
+
+   if(executedBackdoor == "yes")
+      return(tauAxis,ampAxis)
    else
-       :SEEFit(tauAxis2,ampAxis,guipar)
+      :SEEFit(prLog,tauAxis2,ampAxis,guipar)
    endif
-
-
-# Increment the experiment number
-   keaNMR:incrementExperiment(incExpNr)
-        
-   keaNMR:titleReset()
-
+       
 endproc("execpp")
 
-#######################################################
-# Save the accumulated data
-# Either pass the parameters to save or use
-# window variables of the same name.
-#######################################################
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
 
-procedure(saveData,guipar,tauAxis,tauAxis2,ampAxis)
+procedure(getPlotInfo,plotRegion)
 
-# Make all gui parameters available
-   assignlist(guipar)
+   info = ["pt2","linData.pt1","pt3","logData.pt1"]
 
-# Save data and plot in chosen folder
-   bak = getcwd()
-   cd(dataDirectory)
-   mkdir(expName)
-   cd(expName)
-   mkdir("$expNr$")
-   cd("$expNr$")
-
-   save("data.1d",ampAxis)    # Save data in Prospa format
-   save("data.pt1")                     # Save plot
-   save("data.emf","emf1d")             # Save plot as picture
-   n = size(ampAxis)
-   m = matrix(3,n)
-   m[0,~] = tauAxis'
-   m[1,~] = tauAxis2'
-   m[2,~] = real(ampAxis)'
-
-   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
-   export2d(m,"data.dat")  # Save data for origin
-
-# Restore cwd
-   cd(bak)
-
-
-endproc("saveData")
-#--------------------------------------------------------
-procedure(graphTime2,fidData,n,t,ne,guipar)
-
-   assignlist(guipar)
-
-# Allow for accumulations
-   if(accumulate == "yes")
-      sf = 1/(n+1)
-   else
-      sf = 1
+   if(plotRegion == "all")
+      return(info)
    endif
 
-# Select units
-   if(wvUnits == "uV")
-      sf = sf
-      ampUnits = "\G(m)V"
-   else
-      ampUnits = "mV"
- sf = sf*0.001
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
    endif
 
-   drawplot("false")
-   
-   curplot("1d",1,1) 
-   plot(t,fidData*sf)
-   xlabel("time(us)") 
-   ylabel("Probe output amplitude ($ampUnits$)")
-   title("Scan ($(n+1)$/$nrScans$)")
-   drawplot("true")
+endproc(null)
 
-endproc()
+##########################################################
+# 
+##########################################################
 
-procedure(SEEFit,tauAxis2,ampAxis,guipar)
+procedure(SEEFit,plt,tauAxis2,ampAxis,guipar)
+
    assignlist(guipar)
 
-   (x,y,nrPntsNew)=:removeNegativeValues(tauAxis2,ampAxis/ampAxis[0],nrPntsTau)
+   (x,y,nrPntsNew) = :removeNegativeValues(tauAxis2,ampAxis/ampAxis[0],nrPntsTau)
    
    y[~]= loge(y[~])
 
@@ -386,58 +343,62 @@ procedure(SEEFit,tauAxis2,ampAxis,guipar)
     bStr = errorstr(b,bErr,1,3)
   
    # Print out results
-   pr("\n\n   slope ...... $aStr$")
+   pr("\n\n   slope ...... $aStr$\n")
   # pr("\n   intercept .. $bStr$\n")
 
    yfit = matrix(nrPntsNew)
    yfit[~] = b + a*x[~]
 
-   curplot("1d",3,1)
-   drawplot("false")
+   plt->draw("false")
 
-   plot(x,yfit)
+   plt->plot(x,yfit)
          trace("tracetype","lines",
          "tracewidth",2,
          "symbolshape","none",
          "tracecolor",[0,255,0])
   
-   hold("on")
+   plt->hold("on")
 
-   plot(x,y,
+   plt->plot(x,y,
           "tracetype", "lines",
           "tracecolor",wvDataSymbolColor,
           "symbolshape","opensquare",
           "symbolcolor",wvDataSymbolColor)
-    xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
-    ylabel("ln (amplitude)")
-    title("D = $errorstr(-a,aErr,1,3)$ 10^(-9) m^(2)/s")
-    hold("off")
-    drawplot("true") 
+    plt->xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
+    plt->ylabel("ln (amplitude)")
+    plt->title("D = $errorstr(-a,aErr,1,3)$ 10^(-9) m^(2)/s")
+    plt->hold("off")
+    plt->draw("true") 
 
 endproc()
 
 
-#################################################
+##########################################################
+# 
+##########################################################
 
 procedure(removeNegativeValues,t,data,nrPnts) 
   
   countNeg = nrPnts
 
-  for (x = 0 to nrPnts-1 step 1)
-     if (data[x]< 0.001)
-         countNeg=x
+  for(x = 0 to nrPnts-1 step 1)
+     if(data[x] < 0.001)
+        countNeg = x
      endif
   next(x)
 
-  if (countNeg<nrPnts)
-     pr "\n Some negative data points were removed before fitting\n"
+  if(countNeg<nrPnts)
+     pr("\n Some negative data points were removed before fitting\n")
   endif
 
   tNew = submatrix(t   ,0,countNeg-1) 
   dadaNew = submatrix(data,0,countNeg-1) 
   
 endproc(tNew,dadaNew,countNeg)
-#-------------------------------------------------
+
+##########################################################
+# 
+##########################################################
 
 procedure(printOptTauMaxSSE,nada)
 
@@ -456,13 +417,21 @@ procedure(printOptTauMaxSSE,nada)
    endtry  
 
 endproc(t2Diff)
-#---------------------------------------------
-procedure(checkDelay,dx,limit)
+
+##########################################################
+# Check the dxValues in the dxNames list. Make sure the 
+# values are greater than the limits
+##########################################################
+
+procedure(checkDelays, dxNames, dxValues, dxLimits)
  
-   if (dx<= limit)
-      message("error","Pulse sequence timing error","error")
-      return (0)
-   endif 
-endproc(1)
+   for(k = 0 to size(dxNames)-1)
+      if (dxValues[k] <= dxLimits[k])
+         message("Error","Pulse sequence timing error. Delay $dxNames[k]$ is <= $dxLimits[k]$","error")
+         return(1)
+      endif 
+   next(k)
+
+endproc(0)
 
 
