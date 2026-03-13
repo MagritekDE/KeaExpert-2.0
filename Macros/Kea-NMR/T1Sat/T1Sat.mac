@@ -3,10 +3,8 @@
 # T1Sat
 #
 # Saturation recovering sequence with CPMG detection
-# www.magritek.com, March 2013
-# Prospa V3.12
 #
-# Copyright (c) Magritek Ltd 2025
+# Copyright (c) Magritek Ltd 2026
 #
 # U.I. V5
 #########################################################
@@ -72,21 +70,21 @@ endproc(r)
 
 procedure(getseqpar)
 
-   rel = ["a1 = 90Amplitude",
-          "a2 = 180Amplitude",
-          "d1 = pulseLength",
-          "d2 = echoTime/2-d1-pgo",
-          "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
-          "d4 = echoTime-d1-pgo-d3",
+   rel = ["a1  = 90AmplitudeCh1",
+          "a2  = 180AmplitudeCh1",
+          "d1  = pulseLengthCh1",
+          "d2  = echoTime/2-d1-pgo",
+          "d3  = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+          "d4  = echoTime-d1-pgo-d3",
           "d10 = 750-pgo",
-          "d9 = 500-pgo",
-          "d8 = 350-pgo",
-          "d7 = 200-pgo",
-          "d6 = 150-pgo",
-          "d5 = 100-pgo",
-          "w1 = tMax",
-          "n1 = nrEchoes",
-          "n2 = nrPnts",
+          "d9  = 500-pgo",
+          "d8  = 350-pgo",
+          "d7  = 200-pgo",
+          "d6  = 150-pgo",
+          "d5  = 100-pgo",
+          "w1  = tMax",
+          "n1  = nrEchoes",
+          "n2  = nrPnts",
           "totPnts = nrPnts",
           "totTime = acqTime"]
    var = ["w1"]
@@ -122,98 +120,91 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Check for total RF duty cycle
 # for PM25----------------------------------------------
-          if(pulseLength*nrEchoes/(repTime+tMax/3)>1.6)
+          if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>1.6)
 # for PM5----------------------------------------------
-    #       if(pulseLength*nrEchoes/(repTime+tMax/3)>3)
+    #       if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>3)
       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
       return(0)
    endif
-# Check for p.s. duty cycle should be < 20%
-   if(d1/(echoTime) > 0.25)
+
+# Check that p.s. duty cycle <= 25%
+   if(d1/echoTime > 0.25)
       message("Error","Duty cycle is too high in pulse sequence!\rshould be < 25%\rIncrease echo time\ror reduce pulse length.","error")
        return(0)
    endif
-   if(0==:checkDelay(d1,2)); return; endif
-   if(0==:checkDelay(d2,2)); return; endif
-   if(0==:checkDelay(d3,2)); return; endif
-   if(d4-keaNMR:getAcqTime(guipar) < 1)
+
+# See if any delays are too short
+   if(:checkDelays(["d1","d2","d3","d5","d6","d7","d8","d9","d10"],
+                   [d1,d2,d3,d5,d6,d7,d8,d9,d10],
+                   [2,2,2,2,2,2,2,2,2]))
+      return(0)
+   endif
+
+# Check we have left enough time to collect the data
+   if(d4-ucsRun:getAcqTime(guipar) < 1)
       message("Error","Pulse sequence timing error!\rReduce acquisition time or increase echotime.","error")
        return(0)
    endif
 
-   if(0==:checkDelay( d5,2)); return; endif
-   if(0==:checkDelay( d6,2)); return; endif
-   if(0==:checkDelay( d7,2)); return; endif
-   if(0==:checkDelay( d8,2)); return; endif
-   if(0==:checkDelay( d9,2)); return; endif
-   if(0==:checkDelay(d10,2)); return; endif
-
+# Calculate suitable time and frequency axes
+   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000   # (us)
+   fAxis = ([0:1:totPnts-1]-totPnts/2)/totTime
 
 # Make subplots. wvPP is the current-plot's parent
    try
-   if(excecutedBackdoor=="yes")
-      ppBack = curplot("1d")->parent()
-      prt  = ppBack->subplot(1,1)
-      prf  = none
-      prn  = ppBack->subplot(2,1)
+      if(executedBackdoor == "yes")
+         ppBack = curplot("1d")->parent()
+         prt  = ppBack->subplot(1,1)
+         prf  = none
+         prn  = ppBack->subplot(2,1)
+      endif
+   catch
+     executedBackdoor="no"   
+     refSignal = 1
+     (prt,prf,prn) = ucsPlot:getPlotReferences()
+   endtry
 
-   endif
-catch
-   excecutedBackdoor="no"   
-   refSignal=1
-  (prt,prf,prn) = keaPlot:getPlotRegions(guipar,3,wvPP)
-
-endtry
-
-# calculate the time axis 
-   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000
-   fAxis = ([0:1:totPnts-1]-totPnts/2)/totTime
-
-   t1Axis   = matrix(nrPntsT1)
-
-   amax = 0.95
-   amin = exp(-tMax/t1Est)
-   astep= (amax-amin)/(nrPntsT1-1)
+# Generate the t1 axis
+   amax   = 0.95
+   amin   = exp(-tMax/t1Est)
+   astep  = (amax-amin)/(nrPntsT1-1)
+   t1Axis = matrix(nrPntsT1)
 
    for(m = 0 to nrPntsT1-1)
-    #lineal time increment
-      if(index=="lin")
+    # Linear time increment
+      if(index == "lin")
         t1Axis[m] = (m+1)*tMax/(nrPntsT1) 
       endif 
-    #exponential time increment
-      if(index=="exp")
+    # Logarithmic time increment
+      if(index == "exp")
       t1Axis[m] = t1Est*(-loge(amax-astep*(m)))^(1/1)
       endif
    next(m)
 
    try
-      if(excecutedBackdoor == "yes")
-    
+      if(executedBackdoor == "yes")
       endif 
    catch
-      excecutedBackdoor = "no"
+      executedBackdoor = "no"
       refSignal = 1
    endtry
-
-# Reset the timer
-   time(0)  
 
 # Allocate memory for outputs
    ampAxis  = matrix(nrPntsT1)
 
-# Filter
+# Load the apodization filter ilter
    if(filter == "yes")
       flt = filters:get_filter(filterType,"FTEcho",totPnts)
    else
       flt = matrix(totPnts)+1
    endif
 
-#loop for the 2D experiment
+  # Loop over the t1-axis values to form a 2D data set
    for(m = nrPntsT1-1 to 0 step -1)
       
       w1 = t1Axis[m]  
 
-      ppList = keaRun:setPPLongDelay(ppList,varIndex[0],1000*w1)
+      ppList = ucsRun:setPPLongDelay(ppList,varIndex[0],1000*w1)
    
   # reset sumData
       sumData = cmatrix(totPnts)
@@ -221,266 +212,279 @@ endtry
    # Accumulate scan
       for(scan = 0 to nrScans-1)
      
-       # Note the time at scan start
-         t1 = time()   
-   
        # Set phases for this scan
-         (ppList,pAcq) = keaRun:setPPPhase(ppList,scan,pcList,pcIndex)
+         (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
    
-       # Send phase parameters to DSP
-          dspwrite("x",0x00,ppList,wvPort)
-  
-       # Run the p.p. and collect the data
-         (status,data) = keaRun:getData(totPnts,guipar)
-         data = data/nrEchoes
-        if(status != "ok")
-            return(0)
-         endif
-       # Filter the data
-         data = data .* flt
-       # Accumlate the data
-         sumData = keaRun:accumulate(accumulate,pAcq,sumData,data)
-       # Process the data
-        if(showFreqDomain=="yes")
-         (sumData,spectrum) = keaRun:transformData(sumData,fAxis,guipar,"echo")
-        endif
-        titleTxt = "EchoSum: $scan+1$/$nrScans$"
-        keaPlot:graphTimeAndFreq(prt,prf,tAxis,sumData/refSignal,fAxis,spectrum/refSignal,scan,guipar,titleTxt)
+       # Send all parameter values to spectrometer (DSP)/generate event table (FX3)
+         ucsRun:updatePPParameters(ppList,guipar)
 
-
-      # Check timing
-
-         t1=t1+w1/1000
-
-         check = keaRun:checkTimeAndAbort(guipar,t1,scan,pcList)
+       # Wait for the repetition time to complete
+         check = ucsRun:checkTiming(guipar,scan,pcList)
          if(check == "abort")
             return(0)
-         elseif(check == "finish")          
-         scan = scan+1
-            exitfor()
-          return(0)
          endif
-            
+
+       # Run the p.p. and collect the data
+         (status,data) = ucsRun:getData(totPnts,guipar)
+         data = data/nrEchoes
+
+       # See if stop button/escape key pressed
+         if(status != "ok")
+            return(0)
+         endif
+
+       # Filter the data
+         data = data .* flt
+
+       # Accumlate the data
+         sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
+
+       # Process the data
+        if(showFreqDomain=="yes")
+         (sumData,spectrum) = ucsRun:transformData(sumData,fAxis,guipar,"echo")
+        endif
+        titleTxt = "EchoSum: $scan+1$/$nrScans$"
+        ucsPlot:graphTimeAndFreq(prt,prf,tAxis,sumData/refSignal,fAxis,spectrum/refSignal,scan,guipar,titleTxt)
+     
+       # Check if complete button pressed
+         if(check == "finish")
+            exitfor()
+         endif
+       
       next(scan)
 
-      ampAxis[m]  = sum(real(sumData))/nrPnts/refSignal
-
+      ampAxis[m] = sum(real(sumData))/(nrPnts*refSignal)
 
       :graphBuildUp(t1Axis,ampAxis,prn,m,nrScans,guipar)      
-
-      if(saveData == "true")
-         :saveData(guipar,t1Axis,ampAxis)
-         if(m=1)
-         # Output information to the CLI
-            pr "\n  data saved in:"
-            pr "\n  $dataDirectory$\\$expName$\\$expNr$"
-         endif
-      endif
   
-      if check==("finish")
+    # Check if complete button pressed
+      if(check == "finish")
          exitfor()
       endif
 
-
    next(m)
 
-     (fit,E0,T1,E0err,T1err) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+# Save the data
+   ucsFiles:savePlot(prn,:getPlotInfo("pt3"),guipar,"noReport")
 
-# Increment the experiment number
-   keaFiles:incrementExperiment(guipar)
+  (fit,E0,T1,E0err,T1err) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+
 # Pack the data into a structure  
-   
-      result = struct()
-      result->t1Axis = t1Axis
-      result->ampAxis = ampAxis/nrScans
-      result->E0 = E0
-      result->T1 = T1
-      return(result)
-
-
-
-        
- 
+   result = struct()
+   result->t1Axis = t1Axis
+   result->ampAxis = ampAxis/nrScans
+   result->E0 = E0
+   result->T1 = T1
+   return(result)
 
 endproc("execpp")
+
+########################################################
+# Get the name of a plot file given the region name
+# or return the whole list
+########################################################
+
+procedure(getPlotInfo,plotRegion)
+
+   info = ["pt3","t1AmpData.pt1"]
+
+   if(plotRegion == "all")
+      return(info)
+   endif
+
+   idx = getlistindex(info,plotRegion)
+   if(idx != -1)
+      return(info[idx+1])
+   endif
+
+endproc(null)
+
 
 # -----------------------Save the accumulated data -----------------------------
 # Either pass the parameters to save or use
 # window variables of the same name.
 
+#
+#procedure(saveData,guipar,t1Axis,ampAxis)
+#
+## Make all gui parameters available
+#   assignlist(guipar)
+#
+## Save data and plot in chosen folder
+#   bak = getcwd()
+#   cd(dataDirectory)
+#   mkdir(expName)
+#   cd(expName)
+#   mkdir("$expNr$")
+#   cd("$expNr$")
+#
+#   save("data.1d",ampAxis)              # Save data in Prospa format
+#   save("data.pt1")                     # Save plot
+#   save("data.emf","emf1d")             # Save plot as picture
+#   n = size(ampAxis)
+#   m = matrix(2,n)
+#   m[0,~] = (t1Axis/1000)'
+#   m[1,~] = real(ampAxis)'
+#
+#   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+#   export2d(m,"data.dat")  # Save data for origin
+#
+#
+## Restore cwd
+#   cd(bak)
+#
+#endproc("saveData")
 
-procedure(saveData,guipar,t1Axis,ampAxis)
-
-# Make all gui parameters available
-   assignlist(guipar)
-
-# Save data and plot in chosen folder
-   bak = getcwd()
-   cd(dataDirectory)
-   mkdir(expName)
-   cd(expName)
-   mkdir("$expNr$")
-   cd("$expNr$")
-
-   save("data.1d",ampAxis)              # Save data in Prospa format
-   save("data.pt1")                     # Save plot
-   save("data.emf","emf1d")             # Save plot as picture
-   n = size(ampAxis)
-   m = matrix(2,n)
-   m[0,~] = (t1Axis/1000)'
-   m[1,~] = real(ampAxis)'
-
-   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
-   export2d(m,"data.dat")  # Save data for origin
-
-
-# Restore cwd
-   cd(bak)
-
-endproc("saveData")
-#--------------------------------------------------------
+##########################################################
+# 
+##########################################################
 procedure(graphBuildUp,t,data,prn,m,nrScans,guipar)
- assignlist(guipar)
 
-      if(accumulate == "yes")
-         sf = 1/nrScans
-      else
-         sf = 1
-      endif
+   assignlist(guipar)
+   
+   if(accumulate == "yes")
+      sf = 1/nrScans
+   else
+      sf = 1
+   endif
    
    # Select units
-      if(wvUnits == "uV")
-         ampUnits = "\G(m)V"
-      elseif(wvUnits == "uV")
-         ampUnits = "mV"
-         sf = sf *0.001
-      else
-         ampUnits = "raw"
-      endif
+   if(wvUnits == "uV")
+      ampUnits = "\G(m)V"
+   elseif(wvUnits == "uV")
+      ampUnits = "mV"
+      sf = sf *0.001
+   else
+      ampUnits = "raw"
+   endif
+   
+   prn->draw("false") 
+   
+   prn->plot(t,data*sf,
+           "tracetype", "lines",
+       "tracecolor",wvDataSymbolColor,
+       "symbolshape","opensquare",
+       "symbolcolor",wvDataSymbolColor)
+   prn->xlabel("Recovering time (ms)") 
+   prn->ylabel("Signal amplitude($ampUnits$)")
+   prn->axes("fontsize",11)
+   prn->title("Mz Build Up $nrPntsT1-m$/$nrPntsT1$")     
+   prn->hold("off")
+   prn->draw("true")
 
+endproc("graphBuildUp")
 
-  
-    prn->draw("false") 
-
-    prn->plot(t,data*sf,
-              "tracetype", "lines",
-          "tracecolor",wvDataSymbolColor,
-          "symbolshape","opensquare",
-          "symbolcolor",wvDataSymbolColor)
-     prn->xlabel("Recovering time (ms)") 
-     prn->ylabel("Signal amplitude($ampUnits$)")
-     prn->axes("fontsize",11)
-     prn->title("Mz Build Up $nrPntsT1-m$/$nrPntsT1$")     
-     prn->hold("off")
-     prn->draw("true")
-   endproc("graphBuildUp")
-
-#--------------------------------------------------------
+##########################################################
+# 
+##########################################################
 procedure(T1SatFitOffset,t,data,prn,nrScans,guipar)
- assignlist(guipar)
 
-      if(accumulate == "yes")
-         sf = 1/nrScans
-      else
-         sf = 1
-      endif
+   assignlist(guipar)
    
-   # Select units
-      if(wvUnits == "uV")
-         sf = sf 
-         ampUnits = "\G(m)V"
-      elseif(wvUnits == "uV")
-         ampUnits = "mV"
-      else
-         ampUnits = "raw"
-      endif
+   if(accumulate == "yes")
+      sf = 1/nrScans
+   else
+      sf = 1
+   endif
 
-
-         np = size(data)
-         tZero=matrix(np+1)
-         fZero=matrix(np+1)
-         tZero = insert(tZero,t,1)
-         fZero = insert(fZero,data,1)
-
-         offset0 = -(data[np-1]+data[0])/2
-         offsetRange = (data[np-1]-data[0])
-         npChi = 32
-         chi = matrix(npChi)
-         offset = matrix(npChi)
-         for(k=0 to npChi-1)
-            offset[k] = offset0 + offsetRange/(npChi-1)*(k-npChi/2)
-            newdata = data+offset[k]
-            try
-              (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
-               chi[k] = :chiSqr(newdata,fit)
-            catch
-               chi[k] = 100000
-            endtry
-         next(k)
-
-         (a,bestk)= min(chi)
-
-         offset0 = offset[bestk]
-         offsetRange = (offset[bestk+1]-offset[bestk-1])
-         npChi = 32
-         chi = matrix(npChi)
-         offset = matrix(npChi)
-         for(k=0 to npChi-1)
-            offset[k] = offset0 + offsetRange/(npChi-1)*(k-npChi/2)
-            newdata = data+offset[k]
-            try
-              (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
-               chi[k] = :chiSqr(newdata,fit)
-            catch
-               chi[k] = 100000
-            endtry
-         next(k)
-
-         (a,bestk)= min(chi)
-         newdata = data+offset[bestk]
-  try        
-     (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
+# Select units
+   if(wvUnits == "uV")
+      sf = sf 
+      ampUnits = "\G(m)V"
+   elseif(wvUnits == "uV")
+      ampUnits = "mV"
+   else
+      ampUnits = "raw"
+   endif
+   
+   
+   np = size(data)
+   tZero = matrix(np+1)
+   fZero = matrix(np+1)
+   tZero = insert(tZero,t,1)
+   fZero = insert(fZero,data,1)
+   
+   offset0 = -(data[np-1]+data[0])/2
+   offsetRange = (data[np-1]-data[0])
+   npChi = 32
+   chi = matrix(npChi)
+   offset = matrix(npChi)
+   for(k = 0 to npChi-1)
+      offset[k] = offset0 + offsetRange/(npChi-1)*(k-npChi/2)
+      newdata = data+offset[k]
+      try
+        (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
+         chi[k] = :chiSqr(newdata,fit)
+      catch
+         chi[k] = 100000
+      endtry
+   next(k)
+   
+   (a,bestk) = min(chi)
+   
+   offset0 = offset[bestk]
+   offsetRange = (offset[bestk+1]-offset[bestk-1])
+   npChi = 32
+   chi = matrix(npChi)
+   offset = matrix(npChi)
+   for(k = 0 to npChi-1)
+      offset[k] = offset0 + offsetRange/(npChi-1)*(k-npChi/2)
+      newdata = data+offset[k]
+      try
+        (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
+         chi[k] = :chiSqr(newdata,fit)
+      catch
+         chi[k] = 100000
+      endtry
+   next(k)
+   
+   (a,bestk) = min(chi)
+   newdata = data+offset[bestk]
+   try        
+      (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
       fit = fit - offset[bestk]
       result = errorstr(T1,T1err,1)
       pr "\nT1 = $result$\n"  
-  catch
-     result = ""
-  endtry
+   catch
+      result = ""
+   endtry
     
-  if(result != "")
-    prn->draw("false") 
-    prn->plot(t,fit*sf,
+   if(result != "")
+      prn->draw("false") 
+      prn->plot(t,fit*sf,
               "tracetype", "lines",
               "tracewidth",2,
               "tracecolor",[255,0,0],
               "symbolshape","none")
-     prn->xlabel("Recovering time (ms)") 
-     prn->ylabel("Signal amplitude($ampUnits$)")
-     prn->axes("fontsize",11)
-     prn->hold("on")
-
-     prn->plot(tZero,fZero*sf,
+      prn->xlabel("Recovering time (ms)") 
+      prn->ylabel("Signal amplitude($ampUnits$)")
+      prn->axes("fontsize",11)
+      prn->hold("on")
+      
+      prn->plot(tZero,fZero*sf,
               "tracetype", "lines",
               "tracecolor",wvDataSymbolColor,
               "symbolshape","opensquare",
               "symbolcolor",wvDataSymbolColor)
-     prn->xlabel("Recovering time (ms)") 
-     prn->ylabel("Signal amplitude($ampUnits$)")
-     prn->axes("fontsize",11)
-     prn->hold("off")
-    
-    
-     prn->title("T_(1) = $result$ ms")
-     prn->title("size",14)
-    #  title("text","Mz recovering curve","size",14)
-   
-
-    prn->hold("off")
-    prn->draw("true")
-  endif 
+      prn->xlabel("Recovering time (ms)") 
+      prn->ylabel("Signal amplitude($ampUnits$)")
+      prn->axes("fontsize",11)
+      prn->hold("off")
+      
+      
+      prn->title("T_(1) = $result$ ms")
+      prn->title("size",14)
+      #  title("text","Mz recovering curve","size",14)
+      
+      prn->hold("off")
+      prn->draw("true")
+   endif 
 
 endproc(fit,E0,T1,E0err,T1err)
-#---------------------------------------------------
+
+##########################################################
+# 
+##########################################################
 procedure(chiSqr,a,b)
  
     np = size(a)
@@ -489,12 +493,19 @@ procedure(chiSqr,a,b)
 
 endproc(chi)
 
-#-------------------------------------------------------------------------------
-procedure(checkDelay,dx,limit)
+##########################################################
+# Check the dxValues in the dxNames list. Make sure the 
+# values are greater than the limits
+##########################################################
+
+procedure(checkDelays, dxNames, dxValues, dxLimits)
  
-   if (dx<= limit)
-      message("error","Pulse sequence timing error","error")
-      return (0)
-   endif 
-endproc(1)
+   for(k = 0 to size(dxNames)-1)
+      if (dxValues[k] <= dxLimits[k])
+         message("Error","Pulse sequence timing error. Delay $dxNames[k]$ is <= $dxLimits[k]$","error")
+         return(1)
+      endif 
+   next(k)
+
+endproc(0)
 

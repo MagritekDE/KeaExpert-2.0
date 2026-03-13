@@ -1,86 +1,91 @@
 ########################################################
 #
 # Saturation recovering sequence with CPMG detection
-# www.magritek.com, March 2013
-# Prospa V3.12
 #
 ########################################################
 
-procedure(pulse_program,dir,mode)
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrlType, varType)
+   interface = ["b1FreqCh1",      "B1 Frequency (MHz)",      "tb",     "freq";
+
+               "90AmplitudeCh1",  "90 amplitude (dB)",       "tb",     "float,[-85,-6]";
+               "180AmplitudeCh1", "180 amplitude (dB)",      "tb",     "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",       "tb",     "pulselength";
+
+               "echoTime",        "Echotime (us)",           "tb",     "sdelay";
+               "nrEchoes",        "Number of echoes",        "tb",     "integer,[1,16000]";
+               "echoShift",       "Echo shift (us)",         "tb",     "float,[-20,20]";
+
+               "t1Est",           "T1 estimation (ms)",      "tb",     "float,[1,10000]";
+               "tMax",            "Max. recov. time (ms)",   "tb",     "float,[0,60000]";
+               "nrPntsT1",        "Number of time increm.",  "tb",     "integer,[1,1000]";
+               "index",           "Time increment",          "tm",     "string,[\"lin\",\"exp\"]";
+               "repTime",         "Repetition time (ms)",    "tb",     "float,[20,1e8]"]
 
 
-# Interface description (name, label, x, y, ctrlType, varType)
-   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",    "tbwv",    "freq",
-               "repTime",      "Repetition time (ms)", "0","1.6",   "tbwv",   "float,[20,1e8]",
-
-               "90Amplitude",  "90 amplitude (dB)",    "1","0",     "tb",     "float,[-72,-6]",
-               "180Amplitude", "180 amplitude (dB)",   "1","1",     "tb",     "pulseamp",
-               "pulseLength",  "Pulse length (us)",    "1","2",     "tb",     "float,[1,500]",
-
-               "echoTime",     "Echotime (us)",        "2","0",     "tb",     "sdelay",
-               "nrEchoes",     "Number of echoes",     "2","1",     "tb",     "integer,[1,16000]",
-               "echoShift",    "Echo shift (us)",      "2","2",     "tb",     "float,[-20,20]",
-
-               "t1Est",        "T1 estimation (ms)",   "3","0",     "tb",     "float,[1,10000]",
-               "tMax",         "Max. recov. time (ms)","3","1",     "tb",     "float,[0,60000]",
-               "nrPntsT1",     "Number of time increm.","3","2",    "tb",     "integer,[1,1000]",
-               "index",        "Time increment"        ,"3","3",    "tm",     "[\"lin\",\"exp\"]"]
-
-  tabs = ["Pulse_sequence","Acquisition","Processing_Display_Std","File_Settings"]
+  tabs = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File_Settings"]
 
 # Relationships between pulse-sequence and GUI parameters
-   relationships = ["a1 = 90Amplitude",
-                    "a2 = 180Amplitude",
-                    "d1 = pulseLength",
-                    "d2 = echoTime/2-d1-pgo",
-                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
-                    "d4 = echoTime-d1-pgo-d3",
+   relationships = ["a1  = 90AmplitudeCh1",
+                    "a2  = 180AmplitudeCh1",
+                    "d1  = pulseLengthCh1",
+                    "d2  = echoTime/2-d1-pgo",
+                    "d3  = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4  = echoTime-d1-pgo-d3",
                     "d10 = 750-pgo",
-                    "d9 = 500-pgo",
-                    "d8 = 350-pgo",
-                    "d7 = 200-pgo",
-                    "d6 = 150-pgo",
-                    "d5 = 100-pgo",
-                    "w1 = tMax",
-                    "n1 = nrEchoes",
-                    "n2 = nrPnts",
+                    "d9  = 500-pgo",
+                    "d8  = 350-pgo",
+                    "d7  = 200-pgo",
+                    "d6  = 150-pgo",
+                    "d5  = 100-pgo",
+                    "w1  = tMax",
+                    "n1  = nrEchoes",
+                    "n2  = nrPnts",
                     "totPnts = nrPnts",
                     "totTime = acqTime"]
 
 # These parameters will be changed between experiments
    variables = ["w1"]
 
-# x and y spacing between controls
-   dim = [155,26]
-
 # Pulse sequence
    initpp(dir) # Reset internal parameter list
 
    cleardata(64000)
 
+# Saturation sequence
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d5)                   # delay
+   delay(d5)               # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d6)                   # delay
+   delay(d6)               # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d7)                   # delay
+   delay(d7)               # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d8)                   # delay
+   delay(d8)               # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d9)                   # delay
+   delay(d9)               # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
-   delay(d10)                   # delay
+   delay(d10)              # delay
    pulse(mode,a1,p1,d1)    # 90 pulse
 
-   wait(w1)                    # recovering delay
+# Recovery delay
+   wait(w1)                
 
-   pulse(mode,a1,p2,d1)           # 90 pulse
-   delay(d2)                      # 90 - 180 delay
+# Excitation
+   pulse(mode,a1,p2,d1)    # 90 pulse
 
+   delay(d2)               # 90 - 180 delay
+
+# CPMG detection
    loop(l1,n1)
-      pulse(mode,a2,p3,d1)        # 180 internal pulse
-      delay(d3)                   # 180 - acq delay
-      acquire("sum",n2,d4)     # Acquire echo and wait
+      pulse(mode,a2,p3,d1) # 180 internal pulse
+      delay(d3)            # 180 - acq delay
+      acquire("sum",n2,d4) # Sum echo and wait d4
    endloop(l1)
 
    lst = endpp() # Return parameter list
@@ -90,9 +95,28 @@ procedure(pulse_program,dir,mode)
                  0,0,2,2;
                  1,1,1,1;
                  0,0,2,2]
-#     phaseList = [0,0;
-#                 0,2;
-#                 1,1;
-#                 0,2]
 
-endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain           = $rxOptGaindB$",
+          "pulseLengthCh1   = $pulseLengthCh1$",
+          "90AmplitudeCh1   = $pulseAmplitudeCh1$",
+          "180AmplitudeCh1  = $pulseAmplitudeCh1$+6",
+          "b1FreqCh1        = $frequencyCh1$"]
+
+endproc(par)
