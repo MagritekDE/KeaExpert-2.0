@@ -17,18 +17,18 @@ endproc("readonly")
 procedure(interfaceDescription)
 
    interface = [
-      "b1Freq","B1 Frequency (MHz)","tb","double","[1,400]",
-      "repTime","Repetition time (ms)","tb","float","[20,1e8]",
-      "90Amplitude","90 amplitude (dB)","tb","float","[-72,-6]",
-      "180Amplitude","180 amplitude (dB)","tb","float","[-85,0]",
-      "pulseLength","Pulse length (us)","tb","float","[1,500]",
+      "b1FreqCh1","B1 Frequency (MHz)","tb","double","[1,400]",
+      "90AmplitudeCh1","90 amplitude (dB)","tb","float","[-85,-6]",
+      "180AmplitudeCh1","180 amplitude (dB)","tb","float","[-85,0]",
+      "pulseLengthCh1","Pulse length (us)","tb","float","[0.5,1000]",
       "echoTime","Echotime (us)","tb","float","[2,327670]",
       "nrEchoes","Number of echoes","tb","integer","[1,16000]",
       "echoShift","Echo shift (us)","tb","float","[-20,20]",
       "t1Est","T1 estimation (ms)","tb","float","[1,10000]",
       "tMax","Max. recov. time (ms)","tb","float","[0,60000]",
       "nrPntsT1","Number of time increm.","tb","integer","[1,1000]",
-      "index","Time increment","tm","["lin","exp"]","[1,1000]",
+      "index","Time increment","tm","string","[\"lin\",\"exp\"]",
+      "repTime","Repetition time (ms)","tb","float","[20,1e8]",
       "acquDiv","Acquisition","dv", "Acquisition", "",
       "rxGain","Receiver gain","tm","integer","$gData->rxGainMenu$",
       "rxPhase","Receiver phase","tb","float","[-360,360]",
@@ -40,15 +40,15 @@ procedure(interfaceDescription)
       "usePhaseCycle","Phase cycle","cb","string","no,yes",
       "bandwidth","Bandwidth (kHz)","tb2","float","",
       "acqTime","Acquisition time (ms)","tb","float","",
-      "procDiv","Processing","dv", "Processing_Display_Std", "",
+      "procDiv","Processing","dv", "Processing_Std", "",
       "zf","Zero fill factor?","tm","integer","[\"1\",\"2\",\"4\",\"8\",\"16\"]",
       "filter","Apodisation filter?","cb","string","no,yes",
-      "filterType","Filter type","tm","string","[\"none\",\"exponential\",\"sinebellsquared\"]",
+      "filterType","Filter type","tm","string","[\"none\",\"exp:1\",\"exponential\",\"sinebellsquared\"]",
       "fdPhaseCorr","Freq. domain phasing","tm","string","[\"autophase\",\"mag\",\"none\"]",
+      "dispDiv","Display","dv", "Display_PPM_Range", "",
       "usePPMScale","Use ppm scale?","cb","string","no,yes",
-      "dispRangeMinPPM","Minimum PPM value","tb","float","[-2000,2000]",
-      "dispRangeMaxPPM","Maximum PPM value","tb","float","[-2000,2000]",
-      "dispRange","Display range (kHz)","tb","float","[0,2000]",
+      "dispRangePPM","Display range (ppm)","tb","float","[0,10000]",
+      "dispRange","Display range (Hz)","tb","float","[0,2e6]",
       "fileDiv","Files","dv", "File_Settings", "",
       "saveData","Save data?","cb","string","false,true"]
 
@@ -57,13 +57,13 @@ endproc(interface)
 
 procedure(plot_run_layout)
 
-   layout = ["pt1"]
+   layout = ["pt1","pt2";"pt3"]
 
 endproc(layout)
 
 procedure(plot_load_layout)
 
-   layout = ["pt1"]
+   layout = ["pt3"]
 
 endproc(layout)
 

@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Prospa
-AppVerName=Prospa V3.128 + KeaExpert V2.02.12 (26-Feb-2026)
+AppVerName=Prospa V3.128 + KeaExpert V2.02.13 (13-March-2026)
 AppPublisher=Magritek
 AppPublisherURL=http://www.magritek.com
 AppSupportURL=http://www.magritek.com
@@ -20,7 +20,7 @@ WizardImageFile=..\largeIcon.bmp
 WizardImageStretch=no
 WizardSmallImageFile=..\smallIcon.bmp
 OutputDir="..\Installer Output\KeaExpert"
-OutputBaseFilename="KeaExpert V2.02.12 (26-Feb-2026)"
+OutputBaseFilename="KeaExpert V2.02.13 (13-March-2026)"
 
 UsePreviousAppDir=no
 ;InfoBeforeFile="KeaExpertInfoBeforeInstall.txt"
@@ -91,6 +91,8 @@ Source: "..\Macros\Kea-NMR\CPMGDurationSweep\*";       DestDir: "{app}\Macros\Ke
 Source: "..\Macros\Kea-NMR\CPMGFast\*";                DestDir: "{app}\Macros\Kea-NMR\CPMGFast";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-NMR\MonitorNoise\*";            DestDir: "{app}\Macros\Kea-NMR\MonitorNoise";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-NMR\SpinEcho\*";                DestDir: "{app}\Macros\Kea-NMR\SpinEcho";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\SSE\*";                     DestDir: "{app}\Macros\Kea-NMR\SSE";                 Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\T1Sat\*";                   DestDir: "{app}\Macros\Kea-NMR\T1Sat";               Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-NMR\T1-IR-Add\*";               DestDir: "{app}\Macros\Kea-NMR\T1-IR-Add";           Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-NMR\Wobble\*";                  DestDir: "{app}\Macros\Kea-NMR\Wobble";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 ;Source: "..\Macros\Kea-MRI\*";                         DestDir: "{app}\Macros\Kea-MRI";          Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
@@ -154,8 +156,8 @@ Source: "..\DLLs\FX3PPRun.dll";            DestDir: "{app}\DLLs"; Flags: ignorev
 Source: "..\DLLs\MSP430Run.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FX3USBRun.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FTPRun.dll";              DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\FTDIRun.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\ftd2xx.dll";              DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\FTDIRun.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\ftd2xx.dll";              DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\fittingRun.dll";          DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\NNLSRun.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\SerialRun.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
@@ -165,11 +167,11 @@ Source: "..\DLLs\BiotRun.dll";             DestDir: "{app}\DLLs"; Flags: ignorev
 ; DLLs for linear prediction
 ;Source: "..\DLLs\LinearPredictionRun.dll"; DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\FastLinearPredictionRun.dll"; DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\libgcc_s_dw2-1.dll";      DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\libgfortran-3.dll";       DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\liblapack.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\liblapacke.dll";          DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
-Source: "..\DLLs\libblas.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\libgcc_s_dw2-1.dll";      DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\libgfortran-3.dll";       DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\liblapack.dll";           DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\liblapacke.dll";          DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
+;Source: "..\DLLs\libblas.dll";             DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\msvcp110.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 Source: "..\DLLs\msvcr110.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 
@@ -180,7 +182,7 @@ Source: "..\Python\RunExpertExperiment.py";            DestDir: "{app}\Python"; 
 ;Source: "..\Example Data\Demos\*"; DestDir: "{app}\Example Data\Demos"; Flags: ignoreversion recursesubdirs
 
 ; Special programs
-Source: "..\Kea special programs\TTLController\*";       DestDir: "{app}\Kea special programs\TTLController"; Flags: ignoreversion recursesubdirs;
+;Source: "..\Kea special programs\TTLController\*";       DestDir: "{app}\Kea special programs\TTLController"; Flags: ignoreversion recursesubdirs;
 
 ; Icons
 Source: "..\Icons\prospa_file.ico"; DestDir: "{app}\Icons"; Flags: ignoreversion recursesubdirs
