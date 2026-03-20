@@ -1,6 +1,6 @@
 #########################################################
 # 
-# T1Sat_iet
+# T1Sat-ie
 #
 # Saturation recovering sequence with CPMG detection
 # This version uses interexperiment time rather
@@ -22,17 +22,17 @@
 #
 #########################################################
 
-procedure(T1Sat_iet, parameters=null)
+procedure(T1Sat-ie, parameters=null)
 
    macroLocation = getmacropath()
    parentPath = getbasepath(macroLocation)
 
    if(iskeypressed("shift"))
-      PulseProgramCompiler(guiwinnr(),null,parentPath,"T1Sat_iet")
+      PulseProgramCompiler(guiwinnr(),null,parentPath,"T1Sat-ie")
    elseif(iskeypressed("control"))
-      gView->showExperimentHelp("T1Sat_iet")
+      gView->showExperimentHelp("T1Sat-ie")
    else
-      gExpt->addExperiment(parentPath,"T1Sat_iet",parameters)
+      gExpt->addExperiment(parentPath,"T1Sat-ie",parameters)
    endif
 
 endproc()
@@ -91,7 +91,7 @@ procedure(getseqpar)
           "totTime = acqTime"]
    var = ["w1"]
    pp_list = ["a1","p1","d1","d5","d6","d7","d8","d9","d10","w1","p2","d2","n1","l1","a2","p3","d3","n2","d4"]
-   pp_name = "T1Sat_iet.p"
+   pp_name = "T1Sat-ie.p"
    phase_list = [0,2,0,2;0,0,2,2;1,1,1,1;0,0,2,2]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
@@ -274,7 +274,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    next(m)
 
 # Fit the data
-  (fit,E0,T1,E0err,T1err) = :T1Sat_ietFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+  (fit,E0,T1,E0err,T1err) = :T1Sat-ieFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
 
 # Save the data
    ucsFiles:savePlot(prn,:getPlotInfo("pt3"),guipar,"noReport")
@@ -388,7 +388,7 @@ endproc("graphBuildUp")
 ##########################################################
 # 
 ##########################################################
-procedure(T1Sat_ietFitOffset,t,data,prn,nrScans,guipar)
+procedure(T1Sat-ieFitOffset,t,data,prn,nrScans,guipar)
 
    assignlist(guipar)
    
@@ -548,7 +548,7 @@ procedure(expectedDuration, guipar)
 
    dArray = t1Axis*1000
    totDelayTime = sum(dArray) 
-   psTime = GetPulseProgramDuration("T1Sat_iet",1,guipar)*1000
+   psTime = GetPulseProgramDuration("T1Sat-ie",1,guipar)*1000
    psTime = psTime - t1Axis[-1]*1000 # Base ps duration
    psTime = psTime + nrPnts*10 # Data collection time estimate
    totScans = nrPntsT1*nrScans
