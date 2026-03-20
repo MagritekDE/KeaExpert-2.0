@@ -1,0 +1,124 @@
+########################################################
+#
+# Saturation recovering sequence with CPMG detection
+# This version uses interexperiment time rather
+# than repetition time.
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrlType, varType)
+   interface = ["b1FreqCh1",      "B1 Frequency (MHz)",          "tb",     "freq";
+
+               "90AmplitudeCh1",  "90 amplitude (dB)",           "tb",     "float,[-85,-6]";
+               "180AmplitudeCh1", "180 amplitude (dB)",          "tb",     "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",           "tb",     "pulselength";
+
+               "echoTime",        "Echotime (us)",               "tb",     "sdelay";
+               "nrEchoes",        "Number of echoes",            "tb",     "integer,[1,16000]";
+               "echoShift",       "Echo shift (us)",             "tb",     "float,[-20,20]";
+
+               "t1Est",           "T1 estimation (ms)",          "tb",     "float,[1,10000]";
+               "tMax",            "Max. recov. time (ms)",       "tb",     "float,[0,60000]";
+               "nrPntsT1",        "Number of time increm.",      "tb",     "integer,[1,1000]";
+               "index",           "Time increment",              "tm",     "string,[\"lin\",\"exp\"]";
+               "ieTime",          "Interexperiment time (ms)",   "tb",     "float,[20,1e8]"]
+
+
+  tabs = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File_Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1  = 90AmplitudeCh1",
+                    "a2  = 180AmplitudeCh1",
+                    "d1  = pulseLengthCh1",
+                    "d2  = echoTime/2-d1-pgo",
+                    "d3  = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4  = echoTime-d1-pgo-d3",
+                    "d10 = 750-pgo",
+                    "d9  = 500-pgo",
+                    "d8  = 350-pgo",
+                    "d7  = 200-pgo",
+                    "d6  = 150-pgo",
+                    "d5  = 100-pgo",
+                    "w1  = tMax*1000",
+                    "n1  = nrEchoes",
+                    "n2  = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["w1"]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   cleardata(64000)
+
+# Saturation sequence
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d5)               # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d6)               # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d7)               # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d8)               # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d9)               # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+   delay(d10)              # delay
+   pulse(mode,a1,p1,d1)    # 90 pulse
+
+# Recovery delay
+   wait(w1)                
+
+# Excitation
+   pulse(mode,a1,p2,d1)    # 90 pulse
+
+   delay(d2)               # 90 - 180 delay
+
+# CPMG detection
+   loop(l1,n1)
+      pulse(mode,a2,p3,d1) # 180 internal pulse
+      delay(d3)            # 180 - acq delay
+      acquire("sum",n2,d4) # Sum echo and wait d4
+   endloop(l1)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+    phaseList = [0,2,0,2;
+                 0,0,2,2;
+                 1,1,1,1;
+                 0,0,2,2]
+
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain           = $rxOptGaindB$",
+          "pulseLengthCh1   = $pulseLengthCh1$",
+          "90AmplitudeCh1   = $pulseAmplitudeCh1$",
+          "180AmplitudeCh1  = $pulseAmplitudeCh1$+6",
+          "b1FreqCh1        = $frequencyCh1$"]
+
+endproc(par)
