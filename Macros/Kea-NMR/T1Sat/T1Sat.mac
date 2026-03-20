@@ -120,9 +120,10 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Check for total RF duty cycle
 # for PM25----------------------------------------------
-          if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>1.6)
+    #      if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>1.6)
 # for PM5----------------------------------------------
-    #       if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>3)
+
+   if(pulseLengthCh1*nrEchoes/(repTime+tMax/3)>3.1)
       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
       return(0)
    endif
@@ -194,7 +195,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Load the apodization filter ilter
    if(filter == "yes")
-      flt = filters:get_filter(filterType,"FTEcho",totPnts)
+      flt = filters:get_filter(filterType,"FTFid",totPnts)
    else
       flt = matrix(totPnts)+1
    endif
@@ -264,10 +265,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    next(m)
 
+# Fit the data
+  (fit,E0,T1,E0err,T1err) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+
 # Save the data
    ucsFiles:savePlot(prn,:getPlotInfo("pt3"),guipar,"noReport")
 
-  (fit,E0,T1,E0err,T1err) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
 
 # Pack the data into a structure  
    result = struct()
@@ -396,8 +399,7 @@ procedure(T1SatFitOffset,t,data,prn,nrScans,guipar)
    else
       ampUnits = "raw"
    endif
-   
-   
+
    np = size(data)
    tZero = matrix(np+1)
    fZero = matrix(np+1)
@@ -444,28 +446,29 @@ procedure(T1SatFitOffset,t,data,prn,nrScans,guipar)
       (fit,E0,T1,E0err,T1err) = t1fit(t,newdata,"ir")
       fit = fit - offset[bestk]
       result = errorstr(T1,T1err,1)
-      pr "\nT1 = $result$\n"  
+      pr "\n\n   T1 = $result$ ms\n"  
    catch
       result = ""
    endtry
-    
+
    if(result != "")
       prn->draw("false") 
       prn->plot(t,fit*sf,
               "tracetype", "lines",
-              "tracewidth",2,
-              "tracecolor",[255,0,0],
+              "tracewidth",1,
+              "tracecolor",[0,128,0],
               "symbolshape","none")
       prn->xlabel("Recovering time (ms)") 
       prn->ylabel("Signal amplitude($ampUnits$)")
       prn->axes("fontsize",11)
+
       prn->hold("on")
       
       prn->plot(tZero,fZero*sf,
-              "tracetype", "lines",
-              "tracecolor",wvDataSymbolColor,
+              "tracetype", "none",
+              "tracecolor",[0,128,0],
               "symbolshape","opensquare",
-              "symbolcolor",wvDataSymbolColor)
+              "symbolcolor",[255,0,0])
       prn->xlabel("Recovering time (ms)") 
       prn->ylabel("Signal amplitude($ampUnits$)")
       prn->axes("fontsize",11)
@@ -508,4 +511,16 @@ procedure(checkDelays, dxNames, dxValues, dxLimits)
    next(k)
 
 endproc(0)
+
+########################################################
+# Return expected experiment duration in seconds
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+   totScans = nrScans*nrPntsT1
+   duration = (totScans*repTime)/1000
+
+endproc(duration)
 
