@@ -18,7 +18,7 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 
 
 
-* Add getxrange and getyrange as new 1D plot commands. These will display an expanding semitransparent rectangle which extends to the edge of the screen in the other dimension. It should return the limits as indices and values (x) or values (y). \[Prospa] 
+* Add getxrange and getyrange as new 1D plot commands. These will display an expanding semitransparent rectangle which extends to the edge of the screen in the other dimension. It should return the limits as indices and values (x) or values (y). \[Prospa]
 
 
 
@@ -40,3 +40,12 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 
 
 
+14/3/2026
+
+
+
+* Figure out how to switch end codes on the signal generator experiment so the RF stays on.
+* Figure out a way to get delays the same on the FX3 and the DSP (see CPMGFast)
+* In T1Sat replace repTime with ieTime.
+* How to handle different probeheads? Do we want this to be loadable as it is at present?
+* 
