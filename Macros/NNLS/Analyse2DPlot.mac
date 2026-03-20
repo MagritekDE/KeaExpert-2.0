@@ -41,6 +41,8 @@
 # V2.0 Changes (10 Dec 24)
 # 1. Removed references to ME and LH
 # 2. Reordered procedures alphabetically
+# V2.1 Changes (19 March 26)
+# 1. Fixed grid colours depending on background
 ########################################################
 
 procedure(Analyse2DPlot)
@@ -274,7 +276,28 @@ procedure(2DInverseLaplaceCalc, guiPar, data, xr, yr, smoothingLoc, xAxisSpacing
 
 endproc(mInvert,residuals,sdRes,sdIn,dataOrig,xr,yr,dataBinned)
 
+###########################################################
+# Display a grid
+###########################################################
 
+procedure(addGrid, rg)
+
+   assignlist(getctrlvalues(0))
+
+   if(intensityPlotCtrl->text == "yes" | bkgColor != "white")
+      rg->grid->color([100,100,100])
+      rg->grid->finecolor([50,50,50])
+   else
+      rg->grid->color([160,160,160])
+      rg->grid->finecolor([220,220,220])
+   endif
+   rg->grid->xgrid("on")
+   rg->grid->ygrid("on")
+   rg->grid->finexgrid("on")
+   rg->grid->fineygrid("on")
+
+
+endproc()
 
 
 ###########################################################
@@ -977,6 +1000,8 @@ endproc()
 
 procedure(intensityPlotCallBack)
 
+   assignlist(getctrlvalues(0))
+
    lst = [59,51]
 
    for(k = 0 to size(lst)-1)
@@ -986,6 +1011,10 @@ procedure(intensityPlotCallBack)
          setpar(0,lst[k],"enable","true")
       endif
    next(k)
+
+   rg = plotCtrl->subplot(1,1)
+
+   :addGrid(rg)
 
 endproc()
 
@@ -1768,10 +1797,7 @@ procedure(plotResult,inversion,mx)
    endif
 
 # Add grid
-   rg->grid->xgrid("on")
-   rg->grid->ygrid("on")
-   rg->grid->finexgrid("on")
-   rg->grid->fineygrid("on")
+   :addGrid(rg)
 
    rg->draw("true")
 
@@ -2717,7 +2743,7 @@ procedure(windowdefinition)
 
    # Automatically generated window definition procedure.
    # Any code added manually will be removed if layout modified interactively
-   n = window("Analyse2DPlot V2.0 (2D non-negative least squares inversion)", -1, -1, 865, 550, "resizable")
+   n = window("Analyse2DPlot V2.1 (2D non-negative least squares inversion)", -1, -1, 865, 550, "resizable")
 
       # Define all controls with basic parameters
       windowvar(wvMLoc,wvAlpha,wvDataDir,wvDataName,wvInversion,wvWinNr,
