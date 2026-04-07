@@ -187,6 +187,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
    endtry
 
    ampAxis = matrix(nrPntsTau)
+   noiseAxis = matrix(nrPntsTau)
 
   # Loop over the tau values to form a 2D data set
    for(m = 0 to nrPntsTau-1)
@@ -251,10 +252,11 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
     # Scale the data and save in amplitude axis array
       sumData = sumData/(nrScans*refSignal)
       ampAxis[m] = sum(real(sumData))/nrPnts
+      noiseAxis[m] = sum(imag(sumData))/nrPnts
 
     # Linear amplitude vs. tau plot
       prLin->draw("false")  
-      prLin->plot(tauAxis,ampAxis,
+      prLin->plot(tauAxis,ampAxis + i*noiseAxis,
           "tracetype", "lines",
           "tracecolor",wvDataSymbolColor,
           "symbolshape","opensquare",
@@ -276,18 +278,6 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
       prLog->title("Spin Echo decay")
       prLog->draw("true")
       
-      
-
-#      if(saveData == "true")
-#         :saveData(guipar,tauAxis,tauAxis2,ampAxis)
-#         if(m = nrPntsTau-1)
-#            # Output information to the CLI
-#            pr "\n  data saved in:"
-#            pr "\n  $dataDirectory$\\$expName$\\$expNr$"
-#         endif
-# 
-#      endif
-
     # Check if complete button pressed
       if(check == "finish")
          exitfor()
@@ -296,7 +286,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
    next(m)
 
    if(executedBackdoor == "no")
-      :SEEFit(prLog,tauAxis2,ampAxis,guipar)
+      :SSEFit(prLog,tauAxis2,ampAxis,noiseAxis,guipar)
    endif
 
    ucsFiles:savePlot(prLin,:getPlotInfo("pt2"),guipar,"noReport")
@@ -305,8 +295,10 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
    if(executedBackdoor == "yes")
       return(tauAxis,ampAxis)
    else
-      :SEEFit(prLog,tauAxis2,ampAxis,guipar)
+      stats = :SSEFit(prLog,tauAxis2,ampAxis,guipar)
+      ucsFiles:saveToNotes(stats, guipar)
    endif
+
        
 endproc("execpp")
 
@@ -334,7 +326,7 @@ endproc(null)
 # 
 ##########################################################
 
-procedure(SEEFit,plt,tauAxis2,ampAxis,guipar)
+procedure(SSEFit,plt,tauAxis2,ampAxis,noiseAxis,guipar)
 
    assignlist(guipar)
 
@@ -368,13 +360,23 @@ procedure(SEEFit,plt,tauAxis2,ampAxis,guipar)
           "tracecolor",[0,128,0],
           "symbolshape","opensquare",
           "symbolcolor",[255,0,0])
-    plt->xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
-    plt->ylabel("ln (amplitude)")
-    plt->title("D = $aStr$ 10^(-9) m^(2)/s")
-    plt->hold("off")
-    plt->draw("true") 
+   plt->xlabel("(\G(D)-2/3\G(d)) \G(g)^(2) G_(0)^(2) \G(d)^(2) (10^(9) m^(-2)s)") 
+   plt->ylabel("ln (amplitude)")
+   plt->title("D = $aStr$ 10^(-9) m^(2)/s")
+   plt->hold("off")
+   plt->draw("true") 
 
-endproc()
+   # Save some statistics
+   printtostring()
+   pr("\n   Number of points: $nrPntsTau$\n")
+   pr("      Fit residuals sd = $sd(y-fit)$\n")
+   pr("      Data noise sd = $sd(noiseAxis)$\n")
+   #  pr("      Data SNR = $:getSNR(yRed)$\n")
+   
+   stats = closeprint()
+   print("$stats$")
+
+endproc(stats)
 
 
 ##########################################################
