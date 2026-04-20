@@ -798,8 +798,8 @@ procedure(processExptDuration, self, exptMode, exptType)
 
       if(exptType != "script")
 
-         if(isvar("gData->curExpt->parameters->repTime"))
-   
+         if(isvar("gData->curExpt->parameters->repTime") & gData->procType != "Simulator")
+
             if(gData->curExpt->parameters->useEndDelay == 0)
                psTime = GetPulseProgramDuration(gData->curExpt->protocol)
                repTime = gData->curExpt->parameters->repTime
@@ -810,7 +810,7 @@ procedure(processExptDuration, self, exptMode, exptType)
                      assignlock("wvExpStatus","idle","window")
                      throw("abort")
                   endif
-               endif          
+               endif   
                exptDuration = exptDuration - (repTime - psTime)/1000
                self->exptDuration = exptDuration
                self->seqDuration = 0 #psTime/1000
