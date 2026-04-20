@@ -146,7 +146,14 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
 
     # Plot the data 
-      ucsPlot:graphFreq(pt1,fAxis,mag(sumData),scan,guipar,"Frequency response","Frequency (MHz)","Amplitude (a.u.)")
+      pt1->parent->draw("false")
+      ucsPlot:graphFreq(pt1,fAxis,mag(sumData),scan,guipar,"Frequency response","Frequency (MHz)","Amplitude (mV)")
+      pt1->axes->xmapping("log")
+      pt1->grid->xgrid("on")
+      pt1->grid->finexgrid("on")
+      pt1->grid->ygrid("on")
+      pt1->grid->fineygrid("on")
+      pt1->parent->draw("true")
 
     # Check if complete button pressed
       if(check == "finish")
