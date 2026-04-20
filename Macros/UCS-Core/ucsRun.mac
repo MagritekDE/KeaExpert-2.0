@@ -1676,7 +1676,7 @@ endproc(status)
 
 procedure(setPPNumber,p,idx,num)
 
-   if(gData->procType == "DSP")
+   if(gData->procType == "DSP" | gData->procType == "Simulator")
       p[idx] = round(num)
    else
       if(gFX3->useUpdateTable)
@@ -1717,7 +1717,7 @@ endproc(p)
 procedure(setPPAmplitude,p,idx,ampdB)
 
    ampLin = :convertTxGain(ampdB)
-   if(gData->procType == "DSP")
+   if(gData->procType == "DSP" | gData->procType == "Simulator")
       p[idx] = round(ampLin)
    else
       if(gFX3->useUpdateTable)
@@ -1756,12 +1756,12 @@ endproc(p)
 
 procedure(setPPPhase,p,idx,pcArray,pcIndex)
 
-    
    pcArray = pcArray%65536
+
    (pw,ph) = size(pcArray)
    idx = idx % pw
 
-   if(gData->procType == "DSP") # Modify parameter list with new phase values
+   if(gData->procType == "DSP" | gData->procType == "Simulator") # Modify parameter list with new phase values
 
       if(vartype(pcIndex) == "matrix1d")
          for(k = 0 to ph-2)
@@ -1826,7 +1826,7 @@ procedure(setPPDelay,p,idx,dly)
       throw("")
    endif
 
-   if(gData->procType == "DSP")
+   if(gData->procType == "DSP" | gData->procType == "Simulator")
       p[idx] = round(dly*50-1)
    else
       if(gFX3->useUpdateTable)
@@ -1909,7 +1909,7 @@ endproc(p)
 
 procedure(setPPLongDelay,p,c,dly)
 
-  if(gData->procType == "DSP")
+  if(gData->procType == "DSP" | gData->procType == "Simulator")
 
       if(dly <= 0.2)
          message("Error","Invalid long delay: index '$c$' (<= 0)\rCheck the pulse program.","error")
@@ -1981,7 +1981,7 @@ endproc(p)
 
 procedure(setPPFrequency,p,n,freq)
 
-   if(gData->procType == "DSP")
+   if(gData->procType == "DSP" | gData->procType == "Simulator")
       DDSFword = round((freq * 2^32d )/1000d) 
       p[n]  = single((DDSFword & 0xFFFF0000)/(2^16)) # AD9910 DDS freq
       p[n+1] = single(DDSFword & 0x0000FFFF) 
