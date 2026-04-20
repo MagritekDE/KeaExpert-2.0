@@ -15,36 +15,24 @@ procedure(dspwrite,memBank,address,vec,port)
             SimulationInfo->dwellTime = vec[2]/100.0
          endif
 
-         SimulationInfo->receiverPhase = vec[17]/65535.0*2*pi
+         SimulationInfo->receiverPhase = 360-vec[17]/65535.0*360
          idx = round(vec[0]/256)*16+round(vec[1]/256)
          rxAmpGain = 10.0^(:getRxGain(idx)/20.0)
-         gainFIR = 1.50682
-         B_max = 4*log2(2*vec[2])+16.0
-         filterGain = gainFIR*2^(ceil(B_max)-B_max)
-         SimulationInfo->receiverGain = 660/filterGain*rxAmpGain*65/1.25/1000.0
 
-         if(SimulationInfo->name == "1pulse")
-            pulseAmp = vec[SimulationInfo->pulseAmpIndex]
-            pulseLength = (vec[SimulationInfo->pulseLengthIndex]+1.0)/50.0
-            SimulationInfo->pulseIntegral = pulseAmp*pulseLength
-            pulsePhase = vec[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
-            SimulationInfo->pulsePhase = pulsePhase 
-            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
-         elseif(SimulationInfo->name == "monitornoise")
-            pulseAmp = vec[SimulationInfo->pulseAmpIndex]
-            pulseLength = (vec[SimulationInfo->pulseLengthIndex]+1.0)/50.0
-            SimulationInfo->pulseIntegral = pulseAmp*pulseLength
-            pulsePhase = vec[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
-            SimulationInfo->pulsePhase = pulsePhase 
-            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
-         elseif(SimulationInfo->name == "t1ir" | SimulationInfo->name == "t1irsp")
-            pulse90Amp = vec[SimulationInfo->pulse90AmpIndex]
-            pulse90Length = (vec[SimulationInfo->pulse90LengthIndex]+1.0)/50.0
-            SimulationInfo->pulseIntegral = pulse90Amp*pulse90Length
-            pulse90Phase = vec[SimulationInfo->pulse90PhaseIndex]/65536.0*2*pi
-            SimulationInfo->pulsePhase = pulse90Phase 
-            SimulationInfo->acquisitionDelay = (vec[SimulationInfo->acquDelayIndex]+1.0)/50.0
-            SimulationInfo->t1Delay = :getLongDelay(vec,SimulationInfo->T1DelayIndex)
+         filterGain = gData->digFilterCor
+         rxDigCal = gData->specParameters->receiverCal
+         preampGain = gData->specParameters->preampGain
+         rxAmpCorr = gData->specParameters->rxAmpCor
+         SimulationInfo->receiverGain = rxDigCal/filterGain*rxAmpGain*preampGain/rxAmpCorr/1000.0
+
+      # Call a function in pp file to set the parameter values
+         name = gData->curExpt->protocol  
+         if(isproc(gData->curExpt->ppPath,"$name$_pp","setSimParValues"))
+            bak = getcwd()
+            cd(gData->curExpt->ppPath)
+            proc = "$name$_pp:setSimParValues"
+            proc(vec)
+            cd(bak)
          endif
       endif
    endif
