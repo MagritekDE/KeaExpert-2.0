@@ -2837,7 +2837,10 @@ procedure(processMessages, self)
    if(src == "Macro" & (cmd == "Abort" | cmd == "Escape"))
       self->ppStatus->color([255,255,255,255])
       self->enableControls()
-      ftdiclose()
+      try
+         ftdiclose()
+      catch
+      endtry
       assignlock("wvExpStatus","stop","window")
       assignlock("wv_lock_exp","false","window")
    endif
