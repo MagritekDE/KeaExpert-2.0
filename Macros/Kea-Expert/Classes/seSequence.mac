@@ -985,34 +985,23 @@ endproc(round(txGain))
 
 
 ##############################################################
-# Pass the pp name and Rf amplitude, phase and duration
-# locations to the simulator.
+# Initialise the SimulationInfo structure and store the
+# parameter names (pp_list) and their indices (parIndex)
 ##############################################################
 
 procedure(setUpSimulator,self,rel,var,pp_list,pp_name,phase_list,parIndex)
  
 # Define the simulation info structure (a window variable)
   if(not(isvar("SimulationInfo")))
-      inf = struct()
+      sim = struct()
    else
-      inf = SimulationInfo
+      sim = SimulationInfo
    endif
 
-   assign("SimulationInfo",inf,"window")
+   assign("SimulationInfo",sim,"window")
 
-# Call a setup function in pp file
-   name = caseset(rmext(pp_name),"lower")  
-   if(isproc(gData->curExpt->ppPath,"$name$_pp","setSimParIndices"))
-      bak = getcwd()
-      cd(gData->curExpt->ppPath)
-      proc = "$name$_pp:setSimParIndices"
-      proc(name,pp_list,parIndex)
-      cd(bak)
-   else
-      message("Error","The simulator does not support the experiment '$rmext(pp_name)$'.","error")
-      abort("")  
-   endif
-
+   SimulationInfo->parNames = pp_list
+   SimulationInfo->parIndex = parIndex
 
 endproc()
 

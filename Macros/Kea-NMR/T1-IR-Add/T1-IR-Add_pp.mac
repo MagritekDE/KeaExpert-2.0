@@ -108,46 +108,6 @@ procedure(getFactoryBasedParameters, par)
 endproc(par)
 
 #####################################################
-# Simulation code - only used in Simulation mode
-#####################################################
-
-#####################################################
-# Defines the location of important variables in 
-# the pulse program list
-#####################################################
-
-procedure(setSimParIndices, name, parNames, parIndex)
-
-   SimulationInfo->name = name
-   SimulationInfo->pulse180AmpIndex    = parIndex[getlistindex(parNames,"a2")]
-   SimulationInfo->pulse180PhaseIndex  = parIndex[getlistindex(parNames,"p1")]
-   SimulationInfo->pulse180LengthIndex = parIndex[getlistindex(parNames,"d1")]
-   SimulationInfo->T1DelayIndex        = parIndex[getlistindex(parNames,"w1")] 
-   SimulationInfo->pulse90AmpIndex     = parIndex[getlistindex(parNames,"a1")]
-   SimulationInfo->pulse90PhaseIndex   = parIndex[getlistindex(parNames,"p2")]
-   SimulationInfo->pulse90LengthIndex  = parIndex[getlistindex(parNames,"d1")]
-   SimulationInfo->acquDelayIndex      = parIndex[getlistindex(parNames,"d4")]
-
-endproc()
-
-#####################################################
-# Update the simulation parameters based on the 
-# variable values in the pulse program list
-#####################################################
-
-procedure(setSimParValues, ppList)
-
-   pulse90Amp = ppList[SimulationInfo->pulse90AmpIndex]
-   pulse90Length = (ppList[SimulationInfo->pulse90LengthIndex]+1.0)/50.0
-   SimulationInfo->pulseIntegral = pulse90Amp*pulse90Length
-   pulse90Phase = ppList[SimulationInfo->pulse90PhaseIndex]/65536.0*2*pi
-   SimulationInfo->pulsePhase = pulse90Phase 
-   SimulationInfo->acquisitionDelay = (ppList[SimulationInfo->acquDelayIndex]+1.0)/50.0
-   SimulationInfo->t1Delay = dspWrite:getLongDelay(ppList,SimulationInfo->T1DelayIndex)
-
-endproc()
-
-#####################################################
 # Generate some simulated T1-IR data based on the
 # values stored in SimulationInfo
 #####################################################
@@ -155,6 +115,13 @@ endproc()
 procedure(simulateNMR, dataSize)
 
    assignstruct(SimulationInfo)
+
+   pulse90Amp = ucsSim:getPSParameter(ppList,"a1")
+   pulse90Length = ucsSim:getShortDelay(ppList,"d1")
+   pulseIntegral = pulse90Amp*pulse90Length
+   pulsePhase = ucsSim:getPSParameter(ppList,"p2")/65536.0*2*pi
+   acquisitionDelay = ucsSim:getShortDelay(ppList,"d4")
+   t1Delay = ucsSim:getLongDelay(ppList,"w1")
 
 # Non-experiment specific parameters
    DW = dwellTime*1e-6 # <= This is the dwell time

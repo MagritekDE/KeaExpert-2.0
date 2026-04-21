@@ -1,0 +1,89 @@
+###############################################################
+# Some procedures to help simplify the simulation of pulse
+# sequences
+###############################################################
+
+
+###############################################################
+# Given a pulse sequence parameter name return the current
+# value from ppList
+###############################################################
+
+procedure(getPSParameter, ppList, name)
+
+   idx = :getPSIndex(name)
+   value = ppList[idx]
+
+endproc(value)
+
+###############################################################
+# Given a pulse sequence parameter name return the index
+# of this parameter in ppList
+###############################################################
+
+procedure(getPSIndex, name)
+
+   parIndex = SimulationInfo->parIndex
+   parNames = SimulationInfo->parNames
+   ppList = SimulationInfo->ppList
+   idx = parIndex[getlistindex(parNames,name)]
+
+endproc(idx)
+
+###############################################################
+# Convert a long delay 'name' (wx) stored within ppList
+# into microseconds
+###############################################################
+
+procedure(getLongDelay, ppList, name)
+
+   idx = :getPSIndex(name)
+   w0 = ppList[idx]
+   w1 = ppList[idx+1]
+   w2 = ppList[idx+2]
+
+   if(w0 == 0)
+      dly = w1*10 + 190
+   else
+      dly = w1*10 + w0*(w2*10+50) + 160
+   endif
+
+endproc(dly/1000)
+
+###############################################################
+# Convert a short delay 'name' (dx) stored within ppList
+# into microseconds
+###############################################################
+
+procedure(getShortDelay, ppList, name)
+
+   idx = :getPSIndex(name)
+   d = ppList[idx]
+
+endproc((d+1.0)/50.0)
+
+###############################################################
+# Convert a receiver gain value into its dB value
+###############################################################
+
+procedure(getRxGain,val)
+
+   rxTable =  [0x00,0x01,0x02,0x03,0x04,0x05,
+               0x15,0x25,0x35,0x45,0x55,0x65,
+               0x75,0x85,0x95,0xA5,0xB5,0xC5,
+               0xD5,0xE5,0xF5,0xF6,0xF7,0xF8,
+               0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF]
+
+   sz = size(rxTable)
+
+   idx=0
+   for(k = 0 to sz-1)
+      if(val == rxTable[k])
+         idx = k
+         exitfor()
+      endif
+   next(k)
+
+   rxGain = idx*3-20
+
+endproc(rxGain)

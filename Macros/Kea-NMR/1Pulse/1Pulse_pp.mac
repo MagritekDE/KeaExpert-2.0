@@ -70,49 +70,21 @@ procedure(getFactoryBasedParameters, par)
 endproc(par)
 
 
-#####################################################
-# Simulation code - only used in Simulation mode
-#####################################################
 
 #####################################################
-# Defines the location of important variables in 
-# the pulse program list
-#####################################################
-
-procedure(setSimParIndices, name, parNames, parIndex)
-
-   SimulationInfo->name = name
-   SimulationInfo->pulseAmpIndex    = parIndex[getlistindex(parNames,"a90Amp")]
-   SimulationInfo->pulsePhaseIndex  = parIndex[getlistindex(parNames,"p1")]
-   SimulationInfo->pulseLengthIndex = parIndex[getlistindex(parNames,"d90Dur")]
-   SimulationInfo->acquDelayIndex   = parIndex[getlistindex(parNames,"dAcqDelay")]
-
-endproc()
-
-#####################################################
-# Update the simulation parameters based on the 
-# variable values in the pulse program list
-#####################################################
-
-procedure(setSimParValues, ppList)
-
-   pulseAmp = ppList[SimulationInfo->pulseAmpIndex]
-   pulseLength = (ppList[SimulationInfo->pulseLengthIndex]+1.0)/50.0
-   SimulationInfo->pulseIntegral = pulseAmp*pulseLength
-   pulsePhase = ppList[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
-   SimulationInfo->pulsePhase = pulsePhase 
-   SimulationInfo->acquisitionDelay = (ppList[SimulationInfo->acquDelayIndex]+1.0)/50.0
-
-endproc()
-
-#####################################################
-# Generate some simulated T1-IR data based on the
+# Generate some simulated 1Pulse data based on the
 # values stored in SimulationInfo
 #####################################################
 
 procedure(simulateNMR, dataSize)
 
    assignstruct(SimulationInfo)
+
+   pulseAmp = ucsSim:getPSParameter(ppList,"a90Amp")
+   pulseLength = ucsSim:getPSParameter(ppList,"d90Dur")
+   pulseIntegral = pulseAmp*pulseLength
+   pulsePhase = ucsSim:getPSParameter(ppList,"p1")/65536.0*2*pi
+   acquisitionDelay = ucsSim:getShortDelay(ppList,"dAcqDelay")
 
 # Non-experiment specific parameters
     DW = dwellTime*1e-6 # <= This is the dwell time

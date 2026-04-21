@@ -1,7 +1,7 @@
 procedure(dspwrite,memBank,address,vec,port)
 
    if(memBank == "x")
-      if(address == 0) # Write NMR parameters
+      if(address == 0) # Write NMR parameters - in this case to the SimulationInfo window variable
 
          sz = size(vec);
 
@@ -17,7 +17,7 @@ procedure(dspwrite,memBank,address,vec,port)
 
          SimulationInfo->receiverPhase = 360-vec[17]/65535.0*360
          idx = round(vec[0]/256)*16+round(vec[1]/256)
-         rxAmpGain = 10.0^(:getRxGain(idx)/20.0)
+         rxAmpGain = 10.0^(ucsSim:getRxGain(idx)/20.0)
 
          filterGain = gData->digFilterCor
          rxDigCal = gData->specParameters->receiverCal
@@ -25,18 +25,9 @@ procedure(dspwrite,memBank,address,vec,port)
          rxAmpCorr = gData->specParameters->rxAmpCor
          SimulationInfo->receiverGain = rxDigCal/filterGain*rxAmpGain*preampGain/rxAmpCorr/1000.0
 
-      # Call a function in pp file to set the parameter values
-         name = gData->curExpt->protocol  
-         if(isproc(gData->curExpt->ppPath,"$name$_pp","setSimParValues"))
-            bak = getcwd()
-            cd(gData->curExpt->ppPath)
-            proc = "$name$_pp:setSimParValues"
-            proc(vec)
-            cd(bak)
-         else
-            message("Error","The simulator does not support the experiment '$name$'.","error")
-            abort("")  
-         endif
+         SimulationInfo->ppList = vec
+         SimulationInfo->name = gData->curExpt->protocol
+
       endif
    endif
 
@@ -46,46 +37,3 @@ procedure(dspwrite,memBank,address,vec,port)
    endif
 
 endproc()
-
-###############################################################
-# Convert a long delay 'w' starting at position index in vec
-# into microseconds
-# Need to check this more carefully against DSP code
-###############################################################
-
-procedure(getLongDelay, vec, index)
-
-   w0 = vec[index]
-   w1 = vec[index+1]
-   w2 = vec[index+2]
-
-   if(w0 == 0)
-      dly = w1*10 + 190
-   else
-      dly = w1*10 + w0*(w2*10+50) + 160
-   endif
-
-endproc(dly/1000)
-
-
-procedure(getRxGain,val)
-
-   rxTable =  [0x00,0x01,0x02,0x03,0x04,0x05,
-               0x15,0x25,0x35,0x45,0x55,0x65,
-               0x75,0x85,0x95,0xA5,0xB5,0xC5,
-               0xD5,0xE5,0xF5,0xF6,0xF7,0xF8,
-               0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF]
-
-   sz = size(rxTable)
-
-   idx=0
-   for(k = 0 to sz-1)
-      if(val == rxTable[k])
-         idx = k
-         exitfor()
-      endif
-   next(k)
-
-   rxGain = idx*3-20
-
-endproc(rxGain)
