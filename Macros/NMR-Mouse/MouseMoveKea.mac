@@ -17,6 +17,28 @@ procedure(MouseMoveKea, parameters=null)
 
 endproc()
 
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   if(moveMode == "service")
+
+      :serviceBD()
+
+   elseif(moveMode == "home")
+
+      :homeBD()
+
+   else
+
+      :moveBD(position)
+
+   endif
+
+
+endproc()
+
+
 ###########################################################
 # The interface control(s) required by Expert when loading
 # data from a experimental result
@@ -24,13 +46,11 @@ endproc()
 
 procedure(interface)
 
-   ctrlLayout = ["exptDiv",      "Coarse control",          "dv",  "",                 "",
-                 "home",         "Move to Home",            "bt",  "string",           "homeBD()", 
-                 "service",      "Move to Service",         "bt",  "string",           "serviceBD()",
-                 "exptDiv",      "Fine control",            "dv",  "",                 "",
-                 "distance",     "Distance to move",        "tb",  "float",            "",
-                 "move",         "Move lift",               "bt",  "string",           "moveBD()",
-                 "position",     "Current position (um)",   "tb",  "readonly_string",  ""]
+   ctrlLayout = ["exptDiv",      "Move mode",                 "dv",  "",                 "",
+                 "moveMode",     "Move to",                   "rb",  "string", "18,home,service,distance,home,service,distance",
+                 "exptDiv",      "Distance control/feedback", "dv",  "",                 "",
+                 "distance",     "Distance to move",          "tb",  "float",            "",
+                 "position",     "Current position (um)",     "tb",  "readonly_string",  ""]
 
    plotLayout = listto2d(["pt1"])
 
@@ -88,6 +108,8 @@ procedure(serviceBD)
 
    twoTTLpulses:backdoor(guipar)
 
+   pause(45)
+
 endproc()
 
 
@@ -144,6 +166,13 @@ procedure(homeBD)
       setpar(0,n,"text","0")
    endif
 
+pr "\n   Moving home\n"
+
+   pause(50)
+
+pr "\n   Reached home\n"
+
+
 endproc()
 
 ###########################################################
@@ -184,6 +213,8 @@ procedure(moveBD, distance=null, position=null)
       position = position - 10*slowSteps
 
   endif
+
+   pause(2)
 
 endproc()
 
