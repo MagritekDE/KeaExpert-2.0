@@ -1,0 +1,172 @@
+############################################################
+#
+# A pulse sequence suitable for performing a
+# nutation experiment. This is  performing using a series
+# of pulse and collect experiments, in which the
+# pulse amplitude is stepped from a minimum to a maximum 
+# value while plotting the spectral integral as a function
+# of pulse amplitude.
+#
+# pulse - delay - acq
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+  interface = ["b1FreqCh1",       "B1 Frequency (MHz)",      "tb",  "freq";
+               "pulseLengthCh1",  "Pulse length (us)",       "tb",  "pulselength";
+               "minAmp",          "Minimum amplitude (dB)",  "tb",  "pulseamp";
+               "ampStep",         "Amplitude step (dB)",     "tb",  "float";
+               "nrSteps",         "Number of steps",         "tb",  "integer";
+               "intWidth",        "Integration width (kHz)", "tb",  "float";
+               "acqDelay",        "Pulse acqu. delay (us)",  "tb",  "sdelay";
+               "dummies",         "Dummy scans",             "tb",  "integer,[0,20]";
+               "repTime",         "Repetition time (ms)",    "tb",  "reptime"]
+
+# Relationships to determine remaining variable values
+   relationships = [
+#                    "nxShim = xcal*xshim/1000", # x shim value
+#                    "nyshim = ycal*yshim/1000", # y shim value
+#                    "nzShim = zcal*zshim/1000", # z shim value
+#                    "noShim = ocal*oshim/1000", # o shim value
+                    "nDataPnts = nrPnts",
+                    "a90Amp    = minAmp",
+                    "d90Dur    = pulseLengthCh1",
+                    "dAcqDelay = acqDelay",
+                    "totPnts   = nrPnts",
+                    "totTime   = acqTime"]
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["a90Amp"]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+#      gradon(x,nxShim)                 # Set x shim
+#      gradon(y,nyshim)                 # Set y shim
+#      gradon(z,nzShim)                 # Set z shim 
+#      gradon(o,noShim)                 # Set o shim 
+      pulse(mode,a90Amp,p1,d90Dur)     # RF pulse
+      delay(dAcqDelay)                 # Pulse - acquire delay
+      acquire("overwrite",nDataPnts)   # Acquire echo and wait
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0,1,2,3;   # Pulse phase
+                0,1,2,3]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)
+
+
+#####################################################
+# Simulation code - only used in Simulation mode
+#####################################################
+
+#####################################################
+# Defines the location of important variables in 
+# the pulse program list
+#####################################################
+
+procedure(setSimParIndices, name, parNames, parIndex)
+
+   SimulationInfo->name = name
+   SimulationInfo->pulseAmpIndex    = parIndex[getlistindex(parNames,"a90Amp")]
+   SimulationInfo->pulsePhaseIndex  = parIndex[getlistindex(parNames,"p1")]
+   SimulationInfo->pulseLengthIndex = parIndex[getlistindex(parNames,"d90Dur")]
+   SimulationInfo->acquDelayIndex   = parIndex[getlistindex(parNames,"dAcqDelay")]
+
+endproc()
+
+#####################################################
+# Update the simulation parameters based on the 
+# variable values in the pulse program list
+#####################################################
+
+procedure(setSimParValues, ppList)
+
+   pulseAmp = ppList[SimulationInfo->pulseAmpIndex]
+   pulseLength = (ppList[SimulationInfo->pulseLengthIndex]+1.0)/50.0
+   SimulationInfo->pulseIntegral = pulseAmp*pulseLength
+   pulsePhase = ppList[SimulationInfo->pulsePhaseIndex]/65536.0*2*pi
+   SimulationInfo->pulsePhase = pulsePhase 
+   SimulationInfo->acquisitionDelay = (ppList[SimulationInfo->acquDelayIndex]+1.0)/50.0
+
+endproc()
+
+#####################################################
+# Generate some simulated T1-IR data based on the
+# values stored in SimulationInfo
+#####################################################
+
+procedure(simulateNMR, dataSize)
+
+   assignstruct(SimulationInfo)
+
+# Non-experiment specific parameters
+    DW = dwellTime*1e-6 # <= This is the dwell time
+    off = single(1e6*(b1Freq-b0Freq)) # <= This is the offset (b1Freq - f0)
+    sigAmp = signalAmplitude*receiverGain
+
+    ph = receiverPhase - pulsePhase 
+    pulseInt = pulseIntegral
+    pulse90Int = pulse90Integral
+    sigAmp = sigAmp *sin(pulseInt*pi/(2*pulse90Int))
+    nl = noiseAmplitude*receiverGain*sqrt(1.0/dwellTime)
+    acqDelay = acquisitionDelay*1e-6
+    startDelay = acqDelay + DW # Simulate the delay on Proton channel
+
+   cd(getmacropath())
+   cd("$appdir$\\Macros\\KeaExpert\\SimulatorMacros\\Simulated Samples")
+
+   result = sample()
+   assignstruct(result)
+
+   nrPeaks = size(peakList)
+   nrSplits = size(splittingAmpList)
+   
+   t = linspace(startDelay,(dataSize/2-1)*DW+startDelay, dataSize/2)
+   cmat = cmatrix(dataSize/2)
+
+   for(p = 0 to nrPeaks-1) # Loop over main peaks
+      freq0 = peakList[p]*b0Freq
+      for(s = 0 to nrSplits-1) # Loop over multiplets
+         amp = splittingAmpList[s,p]     
+         if(amp > 0)
+            freq = off - freq0 + splittingFreqList[s,p]
+            cmat = cmat + amp*exp(i*(2*pi*freq*t + ph)).*exp(-t/T2-t/T2Star)  
+         endif       
+      next(s)
+   next(p)      
+   mat = ctor(cmat)
+   mat = sigAmp*mat/max(mag(mat))
+   mat = mat + nl*noise(dataSize)
+
+endproc(mat)
