@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Prospa
-AppVerName=Prospa V3.128 + KeaExpert V2.02.14 (20-March-2026)
+AppVerName=Prospa V3.128 + KeaExpert V2.02.15 (21-April-2026)
 AppPublisher=Magritek
 AppPublisherURL=http://www.magritek.com
 AppSupportURL=http://www.magritek.com
@@ -20,7 +20,7 @@ WizardImageFile=..\largeIcon.bmp
 WizardImageStretch=no
 WizardSmallImageFile=..\smallIcon.bmp
 OutputDir="..\Installer Output\KeaExpert"
-OutputBaseFilename="KeaExpert V2.02.14 (20-March-2026)"
+OutputBaseFilename="KeaExpert V2.02.15 (21-April-2026)"
 
 UsePreviousAppDir=no
 ;InfoBeforeFile="KeaExpertInfoBeforeInstall.txt"
@@ -80,22 +80,24 @@ Source: "..\Macros\Demo_Macros\*";                              DestDir: "{app}\
 
 
 ; Kea Macros
-Source: "..\Macros\Kea-Expert\*";                      DestDir: "{app}\Macros\Kea-Expert";                  Excludes: *old.mac, Thumbs.db, *.docx;Flags: ignoreversion recursesubdirs;
-Source: "..\Macros\UCS-Core\*";                        DestDir: "{app}\Macros\UCS-Core";                    Flags: ignoreversion recursesubdirs;
-Source: "..\Macros\UCS-PP\*";                          DestDir: "{app}\Macros\UCS-PP";                      Excludes: "CompileKeaPulseProgram.mac"; Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\1Pulse\*";                  DestDir: "{app}\Macros\Kea-NMR\1Pulse";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\CPMG\*";                    DestDir: "{app}\Macros\Kea-NMR\CPMG";                Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\CPMGAdd\*";                 DestDir: "{app}\Macros\Kea-NMR\CPMGAdd";             Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\CPMGAmplitudeSweep\*";      DestDir: "{app}\Macros\Kea-NMR\CPMGAmplitudeSweep";  Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\CPMGDurationSweep\*";       DestDir: "{app}\Macros\Kea-NMR\CPMGDurationSweep";   Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\CPMGFast\*";                DestDir: "{app}\Macros\Kea-NMR\CPMGFast";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\MonitorNoise\*";            DestDir: "{app}\Macros\Kea-NMR\MonitorNoise";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\SpinEcho\*";                DestDir: "{app}\Macros\Kea-NMR\SpinEcho";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\SSE\*";                     DestDir: "{app}\Macros\Kea-NMR\SSE";                 Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\T1Sat\*";                   DestDir: "{app}\Macros\Kea-NMR\T1Sat";               Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\T1Sat-ie\*";                DestDir: "{app}\Macros\Kea-NMR\T1Sat-ie";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\T1-IR-Add\*";               DestDir: "{app}\Macros\Kea-NMR\T1-IR-Add";           Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Kea-NMR\Wobble\*";                  DestDir: "{app}\Macros\Kea-NMR\Wobble";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-Expert\*";                      DestDir: "{app}\Macros\Kea-Expert";                    Excludes: *old.mac, Thumbs.db, *.docx;Flags: ignoreversion recursesubdirs;
+Source: "..\Macros\UCS-Core\*";                        DestDir: "{app}\Macros\UCS-Core";                      Flags: ignoreversion recursesubdirs;
+Source: "..\Macros\UCS-PP\*";                          DestDir: "{app}\Macros\UCS-PP";                        Excludes: "CompileKeaPulseProgram.mac"; Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\1Pulse\*";                  DestDir: "{app}\Macros\Kea-NMR\1Pulse";                Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\1PulseAmplitudeSweep\*";    DestDir: "{app}\Macros\Kea-NMR\1PulseAmplitudeSweep";  Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\1PulseDurationSweep\*";     DestDir: "{app}\Macros\Kea-NMR\1PulseDurationSweep";   Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMG\*";                    DestDir: "{app}\Macros\Kea-NMR\CPMG";                  Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGAdd\*";                 DestDir: "{app}\Macros\Kea-NMR\CPMGAdd";               Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGAmplitudeSweep\*";      DestDir: "{app}\Macros\Kea-NMR\CPMGAmplitudeSweep";    Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGDurationSweep\*";       DestDir: "{app}\Macros\Kea-NMR\CPMGDurationSweep";     Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\CPMGFast\*";                DestDir: "{app}\Macros\Kea-NMR\CPMGFast";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\MonitorNoise\*";            DestDir: "{app}\Macros\Kea-NMR\MonitorNoise";          Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\SpinEcho\*";                DestDir: "{app}\Macros\Kea-NMR\SpinEcho";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\SSE\*";                     DestDir: "{app}\Macros\Kea-NMR\SSE";                   Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\T1Sat\*";                   DestDir: "{app}\Macros\Kea-NMR\T1Sat";                 Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\T1Sat-ie\*";                DestDir: "{app}\Macros\Kea-NMR\T1Sat-ie";              Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\T1-IR-Add\*";               DestDir: "{app}\Macros\Kea-NMR\T1-IR-Add";             Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\Kea-NMR\Wobble\*";                  DestDir: "{app}\Macros\Kea-NMR\Wobble";                Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 ;Source: "..\Macros\Kea-MRI\*";                         DestDir: "{app}\Macros\Kea-MRI";          Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-Tests\*";                       DestDir: "{app}\Macros\Kea-Tests";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Setup\*";                           DestDir: "{app}\Macros\Setup";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
