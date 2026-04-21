@@ -926,58 +926,6 @@ procedure(setTitle,dspPar)
 endproc()
 
 ##############################################################
-# Pass the pp name and Rf amplitude, phase and duration
-# locations to the simulator.
-##############################################################
-
-procedure(setUpSimulator,rel,var,pp_list,pp_name,phase_list)
- 
-   name = caseset(rmext(pp_name),"lower")  
-   name2 = scanstr(name,"%1-*") # Remove nucleus suffix if present
-   if(name2 != null)
-      name = name2
-   endif
-
-   if(name == "proton")
-      setupps("proton",[28,29,30,31])
-   elseif(name == "1pulse")
-      setupps("1pulse",[28,29,30,31])
-   elseif(name == "1pulseamplitudesweep")
-      setupps("1pulse",[28,29,30,31])
-   elseif(name == "1pulsedurationsweep")
-      setupps("1pulse",[28,29,30,31])
-   elseif(name == "findf0")
-      setupps("1pulse",[28,29,30,31])
-   elseif(name == "t1")
-      setupps("t1",[28,33,30,35,38,39,30,31])
-   elseif(name == "t1ir")
-      setupps("t1ir",[28,33,30,35,38,39,30,31])
-   elseif(name == "t1irsp")
-      setupps("t1ir",[28,33,30,35,38,39,30,31])
-   elseif(name == "monitornoise")
-      setupps("monitornoise",[0,0,0,0])
-   else
-      print("\n   --------------------------------\n")
-      print("   Simulator supported experiments:\n")
-      print("   Proton - Proton:\n")
-      print("   Proton - T1:\n")
-      print("   Proton - MonitorNoise:\n")
-      print("   ProtonLegacy - 1Pulse:\n")
-      print("   ProtonLegacy - 1PulseAmplitudeSweep:\n")
-      print("   ProtonLegacy - 1PulseDurationSweep:\n")
-      print("   ProtonLegacy - findf0:\n")
-      print("   ProtonLegacy - T1IR:\n")
-      print("   ProtonLegacy - T1IRSP:\n")
-      print("   ProtonLegacy - MonitorNoise:\n")
-      print("   --------------------------------\n")
-      message("Error","The simulator does not support the experiment '$rmext(pp_name)$'.\r\rSee CLI for list of supported experiment.","error")
-
-      abort("")
-   endif
-
-endproc()
-
-##############################################################
 # Display one instance of the Kea preferences window
 ##############################################################
 
