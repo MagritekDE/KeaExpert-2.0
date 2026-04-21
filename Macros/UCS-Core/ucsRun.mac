@@ -2013,6 +2013,66 @@ procedure(setPPFrequency,p,n,freq)
 
 endproc(p)
 
+####################################################
+# Calcuate the standard deviation of some real data. 
+# Calculation is performed in double precision.
+#
+# Input: data ....... data set to be analysed
+#        axis ....... time/freq domain axis (opt)
+#        lim1 ....... left limit on axis (opt)
+#        lim2 ....... right limit on axis (opt)
+#
+# Output: stddev .... SD value (single precision)
+#         indx ...... indices of limits (opt).
+#
+# NOTE deprecated - use built in command sd instead
+####################################################
+
+procedure(stdDev,data,axis,lim1,lim2)
+
+   if(nrArgs == 4)
+      (ind1,ind2) = findindex(axis,lim1,lim2)
+      data = double(data[[ind1:ind2]])
+   else
+      data = double(data)
+   endif
+   N = size(data)
+   s = sum(data)
+   stddev = sqrt(sum((data-s/N)^2)/N) 
+   if(nrArgs == 4)
+      return(single(stddev),ind2-ind1+1)
+   endif
+
+endproc(single(stddev))
+
+####################################################
+# Calcuate the RMS value of some real data. 
+# Calculation is performed in double precision.
+#
+# Input: data ....... data set to be analysed
+#        axis ....... time/freq domain axis (opt)
+#        lim1 ....... left limit on axis (opt)
+#        lim2 ....... right limit on axis (opt)
+#
+# Output: rms .... rms value (single precision)
+#         indx ...... indices of limits (opt).
+####################################################
+
+procedure(rmsValue,data,axis,lim1,lim2)
+
+   if(nrArgs == 4)
+      (ind1,ind2) = findindex(axis,lim1,lim2)
+      data = double(data[[ind1:ind2]])
+   else
+      data = double(data)
+   endif
+   N = size(data)
+   rms = sqrt(sum(data^2)/N) 
+   if(nrArgs == 4)
+      return(single(rms),ind2-ind1+1)
+   endif
+
+endproc(single(rms))
 
 ##############################################################
 # Fourier transform the time domain data (Echo data)
