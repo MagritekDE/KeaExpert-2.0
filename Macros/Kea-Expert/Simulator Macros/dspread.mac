@@ -22,7 +22,6 @@ procedure(dspread,memBank,address,dataSize,port)
 # y memory
    elseif(memBank == "y")
       if(address == 0x10000) # read NMR data
-
          name = gData->curExpt->protocol  
          if(isproc(gData->curExpt->ppPath,"$name$_pp","simulateNMR"))
             bak = getcwd()
@@ -30,6 +29,9 @@ procedure(dspread,memBank,address,dataSize,port)
             proc = "$name$_pp:simulateNMR"
             data = proc(dataSize)
             cd(bak)
+         else
+            message("Error","The simulator does not support the experiment '$name$'.","error")
+            abort("")  
          endif
 
       endif
