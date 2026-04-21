@@ -20,6 +20,10 @@ procedure(SelectKea, internal=1)
       endif
    endif
 
+   if(gData->procType == "Simulator")
+      loaddlls()
+   endif
+
    n = :windowdefinition(internal) 
    setwindowpar(n,"type","dialog") 
    assignctrls(n)
@@ -37,7 +41,7 @@ procedure(windowdefinition, internal)
 
    # Automatically generated window definition procedure.
    # Any code added manually will be removed if layout modified interactively
-   n = window("Select Kea", -1, -1, 320, 110)
+   n = window("Select Kea", -1, -1, 330, 110)
 
       # Define all controls with basic parameters
       windowvar(nameCtrl,usbPortCtrl,fx3Ports,dspPorts)
@@ -48,11 +52,19 @@ procedure(windowdefinition, internal)
       statictext(4, 92, 63, "right", "DSP ports:")
       button(5, 210, 30, 45, 24, "Select",:updateFX3Port())
       button(6, 210, 60, 45, 24, "Select",:updateDSPPort())
-      button(7, 260, 30, 40, 24, "None",:chooseNothing())
+      button(7, 260, 30, 50, 24, "Simulator",:chooseSimulator())
       if(internal)
-         button(8, 260, 60, 40, 24, "Cancel",closedialog(""))
+         button(8, 260, 60, 50, 24, "Cancel",
+         if(gData->procType == "Simulator");
+          #  bak = getcwd();
+         #   cd("$appdir$\\DLLs");
+          #  files = ls("*Run.DLL");
+            ignoredll("DSPWinUSBRun.dll");
+          #  cd(bak);
+         endif;
+         closedialog(""))
       endif
-      groupbox(9, "", 10, 4, 295, 95)
+      groupbox(9, "", 10, 4, 305, 95)
 
      # Set other control parameters
       setpar(n,1,"objID","usbFX3PortCtrl",
@@ -217,20 +229,21 @@ procedure(updateDSPPort)
    
 endproc()
 
-procedure(chooseNothing)
+procedure(chooseSimulator)
 
    thisWin = guiwinnr()
-   gData->procType = ""
-   gData->specID = "NoConnection"
+   gData->procType = "Simulator"
+   gData->specID = "Simulator"
    gData->connected = 0
    if(gView->wn > 0)
        guiwinnr(gView->wn)
-       msg = "$gView->coreTitle$ - No connection"
+       msg = "$gView->coreTitle$ - Simulator"
        setwindowpar(gView->wn,"title", msg)
    endif
    gData->sseOpen = 1
    guiwinnr(thisWin)
    closedialog()
+   SimulatorControl()
 
 endproc()
 
