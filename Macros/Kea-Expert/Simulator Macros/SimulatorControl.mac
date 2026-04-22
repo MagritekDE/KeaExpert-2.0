@@ -26,16 +26,15 @@ procedure(apply, par, parWin, mode)
    T2Star = 1/(pi*linewidth)
 
    winnamespace(parWin)
-   setupsim(sampleName,b0Freq,T2Star,rxNoise,90Amp,90Length,FIDAmp)
+   :setupsim(sampleName,b0Freq,T2Star,rxNoise,90Amp,90Length,FIDAmp)
 
    wvSpecType = "Simulator"
    wvProcType = "Simulator"
-   cd("$appdir$\\DLLs")
-   files = ls("*Run.DLL")
+#   cd("$appdir$\\DLLs")
+#   files = ls("*Run.DLL")
    ignoredll("DSPWinUSBRun.dll")
    gData->procType = "Simulator"
    gData->connected = 1
-
    winnamespace(thisWin)
 
 # Cache simulator files (check is already cached)
@@ -64,6 +63,12 @@ procedure(backdoor, wvParentWin ,mode)
    :apply(par,wvParentWin,mode)
 
 endproc()
+
+procedure(convertTxFromDb,tx)
+
+   dig = 16384*10.0^(tx/20.0)-1.0
+
+endproc(dig)
 
 procedure(getDefaultPar)
 
@@ -245,6 +250,21 @@ procedure(savePar)
 
 endproc()
 
+
+procedure(setupsim, sample, b0Freq, T2Star, rxNoise, pulseAmp, pulseLength, sigAmp)
+
+   info = struct()
+   info->b0Freq = b0Freq
+   info->T2Star = T2Star
+   info->sample = sample
+   info->noiseAmplitude = rxNoise
+   info->pulse90Integral = :convertTxFromDb(pulseAmp)*pulseLength
+   info->signalAmplitude = sigAmp
+
+   assign("SimulationInfo",info,"window")
+
+endproc()
+
 procedure(updateWindow, par)
 
    cd(getmacropath())
@@ -276,6 +296,9 @@ procedure(windowdefinition)
          closewindow(0);)
       button(7, 310, 50, 61, 26, "Close",
          :savePar();
+         ignoredll("DSPWinUSBRun.dll");
+         gData->procType = "Simulator";
+         gData->connected = 1;
          closewindow(0);)
       textmenu(8, 130, 100, 50, 200,
          par = :loadPar();
