@@ -111,9 +111,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Allocate space for output data
    sumData = cmatrix(totPnts)
-
 # Calculate suitable amplitude axes
-   aAxis = cal*linspace(0,txMax,ampSteps)/txMax
+   scale = cal*10^(txMaxdB/20)
+   aAxis = scale*linspace(0,1,ampSteps)
 
 # Get plot regions
    pt1 = ucsPlot:getPlotReferences()
@@ -145,7 +145,14 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
 
     # Plot the data 
-      ucsPlot:graphTime(pt1,aAxis,mag(sumData)/nrPnts,scan,guipar,"Amplitude response","Amplitude (mV)","Amplitude (mV)")
+    # Plot the data 
+      pt1->parent->draw("false")
+      ucsPlot:graphTime(pt1,aAxis,mag(sumData),scan,guipar,"Amplitude response","Amplitude Out (mV)","Amplitude In (mV)")
+      pt1->grid->xgrid("on")
+      pt1->grid->finexgrid("on")
+      pt1->grid->ygrid("on")
+      pt1->grid->fineygrid("on")
+      pt1->parent->draw("true")
 
     # Check if complete button pressed
       if(check == "finish")
