@@ -571,11 +571,6 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
       endif
    next(k)
 
-# Setup simulator pulse list
-   if(gData->procType == "Simulator")
-      self->setUpSimulator(wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list,parIndex)
-   endif
-
 # Entry 3 in the parameter block stores
 # the number of entries in the list
 # The repetition timer flag is stored
@@ -718,6 +713,11 @@ procedure(initAndRunPP, self, ppPath, ppName, guipar, seqInfo)
 # of the evaluated relationships table without arrays or structures
    wv_rel = mkparlist(getlistnames(wv_rel))
    guipar = guipar + par  + wv_rel
+
+# Setup simulator pulse list
+   if(gData->procType == "Simulator")
+      self->setUpSimulator(guipar,wv_var,wv_pp_list,wv_pp_name,wv_phase_list,parIndex)
+   endif
 
 # Reset overflow light
    if(isvar("rxOverflow"))
@@ -987,21 +987,22 @@ endproc(round(txGain))
 ##############################################################
 # Initialise the SimulationInfo structure and store the
 # parameter names (pp_list) and their indices (parIndex)
+# Also store all experiment parameters (same as guipar)
 ##############################################################
 
-procedure(setUpSimulator,self,rel,var,pp_list,pp_name,phase_list,parIndex)
+procedure(setUpSimulator,self,exptPar,var,pp_list,pp_name,phase_list,parIndex)
  
 # Define the simulation info structure (a window variable)
   if(not(isvar("SimulationInfo")))
       sim = struct()
+      assign("SimulationInfo",sim,"window")
    else
       sim = SimulationInfo
    endif
 
-   assign("SimulationInfo",sim,"window")
-
    SimulationInfo->parNames = pp_list
    SimulationInfo->parIndex = parIndex
+   SimulationInfo->exptPar = struct(sortlist(exptPar))
 
 endproc()
 
