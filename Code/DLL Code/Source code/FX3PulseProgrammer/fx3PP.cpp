@@ -247,6 +247,7 @@ void EvaluateArg(void* itfc, char* varName, short varType, int32& result);
 void EvaluateArg(void* itfc, char* varName, short varType, uint32& tableAdrs, uint32& tableEntries);
 short EvaluateArg(void* itfc, char* varName, Variable* resultVar);
 void EvaluateArg(void* itfc, char* varName, short varType, CText& result);
+short TTLTranslate(DLLParameters* par, char* args);
 
 // Global variables
 char **parList; // Parameter list - built up by pp commands
@@ -355,7 +356,7 @@ EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
    else if (!strcmp(command, "ttlon"))             r = TTLOn(dpar,parameters);      
    else if (!strcmp(command, "ttloff"))            r = TTLOff(dpar,parameters);      
  //  else if(!strcmp(command,"ttlpulse"))          r = TTLPulse(dpar,parameters);      
- //  else if(!strcmp(command,"ttltranslate"))      r = TTLTranslate(dpar,parameters);      
+   else if (!strcmp(command, "ttltranslate"))      r = TTLTranslate(dpar,parameters);      
    else if (!strcmp(command, "trigger"))           r = WaitForTrigger(dpar,parameters);       
    else if (!strcmp(command, "txoff"))             r = TxOff(dpar,parameters);   
    else if (!strcmp(command, "txon"))              r = TxOn(dpar,parameters);  
@@ -429,7 +430,7 @@ EXPORT void  ListCommands(void)
    TextMessage("   ttlon .............. switch on a TTL level\n");
    TextMessage("   ttloff ............. switch off a TTL level\n");
  //  TextMessage("   ttlpulse ........... generate TTL pulse\n");
- //  TextMessage("   ttltranslate ....... translate TTL pin number to byte code\n");
+   TextMessage("   ttltranslate ....... translate TTL pin number to byte code\n");
    TextMessage("   trigger ............ wait for trigger input\n");
    TextMessage("   txoff .............. turn off the transmitter output\n");
 	TextMessage("   txon ............... turn on the transmitter output\n");
@@ -493,7 +494,7 @@ EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
 	else if (!strcmp(cmd, "shapedrf1"))            strcpy(syntax, "shapedrf1(channel (1/2), atable:t, phase:p, table_size:n, table_step_duration:d)"); 
 	else if (!strcmp(cmd, "shapedrf2"))            strcpy(syntax, "shapedrf2(channel (1/2) aptable:t, phase:p, table_size:n, table_step_duration:d"); 
    else if (!strcmp(cmd, "trigger"))              strcpy(syntax, "trigger(\"high\"/\"low\"/\"rising\"/\"falling\")");
- //  else if(!strcmp(cmd,"ttltranslate"))         strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
+   else if (!strcmp(cmd, "ttltranslate"))         strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
  //  else if(!strcmp(cmd,"ttl"))                  strcpy(syntax,"ttl(byte:b)");
    else if(!strcmp(cmd, "ttlon"))                 strcpy(syntax, "ttlon(byte:b)");
    else if(!strcmp(cmd, "ttloff"))                strcpy(syntax, "ttloff(byte:b)");
@@ -5621,6 +5622,37 @@ short SetTableIndex(DLLParameters* par, char* args)
 	return(OK);
 }
 
+
+
+/*****************************************************************************
+
+	Translate TTL pin-number to TTL code (for use with ttlon/ttloff commands)
+
+******************************************************************************/
+
+short TTLTranslate(DLLParameters* par, char* args)
+{
+	short nrArgs;
+	static short pinNr;
+	unsigned short translate[] = { 0x00,0x00,0x02,0x08,0x20,0x01,0x04,0x10,0x80,0x40 };
+	float code;
+
+	if ((nrArgs = ArgScan(par->itfc, args, 1, "pin number", "e", "d", &pinNr)) < 0)
+		return(nrArgs);
+
+	if (pinNr < 2 || pinNr > 9)
+	{
+		Error(par->itfc, "Invalid pin number (2-9)");
+		return(ERR);
+	}
+
+	code = (float)translate[pinNr];
+
+	par->retVar[1].MakeAndSetFloat(code);
+	par->nrRetVar = 1;
+
+	return(OK);
+}
 
 
 /****************************************************************************
