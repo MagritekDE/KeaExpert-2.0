@@ -1,3 +1,7 @@
+############################################################################################
+# This is the replacement for the hardware dspwrite command. This is used in Simulation mode
+#############################################################################################
+
 procedure(dspwrite,memBank,address,vec,port)
 
    if(memBank == "x")
@@ -17,7 +21,7 @@ procedure(dspwrite,memBank,address,vec,port)
 
          SimulationInfo->receiverPhase = 360-vec[17]/65535.0*360
          idx = round(vec[0]/256)*16+round(vec[1]/256)
-         rxAmpGain = 10.0^(ucsSim:getRxGain(idx)/20.0)
+         rxAmpGain = 10.0^(:getRxGain(idx)/20.0)
 
          filterGain = gData->digFilterCor
          rxDigCal = gData->specParameters->receiverCal
@@ -25,7 +29,28 @@ procedure(dspwrite,memBank,address,vec,port)
          rxAmpCorr = gData->specParameters->rxAmpCor
          SimulationInfo->receiverGain = rxDigCal/filterGain*rxAmpGain*preampGain/rxAmpCorr/1000.0
 
-         SimulationInfo->ppList = vec
+         # Extract the current pulse sequence parameter values in user units
+         ppValues = struct()
+         for(k = 0 to size(SimulationInfo->parNames)-1)
+            name = SimulationInfo->parNames[k]
+            idx = :getPSIndex(name)
+            if(name[0] == "d")
+               value = :getShortDelay(name,vec,idx)
+            elseif(name[0] == "w")
+               value = :getLongDelay(name,vec,idx)
+            elseif(name[0] == "a")
+               value = :getNumber(name,vec,idx)
+            elseif(name[0] == "n")
+               value = :getNumber(name,vec,idx)
+            elseif(name[0] == "p")
+               value = :getPhase(name,vec,idx)
+            elseif(name[0] == "f")
+               value = :getFrequency(name,vec,idx)
+            endif
+            assign("ppValues->$name$",value,"local")
+         next(k)
+            
+         SimulationInfo->ppValues = ppValues
          SimulationInfo->name = gData->curExpt->protocol
 
       endif
@@ -37,3 +62,103 @@ procedure(dspwrite,memBank,address,vec,port)
    endif
 
 endproc()
+
+###############################################################
+# Convert a pulse program phase to degrees
+###############################################################
+
+procedure(getNumber, name, ppList, idx)
+
+   value = ppList[idx]
+
+endproc(value)
+
+
+###############################################################
+# Convert a pulse program phase to degrees
+###############################################################
+
+procedure(getPhase, name, ppList, idx)
+
+   value = ppList[idx]
+
+endproc(value/65536*2*pi)
+
+###############################################################
+# Convert a pulse program short delay into microseconds
+###############################################################
+
+procedure(getShortDelay, name, ppList, idx)
+
+   value = ppList[idx]
+
+endproc((value+1)/50)
+
+###############################################################
+# Convert a pulse program short delay into microseconds
+###############################################################
+
+procedure(getLongDelay, name, ppList, idx)
+
+   w0 = ppList[idx]
+   w1 = ppList[idx+1]
+   w2 = ppList[idx+2]
+
+   if(w0 == 0)
+      dly = w1*10 + 190
+   else
+      dly = w1*10 + w0*(w2*10+50) + 160
+   endif
+
+endproc(dly/1000)
+
+###############################################################
+# Convert a receiver gain value into its dB value
+###############################################################
+
+procedure(getRxGain,val)
+
+   rxTable =  [0x00,0x01,0x02,0x03,0x04,0x05,
+               0x15,0x25,0x35,0x45,0x55,0x65,
+               0x75,0x85,0x95,0xA5,0xB5,0xC5,
+               0xD5,0xE5,0xF5,0xF6,0xF7,0xF8,
+               0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF]
+
+   sz = size(rxTable)
+
+   idx=0
+   for(k = 0 to sz-1)
+      if(val == rxTable[k])
+         idx = k
+         exitfor()
+      endif
+   next(k)
+
+   rxGain = idx*3-20
+
+endproc(rxGain)
+
+###############################################################
+# Given a pulse sequence parameter name return the current
+# value from ppList
+###############################################################
+
+procedure(getPSParameter, ppList, name)
+
+   idx = :getPSIndex(name)
+   value = ppList[idx]
+
+endproc(value)
+
+###############################################################
+# Given a pulse sequence parameter name return the index
+# of this parameter in ppList
+###############################################################
+
+procedure(getPSIndex, name)
+
+   parIndex = SimulationInfo->parIndex
+   parNames = SimulationInfo->parNames
+   idx = parIndex[getlistindex(parNames,name)]
+
+endproc(idx)

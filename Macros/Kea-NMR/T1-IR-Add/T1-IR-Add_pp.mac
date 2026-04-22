@@ -110,18 +110,24 @@ endproc(par)
 #####################################################
 # Generate some simulated T1-IR data based on the
 # values stored in SimulationInfo
+#
+# SimulationInfo->ppValues ... current pp values
+# SimulationInfo->exptPar .... experiment parameters
+#
 #####################################################
 
 procedure(simulateNMR, dataSize)
 
    assignstruct(SimulationInfo)
 
-   pulse90Amp = ucsSim:getPSParameter(ppList,"a1")
-   pulse90Length = ucsSim:getShortDelay(ppList,"d1")
-   pulseIntegral = pulse90Amp*pulse90Length
-   pulsePhase = ucsSim:getPSParameter(ppList,"p2")/65536.0*2*pi
-   acquisitionDelay = ucsSim:getShortDelay(ppList,"d4")
-   t1Delay = ucsSim:getLongDelay(ppList,"w1")
+   pulse90Amp       = ppValues->a1
+   pulse90Length    = ppValues->d1
+   pulseIntegral    = pulse90Amp*pulse90Length
+   pulsePhase       = ppValues->p2
+   acquisitionDelay = ppValues->d4
+   t1Delay          = ppValues->w1
+
+# Better to just have the current list and have in sensible linear units.
 
 # Non-experiment specific parameters
    DW = dwellTime*1e-6 # <= This is the dwell time

@@ -109,11 +109,13 @@ procedure(simulateNMR, dataSize)
 
    assignstruct(SimulationInfo) # Get spectrometer parameters
 
-   p90 = round(ucsSim:getPSParameter(ppList,"p1")/16384)
-   p180 = round(ucsSim:getPSParameter(ppList,"p2")/16384)
+   p90 = round(ppValues->p1/(2*pi)*4)
+   p180 = round(ppValues->p2/(2*pi)*4)
 
-   ui = getctrlvalues(0,"list") # Get nrPnts, nrEchoes and echoTime from ui
-   assignlist(ui)
+   nrPnts    = exptPar->nrPnts
+   nrEchoes  = exptPar->nrEchoes
+   echoTime  = exptPar->echoTime
+   dwellTime = exptPar->dwellTime
 
 # Non-experiment specific parameters
    DW = dwellTime*1e-6 #  This is the dwell time
