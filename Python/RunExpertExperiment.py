@@ -1,8 +1,8 @@
 # Demonstrates how to start KeaExpert and then run different experiments or commands
-# via Windows message passing. Tested usinng a Python environment installing
-# packages: matplotlib, numpy and pywin32
+# via Windows message passing. Tested using a Python environment with installed
+# packages: matplotlib, numpy, pyqt5 and pywin32 (see makePyEnv.bat)
 # Note that KeaExpert must be able to run the desired experiments with just
-# the default and common parameters! see makePyEnv.bat
+# the default and common parameters! 
 # Tested with Python 3.12.3
 import win32con, win32api, win32gui, win32ui
 import ctypes, ctypes.wintypes
@@ -10,6 +10,8 @@ import subprocess,time
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+import sys
+import time
 
 # Defines data structure used to pass information between Python and Prospa
 class COPYDATASTRUCT(ctypes.Structure):
@@ -107,47 +109,66 @@ def PlotData(fig,row,col,idx,x,y,zoom,title):
 
 # Open KeaExpert - needs V2.0 or later
 # Prospa executable and KeaExpert macro location - change as required
-prospa = 'C:\\Users\\Craig\\Projects\\Expert-Kea  2.0 DSP-FX3 - V143 MASTER\\prospa.exe'
-startMacro = 'C:\\Users\\Craig\\Projects\\Expert-Kea  2.0 DSP-FX3 - V143 MASTER\\Macros\\Kea-Expert\\KeaExpertInterface.pex'
+prospa = 'D:\\Projects\\KeaExpert-Dev\\prospa.exe'
+startMacro = 'D:\\Projects\\KeaExpert-Dev\\Macros\\Kea-Expert\\KeaExpertInterface.pex'
 # Start Prospa ('hidden' for hidden 'normal' for visible). Give it time to load
-subprocess.Popen([prospa, startMacro,'"normal"'])
-time.sleep(4)
+subprocess.Popen([prospa, startMacro,'"specID,Simulator"'])
+time.sleep(6)
 # Find the Prospa window
 prospaWin = win32gui.FindWindowEx(0, 0, 'MAIN_PROSPAWIN', None)
 
 # Make a comms class object to communicate with prospa
 com = Comms(prospaWin)
 
+
 print("Experiments started\n")
 # Load the first experiment in to the interface
-com.RunProspaMacro(b'CPMGAdd(["nrScans = 64","echoTime=150","nrPnts=64"])')
+com.RunProspaMacro(b'CPMGAdd(["nrScans = 8","echoTime=200","nrPnts=64","nrEchoes=32"])')
 # Change the current file comment
-com.RunProspaMacro(b'gView->sampleNameCtrl->text("Test")')
+#com.RunProspaMacro(b'gView->sampleNameCtrl->text("Test")')
 # Run the first experiment
-com.RunProspaMacro(b'gExpt->runExperiment()')
+com.RunProspaMacro(b'gExpt->runExperiment(0,"bg")')
 #Get data location
 dir = com.returnMessage
+print("Waiting")
+# Wait for the experiment to finish - abort after 5 seconds - timeout 100 seconds
+for poll in range(1000):
+    time.sleep(0.1)
+    com.RunProspaMacro(b'gExpt->checkStatus()')
+    if com.returnMessage != b'running':
+        break
+    if poll == 50:
+       com.RunProspaMacro(b'gExpt->abortExperiment()')
+       print("Experiment aborted")
+       sys.exit(1)
+
+print("Experiment finished")
 os.chdir(dir)
+print(dir)
 # Load the data
 (xa, ya) = LoadFile('rawCPMGAdd.1d')
+print(len(xa),len(ya))
 # Plot the result
 fig = plt.figure(1)
-PlotData(fig,2,1,1,xa,ya,None,'CPMGAdd')
+PlotData(fig,2,1,1,xa,ya,None,'CPMGFast')
 
 # Load and run the second experiment
-com.RunProspaMacro(b'CPMGFast(["nrScans = 128","echoTime=100","nrPnts=4","dwellTime=0.5","nrEchoes=300","fitMode=\\"realTime\\"", "fitType=\\"exp\\""])')
-com.RunProspaMacro(b'gExpt->runExperiment()')
+com.RunProspaMacro(b'CPMGFast(["nrScans = 8","echoTime=500","nrPnts=4","dwellTime=0.5","nrEchoes=20000","fitMode=\\"realTime\\"", "fitType=\\"exp\\""])')
+com.RunProspaMacro(b'gExpt->runExperiment(0,"bg")')
+print("Waiting for 20 s")
+time.sleep(20)
 dir = com.returnMessage
 os.chdir(dir)
+print(dir)
 (xa, ya) = LoadFile('rawCPMG.1d')
 PlotData(fig,2,1,2,xa,ya,None,'CPMGFast')
 
 print("Experiments finished\n")
 
 # Close Expert after 2 seconds
-com.RunProspaMacro(b'showwindow(0)')
-time.sleep(2)
-com.RunProspaMacro(b'exit(1)')
+#com.RunProspaMacro(b'showwindow(0)')
+#time.sleep(2)
+#com.RunProspaMacro(b'exit(1)')
 
 #  Keep plots
 plt.show()
