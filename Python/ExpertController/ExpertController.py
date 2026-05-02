@@ -11,6 +11,7 @@ import sys
 import threading
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 import os
 import glob
 import win32con, win32api, win32gui, win32ui
@@ -96,6 +97,8 @@ class ExpertController(QWidget):
         # Some initialisers
         self.com = None
         self.exptStatus = "idle"
+
+        app.setWindowIcon(QIcon('ExpertController.ico'))
 
       #  print(f"Location:",getProspaPath())
 
