@@ -127,7 +127,7 @@ endproc(lst,groups,interface,relationships,variables,0,phaseList)
 
 procedure(getFactoryBasedParameters, par)
 
-   specPar = KeaParameterUpdater:readSpecPar()
+   specPar = gData->specParameters
    if(specPar == null)
       return(null)
    endif
@@ -140,3 +140,61 @@ procedure(getFactoryBasedParameters, par)
           "b1FreqCh1         = $frequencyCh1$"]
 
 endproc(par)
+
+
+#####################################################
+# Generate some simulated CPMGFast data based on the
+# values stored in SimulationInfo and the UI
+#####################################################
+
+procedure(simulateNMR, dataSize)
+
+   assignstruct(SimulationInfo) # Get spectrometer parameters
+
+   p90 = round(ppValues->p1/(2*pi)*4)
+   p180 = round(ppValues->p2/(2*pi)*4)
+
+   nrPnts    = exptPar->nrPnts
+   nrEchoes  = exptPar->nrEchoes
+   echoTime  = exptPar->echoTime
+   dwellTime = exptPar->dwellTime
+
+# Non-experiment specific parameters
+   DW = dwellTime*1e-6 #  This is the dwell time
+   sigAmp = signalAmplitude*receiverGain #*nrPnts #  the signal amplitude
+   ph = receiverPhase #  the receiver phase
+   offFreq = 1e6*(single(b1Freq)-b0Freq) 
+
+   if(p90 == 2 & (p180 == 3 | p180 == 1)) # Phase cycling changes the detected phase
+      ph = ph - 180
+   endif
+
+   nl = noiseAmplitude*receiverGain*sqrt(1.0/dwellTime) # Generate some noise
+
+   cd(getmacropath())
+   cd("$appdir$\\Macros\\KeaExpert\\SimulatorMacros\\Simulated Samples")
+
+   result = sample() # Get sample T2
+   T2 = result->T2
+
+   # Central echo times
+   te = linspace(echoTime,echoTime*nrEchoes,nrEchoes)*1e-6
+   sumEnhancement = sum(exp(-te/T2))
+
+   # Time axis for phase offset
+   t1 = ([0:1:nrPnts-1])*dwellTime*1e-6
+
+   # Time axis for calculating echo shape
+   t2 = ([0:1:nrPnts-1]-nrPnts/2)*dwellTime*1e-6
+   cmat = cmatrix(nrPnts)
+
+   cmat = sigAmp*sumEnhancement*exp(-(t2/T2+t2/T2Star)^2).*exp(i*(2*pi*offFreq*t1 + ph/180*pi))
+
+   mat = ctor(cmat)
+
+   # Add in some noise
+   mat = mat + nl*noise(nrPnts*2)*sqrt(sumEnhancement)
+
+endproc(mat)
+
+
