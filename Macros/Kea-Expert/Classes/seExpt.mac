@@ -18,12 +18,14 @@ procedure(init, self)
 
    self->procedureList = "=============================================" 
   
+   self->abortExperiment       = "seExpt:abortExperiment"
    self->addExperiment         = "seExpt:addExperiment"
    self->addMissingPar         = "seExpt:addMissingPar"
    self->addStandardParameters = "seExpt:addStandardParameters"
    self->autoSetup             = "seExpt:autoSetup"
    self->checkForDuplicates    = "seExpt:checkForDuplicates"
    self->cleanupAfterExpt      = "seExpt:cleanupAfterExpt"
+   self->checkStatus           = "seExpt:checkStatus"
    self->getExptDuration       = "seExpt:getExptDuration"
    self->getPathInfo           = "seExpt:getPathInfo"
    self->isConnected           = "seExpt:isConnected"
@@ -376,6 +378,25 @@ procedure(autoSetup, self)
  pr "Autosetup in progress\n"
 
 endproc()
+
+###########################################################
+# Abort an experiment
+###########################################################
+
+procedure(abortExperiment, self)
+
+   assignlock("wvExpStatus","stop","window");
+   gView->graphLabel->label("Please wait - experiment aborting ...")
+
+endproc("aborted")
+
+###########################################################
+# Returns the experiment status
+###########################################################
+
+procedure(checkStatus, self)
+
+endproc(wvExpStatus)
 
 ###########################################################
 # Check to see if there is more than one experiment with
@@ -853,7 +874,7 @@ endproc()
 # UI mode control setting: history or batch
 ###########################################################
 
-procedure(runExperiment, self, saveExpt=0)
+procedure(runExperiment, self, saveExpt=0, mode="fg")
 
    # Check for std software open
    if(isappopen("SPINSOLVE"))
@@ -882,10 +903,17 @@ procedure(runExperiment, self, saveExpt=0)
       else
          comment = gView->sampleNameCtrl->text()
       endif
-      completed = self->runExperimentCore(suffix=comment,s=null,savingExperiment=saveExpt)
-      if(completed >= 1)
-         self->savePPCode()
+      if(mode == "fg")
+         completed = self->runExperimentCore(suffix=comment,s=null,savingExperiment=saveExpt)
+         if(completed >= 1)
+            self->savePPCode()
+         endif
+      else # Return immediately
+         thread(":runExperimentCore", self, comment, null,saveExpt)
+         self->setDataInfo(gData->curExpt->protocol,comment)
       endif
+
+
    else # Batch 
       if(gParam->parChangedFlag) # Check for modification
          if(query("Warning","A parameter has been modified in a batch experiment.\rDo you want to update the acqu.par file?") == "yes")
@@ -1345,7 +1373,7 @@ procedure(setCurrentExperiment, self, exptName, exptPath, historyIndex)
 endproc(1)
 
 ###########################################################
-# Update the some of the data parameters for the 
+# Update some of the data parameters for the 
 # current experiment 
 ###########################################################
 
