@@ -51,6 +51,15 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
       gData->connected = 0
       gData->loadFactoryDefaults()
       uiMode = "viewer"
+   elseif(uiMode[0:5] == "specID")
+      r = parse(uiMode,",")
+      if(r[1] == "Simulator")
+         gData->procType = "Simulator"
+         SelectKea:updateParametersAndTitle(gData->procType, connected=0)
+      else
+         SelectKea:selectByID(r[1])
+      endif
+
    endif
 
 # Load the user preferences and save in gData->preferences
@@ -75,6 +84,12 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 # Define window variables REVISIT
    :defineWindowVar()
 
+# Need to setup simulator control after window is defined
+   if(gData->procType == "Simulator")
+      SimulatorControl:backdoor(n)
+      ignoredll("DSPWinUSBRun.dll");
+   endif
+
 # Load the last data set
    if(gView->loadHistoryList())
       lst = gView->history->list()
@@ -97,11 +112,12 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
    closewindow(ssw)
 
 # Display the main window
-   if(uiMode == "normal")
-      showwindow(gView->wn,gView->IsMaximised)
-   elseif(uiMode == "viewer")
+
+   if(uiMode == "viewer")
       gView->runButton->enable("false")
       gView->fixCtrl->enable("false")
+      showwindow(gView->wn,gView->IsMaximised)
+   elseif(uiMode != "hidden")
       showwindow(gView->wn,gView->IsMaximised)
    endif
 
@@ -121,6 +137,9 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
       proc = rmext(macro)
       proc()
    endif
+
+#pr "In pex\n"
+#pr gData->connected
 
 endproc()
 
