@@ -56,11 +56,7 @@ procedure(windowdefinition, internal)
       if(internal)
          button(8, 260, 60, 50, 24, "Cancel",
          if(gData->procType == "Simulator");
-          #  bak = getcwd();
-         #   cd("$appdir$\\DLLs");
-          #  files = ls("*Run.DLL");
             ignoredll("DSPWinUSBRun.dll");
-          #  cd(bak);
          endif;
          closedialog(""))
       endif
@@ -376,4 +372,42 @@ procedure(updateParametersAndTitle, procType, connected)
    endif
 
 endproc()
+
+procedure(selectByID,specID)
+
+   if(gData->procType == "Simulator")
+      loaddlls()
+   endif
+
+# Check for connected FX3 Keas
+   remoteIDs = checkConnections()
+   nr = fx3count()
+   for(k = 0 to nr-1)
+      id = gFX3->readSpecID(k)
+      if(id == specID)
+         fx3setport(current)
+         gData->procType = "FX3"
+         :updateParametersAndTitle("FX3",connected=1)
+         return(1)
+      endif
+    next(k)
+
+# Check for connected DSP Keas
+   lst = list(0)
+   dspPorts = list(0)
+   for(k = 0 to 9)
+      dspsetport(k)
+      id = gDSP->readSpecID(k)
+      if(id == specID)
+         gData->procType = "DSP"
+         :updateParametersAndTitle("DSP",connected=1)
+         return(1)
+      endif
+   next(k)
+
+   if(gData->procType == "Simulator")
+      ignoredll("DSPWinUSBRun.dll");
+   endif
+
+endproc(0)
 
