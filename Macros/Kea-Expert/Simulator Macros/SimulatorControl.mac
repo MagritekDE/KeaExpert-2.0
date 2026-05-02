@@ -1,12 +1,13 @@
 procedure(SimulatorControl, parentWin=2)
 
    n = :windowdefinition()
+   setwindowpar(n,"type","dialog") 
    windowvar(wvParentWin)
    wvParentWin = parentWin
    assignctrls(n)
    par = :loadPar(wvParentWin)
    :updateWindow(par)
-   showwindow(n)
+   showdialog(n)
 
 endproc()
 
@@ -293,13 +294,13 @@ procedure(windowdefinition)
       button(6, 310, 10, 61, 26, "Apply",
          :apply();
          :savePar();
-         closewindow(0);)
+         closedialog();)
       button(7, 310, 50, 61, 26, "Close",
          :savePar();
          ignoredll("DSPWinUSBRun.dll");
          gData->procType = "Simulator";
          gData->connected = 1;
-         closewindow(0);)
+         closedialog();)
       textmenu(8, 130, 100, 50, 200,
          par = :loadPar();
          :updateWindow(par);)
