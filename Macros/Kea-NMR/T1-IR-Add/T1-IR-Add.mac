@@ -225,7 +225,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    
        # Accumlate the data
          sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
-   
+
        # Process the data
         (sumData,spectrum) = ucsRun:transformData(sumData,fAxis,guipar,"echo")
 
@@ -263,7 +263,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
             try
                n = findobj(0,"name","rxPhase")
                newPhase = (eval(getpar(0,n,"text"))-ph)%360
-               setpar(0,n,"text",newPhase)  
+             #  setpar(0,n,"text",newPhase)  
             catch; endtry;
             pc = exp(i*ph/180*pi)
          else
@@ -271,7 +271,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          endif
          maxEcho = sumData
 
-      elseif(d >= 0)     
+      elseif(d >= 0)  
+ 
          echoInt[d]  = sum(real(pc*(sumData - maxEcho))/nrScans)/nrPnts # Average of difference between collected data and long time measuremet
          echoDelay[d] = dly/1000
          echoError[d]  = error*2/sqrt(nrPnts) # Doubled due to subtraction and reduced due to signal averaging 
