@@ -196,7 +196,7 @@ Source: "..\Icons\prospa_file.ico"; DestDir: "{app}\Icons"; Flags: ignoreversion
 Name: "{group}\Prospa"; Filename: "{app}\Prospa.exe"
 Name: "{group}\{cm:UninstallProgram,Prospa}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\Prospa"; Filename: "{app}\Prospa"; Tasks: desktopicon ; WorkingDir: "{app}\Macros"
-Name: "{commondesktop}\KeaExpert"; Filename: "{app}\Prospa"; Parameters: """{app}\Macros\Kea-Expert\KeaExpertInterface.pex"""; IconFilename: "{app}\Macros\Kea-Expert\Other Macros\Bitmaps\expert.ico" ; WorkingDir: "{app}\Macros"
+Name: "{commondesktop}\KeaExpert"; Filename: "{app}\Prospa"; Parameters: """{app}\Macros\Kea-Expert\KeaExpertInterface.pex"""; IconFilename: "{app}\Macros\Kea-Expert\Other Macros\Bitmaps\keaExpert.ico" ; WorkingDir: "{app}\Macros"
 
 [Registry]
 Root: HKCR; Subkey: ".pt1"; ValueType: "string"; ValueName: ""; ValueData: "prospafile"; Flags: uninsdeletekeyifempty
