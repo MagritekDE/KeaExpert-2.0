@@ -286,7 +286,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
    next(m)
 
    if(executedBackdoor == "no")
-      :SSEFit(prLog,tauAxis2,ampAxis,noiseAxis,guipar)
+      stats = :SSEFit(prLog,tauAxis2,ampAxis,noiseAxis,guipar)
+      ucsFiles:saveToNotes(stats, guipar)
    endif
 
    ucsFiles:savePlot(prLin,:getPlotInfo("pt2"),guipar,"noReport")
@@ -294,9 +295,6 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
 
    if(executedBackdoor == "yes")
       return(tauAxis,ampAxis)
-   else
-      stats = :SSEFit(prLog,tauAxis2,ampAxis,guipar)
-      ucsFiles:saveToNotes(stats, guipar)
    endif
 
        
@@ -332,9 +330,9 @@ procedure(SSEFit,plt,tauAxis2,ampAxis,noiseAxis,guipar)
 
    (x,y,nrPntsNew) = :removeNegativeValues(tauAxis2,ampAxis/ampAxis[0],nrPntsTau)
    
-   y[~]= loge(y[~])
+   yln = loge(y)
 
-   (a,b,aErr,bErr) = linfit:fit(x,y)
+   (a,b,aErr,bErr) = linfit:fit(x,yln)
     aStr = errorstr(-a,aErr,1,3)
     bStr = errorstr(b,bErr,1,3)
   
@@ -355,7 +353,7 @@ procedure(SSEFit,plt,tauAxis2,ampAxis,noiseAxis,guipar)
   
    plt->hold("on")
 
-   plt->plot(x,y,
+   plt->plot(x,yln,
           "tracetype", "none",
           "tracecolor",[0,128,0],
           "symbolshape","opensquare",
@@ -369,9 +367,10 @@ procedure(SSEFit,plt,tauAxis2,ampAxis,noiseAxis,guipar)
    # Save some statistics
    printtostring()
    pr("\n   Number of points: $nrPntsTau$\n")
-   pr("      Fit residuals sd = $sd(y-fit)$\n")
-   pr("      Data noise sd = $sd(noiseAxis)$\n")
-   #  pr("      Data SNR = $:getSNR(yRed)$\n")
+   pr("      Fit residuals sd = $sd(y-exp(yfit))$\n")
+   pr("      Data noise sd = $sd(noiseAxis/ampAxis[0])$\n")
+   pr("\n\n   D = $aStr$ m^-2s\n")
+
    
    stats = closeprint()
    print("$stats$")
@@ -397,10 +396,10 @@ procedure(removeNegativeValues,t,data,nrPnts)
      pr("\n Some negative data points were removed before fitting\n")
   endif
 
-  tNew = submatrix(t   ,0,countNeg-1) 
-  dadaNew = submatrix(data,0,countNeg-1) 
+  tNew = submatrix(t,0,countNeg-1) 
+  dataNew = submatrix(data,0,countNeg-1) 
   
-endproc(tNew,dadaNew,countNeg)
+endproc(tNew,dataNew,countNeg)
 
 ##########################################################
 # 
