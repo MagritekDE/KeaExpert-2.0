@@ -17,6 +17,9 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
    :cacheProcs1()
    t1 = time()
 
+# Handle first run after install
+   :firstRunCheck()
+
 # Make some classes globally accessible
    assign("gView",   class("seView:init"),     "global")
    assign("gDebug",  class("seDebug:init"),    "global")
@@ -143,6 +146,21 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 
 endproc()
 
+# Copy special files into preferences if this is a new install or if
+# the preferences folder has been deleted
+procedure(firstRunCheck)
+
+   bak = getcwd()
+   cd(prefdir)
+   cd("KeaParameters")
+   if(isfile("thisIsANewInstall.txt") | not(isfile("currentKeaParameters.par")))
+      copyfile("$appdir$\\Preferences\\StartUp\\defaultKeaParameters.par","currentKeaParameters.par")
+      rmfile("thisIsANewInstall.txt")
+   endif
+   cd(bak)
+
+endproc()
+
 # Reads all the used macro into the global cache for fast access
 
 procedure(cacheProcs1)
@@ -190,47 +208,8 @@ procedure(cacheProcs2)
    import("fft_local.mac","$appdir$\\Macros\\coreMacros","global")
    import("filters.mac","$appdir$\\Macros\\1D_Macros","global")
 
-
 # Import Expert setup macros
    dir = "$appdir$\\Macros\\Kea-Expert\\Setup Macros"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-# Import core macros like findf0, power shim etc
-
-   dir = "$appdir$\\Macros\\Setup\\Findf0-H"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-   dir = "$appdir$\\Macros\\Setup\\PowerShim"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-   dir = "$appdir$\\Macros\\Setup\\QuickShim"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-   dir = "$appdir$\\Macros\\Setup\\StandbyShim"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-   dir = "$appdir$\\Macros\\Setup\\TestShims"
-   lst = getfilelist(dir)
-   for(k = 0 to size(lst)-1)
-      import(lst[k],dir,"global")
-   next(k)
-
-   dir = "$appdir$\\Macros\\Setup\\UpdateShims"
    lst = getfilelist(dir)
    for(k = 0 to size(lst)-1)
       import(lst[k],dir,"global")
