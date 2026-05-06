@@ -3689,74 +3689,114 @@ short SetTableIndex(DLLParameters* par, char *args)
      Trigger input control
 **********************************************************************/
 
-short WaitForTrigger(DLLParameters* par, char *args)
+
+short WaitForTrigger(DLLParameters* par, char* args)
 {
    short nrArgs;
    CText mode = "on high";
-   CText ignore = "0";
 
-// Get the table name and desired index value
-   if((nrArgs = ArgScan(par->itfc,args,0,"mode, ignore","ee","tq",&mode,&ignore)) < 0)
+   // Get the table name and desired index value
+   if ((nrArgs = ArgScan(par->itfc, args, 0, "mode", "e", "t", &mode)) < 0)
       return(nrArgs);
 
-   if(!parList)
+   if (!parList)
    {
-      Error(par->itfc,"Pulse sequence not initialised");
-      return(ERR);
-   }
-   
-   if(ignore[0] == 'n')
-      InsertUniqueStringIntoList(ignore.Str(),&parList,szList);
-
-   FILE *fp = fopen("midCode.asm","a");
-   if(!fp)
-   {
-      Error(par->itfc,"Can't open output file");
+      Error(par->itfc, "Pulse sequence not initialised");
       return(ERR);
    }
 
-   fprintf(fp,"\n;");
-   fprintf(fp,"\n;***************************************************************************");
-   fprintf(fp,"\n; Wait for trigger input");
-   fprintf(fp,"\n        clr     a");
-   // Get the ignore flag
-   int dIgnore;
-   if(ignore[0] == 'n')
+   if (mode[0] == 's') // Required for FX3 - DSP requires constants
+      InsertUniqueStringIntoList(mode.Str(), &parList, szList);
+
+   FILE* fp = fopen("midCode.asm", "a");
+   if (!fp)
    {
-      fprintf(fp,"\n        move    x:NR%s,a1",ignore.Str()+1);
+      Error(par->itfc, "Can't open output file");
+      return(ERR);
    }
-   else if(sscanf(ignore.Str(),"%d",&dIgnore) == 1) 
-   {
-      if(dIgnore != 0 && dIgnore != 1)
-      {
-         Error(par->itfc,"invalid ignore flag [0/1]",dIgnore);
-         fclose(fp);
-         return(ERR);
-      }
-      fprintf(fp,"\n        move   #%d,a1",dIgnore);
-   }
+
+   fprintf(fp, "\n;");
+   fprintf(fp, "\n;***************************************************************************");
+   fprintf(fp, "\n; Wait for trigger input");
+   if (mode == "on high" || mode == "high")
+      fprintf(fp, "\n        jset    #12,x:A_HDR,*         ;Wait for trigger level to go high");
    else
-   {
-      Error(par->itfc,"Invalid ignore flag '%s'",ignore.Str());
-      fclose(fp);
-      return(ERR);
-   }
-
-   fprintf(fp,"\n        tst     a                      ;Should we ignore the trigger?");
-   fprintf(fp,"\n        jset    #0,a,LBL%ld             ; Collect n samples",label);
-
-   if(mode == "on high")
-      fprintf(fp,"\n        jset    #12,x:A_HDR,*          ;Wait for trigger level to go high");
-   else
-      fprintf(fp,"\n        jclr    #12,x:A_HDR,*          ;Wait for trigger level to go low");
-   fprintf(fp,"\nLBL%ld    nop",label++);
-
-   fprintf(fp,"\n;");
+      fprintf(fp, "\n        jclr    #12,x:A_HDR,*         ;Wait for trigger level to go low");
+   fprintf(fp, "\n;");
 
    fclose(fp);
 
    return(OK);
 }
+//
+//short WaitForTrigger(DLLParameters* par, char *args)
+//{
+//   short nrArgs;
+//   CText mode = "on high";
+//   CText ignore = "0";
+//
+//// Get the table name and desired index value
+//   if((nrArgs = ArgScan(par->itfc,args,0,"mode, ignore","ee","tq",&mode,&ignore)) < 0)
+//      return(nrArgs);
+//
+//   if(!parList)
+//   {
+//      Error(par->itfc,"Pulse sequence not initialised");
+//      return(ERR);
+//   }
+//   
+//   if(ignore[0] == 'n')
+//      InsertUniqueStringIntoList(ignore.Str(),&parList,szList);
+//
+//   FILE *fp = fopen("midCode.asm","a");
+//   if(!fp)
+//   {
+//      Error(par->itfc,"Can't open output file");
+//      return(ERR);
+//   }
+//
+//   fprintf(fp,"\n;");
+//   fprintf(fp,"\n;***************************************************************************");
+//   fprintf(fp,"\n; Wait for trigger input");
+//   fprintf(fp,"\n        clr     a");
+//   // Get the ignore flag
+//   int dIgnore;
+//   if(ignore[0] == 'n')
+//   {
+//      fprintf(fp,"\n        move    x:NR%s,a1",ignore.Str()+1);
+//   }
+//   else if(sscanf(ignore.Str(),"%d",&dIgnore) == 1) 
+//   {
+//      if(dIgnore != 0 && dIgnore != 1)
+//      {
+//         Error(par->itfc,"invalid ignore flag [0/1]",dIgnore);
+//         fclose(fp);
+//         return(ERR);
+//      }
+//      fprintf(fp,"\n        move   #%d,a1",dIgnore);
+//   }
+//   else
+//   {
+//      Error(par->itfc,"Invalid ignore flag '%s'",ignore.Str());
+//      fclose(fp);
+//      return(ERR);
+//   }
+//
+//   fprintf(fp,"\n        tst     a                      ;Should we ignore the trigger?");
+//   fprintf(fp,"\n        jset    #0,a,LBL%ld             ; Collect n samples",label);
+//
+//   if(mode == "on high")
+//      fprintf(fp,"\n        jset    #12,x:A_HDR,*          ;Wait for trigger level to go high");
+//   else
+//      fprintf(fp,"\n        jclr    #12,x:A_HDR,*          ;Wait for trigger level to go low");
+//   fprintf(fp,"\nLBL%ld    nop",label++);
+//
+//   fprintf(fp,"\n;");
+//
+//   fclose(fp);
+//
+//   return(OK);
+//}
 
 /**********************************************************************
      Increment the index for table access
