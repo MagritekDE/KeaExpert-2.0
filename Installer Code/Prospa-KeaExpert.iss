@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Prospa
-AppVerName=Prospa V3.128 + KeaExpert V2.02.16 (2-May-2026)
+AppVerName=Prospa V3.128 + KeaExpert V2.02.16 (6-May-2026)
 AppPublisher=Magritek
 AppPublisherURL=http://www.magritek.com
 AppSupportURL=http://www.magritek.com
@@ -20,7 +20,7 @@ WizardImageFile=..\largeIcon.bmp
 WizardImageStretch=no
 WizardSmallImageFile=..\smallIcon.bmp
 OutputDir="..\Installer Output\KeaExpert"
-OutputBaseFilename="KeaExpert V2.02.16 (2-May-2026)"
+OutputBaseFilename="KeaExpert V2.02.16 (6-May-2026)"
 
 UsePreviousAppDir=no
 ;InfoBeforeFile="KeaExpertInfoBeforeInstall.txt"
@@ -38,6 +38,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 
 [Dirs]
 Name: "{userappdata}\Prospa\Preferences V3.4\License"
+Name: "{userappdata}\Prospa\Preferences V3.4\KeaParameters"
 Name: "{app}\Preferences\Menus"
 Name: "{app}\License"
 
@@ -52,12 +53,13 @@ Source: "..\Preferences\Windows\original.par";                    DestDir: "{app
 Source: "..\Preferences\Windows\lastProspaLayout.mac";            DestDir: "{app}\Preferences\Windows"; Flags: ignoreversion recursesubdirs
 Source: "..\Preferences\Core Macros\*";                           DestDir: "{app}\Preferences\Core Macros"; Excludes: *.txt; Flags : ignoreversion recursesubdirs
 Source: "..\Preferences\Startup\*";                               DestDir: "{app}\Preferences\Startup"; Excludes: "userMenus*.lst, directories*.mac"; Flags : ignoreversion recursesubdirs
-Source: "..\Preferences\Startup\userMenus-Kea.lst";   DestDir: "{app}\Preferences\Startup"; DestName: "userMenus.lst"; Flags: ignoreversion recursesubdirs
-Source: "..\Preferences\Startup\directories.mac"; DestDir: "{app}\Preferences\Startup"; DestName: "directories.mac"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Startup\userMenus-Kea.lst";               DestDir: "{app}\Preferences\Startup"; DestName: "userMenus.lst"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Startup\directories.mac";                 DestDir: "{app}\Preferences\Startup"; DestName: "directories.mac"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Startup\defaultKeaParameters.par";        DestDir: "{userappdata}\Prospa\Preferences V3.4\KeaParameters"; DestName: "currentKeaParameters.mac"; Flags: ignoreversion
 Source: "..\movePref.bat";                                        DestDir: "{app}";                     Flags: ignoreversion;
                    
 ; Menu options
-Source: "..\Preferences\Core Macros\thisIsANewInstall.txt"; DestDir: "{userappdata}\Prospa\Preferences V3.4\KeaParameters"; DestName: "thisIsANewInstall.txt"; Flags: ignoreversion recursesubdirs
+Source: "..\Preferences\Core Macros\thisIsANewInstall.txt";        DestDir: "{userappdata}\Prospa\Preferences V3.4\KeaParameters"; DestName: "thisIsANewInstall.txt"; Flags: ignoreversion
 
 ; General Macros
 Source: "..\Macros\coreMacros\*";                               DestDir: "{app}\Macros\coreMacros";     Flags: ignoreversion recursesubdirs;  Excludes: "nnls*, LHInvert2D.mac, Thumbs.db"
@@ -100,13 +102,14 @@ Source: "..\Macros\Kea-NMR\T1-IR-Add\*";               DestDir: "{app}\Macros\Ke
 Source: "..\Macros\Kea-NMR\Wobble\*";                  DestDir: "{app}\Macros\Kea-NMR\Wobble";                Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 ;Source: "..\Macros\Kea-MRI\*";                         DestDir: "{app}\Macros\Kea-MRI";          Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\Kea-Tests\*";                       DestDir: "{app}\Macros\Kea-Tests";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\Setup\*";                           DestDir: "{app}\Macros\Setup";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+Source: "..\Macros\NMR-Mouse\*";                       DestDir: "{app}\Macros\NMR-Mouse";        Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
+;Source: "..\Macros\Setup\*";                           DestDir: "{app}\Macros\Setup";            Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
 Source: "..\Macros\PSExamples\*";                      DestDir: "{app}\Macros\PSExamples";       Excludes: *.py, *PyDefault.par, *old.mac, *.docx;      Flags: ignoreversion recursesubdirs
-Source: "..\Macros\UCS-Update\*";                      DestDir: "{app}\Macros\UCS-Update";       Excludes: *.py, *PyDefault.par, V 43f*, PP_JTAG\*, Spinsolve*, Lock Updater\*;  Flags: ignoreversion recursesubdirs
+Source: "..\Macros\UCS-Update\*";                      DestDir: "{app}\Macros\UCS-Update";       Excludes: *.py, *PyDefault.par, V 43f*, PP_JTAG\*, Spinsolve*, Lock Updater\*, V200*.xsvf;  Flags: ignoreversion recursesubdirs
 Source: "..\Macros\BatchCommands\*";                   DestDir: "{app}\Macros\BatchCommands";    Flags: ignoreversion
 Source: "..\Macros\UserScripts\*";                     DestDir: "{app}\Macros\UserScripts";      Flags: ignoreversion recursesubdirs
 ;Source: "..\Macros\TestScripts\*";                     DestDir: "{app}\Macros\TestScripts";      Flags: ignoreversion
-Source: "..\Macros\Python\*";                          DestDir: "{app}\Macros\Python";                                        Flags: ignoreversion
+;Source: "..\Macros\Python\*";                          DestDir: "{app}\Macros\Python";                                        Flags: ignoreversion
 
 ; Macro libraries
 Source: "..\Macros\1D_Macros\*";      DestDir: "{app}\Libraries\1D_Macros";      Excludes: "AddMacros.mac, Thumbs.db"; Flags: ignoreversion recursesubdirs
@@ -149,8 +152,8 @@ Source: "..\Documentation\helplist_UCS.lst";           DestDir: "{app}\Documenta
 Source: "..\PDFs\Pulse Programming Guide (FX3).pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
 Source: "..\PDFs\Pulse Programming Guide (DSP).pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
 Source: "..\PDFs\Prospa programming manual.pdf";                                      DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
-Source: "..\PDFs\KeaExpert - User Manual V2.02.pdf";                         DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
-Source: "..\PDFs\KeaExpert release notes.pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion
+Source: "..\PDFs\KeaExpert - User Manual V2.02.pdf";                                  DestDir: "{app}\PDF Documentation"; Flags: ignoreversion recursesubdirs;
+Source: "..\PDFs\KeaExpert release notes.pdf";                                        DestDir: "{app}\PDF Documentation"; Flags: ignoreversion
 
 ; DLLs
 Source: "..\DLLs\DSPWinUSBRun.dll";        DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
@@ -179,7 +182,12 @@ Source: "..\DLLs\msvcp110.dll";            DestDir: "{app}\DLLs"; Flags: ignorev
 Source: "..\DLLs\msvcr110.dll";            DestDir: "{app}\DLLs"; Flags: ignoreversion recursesubdirs
 
 ; Python code for running Expert
-Source: "..\Python\RunExpertExperiment.py";            DestDir: "{app}\Python"; Flags: ignoreversion recursesubdirs
+Source: "..\Python\ExpertController\*";          DestDir: "{app}\Python\ExpertController"; Flags: ignoreversion recursesubdirs; Excludes: ".venv, .idea"
+Source: "..\Python\Python\*";                    DestDir: "{app}\Python\Python";           Flags: ignoreversion recursesubdirs; 
+Source: "..\Python\RunExpertExperiment.py";      DestDir: "{app}\Python"; DestName: "RunExpertExperiment.py";    Flags: ignoreversion; 
+Source: "..\Python\makePyEnv.bat";               DestDir: "{app}\Python"; DestName: "makePyEnv.bat";             Flags: ignoreversion; 
+Source: "..\Python\startExpertController.bat";   DestDir: "{app}\Python"; DestName: "startExpertController.bat"; Flags: ignoreversion; 
+Source: "..\Python\Prospa3.xxUpdateLinks.exe";   DestDir: "{app}\Python"; DestName: "Prospa3.xxUpdateLinks.exe"; Flags: ignoreversion; 
 
 ; Example data
 ;Source: "..\Example Data\Demos\*"; DestDir: "{app}\Example Data\Demos"; Flags: ignoreversion recursesubdirs
