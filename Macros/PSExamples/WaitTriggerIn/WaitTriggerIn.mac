@@ -1,6 +1,6 @@
 #########################################################
 # 
-# TriggerTest
+# WaitTriggerIn
 #  
 # Checks the functionality of the TTL trigger input
 # and the TTL out pulse.
@@ -23,17 +23,17 @@
 #
 #########################################################
 
-procedure(TriggerTest, parameters=null)
+procedure(WaitTriggerIn, parameters=null)
 
    macroLocation = getmacropath()
    parentPath = getbasepath(macroLocation)
 
    if(iskeypressed("shift"))
-      PulseProgramCompiler(guiwinnr(),null,parentPath,"TriggerTest")
+      PulseProgramCompiler(guiwinnr(),null,parentPath,"WaitTriggerIn")
    elseif(iskeypressed("control"))
-      gView->showExperimentHelp("TriggerTest")
+      gView->showExperimentHelp("WaitTriggerIn")
    else
-      gExpt->addExperiment(parentPath,"TriggerTest",parameters)
+      gExpt->addExperiment(parentPath,"WaitTriggerIn",parameters)
    endif
 
 endproc()
@@ -52,6 +52,7 @@ endproc()
 
 procedure(backdoor, guipar)
 
+pr "Waiting for trigger...\n"
    seqInfo = :getseqpar()  
    r = gSeq->initAndRunPP(getmacropath(), getmacroname(), guipar, seqInfo)
 
@@ -73,18 +74,12 @@ endproc(r)
 
 procedure(getseqpar)
 
-   rel = ["nDataPnts  = nrPnts",
-          "a90Amp     = 90AmplitudeCh1",
-          "d90Dur     = pulseLengthCh1",
-          "wTTL       = ttlLength",
-          "smode      = trigMode",
-          "dAcqDelay  = 20",
-          "totPnts    = nrPnts",
-          "totTime    = acqTime"]
+   rel = ["freqCh1   = 2",
+          "smode      = trigMode"]
    var = [""]
-   pp_list = ["smode","wTTL","a90Amp","p1","d90Dur","dAcqDelay","nDataPnts"]
-   pp_name = "TriggerTest.p"
-   phase_list = [0,1,2,3;0,1,2,3]
+   pp_list = ["smode"]
+   pp_name = "WaitTriggerIn.p"
+   phase_list = [0]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
 
@@ -113,40 +108,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    gFX3->triggerMode = 1
 
-# Allocate space for output data
-   sumData = cmatrix(totPnts)
-
-# Calculate suitable time and frequency axes
-   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000   # (us)
-   fAxis = ([0:1:totPnts-1]-totPnts/2)/totTime*1000 # (Hz)
-
-# Time domain filter
-   if(filter == "yes")
-      flt = filters:get_filter(filterType,"FTFid",tAxis/1e6)
-   else
-      flt = matrix(totPnts)+1
-   endif
-
-# Get plot regions
-   (pt1,pt2) = ucsPlot:getPlotReferences()
-   pt1->showimag("false")
-   pt2->showimag("false")
-
-# Accumulate scans
-   for(scan = 0 to nrScans-1)
-
     # Set phases for this scan
-      (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
+      (ppList,pAcq) = ucsRun:setPPPhase(ppList,0,pcList,pcIndex)
 
     # Send all parameter values to spectrometer (DSP)/generate event table (FX3)
        ucsRun:updatePPParameters(ppList,guipar)
 
     # Wait for the repetition time to complete
-      check = ucsRun:checkTiming(guipar,scan,pcList)
+      check = ucsRun:checkTiming(guipar,0,pcList)
       if(check == "abort")
          return(0)
       endif
-
     # Run the pulse program
       status = ucsRun:runExperiment(guipar)
 
@@ -155,65 +127,29 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          return(0)
       endif
 
-    # Read the data from the spectrometer
-      data = ucsRun:readData(totPnts, guipar)
-
-    # Apodize the data
-      data = data .* flt
-
-    # Accumulate the data
-      sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
-
-    # FT the data
-      (phasedTimeData,spectrum) = ucsRun:transformData(sumData,fAxis,guipar)
-
-    # Plot the FID and spectrum 
-      ucsPlot:graphTimeAndFreq(pt1,pt2,tAxis,phasedTimeData,fAxis,spectrum,scan,guipar)
-
-    # Check if complete button pressed
-      if(check == "finish")
-         scan = scan+1
-         exitfor()
-      endif
-
-   next(scan)
-
-# Save the data
-   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"noReport")
-   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"simpleReport")
-
-# Pack the data into a structure
-   result = struct()
-   result->tx = tAxis
-   result->ty = sumData/scan
-   result->fx = fAxis
-   result->fy = spectrum/scan
-
-# Return result
-   return(result)
 
 endproc("execpp") # Don't remove argument
 
 
-########################################################
-# Get the name of a plot file given the region name
-# or return the whole list
-########################################################
-
-procedure(getPlotInfo,plotRegion)
-
-   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
-
-   if(plotRegion == "all")
-      return(info)
-   endif
-
-   idx = getlistindex(info,plotRegion)
-   if(idx != -1)
-      return(info[idx+1])
-   endif
-
-endproc(null)
+#########################################################
+## Get the name of a plot file given the region name
+## or return the whole list
+#########################################################
+#
+#procedure(getPlotInfo,plotRegion)
+#
+#   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+#
+#   if(plotRegion == "all")
+#      return(info)
+#   endif
+#
+#   idx = getlistindex(info,plotRegion)
+#   if(idx != -1)
+#      return(info[idx+1])
+#   endif
+#
+#endproc(null)
 
 ########################################################
 # Return expected experiment duration in seconds
