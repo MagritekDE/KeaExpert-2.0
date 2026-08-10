@@ -48,4 +48,25 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 * Figure out a way to get delays the same on the FX3 and the DSP (see CPMGFast)
 * In T1Sat replace repTime with ieTime.
 * How to handle different probeheads? Do we want this to be loadable as it is at present?
-* 
+
+
+
+10/8/2026
+
+
+
+* Merge all changes from Craig's 2.02.16 version to Bulat's 2.02.17
+* Make sure the Prospa software is up to date wrt Spinsolve.
+* Move the Prospa code to support 64 bit.
+* The Transceiver firmware folder does not include V3013.bin.
+* Reading the firmware versions on an old DSP system will latch up the software. How to resolve?
+* It would be useful to have an internal temperature sensor. Does it have to be a PT100 probe input (check with Raschid).
+* Parameter reader/writer:
+
+  * A help file for the Kea Parameter reader/write would be useful.
+  * The button Reset tab and all parameters doesn't work in Kea parameter reader/writer.
+  * The hardware capabilities button gives an error message.
+  * The firmware version numbers should be read only
+  * Any changes to the interface should be noted and warning given when closing
+
+
