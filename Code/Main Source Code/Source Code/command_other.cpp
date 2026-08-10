@@ -83,8 +83,8 @@ using std::vector;
 
 #pragma warning (disable: 4996) // Ignore deprecated library functions
 
-#define VERSION 3.128 // Version number used by getversion() command
-#define VERSION_DATE "24-February-2025"
+#define VERSION 3.129 // Version number used by getversion() command
+#define VERSION_DATE "10-August-2026"
 
 // Define run mode
 
@@ -345,8 +345,8 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("curplot",            SetOrGetCurrentPlot,     ONED_CMD | TWOD_CMD,                  "CLASS rg = curplot(), curplot(CLASS rg), curplot(STR 1d/2d[, INT x, INT y])");
    prospaCommandRegistry->add("currentaxis",        SetOrGetCurrentAxis,     ONED_CMD | TWOD_CMD,                  "STR s = currentaxis(STR \"left\", \"right\")");
    prospaCommandRegistry->add("curaxis",            SetOrGetCurrentAxis,     ONED_CMD | TWOD_CMD,                  "STR s = curaxis(STR \"left\", \"right\")");
-   prospaCommandRegistry->add("curcli",             SetOrGetCurrentCLI,      GUI_CMD,                              "curcli(INT winNr, INT cliNr)");
-   prospaCommandRegistry->add("cureditor",          SetOrGetCurrentEditor,   GUI_CMD,                              "cureditor(INT winNr, INT editNr)");
+   prospaCommandRegistry->add("curcli",             SetOrGetCurrentCLI,      GUI_CMD,                              "OBJ cli = curcli([INT winNr, INT cliNr])");
+   prospaCommandRegistry->add("cureditor",          SetOrGetCurrentEditor,   GUI_CMD,                              "OBJ ed = cureditor([INT winNr, INT editNr])");
    prospaCommandRegistry->add("curtrace",           GetOrSetCurrentTrace,    ONED_CMD,                             "CLASS tc = curtrace(), curtrace(CLASS tc), curtrace(INT trace_id)");
    prospaCommandRegistry->add("curwin",             GetOrSetCurrentWindow,   GUI_CMD,                              "CLASS win = curwin(INT win_nr/ CLASS window)");
    prospaCommandRegistry->add("cylinder",           Draw3DCylinder,          THREED_CMD,                           "cylinder(VEC base,VEC top,FLOAT radius,RGB colour)");
