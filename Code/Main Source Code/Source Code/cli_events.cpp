@@ -914,6 +914,9 @@ int SetOrGetCurrentCLI(Interface* itfc, char args[])
       if (obj->type == CLIWINDOW)
       {
          cliEditWin = obj->hWnd;
+         itfc->retVar[1].MakeClass(OBJECT_CLASS, (void*)obj);
+         itfc->nrRetValues = 1;
+         return(OK);
       }
       else
       {
