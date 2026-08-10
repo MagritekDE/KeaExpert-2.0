@@ -526,7 +526,7 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("import2dpar",        Import2DDataParameters,  FILE_CMD,                             "import2dpar(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("import3dpar",        Import3DDataParameters,  FILE_CMD,                             "import3dpar(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("isappopen",          IsApplicationOpen,       FILE_CMD,                             "INT result = isappopen(STR app_name)");
-   prospaCommandRegistry->add("iscached",           IsFileCached,            FILE_CMD,                             "INT result = iscached(STR file_name, STR dir_name, STR \"window\"/\"global\")");
+   prospaCommandRegistry->add("iscached",           IsFileCached,            FILE_CMD,                             "(INT result [,STR dir_name]) = iscached(STR file_name, [STR dir_name/\"\"], STR \"window\"/\"global\"])");
    prospaCommandRegistry->add("isdir",              DoesDirectoryExist,      FILE_CMD,                             "INT result = isdir(STR dir_name)");
    prospaCommandRegistry->add("isdouble",           IsDoubleCLI,             MATH_CMD,                             "INT result = isdouble(VAR input)");
    prospaCommandRegistry->add("isfile",             DoesFileExist,           FILE_CMD,                             "INT result = isfile(STR file_name)");
