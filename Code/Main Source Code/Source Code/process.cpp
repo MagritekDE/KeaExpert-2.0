@@ -1836,7 +1836,7 @@ short MainWindowRedraw()
                }
 
             // Run control macro for button
-               if((obj->type == BUTTON || obj->type == TABCTRL || obj->type == PANEL)  && message != WM_LBUTTONUP)
+               if ((obj->type == BUTTON || obj->type == UPDOWN || obj->type == TABCTRL || obj->type == PANEL) && message != WM_LBUTTONUP)
                {
                   DispatchMessage(&msg);
 
