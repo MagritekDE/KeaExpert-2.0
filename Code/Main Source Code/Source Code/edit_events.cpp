@@ -2587,11 +2587,48 @@ int SetOrGetCurrentEditor(Interface *itfc, char args[])
       itfc->nrRetValues = 1;
       return(OK);
 	}
-	else
-	{
-		ErrorMessage("Unsupported option");
-		return(ERR);
-	}
+   else if (nrArgs == 2)
+   {
+      Variable var;
+      long winNr, objNr;
+      WinData* win;
+      ObjectData* obj;
+
+      if ((nrArgs = ArgScan(itfc, args, 2, "window-nr, ctrl-nr", "ee", "ll", &winNr, &objNr)) < 0)
+         return(nrArgs);
+
+      if (!(win = rootWin->FindWinByNr(winNr)))
+      {
+         ErrorMessage("window '%d' not found", winNr);
+         return(ERR);
+      }
+
+      if (!(obj = win->FindObjectByNr(objNr)))
+      {
+         ErrorMessage("object '%d' not found", objNr);
+         return(ERR);
+      }
+
+      if (obj->type == TEXTEDITOR)
+      {
+         curEditor = ((EditParent*)obj->data)->editData[0];
+         edParent = curEditor->edParent->parent;
+         itfc->retVar[1].MakeClass(OBJECT_CLASS, (void*)edParent);
+         itfc->nrRetValues = 1;
+         return(OK);
+      }
+      else
+      {
+         ErrorMessage("object '%d:%d' is not an editor", winNr, objNr);
+         return(ERR);
+      }
+   }
+   else
+   {
+      ErrorMessage("Invalid number of arguments (0/2)");
+      return(ERR);
+   }
+   return(OK);
 }
 
 
