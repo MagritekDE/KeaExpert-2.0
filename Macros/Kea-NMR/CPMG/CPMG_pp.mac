@@ -138,3 +138,70 @@ procedure(getFactoryBasedParameters, par)
           "b1FreqCh1       = $frequencyCh1$"]
 
 endproc(par)
+
+#####################################################
+# Generate some simulated CPMG data based on the
+# values stored in SimulationInfo and the UI
+# Note the echo shape is a gaussian - this is just
+# convenient computationally.
+#####################################################
+
+procedure(simulateNMR, dataSize)
+
+  # Get simulated parameters
+   assignstruct(SimulationInfo) 
+
+   nrPnts    = exptPar->nrPnts
+   nrEchoes  = exptPar->nrEchoes
+   echoTime  = exptPar->echoTime
+   dwellTime = exptPar->dwellTime
+
+   # Non-experiment specific parameters
+   DW = dwellTime*1e-6 #  This is the dwell time
+   sigAmp = signalAmplitude*receiverGain  #  the signal amplitude
+   ph = receiverPhase #  the receiver phase
+   offFreq = 1e6*(single(b1Freq)-b0Freq)  # The offset frequency
+
+   # Work out phase cycling
+   p90 = round(ppValues->p1/(2*pi)*4)
+   p180 = round(ppValues->p2/(2*pi)*4)
+   if(p90 == 2 & (p180 == 3 | p180 == 1)) 
+      ph = ph - 180
+   endif
+
+   # Generate some noise
+   nl = noiseAmplitude*receiverGain*sqrt(1.0/dwellTime) 
+
+   # Get sample information
+   cd(getmacropath())
+   cd("$appdir$\\Macros\\KeaExpert\\SimulatorMacros\\Simulated Samples")
+   result = sample() 
+   T2 = result->T2
+
+   # Time axis for phase offset
+   t1 = ([0:1:nrPnts-1])*dwellTime*1e-6
+
+   # Time axis for calculating echo shape
+   t2 = ([0:1:nrPnts-1]-nrPnts/2)*dwellTime*1e-6
+
+   # Echoes storage
+   cmat = cmatrix(nrPnts*nrEchoes)
+
+   # Single echo storage
+   cmat1Echo = cmatrix(nrPnts)
+
+   # Loop over echo number, calculating each echo shape, adding to final waveform
+   for(k = 0 to nrEchoes-1)
+      echoSignal = exp(-((t2+echoTime*k*1e-6)/T2+(t2/T2Star)^2))
+      cmat1Echo = sigAmp*echoSignal.*exp(i*(2*pi*offFreq*t1 + ph/180*pi))
+      cmat[k*nrPnts:(k+1)*nrPnts-1] = cmat1Echo
+   next(k)
+
+   # Convert to real
+   mat = ctor(cmat)
+
+   # Add in some noise
+   mat = mat + nl*noise(nrEchoes*nrPnts*2)
+
+endproc(mat)
+
