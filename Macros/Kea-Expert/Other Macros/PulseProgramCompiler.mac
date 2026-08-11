@@ -316,7 +316,8 @@ procedure(compileAllInMenu, dir=null)
    endif
 
    if(isdir(dir) == 0)
-      message("Error","Macro output directory undefined or non-existent","error")
+      pr("\n   Macro output directory:\n    '$dir$'\n   undefined or non-existent!\n")
+      message("Error","Macro output directory:\n '$dir$'\nundefined or non-existent.","error")
       return
    endif
    cd(dir)
@@ -377,6 +378,7 @@ procedure(compileAllMenus)
    endif
 
    dirs = gData->ppLocations
+
    for(k = 0 to size(dirs)-1)
       try
          :compileAllInMenu(dirs[k])
