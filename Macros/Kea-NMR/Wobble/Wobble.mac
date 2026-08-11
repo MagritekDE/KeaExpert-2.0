@@ -33,6 +33,7 @@ procedure(Wobble, parameters=null)
    else
       gExpt->addExperiment(parentPath,"Wobble",parameters)
    endif
+   :addSimulator()
 
 endproc()
 
@@ -304,6 +305,87 @@ procedure(graphData, pd, fidData,f,n,guipar)
       pd->hold("off")
 
    pd->draw("true")
+
+endproc()
+
+# A call to this needs to be added to the first procedure in this file
+# For the simulator to be displayed
+procedure(addSimulator)
+
+   if(gData->procType == "Simulator")
+      n = guiwinnr()
+      :modifyTuningCaps()
+      guiwinnr(n)
+   else
+      message("Error","Not in simulator mode","error")
+   endif
+
+endproc()
+
+procedure(modifyTuningCaps)
+
+   if(findwin("title","Tune and Match Simulation") > 0)
+      return
+   endif
+
+   n = window("Tune and Match Simulation", -1, -1, 220, 117)
+
+      # Define all controls with basic parameters
+       updown(1, 67, 18, 26, 20, "horizontal",
+              :adjustTune())
+       updown(2, 67, 53, 26, 20, "horizontal",
+              :adjustMatch())
+       statictext(4, 63, 22, "right", "Tune:")
+       statictext(5, 63, 57, "right", "Match:")
+       statictext(6, 110, 22, "left", "0.0%")
+       statictext(7, 110, 57, "left", "0.0%")
+
+     # Set other control parameters
+       setpar(n,1,"base", -100,
+                  "value", 0,
+                  "stepsize", 1,
+                  "nrsteps", 201)
+       setpar(n,2,"base", -100,
+                  "value", 0,
+                  "stepsize", 1,
+                  "nrsteps", 201)
+
+       setpar(n,6,"objID","tuneValueCtrl",
+                  "valueID","tuneValue")
+       setpar(n,7,"objID","matchValueCtrl",
+                  "valueID","matchValue")
+
+   showwindow(n)
+
+   windowvar("winNR")
+   winNr = n
+
+   setpar(n,1,"enable","true")
+   setpar(n,1,"active","true")
+   setpar(n,2,"enable","true")
+   setpar(n,2,"active","true")
+
+endproc(n)
+
+procedure(adjustTune, dir)
+
+   tune = getpar(0,1,"value")
+   match = getpar(0,2,"value")
+   setpar(0,6,"text","$tune/10,+2.1f$%")
+   guiwinnr(gView->wn)
+   SimulationInfo->exptPar->offC1 = -tune
+   SimulationInfo->exptPar->offC2 = -match
+
+endproc()
+
+procedure(adjustMatch)
+
+   tune = getpar(0,1,"value")
+   match = getpar(0,2,"value")
+   setpar(0,7,"text","$match/10,+2.1f$%")
+   guiwinnr(gView->wn)
+   SimulationInfo->exptPar->offC1 = -tune
+   SimulationInfo->exptPar->offC2 = -match
 
 endproc()
 

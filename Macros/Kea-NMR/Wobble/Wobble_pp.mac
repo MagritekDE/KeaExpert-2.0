@@ -17,7 +17,9 @@ procedure(pulse_program,dir,mode,pars)
                "freqWidth",   "Frequency width (MHz)",    "tb",  "float,[0.01,50]";
                "nFreqSteps",  "Number of freq. steps",    "tb",  "integer";
                "aRF",         "RF amplitude",             "tb",  "float,[-72,0]";
-               "repTime",     "Repetition time (ms)",     "tb",  "reptime"]
+               "repTime",     "Repetition time (ms)",     "tb",  "reptime";
+               "simDiv",      "Simulation",               "dv",  "simHelp";
+               "simButton",   "Display sim controls",     "bt",  "addSimulator()"]
 
 # Relationships to determine remaining variable values
    relationships = ["nPnts      = nrPnts",
@@ -83,3 +85,97 @@ procedure(getFactoryBasedParameters, par)
    par = ["centFreq = $frequencyCh1$"]
 
 endproc(par)
+
+
+#####################################################
+# Generate some simulated Wobble data based on the
+# values stored in SimulationInfo
+#####################################################
+
+procedure(simulateNMR, dataSize)
+
+   assignstruct(SimulationInfo)
+   par = struct()
+   fWidth = exptPar->freqWidth
+   f0 = single(b1Freq+fWidth/2)
+   par->minF = f0-fWidth/2
+   par->maxF = f0+fWidth/2
+   par->nrF = exptPar->nFreqSteps
+   par->centFreq = b1Freq
+
+   f = single(linvec(par->minF,par->maxF,par->nrF))
+
+   # Check for interactive mode
+   if(not(isvar("exptPar->offC1")) & not(isvar("exptPar->offC2")))
+      offC1 = 0
+      offC2 = 0
+   else
+      offC1 = exptPar->offC1  
+      offC2 = exptPar->offC2
+   endif   
+
+   data = 1000*receiverGain*:calcRefCoef(f,f0,offC1,offC2)*exptPar->nrPnts
+
+endproc(ctor(data))
+
+#####################################################
+# Here the reflection coefficent is calculated
+# You can choose the bandwidth of the probe as well
+# to define the coil resistance
+#
+#      ------ C2 ---- 
+#     |    |          Rs = 50
+#     L1   C1         |
+#     R    |         Vin
+#     |    |          |
+#     ----------------
+#          |
+#         ---
+#####################################################
+
+procedure(calcRefCoef, f, f0, dC1, dC2)
+
+   df = 50e3 # FWHM
+   L = 10e-6 # This is not critical as this is a simulation
+   R = 2*pi*df*L # From Q = wL/R and f/df = Q
+   Rs = 50 # Source impedance
+
+   (C1,C2) = :calcCaps(f0,L,R)
+
+   C1 = C1*(1+dC1/1000*2/f0) # Scale by frequency to keep the
+   C2 = C2*(1+dC2/1000*2/f0) # relative step sizes the same
+
+   w = 2*pi*f*1e6
+   XC1 = 1/(j*w*C1)
+   XC2 = 1/(j*w*C2)  
+   XL = j*w*L
+   Z1 = XC1.*(XL+R)/(XC1+XL+R)
+   Zp = Z1 + XC2 # Probe impedance
+
+   r = (Zp - Rs)/(Zp + Rs) # Reflection coefficient
+
+endproc(r)
+
+#####################################################
+# Calculate the capacitors by inverting 
+# the above formula
+#####################################################
+
+procedure(calcCaps, f, L, R)
+
+# The target probe impedance at the operating frequency
+   Rt = 50 
+
+# Real part of probe impedance should be 50 ohms
+   w = 2*pi*f*1e6
+   b = -2*Rt*w^2*L
+   c = Rt-R
+   a = Rt*(w^2*R^2 + w^4*L^2)
+   C1 = (-b-sqrt(b^2-4*a*c))/(2*a)
+
+# Imaginary part of probe imedance should be 0 ohms
+   q = (1-w^2*L*C1)
+   e = w^2*R^2*C1^2
+   C2 = (q^2+e)/(w^2*L*q+e)
+
+endproc(C1,C2)
