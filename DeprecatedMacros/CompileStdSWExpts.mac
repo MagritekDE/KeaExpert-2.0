@@ -1,0 +1,132 @@
+# Compile all Standard Spinsolve Software pulse programs
+
+procedure(CompileAll)
+   
+   # Compile the macros
+   dirCompiler = "$appdir$\\Macros\\Spinsolve-Expert\\Other Macros"
+
+
+   pr "\n --------------------------------------------\n"
+   pr " Spinsolve Std SW DSP/FX3 Pulse-Program compilation"
+   pr "\n --------------------------------------------\n\n"
+   
+   pr "\n Core experiments"
+   pr "\n --------------------------------------------\n\n"
+   
+   
+   par = struct()
+   par->supportV3Ctrl = "no"
+   par->supportV4Ctrl = "no"
+   par->supportV5Ctrl = "no"
+
+   windowvar(nrAttempts,nrErrors)
+   nrAttempts = 0
+   nrErrors = 0
+
+   par->lockMode = "no"
+   gFX3->updateDebug = 1
+   gFX3->useUpdateTable = 1
+
+ #  dirPP = "C:\\Users\\craig\\Projects\\Compile Std Expts\\Spinsolve Experiments\\Original"
+   dirPP = "C:\\Users\\Craig\\Projects\\Experimental sequences\\TestExperiments"
+ #  dirPP = "$appdir$\\Macros\\Proton"
+   cd(dirPP)
+
+   :compileOneFolder(dirCompiler, par, dirPP, "Wobble1H")  # Wobble1H 
+
+return
+# Compile all experiments in this folder
+#   folders = getdirlist(".")
+#   for(k = 0 to size(folders)-1)
+#      expt = folders[k] 
+#      :compileOneFolder(dirCompiler,par, dirPP, expt)   
+#   next(k)
+
+## Compile specific experiments
+#   :compileOneFolder(dirCompiler,par, dirPP, "1PulseDisp-3H")   
+#   :compileOneFolder(dirCompiler,par, dirPP, "1PulseDisp-B0")   
+#   :compileOneFolder(dirCompiler,par, dirPP, "1PulseDispCarbonMLEV4")   
+#   :compileOneFolder(dirCompiler,par, dirPP, "1PulseDispCarbonWALTZ16_CA")   
+
+   :compileOneFolder(dirCompiler,par, dirPP, "TOCSY-MLEV17_noP1-HH")   
+
+# Revert to having fx3 as the first DLL
+   dspCurPort = dspsetport()
+   fx3CurPort = fx3setport()
+   try
+      usedll("fx3PPRun.dll")
+   catch
+      usedll("fx3PPDebug.dll")
+   endtry
+   dspsetport(dspCurPort)
+   fx3setport(fx3CurPort)
+
+   pr "\n   Number of FX3 compile attempts = $nrAttempts$\n"
+   pr "   Number of FX3 compile failures = $nrErrors$\n"
+
+endproc()
+
+procedure(compileOneFolder, dirCompiler, par, dirPP, experiment = null)
+   
+   
+   pr "\n $getbasedir(dirPP)$ experiments"
+   pr "\n --------------------------------------------\n\n"
+   
+   par->outputFolder = dirPP
+
+
+   if(experiment != null)
+
+      par->baseName = experiment
+      cd(dirCompiler)
+
+      (r, ppInfo) = CompilerBackDoor:compileIt(par)
+
+      if(r == 0)
+         print("   $experiment$ compiled for DSP\n")
+      else
+         print("   $experiment$ compilation for DSP FAILED\n")
+      endif
+
+      try
+         nrAttempts = nrAttempts + 1
+         CompileFX3PP:compileFX3PP(dirPP, experiment, ppInfo)
+         pr "\n   $experiment$ compiled for FX3\n"
+      catch
+         pr lasterror()
+         print("\n   $experiment$ compilation for FX3 FAILED\n")
+         nrErrors = nrErrors + 1
+         abort("")
+      endtry
+
+   else
+   
+      expts = getdirlist(dirPP)
+      for(k = 0 to size(expts)-1)   
+         par->baseName = expts[k]     
+         cd(dirCompiler)
+         (r, ppInfo) = CompilerBackDoor:compileIt(par)
+
+         if(r == 0)
+            print("   $par->baseName$ compiled for DSP\n")
+         else
+            print("   $par->baseName$ compilation for DSP FAILED\n")
+         endif 
+         try
+            nrAttempts = nrAttempts + 1
+            CompileFX3PP(dirPP, par->baseName, ppInfo)
+            print("   $par->baseName$ compiled for FX3\n")
+         catch
+           # pr lasterror()
+            print("\n   $par->baseName$ compilation for FX3 FAILED\n")
+            nrErrors = nrErrors + 1
+            abort("")
+         endtry     
+      next(k)
+   endif
+
+
+
+endproc()
+   
+   
