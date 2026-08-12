@@ -4,7 +4,7 @@
 # parameter lists. Checks are included to ensure valid 
 # values.
 #
-# Last updated 11/7/2025 C Eccles
+# Last updated 12/8/2026 C Eccles
 #
 # Version History
 #
@@ -1123,10 +1123,10 @@ procedure(readSpecPar, parList=null, guiCall=0, returnRaw=0, par=null)
       return(lst)
    endif
 
-#return(struct(lst))
+   assignlist(lst)
 
 # Add the firmware version numbers if calling from UI
-   if(gData->connected)
+   if(gData->connected & SystemID != "MG001")
       fwVersions = :readFWVersions()
       lst = lst + fwVersions
    endif
