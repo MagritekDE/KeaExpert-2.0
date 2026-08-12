@@ -2,12 +2,11 @@
 # 
 # signalGenerator
 #
-# Generates an continuous RF signal
-# WARNING: does not work with internal RF amplifier since
-# the internal amplifier is pulse only.
+# Generates an continuous RF signal on the Ch1 transceiver output
+# WARNING: does not work with the internal RF amplifier since
+# the internal amplifier is pulse only. 
 # When using external amplifier make sure it can take
-# CW signals of the supplied amplitude. 
-# (Otherwise it will overheat).
+# CW signals of the supplied amplitude. (Otherwise it will overheat).
 #
 # Copyright (c) Magritek Ltd 2026
 #
@@ -111,16 +110,18 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 # Make all gui parameters available
    assignlist(guipar)
 
-   plt = ucsPlot:getPlotReferences()
-
- # Set phase
+ # Set the phase
    (ppList,pAcq) = ucsRun:setPPPhase(ppList,0,pcList,pcIndex)
 
- # Send phase parameters to DSP
-   dspwrite("x",0x00,ppList,wvPort)
+ # Set the parameters
+    ucsRun:updatePPParameters(ppList,guipar)
 
- # Run pulse program return "ok" or "abort"
-   status = dsprunpp(0x2000)
+ # Run the experiment
+    status = ucsRun:runExperiment(guipar)
+
+# Leave the RF on (since experiment switches it off at the end)
+   :startGenerator()
+
    if(status == "abort")
      return(0)
    endif
@@ -148,16 +149,45 @@ procedure(getPlotInfo,plotRegion)
 
 endproc(null)
 
-
+########################################################
+# This procedure is called when you wish to stop
+# the generator output.
+########################################################
 procedure(stopGenerator)
 
-   cd("$getmacropath()$")
-   pp = dspreadpp("signalGeneratorOff.p")
-   dspwrite("p",0x2000,pp)
-   dsprunpp(0x2000)
+   if(gData->procType == "DSP")
+      cd("$getmacropath()$")
+      pp = dspreadpp("signalGeneratorOff.p")
+      dspwrite("p",0x2000,pp)
+      dsprunpp(0x2000)
+   elseif(gData->procType == "FX3")
+      fx3write("E", 0x00, [0])
+   endif
 
 endproc()
 
+########################################################
+# The main program just produces a pulse because
+# when the experiment is finished it resets the output.
+# This command will switch on the output again after a new ms delay.
+########################################################
+procedure(startGenerator)
+
+   if(gData->procType == "DSP")
+      cd("$getmacropath()$")
+      pp = dspreadpp("signalGeneratorOn.p")
+      dspwrite("p",0x2000,pp)
+      dsprunpp(0x2000)
+   elseif(gData->procType == "FX3")
+      fx3write("E", 0x00, [8])
+   endif
+
+endproc()
+
+########################################################
+# This procedure modifies the frequency parameter and
+# then runs the program again.
+########################################################
 procedure(updateFreq,sign)
 
    n1 = findobj(0,"name","b1Freq")
@@ -175,6 +205,10 @@ procedure(updateFreq,sign)
 
 endproc()
 
+########################################################
+# This procedure modifies the amplitude parameter and
+# then runs the program again.
+########################################################
 procedure(updateAmp,sign)
 
    n1 = findobj(0,"name","amplitude")

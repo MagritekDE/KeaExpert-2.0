@@ -1,15 +1,19 @@
-############################################################
+#####################################################################
 #
-# Generates an continuous RF signal
-# WARNING: does not work with internal RF amplifier since
-# the internal amplifier is pulse only.
+# Generates an continuous RF signal on the Ch1 transceiver output
+# WARNING: does not work with the internal RF amplifier since
+# the internal amplifier is pulse only. 
 # When using external amplifier make sure it can take
-# CW signals of the supplied amplitude. 
-# (Otherwise it will overheat).
+# CW signals of the supplied amplitude. (Otherwise it will overheat).
 #
-############################################################
+######################################################################
 
-procedure(pulse_program,dir,mode)
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
 
 # Interface description (name, label,  ctrl, vartype)
   interface = ["b1Freq",      "Output Frequency (MHz)", "tb",    "freq";
@@ -31,7 +35,6 @@ procedure(pulse_program,dir,mode)
                     "specialMode = \"siggen\""]
 
 # Define the tabs and their order
-  # tabs = ["Pulse_sequence","Acquisition","Processing_Std","Display_PPM_Range","File Settings"]
    tabs = ["Pulse_sequence","Acquisition"]
 
 # These parameters will be changed between experiments
@@ -40,7 +43,7 @@ procedure(pulse_program,dir,mode)
 # Pulse sequence
    initpp(dir) # Reset internal parameter list
 
-   txon("e","a1","p1")    # Switch on RF
+   txon("1nb","a1","p1")    # Switch on Ch1 RF (no blanking pulse)
 
    lst = endpp() # Return parameter list
 
