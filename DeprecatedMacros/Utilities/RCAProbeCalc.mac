@@ -1,0 +1,523 @@
+#################################################################
+#
+# NMR Probe calculations
+#
+#      ------ C2 ---- 
+#     |    |          R50
+#     L1   C1         |
+#     R1   |          2.Vin
+#     |    |          |
+#     ----------------
+#          |
+#         ---
+# Given the coil inductance L1, resistance R1 and resonant
+# frequency this program finds matching C1 
+# and C2 values and the probe Q
+#
+# Given the above parameters and the coil B1/I and the
+# desired 180 pulse time it also works out the probe voltages
+# and coil current required and from this the input voltage
+# Vin.
+#
+# Given the above parameters sample temperature and volume
+# the program can also determine the expected signal level.
+#
+#
+# Copyright : Magritek 2011
+# Author : Craig Eccles
+# Last modified : 19 June 2011
+#
+###############################################################
+
+procedure(CalculateProbeInfo)
+
+   n = :windowdefinition()
+   setpar(n,3,"enable","false")
+   setpar(n,4,"enable","false")
+   setpar(n,36,"enable","false")
+   setpar(n,35,"enable","false")
+   setpar(n,29,"enable","false")
+   setpar(n,31,"enable","false")
+   setpar(n,40,"enable","false")
+   assignctrls(n)
+   :loadPar()
+   showwindow(n)
+
+endproc()
+
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate NMR Probe Parameters", -1, -1, 528, 285)
+
+       textbox(1, 80, 20, 52)
+       textbox(2, 80, 50, 52)
+       textbox(3, 80, 110, 52)
+       textbox(4, 80, 140, 52)
+       statictext(5, 71, 23, "right", "Frequency:")
+       statictext(6, 163, 23, "right", "MHz")
+       statictext(7, 70, 53, "right", "L1:")
+       statictext(8, 154, 54, "right", "uH")
+       statictext(9, 74, 113, "right", "C1:")
+       statictext(10, 73, 144, "right", "C2:")
+       statictext(11, 152, 113, "right", "pF")
+       statictext(12, 152, 144, "right", "pF")
+       button(13, 350, 29, 52, 32, "Caps",
+          :clear();
+          s = struct();
+          s->freq = FreqObj->value;
+          s->L1 = L1Obj->value;
+          s->R1 = R1Obj->value;
+          :calcCaps(s);)
+       button(14, 420, 169, 52, 32, "Exit",
+          :savePar();
+          closewindow(0);)
+       textbox(15, 80, 79, 52)
+       statictext(16, 70, 83, "right", "R1")
+       statictext(17, 164, 82, "right", "ohms")
+       button(18, 350, 69, 52, 32, "Q",
+          :clear();
+          s = struct();
+          s->freq = FreqObj->value;
+          s->L1 = L1Obj->value;
+          s->R1 = R1Obj->value;
+          s = :calcCaps(s);
+          s->C1 = C1Obj->value;
+          s->C2 = C2Obj->value;
+          :calcQ(s);)
+       textbox(19, 231, 20, 52)
+       statictext(20, 315, 23, "right", "mT/A")
+       statictext(21, 221, 23, "right", "B1/I:")
+       statictext(22, 221, 82, "right", "Temp:")
+       statictext(23, 296, 82, "right", "C")
+       textbox(24, 231, 79, 52)
+       statictext(25, 221, 112, "right", "Volume:")
+       statictext(26, 300, 112, "right", "ml")
+       textbox(27, 231, 109, 52)
+       button(28, 419, 69, 52, 32, "Calc All",
+          :clear();
+          s = struct();
+          s->freq = FreqObj->value;
+          s->Ts = TempObj->value;
+          s->Vs = VolObj->value;
+          s->L1 = L1Obj->value;
+          s->R1 = R1Obj->value;
+          s->B1I = B1Obj->value;
+          s->dur180 = 180PulseObj->value;
+          s = :calcCaps(s);
+          s = :calcQ(s);
+          s = :calcSig(s);
+          s = :calcVI(s);
+          pr s;)
+       textbox(29, 231, 169, 52)
+       statictext(30, 221, 172, "right", "Q:")
+       textbox(31, 231, 199, 52)
+       statictext(32, 221, 202, "right", "Signal:")
+       button(33, 419, 29, 52, 32, "V-I",
+          :clear();
+          s = struct();
+          s->freq = FreqObj->value;
+          s->L1 = L1Obj->value;
+          s->R1 = R1Obj->value;
+          s->B1I = B1Obj->value;
+          s->dur180 = 180PulseObj->value;
+          s = :calcCaps(s);
+          s = :calcQ(s);
+          :calcVI(s);)
+       statictext(34, 71, 173, "right", "Vc:")
+       textbox(35, 80, 201, 52)
+       textbox(36, 80, 170, 52)
+       statictext(37, 70, 204, "right", "Ir:")
+       groupbox(38, "", 331, 10, 161, 205)
+       statictext(39, 221, 142, "right", "Vin:")
+       textbox(40, 231, 139, 52)
+       statictext(41, 297, 142, "right", "V")
+       statictext(42, 148, 174, "right", "V")
+       statictext(43, 148, 204, "right", "A")
+       statictext(44, 300, 201, "right", "uV")
+       statictext(45, 221, 53, "right", "180 pulse")
+       textbox(46, 231, 50, 52)
+       statictext(47, 300, 53, "right", "us")
+       button(48, 350, 169, 52, 32, "Clear",
+          :clear();)
+       textbox(49, 59, 239, 440)
+       button(50, 350, 130, 52, 32, "Load",
+          :loadSelectedPar();)
+       button(51, 420, 130, 52, 32, "Save",
+          :saveSelectedPar();)
+       statictext(52, 50, 244, "right", "Comment")
+
+     # Set other control parameters
+       setpar(n,1,"objID","FreqObj",
+                  "valueID","freq",
+                  "tab_number",1)
+       setpar(n,2,"objID","L1Obj",
+                  "valueID","L1",
+                  "tab_number",2)
+       setpar(n,3,"objID","C1Obj",
+                  "valueID","C1",
+                  "tab_number",4)
+       setpar(n,4,"objID","C2Obj",
+                  "valueID","C2",
+                  "tab_number",5)
+       setpar(n,13,"tab_number",16)
+       setpar(n,14,"tab_number",23)
+       setpar(n,15,"objID","R1Obj",
+                  "valueID","R1",
+                  "tab_number",3)
+       setpar(n,18,"tab_number",18)
+       setpar(n,19,"objID","B1Obj",
+                  "valueID","B1I",
+                  "tab_number",8)
+       setpar(n,24,"objID","TempObj",
+                  "valueID","Ts",
+                  "tab_number",10)
+       setpar(n,27,"objID","VolObj",
+                  "valueID","Vs",
+                  "tab_number",11)
+       setpar(n,28,"tab_number",19)
+       setpar(n,29,"objID","QObj",
+                  "valueID","Q",
+                  "tab_number",13)
+       setpar(n,31,"objID","SigObj",
+                  "valueID","Sig",
+                  "tab_number",14)
+       setpar(n,33,"tab_number",17)
+       setpar(n,35,"objID","IrObj",
+                  "valueID","Ir",
+                  "tab_number",7)
+       setpar(n,36,"objID","VcObj",
+                  "valueID","Vc",
+                  "tab_number",6)
+       setpar(n,40,"objID","VinObj",
+                  "valueID","Vin",
+                  "tab_number",12)
+       setpar(n,46,"objID","180PulseObj",
+                  "valueID","pulseDur",
+                  "tab_number",9)
+       setpar(n,48,"tab_number",22)
+       setpar(n,49,"objID","commentObj",
+                  "valueID","comment",
+                  "tab_number",15)
+       setpar(n,50,"tab_number",20)
+       setpar(n,51,"tab_number",21)
+
+endproc(n)
+
+##############################################################################
+# Load parameters from the default file
+##############################################################################
+
+procedure(loadPar)
+
+  bak = getcwd()
+  cd(getmacropath())
+
+  if(isfile("probe.par"))
+     par = load("probe.par")
+     setctrlvalues(0,par)
+  endif
+  cd(bak)
+    
+endproc()
+
+##############################################################################
+# Save parameters to a default file
+##############################################################################
+
+procedure(savePar)
+
+  bak = getcwd()
+  cd(getmacropath())
+  par = getctrlvalues(0)
+  save("probe.par",par)
+  cd(bak)
+
+endproc()
+
+##############################################################################
+# Load parameters from a particular file
+##############################################################################
+
+procedure(loadSelectedPar)
+
+  bak = getcwd()
+  cd(getmacropath())
+  name = getfilename("load","Select probe file","Parameter files","par");
+  if(isfile(name))
+     par = load(name)
+     setctrlvalues(0,par)
+  endif
+  cd(bak)
+    
+endproc()
+
+##############################################################################
+# Save parameters to a particular file
+##############################################################################
+
+procedure(saveSelectedPar)
+
+   bak = getcwd()
+   cd(getmacropath())
+   name = getfilename("Save","Select new probe file name","Parameter files","par");
+   if(name != "cancel")
+      par = getctrlvalues(0)
+      save(name,par)
+   endif
+   cd(bak)
+
+endproc()
+
+##############################################################################
+# Given the freq, coil inductance and AC resistance work out the tuning
+# and match capacitiance values to make the netowrk look like a 50 ohm
+# impedance.
+##############################################################################
+
+procedure(calcCaps,par)
+
+   f = par->freq
+   L = par->L1*1e-6
+   R = par->R1
+
+   Rl = 50
+
+# Real part of probe impedance should be 50 ohms
+   w = 2*pi*f*1e6
+   b = -2*Rl*w^2*L
+   c = Rl-R
+   a = Rl*(w^2*R^2 + w^4*L^2)
+   C1 = (-b-sqrt(b^2-4*a*c))/(2*a)
+
+# Imaginary part of probe imedance should be 0 ohms
+   q = (1-w^2*L*C1)
+   e = w^2*R^2*C1^2
+   C2 = (q^2+e)/(w^2*L*q+e)
+ 
+# Back calculate probe imedance
+   w = 2*pi*f*1e6
+   XL = j*w*L  
+   XC1 = 1/(j*w*C1)
+   XC2 = 1/(j*w*C2)
+   Zp = XC2 + (XL+R)*XC1/((XL+R)+XC1)
+   print("f = $f$\n")
+   print("L = $L$\n")
+   print("R = $R$\n")
+   print("C1 = $C1$\n")
+   print("C2 = $C2$\n")
+   print("Zp = $Zp$\n")
+
+
+
+# Print results
+   if(isvar("C1Obj"))
+      C1Obj->text("$C1*1e12,1.0f$")
+      C2Obj->text("$C2*1e12,1.0f$")
+   endif
+   
+   par->C1 = C1*1e12
+   par->C2 = C2*1e12
+ 
+endproc(par)
+
+##############################################################################
+# Given the freq, and all component values work out the network Q and
+# enhancement factor (the amount by which the NMR signal is magnified 
+# by the time it reaches the preamp.
+##############################################################################
+
+procedure(calcQ,par)
+
+   C1 = par->C1*1e-12
+   C2 = par->C2*1e-12
+   f = par->freq
+   L = par->L1*1e-6
+   R = par->R1
+ 
+ #  fp = [0.8*f:0.0001:1.2*f]*1e6
+   w = 2*pi*f*1e6
+   XL = j*w*L
+   XC1 = 1/(j*w*C1)
+   XC2 = 1/(j*w*C2)
+   Za = XL + R
+   Zb = Za*XC1/(Za+XC1)
+   Zc = Zb+XC2
+   Zt = 50*Zc/(50+Zb)
+   Zd = XC1*(XC2+50)/(XC1+XC2+50)
+   Va = Zd/(Za+Zd)
+   Vo = Va*50/(50+XC2)
+   en = mag(Vo)
+#   mVo = mag(Vo)
+
+#   if(isvar("QObj"))
+#      plot(fp/1e6,mag(Vo)) # Output voltage   
+#      xlabel("Frequency (MHz)")
+#      ylabel("Enhancement")
+#      title("Probe signal enhancement")
+#   endif
+#   (en,indx) = max(mVo)
+
+# This normal Q calc gives the same result as analysing
+# the enhancement curve.
+   Q =  2*pi*f*L*1e6/R/2
+#   
+## Find the half power width of the resonance to find the Q
+#   for(k = indx to size(mVo)-1)
+#      if(mVo[k] < 0.707*en)
+#         right = k
+#         exitfor()
+#      endif
+#   next(k)
+#   
+#   for(k = indx to 0 step -1)
+#      if(mVo[k] < 0.707*en)
+#         left = k
+#         exitfor()
+#      endif
+#   next(k)
+#   
+#   iwidth = right-left
+#   ftot = (max(fp)-min(fp))*1e-6
+#   fwidth = iwidth/size(fp)*ftot
+   
+   if(isvar("QObj"))
+   #   QObj->text("$f/fwidth,1.0f$")
+      QObj->text("$Q,1.0f$")
+   endif
+
+ #  par->Q = f/fwidth
+   par->Q = Q
+   par->enhancement = en
+
+endproc(par)
+
+##############################################################################
+# Given the freq, B1/I, enhancement factor, sample temperature and volume
+# Work out the expected signal level in uV
+##############################################################################
+
+procedure(calcSig,par)
+
+   en = par->enhancement
+   f = par->freq
+   B1 = par->B1I*1e-3
+   Ts = par->Ts + 273
+   Vs = par->Vs*1e-6
+
+ # Fundamental constants
+   mu0 = 4*pi*1e-7
+   hbar = 6.626e-34/(2*pi)
+   kb = 1.38e-23
+   Nh = 6.7e28   # Number of protons in water per m^3
+   
+   w0 = 2*pi*f*1e6
+   B0 = w0/gamma
+   M0 = (gamma)^2/(4*kb*Ts)*hbar*Nh*hbar*B0
+   S = w0*B1*M0*Vs
+
+   if(isvar("SigObj"))
+      SigObj->text("$S*en*1e6,1.1f$")
+   endif
+
+   par->Sig = S*1e6*en
+
+endproc(par)
+
+##############################################################################
+# Given the Q, freq, inductance, 180 pulse duration and B1/I work out the
+# maximum coil current.
+# Then use this to work out the voltage across the coil and also the HPA
+# voltage required. Note all voltages are peak values.
+##############################################################################
+
+procedure(calcVI,par)
+
+   Q = par->Q
+   f = par->freq
+   L = par->L1*1e-6
+   R = par->R1
+   B1I = par->B1I*1e-3
+   dur180 = par->dur180*1e-6
+
+   B1 = pi/(gamma*dur180)*2
+
+   Ir = B1/B1I
+
+   w = 2*pi*f*1e6
+   Vr = Ir*R
+   Vin = Vr/sqrt(R/50)
+   Vc = Ir*w*L
+
+   pr("\n   Vc for square or undamped pulse = $Vc$ V")
+   pr("\n   Ir for square or undamped pulse = $Ir$ A")
+   pr("\n   Vin for square or undamped pulse = $Vin$ V\n")
+
+# Work out scale factor caused by non-square pulse
+   tau = 2*Q/w*1e6
+   t = dur180*1e6
+   int = (t+tau*exp(-t/tau))-(0+tau)
+
+   avg = int/t
+
+
+   fact = 1/avg*(1-exp(-t/tau))
+   if(isvar("VinObj"))
+      VinObj->text("$Vin/avg,1.0f$")
+      VcObj->text("$Vc*fact,1.0f$")
+      IrObj->text("$Ir*fact,1.1f$")
+   endif
+
+   par->Vin = Vin/avg
+   par->Vc = Vc*fact
+   par->Ir = Ir*fact
+
+endproc(par)
+
+#################################################################
+# Performs all the probe calculations and returns the results
+#
+# Input parameter is a structure with the following members
+#
+# L1 = coil inductance in uH
+# R1 = coil resistance in ohms
+# freq = operating frequency in MHz
+# B1I = B1/I of coil in mT/A
+# dur180 = duration of 180 pulse in us
+# Ts = sample temperature in degrees C
+# Vs = sample volume in ml
+#
+# In addition it will return:
+#
+# C1 = tuning capacitance in pF
+# C2 = matching capacitance in pF
+# Vc = maximum voltage across C1 during pulse
+# Vr = maximum current through R1 and L1 during pulse
+# Vin = input pulse amplitude in V.
+# Q = coil quality factor
+# Sig = output signal expected in uV.
+#
+#################################################################
+
+procedure(backdoor,par)
+
+   par = :calcCaps(par)
+   par = :calcQ(par)
+   par = :calcVI(par)
+   par = :calcSig(par)
+
+endproc(par)
+
+procedure(clear)
+
+   C1Obj->text("")
+   C2Obj->text("")
+   VinObj->text("")
+   VcObj->text("")
+   IrObj->text("")
+   QObj->text("")
+   SigObj->text("")
+
+endproc()

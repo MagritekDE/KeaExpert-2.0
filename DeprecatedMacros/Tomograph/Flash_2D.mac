@@ -1,0 +1,794 @@
+#########################################################
+# 
+# Flash_2D
+# 
+# Slice selective spin-echo imaging
+#
+# Copyright (c) Magritek Ltd 2014
+#
+# U.I. V3
+#########################################################
+
+procedure(Flash_2D, guipar)
+
+   keaCtrl:checkVersion(2.15,1.1)
+
+   n = :windowdefinition()
+
+   windowvar(wv_dispMode,wv_ctrls,wv_shift,wv_other,wv_rel,
+             wv_pp_list,wv_pp_name,wv_var,wv_tabs,wv_phase_list)
+
+   wv_tabs  = ["Pulse Sequence","acquisition","processing+display","File settings"] # Tab names
+   wv_ctrls = [2,42,43,66,67,80,81,101,102,111] # Control groups
+   wv_shift = [-14,174,362,550,553] # Amount to shift control groups
+   wv_other = [110,256,803]  # Collapse control and window size
+   wv_saved = "false"
+
+   (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar()
+
+   if(nrArgs == 0)
+      guipar = "show"
+   endif
+
+   keaCtrl:setUp(n,"Flash_2D",getmacropath(),guipar)
+   if(guipar == "hide")
+      return(n)
+   elseif(guipar == "show")
+      try; :initGUI(n); catch; endtry;
+      showwindow(n)
+      return(n)
+   else
+      setwindowpar(n,"type","dialog")
+      guipar = showdialog(n)
+      return(guipar)
+   endif
+
+endproc()
+
+#########################################################
+# 
+# Returns important pulse sequence parameters
+#
+# rel ......... relationship between pulse sequence parameters
+# var ......... variable which change during the pulse sequence
+# pp_list ..... list of pulse sequence parameters sent to DSP
+# pp_name ..... name of DSP pulse program to run
+# phase_list .. phase cycling information
+#
+#########################################################
+
+procedure(getseqpar)
+
+   rel = ["d600 = 2",
+          "n600 = round(pulseLength90/d600)",
+          "(t1,t2,gfac) = B1NutSoft:getRFPulse(SPType,a1,n600)",
+          "rampDur = 100",
+          "d300 = 2.5",
+          "n300 = round(rampDur/d300)",
+          "d101 = 100",
+          "(del6,del69)   = Flash_2D:getRewindSliceDelay(pulseLength90,sliceComp,rampDur)",
+          "d69=del69",
+          "d6=del6",
+          "d3   = 200",
+          "phDur = d3+2*rampDur",
+          "d4   = estTimeR",
+          "d5   = 1000*acqTime-rxLat + 200",
+          "d44  = pulseLength90 +d101+d69+pgo+2*rampDur+phDss90",
+          "d10  = repTimeFlash*1000 - d101-d69 -pulseLength90-d3-d4-d5-d6-d44-10*rampDur",
+          "n10  = Flash_2D:convertDirToChannel(dirRead)",
+          "n20  = Flash_2D:convertDirToChannel(dirPhase)",
+          "n30  = Flash_2D:convertDirToChannel(dirSlice)",
+          "(gReadAmp,gReadAmpShim,gPhaseAmp,gPhaseAmpShim,gSliceAmp,gSliceAmpShim,sliceOffSet) = Flash_2D:setImageGradients(dirRead,dirPhase,dirSlice,FoVRead,FoVPhase,phDur,sliceTickness,sliceShift,gfac,xshim,yshim,zshim,xcal,ycal,zcal)",
+          "n31a =  gSliceAmpShim",
+          "n31  =  gSliceAmp+gSliceAmpShim",
+          "n32  = -gSliceAmp+gSliceAmpShim",
+          "n11a =  gReadAmpShim",
+          "readGradFac = (0.5*rampDur+d4+1000*acqTime/2-rxLat+acqShiftRead)/(d3+2*rampDur)",
+          "n11  = -readGradFac*gReadAmp+gReadAmpShim",
+          "n12  =  gReadAmp+gReadAmpShim",
+          "n12a =  gReadAmpShim",
+          "n21a =  gPhaseAmpShim",
+          "t21  =  Flash_2D:getPhaseTable(gPhaseAmp,gPhaseAmpShim,nrStepsP)",
+          "f1   =  b1Freq+O1/1e6+sliceOffSet",
+          "f2   =  b1Freq+O1/1e6",
+          "f3   =  b1Freq+O1/1e6-sliceOffSet",
+          "n0   =  nrDummyScans",
+          "n1   =  nrStepsP",
+          "n2   =  nrPnts",
+          "totPnts = nrPnts*nrStepsP",
+          "totTime = repTimeFlash*nrStepsP"]
+   var = [""]
+   pp_list = ["n0","l0","f1","n30","n31a","n31","n300","d300","d101","t1","t2","p1","n600","d600","d69","f2","n32","d6","n10","n11a","n11","n20","n21a","d3","n12a","n12","d4","n2","d5","f3","d44","d10","t21","n1","l1"]
+   pp_name = "Flash_2D.p"
+   phase_list = [0;0]
+
+endproc(rel,var,pp_list,pp_name,phase_list)
+
+
+#########################################################
+# 
+# Provide an interface to this macro which does not
+# require the use of the window interface
+#
+# User must supply a list of parameter (see help file)
+# and the pulse program name if different from 
+# "$macro$_ext.p"
+#
+#########################################################
+
+procedure(backdoor, guipar)
+
+   keaCtrl:checkVersion(2.15,1.1)
+
+   (rel,var,pp_list,pp_name,phase_list) = :getseqpar()
+  
+   (guipar,ppList,pcList,pcIndex,varList) = keaCtrl:initialisePP(getmacropath(),getmacroname(),guipar,rel,var,pp_list,pp_name,phase_list)
+   
+   r = keaCtrl:runBDPP(guipar,ppList,pcList,pcIndex,varList)
+
+endproc(r)
+
+#########################################################
+# 
+# Define the window gui
+#
+#########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Flash 2D", -1, -1, 578, 755)
+
+      # Define all controls with basic parameters
+      getmessage(0,
+        keaCtrl:processMessage();)
+      tab(1, 6, 7, 560, 244,
+         which = getpar(0,1,"currenttab");
+         if(which == 2);
+         fn = findobj(0,"name","filter");
+         keaCtrl:enableControls(fn+1,fn+3,fn);
+         fn = findobj(0,"name","showFreqDomain");
+         keaCtrl:enableControls(fn+1,fn+4,fn);
+         endif();)
+      groupbox(2, "Pulse sequence", 9, 9, 552, 181)
+      statictext(3, 115, 31, "right", "B1 Frequency (MHz)")
+      textbox(4, 121, 27, 46)
+      statictext(5, 115, 56, "right", "Repetition time (ms)")
+      textbox(6, 121, 52, 46)
+      statictext(7, 115, 82, "right", "Offset (Hz)")
+      textbox(8, 121, 78, 46)
+      statictext(9, 115, 108, "right", "Soft pulse shape")
+      textmenu(10, 121, 104, 60, 200)
+      statictext(11, 115, 134, "right", "90 pulse length (us)")
+      textbox(12, 121, 130, 40)
+      statictext(13, 115, 160, "right", "90 amplitude (dB)")
+      textbox(14, 121, 156, 40)
+      statictext(15, 285, 30, "right", "estabil. Time read (us)")
+      textbox(16, 291, 26, 40)
+      statictext(17, 285, 56, "right", "acqShiftRead (us)")
+      textbox(18, 291, 52, 40)
+      statictext(19, 285, 82, "right", "sliceComp(us)")
+      textbox(20, 291, 78, 40)
+      statictext(21, 285, 108, "right", "repTimeFlash (ms)")
+      textbox(22, 291, 104, 40)
+      statictext(23, 285, 134, "right", "nrDummyScans")
+      textbox(24, 291, 130, 40)
+      statictext(25, 285, 160, "right", "phase dss 90")
+      textbox(26, 291, 156, 40)
+      statictext(27, 455, 30, "right", "FoV Read (mm)")
+      textbox(28, 461, 26, 40)
+      statictext(29, 455, 56, "right", "FoV Phase (mm)")
+      textbox(30, 461, 52, 40)
+      statictext(31, 455, 82, "right", "nro. pts. phase")
+      textbox(32, 461, 78, 40)
+      statictext(33, 455, 108, "right", "Slice thickness (mm)")
+      textbox(34, 461, 104, 40)
+      statictext(35, 455, 134, "right", "Slice shift (mm)")
+      textbox(36, 461, 130, 40)
+      statictext(37, 506, 30, "right", "")
+      textmenu(38, 512, 26, 40, 200)
+      statictext(39, 506, 56, "right", "")
+      textmenu(40, 512, 52, 40, 200)
+      statictext(41, 506, 108, "right", "")
+      textmenu(42, 512, 104, 40, 200)
+      groupbox(43, "Acquisition", 9, 197, 552, 181)
+      statictext(44, 79, 242, "center", "Rx Gain (dB)")
+      textmenu(45, 62, 260, 39, 200)
+      statictext(46, 79, 291, "center", "Rx Phase (degrees)")
+      textbox(47, 62, 307, 39)
+      statictext(48, 187, 244, "center", "Number of")
+      statictext(49, 187, 257, "center", "complex points")
+      textmenu(50, 234, 246, 62, 200,
+         keaCtrl:updateAcqTime();)
+      statictext(51, 187, 276, "center", "Dwell time")
+      statictext(52, 187, 289, "center", "(us)")
+      textmenu(53, 234, 279, 62, 200,
+         keaCtrl:updateFilters();)
+      statictext(54, 187, 310, "center", "Number of")
+      statictext(55, 187, 323, "center", "scans")
+      textbox(56, 234, 311, 62)
+      statictext(57, 361, 258, "center", "Flat filter")
+      checkbox(58, 397, 259, "no,yes", "no",
+           keaCtrl:setDwellTimeMenu();
+           keaCtrl:updateFilters();)
+      statictext(59, 361, 282, "center", "Accumulate")
+      checkbox(60, 397, 283, "no,yes", "no")
+      statictext(61, 361, 306, "center", "Phase cycle")
+      checkbox(62, 397, 308, "no,yes", "yes")
+      statictext(63, 489, 242, "center", "Spectral width (kHz)")
+      textbox(64, 460, 256, 56)
+      statictext(65, 489, 293, "center", "Acquisition time (ms)")
+      textbox(66, 460, 307, 56)
+      groupbox(67, "Processing_Display", 9, 385, 552, 181)
+      statictext(68, 208, 439, "right", "Filter time domain")
+      checkbox(69, 216, 440, "no,yes", "no",
+           fn = findobj(0,"name","filter");
+           keaCtrl:enableControls(fn+1,fn+3,fn);)
+      statictext(70, 90, 470, "right", "Filter")
+      textmenu(71, 97, 466, 108, 200)
+      button(72, 214, 466, 22, 22, "...",
+         filters();)
+      statictext(73, 208, 502, "right", "Time domain magnitude")
+      checkbox(74, 216, 503, "no,yes", "no")
+      statictext(75, 479, 437, "right", "Show frequency domain data")
+      checkbox(76, 487, 438, "no,yes", "no",
+           fn = findobj(0,"name","showFreqDomain");
+           keaCtrl:enableControls(fn+1,fn+4,fn);)
+      statictext(77, 479, 467, "right", "Frequency domain magnitude")
+      checkbox(78, 487, 468, "no,yes", "no")
+      statictext(79, 429, 500, "right", "Display range (kHz)")
+      textbox(80, 439, 497, 61)
+      groupbox(81, "File_Settings", 9, 573, 552, 181)
+      statictext(82, 82, 637, "right", "Working")
+      statictext(83, 82, 650, "right", "directory")
+      textbox(84, 98, 638, 215)
+      button(85, 318, 638, 22, 22, "...",
+         keaFiles:setWorkingDir();)
+      statictext(86, 89, 674, "right", "Experiment")
+      statictext(87, 74, 687, "right", "name")
+      textbox(88, 98, 677, 105)
+      button(89, 209, 677, 22, 22, "...",
+         keaFiles:setExpName();)
+      statictext(90, 311, 674, "right", "Experiment")
+      statictext(91, 301, 687, "right", "number")
+      textbox(92, 319, 677, 25)
+      button(93, 349, 677, 22, 22, "...",
+         keaFiles:setExpNr();)
+      statictext(94, 373, 636, "center", "Save")
+      statictext(95, 373, 649, "center", "data")
+      checkbox(96, 401, 643, "false,true", "true")
+      statictext(97, 417, 674, "center", "Auto")
+      statictext(98, 417, 687, "center", "increment")
+      checkbox(99, 452, 682, "no,yes", "no")
+      button(100, 438, 631, 40, 36, "Load Data",
+         keaFiles:loadData();)
+      button(101, 493, 631, 40, 50, "Open data folder",
+         keaFiles:openDataFolder();)
+      colorbox(102, 20, 767, 10, 10, [255,255,255,255])
+      colorbox(103, 20, 780, 10, 10, [255,255,255,255])
+      button(104, 40, 764, 54, 29, "Run",
+         (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar();
+         keaCtrl:runPP(getmacropath(),wv_pp_name);)
+      button(105, 105, 764, 54, 29, "Abort",
+         setwindowpar(0,"title","Wait for macro to abort ...");
+         wvExpStatus = "stop";)
+      button(106, 170, 764, 54, 29, "Finish",
+         setwindowpar(0,"title","Wait for phase-cycling to complete ...");
+         wvExpStatus = "finish";)
+      button(107, 235, 764, 54, 29, "Load Par.",
+         keaFiles:loadParameters();)
+      button(108, 300, 764, 54, 29, "Help",
+         help("Macros\TomographJülich","Flash_2D.htm");)
+      button(109, 365, 764, 54, 29, "Kea Pref.",
+         keaCtrl:showPreferences();)
+      button(110, 430, 764, 54, 29, "Collapse",
+         keaCtrl:toggleWindowSize(1);)
+      button(111, 495, 764, 54, 29, "Close",
+         guipar = getctrlvalues(0);
+         if(getwindowpar(0,"type") == "dialog");
+         guipar = keaFiles:addWindowSpecifics(guipar);
+         keaFiles:saveCommonPar(guipar);
+         closedialog(guipar);
+         else;
+         keaFiles:saveParameters();
+         closewindow(0);
+         endif;)
+      menu(112, "bkgMenu", "Edit macro\tCtrl+Dbl-Click", edit("$getmacroname()$"),
+                "Show compiler\tCtrl+Shift+Dbl-Click", MakePulseProgram("$getmacropath()$","$rmext(getmacroname())$"))
+
+     # Set other control parameters
+      setpar(n,1,"active","true",
+                  "inittabs",[""])
+      setpar(n,4,"valueID","b1Freq",
+                  "tag","freqRange",
+                  "type","double",
+                  "range",[1,400])
+      setpar(n,6,"valueID","repTime",
+                  "type","float",
+                  "range",[1,40000])
+      setpar(n,8,"valueID","O1",
+                  "type","float")
+      setpar(n,10,"valueID","SPType",
+                  "menu",["sinc3","sinc5","gauss","rect"])
+      setpar(n,12,"valueID","pulseLength90",
+                  "type","float",
+                  "range",[0.5,1000])
+      setpar(n,14,"valueID","a1",
+                  "type","float",
+                  "range",[-85,0])
+      setpar(n,16,"valueID","estTimeR",
+                  "type","float",
+                  "range",[2,327670])
+      setpar(n,18,"valueID","acqShiftRead",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,20,"valueID","sliceComp",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,22,"valueID","repTimeFlash",
+                  "type","float",
+                  "range",[2,1000])
+      setpar(n,24,"valueID","nrDummyScans",
+                  "type","integer",
+                  "range",[0,20])
+      setpar(n,26,"valueID","phDss90",
+                  "type","float",
+                  "range",[-1000,1000])
+      setpar(n,28,"valueID","FoVRead",
+                  "type","float",
+                  "range",[-10000,10000])
+      setpar(n,30,"valueID","FoVPhase",
+                  "type","float",
+                  "range",[-10000,10000])
+      setpar(n,32,"valueID","nrStepsP",
+                  "type","integer",
+                  "range",[1,500])
+      setpar(n,34,"valueID","sliceTickness",
+                  "type","float",
+                  "range",[0,10000])
+      setpar(n,36,"valueID","sliceShift",
+                  "type","float",
+                  "range",[-10000,10000])
+      setpar(n,38,"valueID","dirRead",
+                  "menu",["x","y","z"])
+      setpar(n,40,"valueID","dirPhase",
+                  "menu",["x","y","z"])
+      setpar(n,42,"valueID","dirSlice",
+                  "menu",["x","y","z"])
+      setpar(n,45,"valueID","rxGain",
+                  "type","integer",
+                  "tooltip","20-40 dB gives optimal SNR.\rDecrease if overload occurs.",
+                  "range",[-20,70],
+                  "menu",["-20","-17","-14","-11","-8","-5","-2","1","4","7","10","13","16","19","22","25","28","31","34","37","40","43","46","49","52","55","58","61","64","67","70"])
+      setpar(n,47,"valueID","rxPhase",
+                  "type","float",
+                  "tooltip","Applies a fixed phase shift to collected data.\rIgnored if autophasing.")
+      setpar(n,50,"valueID","nrPnts",
+                  "type","integer",
+                  "range",[2,65536],
+                  "menu",["2","4","8","16","32","64","128","256","512","1024","2048","4096","8192","16384","32768","65536"])
+      setpar(n,53,"valueID","dwellTime",
+                  "type","float",
+                  "menu",[""])
+      setpar(n,56,"valueID","nrScans",
+                  "type","integer",
+                  "range",[1,1e+006])
+      setpar(n,58,"valueID","flatFilter",
+                  "tooltip","On: all frequencies equally weighted.\rOff: center frequencies enhanced.")
+      setpar(n,60,"valueID","accumulate")
+      setpar(n,62,"valueID","usePhaseCycle")
+      setpar(n,64,"valueID","bandwidth",
+                  "tag","disable")
+      setpar(n,66,"valueID","acqTime",
+                  "tag","disable")
+      setpar(n,69,"valueID","filter")
+      setpar(n,71,"valueID","filterType",
+                  "menu",[""])
+      setpar(n,74,"valueID","timeMag")
+      setpar(n,76,"valueID","showFreqDomain")
+      setpar(n,78,"valueID","freqMag")
+      setpar(n,80,"valueID","dispRange",
+                  "type","float")
+      setpar(n,84,"valueID","dataDirectory",
+                  "type","string",
+                  "tooltip","Where experimental data will be stored.")
+      setpar(n,88,"valueID","expName",
+                  "type","string",
+                  "tooltip","A subdirectory of the data working directory to store different experiments.")
+      setpar(n,92,"valueID","expNr",
+                  "tooltip","A numbered subdirectory below the experiment name.\rNot made if entry is blank.")
+      setpar(n,96,"valueID","saveData")
+      setpar(n,99,"valueID","incExpNr",
+                  "tooltip","Increment the experiment number after each experiment.")
+      setpar(n,100,"tooltip","Load and display the data specified in the directories fields")
+      setpar(n,101,"tooltip","View the data directory in Windows Explorer.")
+      setpar(n,102,"objID","ppStatus",
+                  "tooltip","Experiment Status Indicator\rGreen: running\rBlue: processing\rYellow: waiting")
+      setpar(n,103,"objID","rxOverflow",
+                  "tooltip","Receiver Overflow Indicator\rRed: overflow")
+      setpar(n,104,"valueID","run",
+                  "tooltip","Start the experiment.")
+      setpar(n,105,"valueID","stop",
+                  "tooltip","Stop the experiment without saving data.",
+                  "active","true")
+      setpar(n,106,"valueID","finish",
+                  "tooltip","Finish the current phase cycle and save data.",
+                  "active","true")
+      setpar(n,107,"valueID","load",
+                  "tooltip","Load a parameter set for a similar experiment.")
+      setpar(n,108,"valueID","help",
+                  "tooltip","Display HTML help for this experiment.",
+                  "active","true")
+      setpar(n,109,"valueID","showPref",
+                  "tooltip","Display a preferences dialog for the Kea spectrometer.")
+      setpar(n,110,"valueID","size",
+                  "tooltip","Expand or collapse the window size to show all or fewer controls.",
+                  "active","true")
+      setpar(n,111,"valueID","close",
+                  "tooltip","Close the window saving all parameters.")
+
+     # Set other window parameters
+      setwindowpar(n,"bkgmenu",112)
+
+endproc(n)
+
+
+#######################################################
+# Execute the pulse program, collecting nrScans of 
+# data and displaying the result in the 1D plot. 
+#
+# This procedure can be modified to perform more
+# complex functions using the passed parameters:
+#
+# guipar ..... all parameters from the user interface
+# ppList ..... the pulse program parameter list
+# pcList ..... phase-cycle list
+# pcIndex .... indices of phase parameters in ppList
+# varIndex ... indices of variable parameters in ppList
+#
+#######################################################
+
+procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
+
+# Make all gui parameters available
+   assignlist(guipar)
+
+
+
+#Checks
+   :checkDelays(guipar)
+   durFlash=repTimeFlash*(nrStepsP+nrDummyScans)
+   if(durFlash>repTime); 
+      pr "The time required by the sequence is larger than the repetition time. \n"; 
+      message("Warning","The time required by the sequence \r is larger than the repetition time. \r Increase tR > $durFlash + 1$","warning")
+      abort(""); 
+   endif;
+   if(abs(gReadAmp*readGradFac)>20800);  pr "Read gradient too high"; return; endif;
+   :checkGradPowerFLASH_2D(guipar)
+   :checkGradDir(guipar)
+
+# Calculate suitable time and frequency axes
+   totalTime = ([0:1:totPnts-1]/totPnts)*totTime/1000
+   f = ([0:1:totPnts-1]-totPnts/2+1)/totTime
+
+# Make subplots
+   wvPP->multiplot(1,1)
+   wvPP2->multiplot(2,2)
+
+# Reset the timer
+   time(0)
+
+   kSpace2D1 = cmatrix(nrPnts,nrStepsP)   
+   sumData = cmatrix(totPnts)
+        
+# Accumulate scan
+      for(scan = 0 to nrScans-1)
+     
+       # Note the time at scan start
+         t1 = time()   
+   
+       # Set phases for this scan
+         (ppList,pAcq) = keaNMR:setPPPhase(ppList,scan,pcList,pcIndex)
+   
+       # Send phase parameters to DSP
+         dspwrite("x",0x00,ppList)
+   
+       # Collect the data
+         (status,data) = keaNMR:getData(totPnts,guipar)
+
+         if(status != "ok")
+            keaNMR:enableButtons()
+            abort("")
+         endif
+   
+       # Accumlate the data
+         sumData = keaNMR:accumulate(accumulate,pAcq,sumData,data)
+
+         if(accumulate=="yes")
+            sf = 1/(scan+1)
+         else
+            sf = 1
+         endif
+
+         pd = wvPP->subplot(1,1)
+         pd->draw("false")
+         pd->plot(totalTime,sf*real(sumData),"tracecolor",black)
+         pd->hold("on")
+         pd->plot(totalTime,sf*imag(sumData),"tracecolor",red)
+         pd->hold("off")
+         pd->title("text","FID ($scan+1$/$nrScans$)")
+         pd->xlabel("text","time (s)")
+         pd->ylabel("text","amplitude")
+         pd->draw("true")
+
+      # Check timing
+         check = keaRun:checkTimeAndAbort(guipar,t1,scan,pcList)
+         if(check == "abort")
+            return(0)
+         elseif(check == "finish")
+            scan = scan+1
+            exitfor()
+         endif
+
+      next(scan)
+
+      for(nPh = 0 to nrStepsP-1)
+        kSpace2D1[~,nPh] = submatrix(sumData/nrScans,(0*nrStepsP+nPh)*nrPnts,(0*nrStepsP+nPh+1)*nrPnts-1)
+      next(nPh)
+      curplot("2d",1,1)
+      image(kSpace2D1)
+
+   
+     assign("kSpace2D1",kSpace2D1,"global")
+
+
+   npxRead  =2*:FFTsize(nrPnts)
+   npxPhase =2*:FFTsize(nrStepsP)
+   
+   idata = fft_local:2d(kSpace2D1,npxRead,npxPhase,"sinebell","sinebell","FTEcho","FTEcho","yes")
+ 
+   curplot("2d",2,1)
+   image(idata) 
+
+
+   if(saveData == "true")
+      :saveData(guipar,kSpace2D1,idata)
+      keaFiles:incrementExperiment(guipar)
+   endif
+
+endproc("execpp")
+
+#######################################################
+# Save the accumulated data
+# Either pass the parameters to save or use
+# window variables of the same name.
+#######################################################
+
+procedure(saveData,guipar,kSpace2D,idata)
+
+# Make all gui parameters available
+   assignlist(guipar)
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+
+   export2dpar("ab","binary","xyrc","real","machine","littleend")
+   export2d(idata,"rawimage2d.2d")  # Save data as an Excel file
+
+   export2dpar("ab","binary","xyrc","complex","machine","littleend")
+   export2d(kSpace2D,"rawkSpace2d.2d")  # Save data as an Excel file
+
+   (n1,n2) = size(idata)
+
+   save("$n1$x$n2$.pixels_image","empty")
+
+   (n1,n2) = size(kSpace2D)
+
+   save("$n1$x$n2$.kspace_size","empty")
+
+   temp = getcwd()
+
+   pr "data saved to $temp$"
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")
+#-----------------------------
+
+procedure(getRewindSliceDelay,PulseLength90,sliceComp,rampDur)
+   
+   d69=2
+   d6=PulseLength90/2+sliceComp+d69-0.5*rampDur
+   if(d6<=0.25)
+      d6=2
+      d69=d6+0.5*rampDur-PulseLength90/2-sliceComp
+   endif                
+endproc(d6,d69)
+#-----------------------------
+
+procedure(setImageGradients,dirRead,dirPhase,dirSlice,FoVRead,FoVPhase,phDur,sliceTickness,sliceShift,gfac,xshim,yshim,zshim,xcal,ycal,zcal)
+
+   guipar = getctrlvalues(0)
+   lst = keaNMR:loadPref()
+   guipar = guipar + lst
+   assignlist(guipar)
+
+   FoVRead = FoVRead/1000             # change from mm to m
+   FoVPhase = FoVPhase/1000           # change from mm to m
+   sliceTickness = sliceTickness/1000 # change from mm to m
+   sliceShift = sliceShift/1000       # change from mm to m
+
+
+   xshim = xshim/1000
+   yshim = yshim/1000 
+   zshim = zshim/1000  
+
+   bandwidthRead =  bandwidth*1e3
+   if(FoVRead==0)
+      gReadAmpTperM=0
+   else
+      gReadAmpTperM =  bandwidthRead/42.57e6/FoVRead
+   endif
+
+
+   if(dirRead == "x"); ampRead = gReadAmpTperM*xcal; ampReadShim = xshim*xcal; endif
+   if(dirRead == "y"); ampRead = gReadAmpTperM*ycal; ampReadShim = yshim*ycal; endif 
+   if(dirRead == "z"); ampRead = gReadAmpTperM*zcal; ampReadShim = zshim*zcal; endif 
+
+   bandwidthPhase =  1e6*0.5*nrStepsP/(phDur)
+   
+   if(FoVPhase==0)
+      gPhaseAmpTperM=0
+   else
+      gPhaseAmpTperM =  bandwidthPhase/42.57e6/FoVPhase
+   endif
+  
+   if(dirPhase == "x"); ampPhase = gPhaseAmpTperM*xcal; ampPhaseShim = xshim*xcal;  endif
+   if(dirPhase == "y"); ampPhase = gPhaseAmpTperM*ycal; ampPhaseShim = yshim*ycal; endif 
+   if(dirPhase == "z"); ampPhase = gPhaseAmpTperM*zcal; ampPhaseShim = zshim*zcal;  endif
+
+   bandwidthSlice =  gfac*1e6/(pulseLength90)
+
+   if(sliceTickness == 0)
+      gSliceTperM =0
+   else
+      gSliceTperM    =  bandwidthSlice/42.57e6/sliceTickness
+   endif
+
+   if(dirSlice == "x"); ampSlice = gSliceTperM*xcal; ampSliceShim = xshim*xcal; endif
+   if(dirSlice == "y"); ampSlice = gSliceTperM*ycal; ampSliceShim = yshim*ycal; endif 
+   if(dirSlice == "z"); ampSlice = gSliceTperM*zcal; ampSliceShim = zshim*zcal; endif
+
+   sliceOffSet = gSliceTperM*42.57*sliceShift # in MHz
+
+
+#pr ampRead
+#pr ampPhase
+#pr ampSlice
+#
+#pr ampReadShim
+#pr ampPhaseShim
+#pr ampSliceShim
+ 
+   if(abs(ampRead)>20800);   ampRead = 0; pr "Read gradient too high"; endif
+   if(abs(ampPhase)>20800); ampPhase = 0; pr "Phase gradient too high"; endif
+   if(abs(ampSlice)>20800); ampSlice = 0; pr "Slice gradient too high"; endif
+
+#endproc(0,0,0,0,0,0,0)
+
+
+endproc(round(ampRead),round(ampReadShim),round(ampPhase),round(ampPhaseShim),round(ampSlice),round(ampSliceShim),sliceOffSet)
+
+procedure(convertDirToChannel,dir)
+
+   if(dir == "x")
+        return 3
+   endif
+   if(dir == "y")
+        return 2
+   endif
+   if(dir == "z")
+        return 1
+   endif
+
+   if(dir == 3)
+        return 3
+   endif
+   if(dir == 2)
+        return 2
+   endif
+   if(dir == 1)
+        return 1
+   endif
+  
+endproc(0)
+
+procedure(getPhaseTable,gPhaseAmp,gPhaseAmpShim,nrStepsP)
+
+   t21a  =  ([0:1:nrStepsP]-nrStepsP/2+1/2)*gPhaseAmp/((nrStepsP-1)/2) + gPhaseAmpShim 
+  
+#   t21a = matrix(nrStepsP+1)
+#
+#   for k = 0 to nrStepsP
+#     if(k%2==0)
+#       t21a[k] =  gPhaseAmp*(nrStepsP/2-trunc(k/2))/nrStepsP
+#     endif
+#     if(k%2==1)
+#       t21a[k] = -gPhaseAmp*(nrStepsP/2-trunc((k-1)/2))/nrStepsP
+#     endif
+#   next k
+#
+#   t21a = t21a+gPhaseAmpShim
+
+#pr size(t21)
+                
+endproc(t21a)
+#-----------------------------
+procedure(checkGradPowerFLASH_2D,guipar)
+
+   assignlist(guipar)
+   refPower=700
+
+   #READ Channel
+   p_R0=(gReadAmp*gReadAmp*(d4+d5+rampDur)+readGradFac*gReadAmp*readGradFac*gReadAmp*(d3+2*rampDur))*nrDummyScans*1e-6
+   p_R =(gReadAmp*gReadAmp*(d4+d5+rampDur)+readGradFac*gReadAmp*readGradFac*gReadAmp*(d3+2*rampDur))*nrStepsP*1e-6
+   
+   #PHASE Channel (during dummy scans phase gradient remains at shim value)
+   t21  =  Flash_2D:getPhaseTable(gPhaseAmp,gPhaseAmpShim,nrStepsP)   
+   p_temp=t21.*t21 *(d3+2*rampDur)*1e-6
+   p_P=sum(p_temp)
+
+   #SLICE Channel
+   p_S0=gSliceAmp*gSliceAmp*((pulseLength90+d101+d69+rampDur)+(d6+rampDur))*nrDummyScans*1e-6
+   p_S =gSliceAmp*gSliceAmp*((pulseLength90+d101+d69+rampDur)+(d6+rampDur))*nrStepsP*1e-6
+   
+   p_mean=(p_R+p_R0+p_P+p_S+p_S0)/repTime  
+   
+   if (p_mean>refPower)
+      pr "Power requirement too high. Increase repetition time. \n"; 
+      message("Waring","Power requirement too high.\r Increase repetition time tR > $round(p_mean/refPower*repTime)+1$ ms","warning")
+      abort("")
+   endif
+
+
+endproc()
+#-----------------------------
+procedure(checkDelays,guipar)
+   assignlist(guipar)
+   for (k=1 to 1000)
+      try
+         d_temp=eval("d$k$")
+         if(d_temp<=0); pr "\n d$k$<0 \n"; abort(""); endif;  
+      catch
+      endtry         
+   next
+endproc()
+
+#-----------------------------
+procedure(checkGradDir,guipar)
+assignlist(guipar)
+if(dirPhase==dirRead)
+      message("Waring","Phase direction should be \r different from Read direction.","warning")
+      abort("")
+endif
+endproc()
+
+#-----------------------------
+procedure(FFTsize,nrPnts)
+
+  m=1
+  a = nrPnts
+  while(a>1)
+     a = nrPnts/2^m
+     m = m+1
+  endwhile
+  r = 2^(m-1)
+
+endproc(r)

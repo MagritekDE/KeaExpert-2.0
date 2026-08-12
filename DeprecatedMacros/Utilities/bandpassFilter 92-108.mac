@@ -1,0 +1,28 @@
+pr "started\n"
+C1 = 5.1e-12
+L1 = 510e-9
+C2 = 390e-12
+L2 = 6.2e-9
+R1 = .1
+R2 = .05
+
+f = [50:0.1:140]
+
+w = 2*pi*f*1e6
+xC1 = 1/(j*w*C1)
+xC2 = 1/(j*w*C2) 
+xL1 = j*w*L1 + R1
+xL2 = j*w*L2 + R2
+Za = (xC1+xL1)
+Zb = 1/(1/xC2+1/xL2)
+Zc = 1/(1/Zb + 1/(Za+50))
+V1 = Zc/(Zc+Za+50)
+V2 = V1*50/(Za+50)
+
+
+#plot(f,20*log10(mag(2*V2)))
+plot(f,(mag(2*V2)))
+xlabel("Frequency (MHz)")
+ylabel("Relative amplitude")
+title("Simulated filter response")
+  

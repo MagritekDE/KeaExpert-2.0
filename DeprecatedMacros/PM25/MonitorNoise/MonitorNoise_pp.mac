@@ -1,0 +1,48 @@
+########################################################
+#
+# Samples noise data and calculates the rms value
+# www.magritek.com, March 2013
+# Prospa V3.12
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq",   "B1 Frequency (MHz)",   "0","0", "tbwv", "freq",
+               "repTime",  "Repetition time (ms)", "0","1.6", "tbwv", "reptime",
+               "refLevel",  "Reference level (uV)", "1","0", "tbwv", "float,[0,1000]",
+               "showRef",  "Show reference", "1","2", "cbv", "no,yes"]
+
+# Relationships to determine remaining variable values
+   relationships = ["a1 = -72",
+                    "d1 = 10",
+                    "d2 = 1000",
+                    "n1 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Acquisition","Processing_Display_Std","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   pulse(mode,a1,p1,d1)        # Dummy RF pulse
+   delay(d2)                   # delay
+   acquire("overwrite",n1)     # Acquire echo and wait
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList  = [0,1,2,3;   # Pulse phase
+                 0,1,2,3]   # Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

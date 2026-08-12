@@ -1,0 +1,268 @@
+procedure(Calculate B)
+
+   n = :windowdefinition()
+   :loadPar()
+   setpar(n,8,"enable","false")
+   setpar(n,12,"enable","false")
+   setpar(n,18,"enable","false")
+   setpar(n,20,"enable","false")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate B1 coil parameters", -1, -1, 496, 203)
+
+      # Define all controls with basic parameters
+       windowvar(lengthObj,diameterObj,nrTurnsObj,sampleLengthObj,L1Obj,B1IObj)
+       statictext(1, 101, 23, "right", "Coil length (mm)")
+       statictext(2, 101, 54, "right", "Coil diameter (mm)")
+       statictext(3, 99, 84, "right", "Number of turns")
+       textbox(4, 111, 20, 80)
+       textbox(5, 111, 50, 80)
+       textbox(6, 111, 80, 80)
+       statictext(7, 99, 124, "right", "B1/I (mT/A)")
+       textbox(8, 111, 120, 80)
+       button(9, 410, 20, 52, 33, "Calc.",
+          par = struct();
+          par->sampleLength = sampleLengthObj->value;
+          par->diameter = diameterObj->value;
+          par->length = lengthObj->value;
+          par->nrTurns = nrTurnsObj->value;
+          :calc(par);
+          :calcR();)
+       button(10, 410, 70, 52, 33, "Exit",
+          :savePar();
+          closewindow(0);)
+       statictext(11, 99, 154, "right", "L (uH)")
+       textbox(12, 111, 150, 80)
+       statictext(13, 288, 23, "right", "Sample length")
+       textbox(14, 300, 19, 80)
+       statictext(15, 288, 53, "right", "Wire diameter (mm)")
+       textbox(16, 300, 49, 80)
+       statictext(17, 288, 124, "right", "R (ohm)")
+       textbox(18, 300, 120, 80)
+       statictext(19, 288, 154, "right", "Loaded Q")
+       textbox(20, 300, 150, 80)
+       statictext(21, 288, 83, "right", "Frequency (MHz)")
+       textbox(22, 300, 79, 80)
+
+     # Set other control parameters
+       setpar(n,4,"objID","lengthObj",
+                  "valueID","length")
+       setpar(n,5,"objID","diameterObj",
+                  "valueID","diameter")
+       setpar(n,6,"objID","nrTurnsObj",
+                  "valueID","nrTurns")
+       setpar(n,8,"objID","B1IObj")
+       setpar(n,12,"objID","L1Obj")
+       setpar(n,14,"objID","sampleLengthObj",
+                  "valueID","sampleLength")
+       setpar(n,16,"objID","wireDiameterObj",
+                  "valueID","wireDiameter")
+       setpar(n,18,"objID","R1Obj")
+       setpar(n,20,"objID","QObj")
+       setpar(n,22,"objID","freqObj",
+                  "valueID","freq")
+
+endproc(n)
+
+
+##############################################################################
+# Load parameters from the default file
+##############################################################################
+
+procedure(loadPar)
+
+  bak = getcwd()
+  cd(getmacropath())
+
+  if(isfile("calcB1.par"))
+     par = load("calcB1.par")
+     setctrlvalues(0,par)
+  endif
+  cd(bak)
+    
+endproc()
+
+##############################################################################
+# Save parameters to a default file
+##############################################################################
+
+procedure(savePar)
+
+  bak = getcwd()
+  cd(getmacropath())
+  par = getctrlvalues(0)
+  save("calcB1.par",par)
+  cd(bak)
+
+endproc()
+
+procedure(calc,par)
+
+   R = par->diameter/2*1e-3
+   L = par->length*1e-3
+   Nt = par->nrTurns
+
+   dTheta = pi/16        # Angle step
+   ns = round(Nt*((2*pi)/dTheta)) # Number of segments
+   zstep = L/ns          # Z step between segments
+   Ntot = Nt
+   I = 1 # Current
+   cx = 0
+   cy = 0
+   cz = -L/2
+
+   k = [0:1:ns]
+   x1 = R*sin(k*dTheta)
+   x2 = R*sin((k+1)*dTheta)
+   y1 = R*cos(k*dTheta)
+   y2 = R*cos((k+1)*dTheta)
+   z1 = k*zstep
+   z2 = (k+1)*zstep
+   m = matrix(6,size(x1))
+
+   m[0,~] = x1' + cx
+   m[1,~] = x2' + cx
+   m[2,~] = y1' + cy
+   m[3,~] = y2' + cy
+   m[4,~] = z1' + cz
+   m[5,~] = z2' + cz
+
+   zrng = 1.5*L
+# Calculate the field data for wire configuration
+   za = [-zrng:zrng/50:zrng]
+   xa = [0]
+   ya = [0]
+   (Bx,By,Bz) = fieldcalc(m,xa,ya,za,"nodisplay")
+   Bz = Bz*1e3
+   draw1d("false")
+   plot(za*1000,Bz[0,0,~],"tracecolor",[0,0,255])
+   curplot()->showlegend("true")
+   hold("on")
+   sl = par->sampleLength/2*1e-3
+   (left,right) = findindex(za,-sl,sl)
+   BzR = Bz[0,0,[left:right]]
+   B = max(Bz)
+   tc1 = plot([-sl,-sl+1e-7]*1e3,[0,B],"color",[255,0,0])
+   tc2 = plot([sl,sl+1e-7]*1e3,[0,B],"color",[255,0,0])
+   curplot()->trace(tc1)->inlegend("false")
+   curplot()->trace(tc2)->inlegend("false")
+
+   mB = sum(BzR)/size(BzR)
+   tc3 = plot([-zrng,zrng]*1e3,[mB,mB],"color",[0,255,0])
+   curplot()->trace(tc3)->inlegend("false")
+
+   title("Axial field")
+   xlabel("Axial position (mm)")
+   ylabel("B field (mT/A)")
+   hold("off")
+  
+   draw1d("true")
+   if(isvar("B1IObj"))
+      B1IObj->text("$mB,0.3f$")
+   endif
+
+# Inductance calculation
+   mu = 4*pi*1e-7
+   L1 = 10*pi*mu*R^2*Nt^2/(9*R+10*L)
+   if(isvar("L1Obj"))
+      L1Obj->text("$L1*1e6,0.4f$")
+   endif
+
+
+   par->L1 = L1
+   par->B1I = mB
+
+endproc(par)
+
+procedure(backdoor,par)
+
+   par = :calc(par)
+
+endproc(par)
+
+procedure(calcR)
+
+   cd("$appdir$\\Macros\Utilities")
+   import1dpar("ab", "ascii", "xyrc", "real")
+   table = import1d("medhurst.txt")
+   xaxis = table[0:9]
+   table = table[10:]
+   table = reshape(table,11,11)
+   yaxis = table[0,~]
+   table = submatrix(table,1,10,0,10)
+
+
+   lc = lengthObj->value()*1e-3
+   rc = diameterObj->value/2*1e-3
+   rw = wireDiameterObj->value/2*1e-3
+   N = nrTurnsObj->value
+   f = freqObj->value*1e6
+
+   rho = 1.68e-8 # resistivity of copper
+
+   delta = 1/(sqrt(pi*f*4*pi*1e-7/rho))
+   lw = 2*pi*rc*N # Wire length
+   aw = pi*(2*rw*delta-delta^2) # Wire area
+   R = rho*lw/aw
+   p = lc/N
+
+   pd = p/(2*rw)
+   ld = lc/(2*rc)
+
+   posx = :findpos(xaxis,pd)
+   posy = :findpos(yaxis',ld)
+
+   pf = :interpMat(table,posx,posy)
+
+   R1 = R*pf
+pr R,pd
+   L1 = L1Obj->value*1e-6
+   Q = 2*pi*f*L1/R1
+   R1Obj->text(R1)
+   QObj->text(Q/2) # Loaded Q
+
+endproc()
+
+# Searches through vec finding the (float) index for val
+
+procedure(findpos,vec,val)
+
+   if(val < vec[0])
+     return(-1)
+   endif
+
+   for(k = 0 to size(vec)-2)
+      if(val >= vec[k] & val < vec[k+1])
+         pos = (val-vec[k])/(vec[k+1]-vec[k]) + k
+         return(pos)
+      endif
+   next(k)
+
+endproc(size(vec))
+
+# Given float x and y indicies perform a linear interpolation
+# on matrix m
+
+procedure(interpMat,m,idx,idy)
+
+   tx = trunc(idx)
+   ty = trunc(idy)
+   
+   ul = m[tx,ty]
+   ll = m[tx,ty+1]
+   ur = m[tx+1,ty]
+   lr = m[tx+1,ty+1]
+
+   ax1 = (idx-tx)*(ur-ul)+ul
+   ax2 = (idx-tx)*(lr-ll)+ll
+   ay = (idy-ty)*(ax2-ax1)+ax1
+
+endproc(ay)
+
+

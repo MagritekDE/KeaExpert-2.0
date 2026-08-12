@@ -1,0 +1,41 @@
+########################################################
+#
+# Samples noise data and calculates the rms value
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq",   "B1 Frequency (MHz)",   "0","0", "tbwv", "freq",
+               "repTime",  "Repetition time (ms)", "0","1.6", "tbwv", "reptime",
+               "refLevel",  "Reference level (uV)", "1","0", "tbwv", "float,[0,1000]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["d2 = 1000",
+                    "n1 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Acquisition","Processing_Display_Std","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   delay(d2)                   # delay
+   acquire("overwrite",n1)     # Acquire echo and wait
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList  = [0]   # Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

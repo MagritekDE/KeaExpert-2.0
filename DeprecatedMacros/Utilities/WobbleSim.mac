@@ -1,0 +1,49 @@
+procedure(WobbleSim)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Wobble Sim", -1, -1, 342, 190, "resizable")
+
+      # Define all controls with basic parameters
+      tuneCtrl = slider(1, 82, 52, 210, 20, "horizontal",:calc())
+      matchCtrl = slider(2, 82, 93, 210, 20, "horizontal",:calc())
+      statictext(3, 68, 53, "right", "Tune")
+      statictext(4, 68, 94, "right", "Match")
+
+     # Set other control parameters
+
+     # Set other window parameters
+endproc(n)
+
+procedure(calc)
+
+   tune = (tuneCtrl->value)*0.4e-12
+   match = (matchCtrl->value)*0.4e-12
+
+   Z0 = 50
+   C1off = 0e-12
+   C2off = 47e-12
+   C1 = 80e-12+C1off+match
+   C2 = 1135e-12+C2off+tune
+   R = 0.35
+   L = 4.8e-6
+   f = linspace(1.9,2.1,1000)*1e6
+   w = 2*pi*f
+   XL = j*w*L+R
+   XC1 = -j/(w*C1)
+   XC2 = -j/(w*C2)
+   ZL = (XL.*XC2/(XL+XC2)) + XC1
+   G = (ZL-Z0)/(ZL+Z0)
+   plot(f/1e6,mag(G))
+   title("Wobble curve for RCA")
+   xlabel("Frequency (MHz)")
+   ylabel("Reflection coefficient")
+
+endproc()

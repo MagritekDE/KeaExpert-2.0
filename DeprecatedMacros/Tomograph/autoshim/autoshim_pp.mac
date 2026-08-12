@@ -1,0 +1,79 @@
+########################################################
+#
+# 1pulse - acq
+#
+# Auto shim, order 1
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",   "tbwv",   "float,[0.5,50]",
+               "repTime",      "Repetition time (ms)", "0","1.6", "tbwv",   "float,[20,1e8]",
+               "O1",           "Offset (Hz)",          "0","3",   "tbwv",   "float,[-1e6,1e6]",
+               "90Amplitude",  "90 amplitude (dB)",    "1","0",   "tb",     "float,[-72,0]",
+               "pulseLength",  "Pulse length (us)",    "1","1",   "tb",     "float,[1,500]",
+               "nrLoops",      "nr Shim Loops",        "1","2",   "tb",     "integer,[1,300]",
+
+               "xstep",         "xstep",               "2","0",   "tb",     "float,[-1,1]",
+               "ystep",         "ystep",               "2","1",   "tb",     "float,[-1,1]",
+               "zstep",         "zstep",               "2","2",   "tb",     "float,[-1,1]",
+               "ostep",         "ostep",               "2","3",   "tb",     "float,[-20,20]",
+
+               "xEnable",       "shim x",           "3","0",   "cb",     "no,yes",
+               "yEnable",       "shim y",           "3","1",   "cb",     "no,yes",
+               "zEnable",       "shim z",           "3","2",   "cb",     "no,yes",
+               "oEnable",       "shim o",           "3","3",   "cb",     "no,yes"]
+
+  tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = 90Amplitude",
+                    "d1 = pulseLength",
+                    "d2 = 50",
+                    "n1 = nrPnts",
+                    "n10 = xcal*xshim",
+                    "n11 = ycal*yshim",
+                    "n12 = zcal*zshim",
+                    "n13 = ocal*oshim",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["n10","n11","n12","n13"]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+#   shim16(0,n10)    # x
+#   shim16(3,n11)    # y
+#   shim16(7,n12)    # z
+#   shim16(1,n13)    # x2-y2
+
+
+   gradon(x,n10)    # x
+   gradon(y,n11)    # y
+   gradon(z,n12)    # z
+   gradon(o,n13)    # x2-y2
+                   
+                   
+   delay(10000)
+
+   pulse(mode,a1,p1,d1)           # 90 pulse
+   delay(d2)                      # delay
+
+   acquire("overwrite",n1)        # Acquire 
+
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0; # -x,x : 90 phase
+                0] # -x,x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

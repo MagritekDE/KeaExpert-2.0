@@ -1,0 +1,39 @@
+procedure(MoveToService,n)
+
+   dir = getmacropath()
+
+   guipar = ["b1Freq = 1",
+             "bandwidthFile = 1.0",
+             "flatFilter = \"yes\"",
+             "rxPhase = 0",
+             "rxGain = 40",
+             "nrScans =1",
+             "repTime = 10",
+             "noHPA = \"true\"",
+             "usePhaseCycle = \"no\"",
+             "TTL1 = 2",
+             "TTL2 = 2",
+             "d1 = 20000",
+             "d2 =  1000"]
+
+   rel = ["b1 = ttltranslate(TTL1)",
+          "b2 = ttltranslate(TTL1)+ttltranslate(TTL2)"]
+    
+
+   guipar=setlistvalue(guipar,"steps","$1$")
+   guipar=setlistvalue(guipar,"n","$-1$")
+   guipar=setlistvalue(guipar,"p","$0$")
+   guipar=setlistvalue(guipar,"modir","100")
+   guipar=setlistvalue(guipar,"dataDirectory","\"move\"")
+   guipar=setlistvalue(guipar,"expName","\"move\"")
+   guipar=setlistvalue(guipar,"expNr","1")
+   guipar=setlistvalue(guipar,"dwellTime","0.5")
+
+
+   var = [""]
+   pp_list = ["b1","d1","b2","d2"]
+   pp_name = "twoTTLpulses.p"
+   phase_list = [0]
+
+   twoTTLpulses:backdoor(guipar)
+   endproc()

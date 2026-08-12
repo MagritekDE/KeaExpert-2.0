@@ -1,0 +1,49 @@
+########################################################
+#
+# CPMG pulse sequence with dummy pulses
+# (following a dummy 180-pulse data is not collected)
+#
+# 90 - delay - {180 - delay - acq - {180 - delay}}
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",     "tbwv",   "float,[0.5,30]",
+               "repTime",      "Repetition time (ms)", "0","1.6",   "tbwv",   "float,[20,1e8]",
+               "TTL1",      "TTL1",           "1","0", "tb", "integer,[ 2,9]",
+               "TTL2",      "TTL2",           "1","1", "tb", "integer,[ 2,9]",
+               "d1",      "delay 1(us)",      "2","0", "tb", "sdelay",
+               "d2",      "delay 2(us)",      "2","1", "tb", "sdelay"]
+
+
+  tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["b1  = ttltranslate(TTL1)",
+                    "b2  = ttltranslate(TTL1)+ttltranslate(TTL2)"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   ttlon(b1)
+   delay(d1)
+   ttlon(b2)
+   delay(d2)
+   ttloff(b2)
+  
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0]
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

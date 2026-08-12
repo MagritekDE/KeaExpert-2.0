@@ -1,0 +1,122 @@
+########################################################
+#                D-T2_pp.mac
+#
+# Diff-T2 correlation experiment 
+# 90 - delay/gradient - 180 - delay/gradient - delay - {180 - delay - acqu - {180 - delay} }
+#
+# This pulse sequence will implement a pulsed gradient diffusion
+# experiment to encode for diffusion followed by 
+# a CPMG echo train to measure T2. The CPMG train
+# includes dummy pulses to allow for long acquisition
+# times while still using small echo times.
+#
+# a1 ... amplitude of 180 pulse
+# a2 ... amplitude of 90 pulse
+# p1 ... phase of first 180 pulse
+# p2 ... phase of 90 pulse
+# p3 ... phase of CPMG 180 pulses
+# d1 ... width of pulses
+# d2 ... delay between 90 and CPMG 180
+# d3 ... delay between CPMG 180 and acquisition
+# d4 ... delay between acquisition start and next CPMG 180 
+# d5 ... delay between CPMG 180 dummy pulses
+# n1 ... number of echos to collect
+# n2 ... number of data points to collect per echo
+# n3 ... number of 180 dummy pulses per echo
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+# Interface description (name, label, x, y)
+  interface = ["b1Freq",         "B1 Frequency (MHz)",         "0","0",  "tbw",     "freq",
+               "ieTime",         "Inter-expt. delay (ms)",     "0","1",  "tb",      "reptime",
+               "O1",            "Offset (Hz)",                 "0","2",  "tbw",     "float",
+               "gradRamp",       "Gradient ramp time (us)",    "0","3",  "tb",      "float,[100,10000]",
+               "autoPhase",      "Auto-phase",                 "0","4",   "cb",     "no,yes",
+               "90Amplitude",    "90 amp. (dB)",               "1","0",   "tb",     "pulseamp",
+               "180Amplitude",   "180 amp. (dB)",              "1","1",   "tb",     "pulseamp",
+               "pulseLength",    "Pulse length (us)",          "1","2",   "tb",     "pulselength",
+               "phaseMethod",    "Minimize imag. range",       "1","4",   "cb",     "minImag,maxReal",
+               "echoTime",       "Echo-time (us)",             "2","0",   "tb",     "sdelay",
+               "nrEchoes",       "No. of echoes",              "2","1",   "tb",     "integer,[1,50000]",
+               "nrSteps",        "Gradient steps",             "2","2",   "tb",     "integer",
+               "echoShift",      "Echo shift (us)",            "2","3",   "tb",     "float,[-20,20]",
+               "nrDummyScans",   "No. of dummy scans",         "2","4",   "tb",     "integer,[0,100]",
+               "bDelta",         "Big DELTA (us)",             "3.5","0", "tb",     "sdelay",
+               "lDelta",         "Little delta (us)",          "3.5","1", "tb",     "sdelay",
+               "gradStab",       "Grad. stab. delay (us)",     "3.5","2", "tb",     "sdelay",
+               "qAmp",           "Maximum gradient (T/m)",     "3.5","3", "tb",     "float,[0,1]",
+               "nrDummyPulses",  "No. dummy gradient pulses",  "3.5","4", "tb",     "integer,[0,100]",
+               "dirDiff",        "Gradient Dir.",              "3.5","5", "tm",     "[\"x\",\"y\",\"z\"]"]
+
+# Relationships to determine remaining variable values 
+   relationships = ["a1 = 90Amplitude",
+                    "a2 = 180Amplitude",
+                    "d1 = pulseLength",
+                    "d500 = 2.5",
+                    "n500 = round(gradRamp/d500)", # steps in gradient ramp
+                    "n1 = nrEchoes",
+                    "n2 = nrPnts",
+                    "n50  = DT2:convertDirToChannel(dirDiff)",
+                    "(DiffAmp,gDiffAmpShim) = DT2:setDiffGradient(dirDiff,qAmp,xshim,yshim,zshim,xcal,ycal,zcal)",
+                    "d5 = lDelta",
+                    "d7 = gradStab",
+                    "d2 = bDelta-d1-pgo-d5-d7-2*gradRamp",
+                    "d3 = bDelta+echoTime/2-d1-pgo-d5-d7-2*gradRamp",
+                    "d8 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4 = echoTime-d1-pgo-d8",
+                    "n8 = nrDummyPulses",
+                    "n51a = 0",
+                    "n51  = 0",
+                    "totPnts = nrEchoes",
+                    "totTime = nrEchoes*echoTime"]
+
+  tabs = ["Pulse_sequence","Progress","Acquisition","Inversion_DT2","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["n51"]
+
+# x0,y0,dx,dy
+   dim = [130,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+     cleardata(n1)
+
+  
+  # Main experiment
+   pulse(mode,a1,p1,d1)         # 90 pulse
+
+   gradramp(n50,n51a,n51,n500,d500)     # Set Diffusion gradient 
+   delay(d5)                          # little delta
+   gradramp(n50,n51,n51a,n500,d500)     # Set o shim 
+   
+   delay(d7)                    # gradient stabilisation delta
+   delay(d2)                    # Big delta delay
+   pulse(mode,a2,p2,d1)         # 180 pulse
+   
+   gradramp(n50,n51a,n51,n500,d500)     # Set Diffusion gradient 
+   delay(d5)                            # little delta
+   gradramp(n50,n51,n51a,n500,d500)     # Set o shim 
+  
+   delay(d7)
+   delay(d3)                    # Set up CPMG echo time
+
+# CPMG loop with dummy pulses
+   loop(l2,n1)
+      pulse(mode,a2,p2,d1)             # 180 pulse
+      delay(d8)                        # 180 - acq delay
+      acquire("integrate",n2,d4)       # Integrate echo and wait
+   endloop(l2)
+   
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [2,0,2,0; # -x,x,-x,x : 90 phase
+                3,1,1,3; # -y,y,y,-y : 180 phase
+                2,0,2,0] # -x,x,-x,x : Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+

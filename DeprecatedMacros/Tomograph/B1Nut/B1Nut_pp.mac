@@ -1,0 +1,47 @@
+
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",         "0","0",     "tbwv",   "freq",
+               "repTime",      "Repetition time (ms)",       "0","1.6",   "tbwv",   "reptime",
+               "O1",           "Offset (Hz)",                "0","3",     "tbwv",   "float",
+               "90Amplitude",  "90 amplitude (dB)",          "1","0",     "tb",     "pulseamp",
+               "deadTime",     "DeadTime (us)",              "1","1",     "tb",     "sdelay",
+               "pulseLength",  "Initital pulse length (us)", "2","0",     "tb",     "pulselength",
+               "deltaPulseLength",  "Increment (us)",        "2","1",     "tb",     "float,[1,500]",
+               "nrPntsNut",    "Number of increment",        "2","2",     "tb",     "integer"]
+
+
+  tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = 90Amplitude",
+                    "d1 = pulseLength",
+                    "d2 = deadTime",
+                    "n1 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["d1"]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   pulse(mode,a1,p1,d1)           # 90 pulse
+   delay(d2)                      # delay
+   acquire("overwrite",n1)        # acquire
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0; # : 90 phase
+                0] # : acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

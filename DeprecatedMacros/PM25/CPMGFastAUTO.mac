@@ -1,0 +1,956 @@
+#########################################################
+# 
+#Magritek GmbH, March 2013
+#
+#Prospa V3.12
+#########################################################
+
+procedure(CPMGFastAUTO)
+
+   n = :windowdefinition()
+
+   windowvar(wv_tabs,wv_ctrls1,wv_ctrls2,wv_ctrls3,wv_ctrls4,wv_other)
+   wv_tabs   = [4,9,35,10] # Tab controls
+   wv_ctrls1 = [13,50,22,1,7,21,20,26,29,28,55,24,23,56,57,58]   # controls in TAB1
+   wv_ctrls2 = [68,69,6,12,5,2,3,60,62]                          # controls in TAB2
+   wv_ctrls3 = [51,45,46,48,49,47,42,43,41,44,39,40,38,59,8,61]  # controls in TAB3
+   wv_ctrls4 = [11,36,33,34,31,27,25,19,18,17,16,15,14]          # controls in TAB4
+
+   :loadLastPar(n)
+   :updateDepthList()
+   :showTab(4)
+   keaNMR:enableControls(38,45,46,3)
+   :enableNorm(57,58,56)
+
+   showwindow(n)
+   setwindowpar(n,"statusbox",63)
+
+endproc(n)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("CMPGFast AUTO", -1, -1, 338, 237)
+
+      # Define all controls with basic parameters
+       windowvar(tauArray,ampArray,wv_tabs,wv_ctrls1,wv_ctrls2,wv_ctrls3,wv_other,wv_ctrls4)
+       button(1, 249, 35, 45, 20, "upDate",
+          :selectProbeHead();)
+       button(2, 42, 77, 45, 20, "Edit",
+          :editDepthList();)
+       button(3, 42, 103, 45, 20, "Update",
+          :updateDepthList();)
+       button(4, 2, 6, 75, 21, "Main",
+          :showTab(1);)
+       listbox(5, 117, 35, 60, 136)
+       groupbox(6, "", 2, 24, 314, 153)
+       groupbox(7, "", 1, 55, 314, 122)
+       statictext(8, 111, 146, "right", "Remove first points")
+       button(9, 77, 6, 75, 21, "Depths",
+          :showTab(2);)
+       button(10, 227, 6, 88, 21, "FILE SETTINGS",
+          :showTab(4);)
+       groupbox(11, "", 3, 23, 314, 156)
+       statictext(12, 107, 39, "right", "Measuring depths list")
+       groupbox(13, "", 1, 24, 314, 36)
+       checkbox(14, 255, 138, "no,yes", "no")
+       statictext(15, 222, 144, "center", "increment")
+       statictext(16, 221, 132, "center", "Auto")
+       textbox(17, 107, 134, 48)
+       statictext(18, 99, 138, "right", "number")
+       statictext(19, 62, 138, "right", "Experiment")
+       textbox(20, 111, 67, 40)
+       statictext(21, 98, 72, "right", "Resolution (um)")
+       textbox(22, 81, 35, 133, 200)
+       textbox(23, 111, 148, 40)
+       statictext(24, 98, 153, "right", "Number of echoes")
+       textbox(25, 105, 92, 168)
+       statictext(26, 98, 99, "right", "Repetition time (ms)")
+       statictext(27, 91, 97, "right", "name")
+       statictext(28, 98, 126, "right", "Number of scans")
+       textbox(29, 111, 94, 40)
+       button(30, 9, 180, 42, 21, "Run",
+          :measure();)
+       statictext(31, 62, 97, "right", "Experiment")
+       button(32, 269, 180, 42, 21, "Close",
+          :saveLastPar();
+          closewindow(0);)
+       button(33, 282, 57, 27, 22, "...",
+          keaNMR:setWorkingDir();)
+       textbox(34, 9, 57, 265)
+       button(35, 152, 6, 75, 21, "Fitting",
+          :showTab(3);)
+       statictext(36, 90, 36, "right", "Working directory")
+       button(37, 61, 180, 42, 21, "Stop")
+       textbox(38, 257, 97, 44)
+       statictext(39, 302, 78, "right", "parameter")
+       statictext(40, 303, 64, "right", "Smoothing")
+       textbox(41, 182, 96, 43)
+       statictext(42, 177, 99, "right", "Maximum")
+       textbox(43, 182, 67, 43)
+       statictext(44, 175, 71, "right", "Minimum")
+       statictext(45, 187, 43, "center", "Relaxation range (ms)")
+       radiobuttons(46, 103, 46, 22, "vertical", "exp,biexp,nnls,none", "exp",
+            keaNMR:enableControls(38,45,46,3);)
+       statictext(47, 98, 111, "right", "No fit")
+       statictext(48, 98, 88, "right", "Inverse-Laplace fit")
+       statictext(49, 98, 66, "right", "Bi-exponential fit")
+       statictext(50, 67, 39, "right", "ProbeHead")
+       statictext(51, 98, 43, "right", "Exponential fit")
+       button(52, 217, 180, 42, 21, "Pref.",
+          cd(getmacropath());
+          preferences();)
+       button(53, 165, 180, 42, 21, "Setup",
+          help("Kea.chm","CPMGFast");)
+       button(54, 113, 180, 42, 21, "Load",
+          :load_parameters();)
+       textbox(55, 111, 121, 40)
+       checkbox(56, 296, 72, "no,yes", "no",
+            :enableNorm(57,58,56);)
+       statictext(57, 226, 72, "right", "Normalization")
+       textbox(58, 233, 67, 57)
+       groupbox(59, "", 2, 24, 314, 155)
+       checkbox(60, 242, 122, "no,yes", "no")
+       textbox(61, 119, 142, 43)
+       statictext(62, 300, 103, "right", "Enable Lift Movement")
+       statusbox(63)
+       statictext(68, 283, 37, "right", "Max. depth (um)")
+       textbox(69, 216, 56, 56)
+
+     # Set other control parameters
+       setpar(n,5,"valueID","depthList")
+       setpar(n,14,"valueID","incExpNr")
+       setpar(n,17,"valueID","expNr")
+       setpar(n,20,"valueID","resolution")
+       setpar(n,22,"valueID","probeHead")
+       setpar(n,23,"valueID","nrEchoes",
+                  "type","integer",
+                  "range",[1,8192])
+       setpar(n,25,"valueID","expName")
+       setpar(n,29,"valueID","repTime")
+       setpar(n,30,"valueID","run")
+       setpar(n,32,"valueID","close")
+       setpar(n,34,"valueID","dataDirectory")
+       setpar(n,37,"valueID","stop",
+                  "mode","abort")
+       setpar(n,38,"valueID","alpha")
+       setpar(n,41,"valueID","x_maximum")
+       setpar(n,43,"valueID","x_minimum")
+       setpar(n,46,"valueID","fitType")
+       setpar(n,52,"valueID","showPref")
+       setpar(n,53,"valueID","help")
+       setpar(n,54,"valueID","load")
+       setpar(n,55,"valueID","nrScans")
+       setpar(n,56,"valueID","refSignalCheck")
+       setpar(n,58,"valueID","refSignal")
+       setpar(n,60,"valueID","enableLift")
+       setpar(n,61,"valueID","nrPntsRemFit")
+       setpar(n,69,"valueID","maxDepth")
+
+      setpar(n,69,"enable","false")
+      setwindowpar(n,"exit_procedure",":saveLastPar()")
+
+endproc(n)
+  #    keaNMR:enableControls(38,45,46,3);
+  #    setpar(n,69,"enable","false")
+  #    setwindowpar(n,"exit_procedure",":saveLastPar()")
+##########################################################################################################
+procedure(measure)
+
+   PulseSeqName = "CPMGFast"
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+ 
+   #--- Check spacer -------------------------------------------------
+   macroDir  = getmacropath()
+   spacerDir=macroDir+"\probeHeads"
+   setcwd(spacerDir)
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+     
+   if(Spacer!=probeHead)
+      if( "no"== query("Warning","The probe has been modified, do you want to update it and continue?")) 
+        cd(back)
+        return(1)
+      endif   
+   endif
+   setctrlvalues(0,probeHeadPar)
+   setpar(0,22,"text",Spacer)
+   setcwd(macroDir)
+   #-----------------------------------------------------------------------
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   (flag,depthArray)=:checkDepthList(); if (flag==1); return; endif
+
+   if(fitType == "none")
+      multiplot("1d",1,1)
+   elseif(fitType == "nnls")
+    multiplot("1d",3,1)
+   else
+      multiplot("1d",2,1)
+   endif
+
+  
+   cd("$PulseSeqName$")
+   lastParBackdoor = load("$PulseSeqName$LastExp.par")
+   setcwd(macroDir)
+
+   newPar = mergelists(guipar,probeHeadPar)
+   newPar = mergelists(newPar,lastParBackdoor)
+   assignlist(newPar)
+  
+   dw = 0.5
+   nrPnts   = round(1e6/(gradient*dw*resolution))
+   echoTime = echoTime0 + round(dw*nrPnts)-pulseLength
+ 
+# do some checks
+
+# Check for total RF duty cycle
+# for PM25----------------------------------------------
+       if(pulseLength*nrEchoes/repTime>1.6)
+# for PM5----------------------------------------------
+      #  if(pulseLength*nrEchoes/repTime>3)
+      message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
+      return(0)
+     endif
+
+
+   if(resolution < bestResol)
+     message("ERROR","resolution < bestResol\n increase resolution","error")
+     return
+   endif
+
+   if(nrPnts/2 < pulseLength)
+     message("ERROR","resolution > excited slice\n decrease resolution","error")
+     return
+   endif
+
+   if(refSignalCheck == "no")
+      newPar = setlistvalue(newPar,"refSignal","1")
+   endif
+
+
+
+   newPar = setlistvalue(newPar,"bandwidth","2000")
+   newPar = setlistvalue(newPar,"bandwidthFile","0.5")
+   newPar = setlistvalue(newPar,"dwellTime","0.5")
+   newPar = setlistvalue(newPar,"nrPnts","$nrPnts$")
+   newPar = setlistvalue(newPar,"echoTime","$echoTime$")
+   newPar = setlistvalue(newPar,"acqTime","$dw*nrPnts/1000$")
+
+
+
+   newPar = setlistvalue(newPar,"showFreqDomain","\"no\"")
+   newPar = setlistvalue(newPar,"autoPhase","\"no\"")
+   newPar = setlistvalue(newPar,"fitMode","\"manual\"")
+   newPar = setlistvalue(newPar,"saveData","\"false\"")
+   newPar = setlistvalue(newPar,"excecutedBackdoor","\"yes\"")
+  
+
+   depth = -1
+
+   if(enableLift=="yes")
+      :Move(-100)   # Move down 70 um
+      MoveHome(-1) # Go home
+
+      pr "\nMouse going home...\n"
+      pause(0.0035*(maxDepth)+ 0.5)  # Wait for home completion
+      :Move(-70)   # Move down 70 um
+      depth = maxDepth
+   endif
+   nrDepths = size(depthArray)
+   data2D   = matrix(nrEchoes,nrDepths)
+   resultsFit = list(nrDepths)
+  
+   for z=0 to nrDepths-1
+
+      if(enableLift=="yes")
+         :Move(-(depth-depthArray[z]))
+      else
+           if(query("Positioning","Set initial position to: $depthArray[z]$ um") == "no")
+           return
+           endif
+      endif 
+  
+    depth = depthArray[z]
+    pr "depth = $depth$ um\n "
+   
+      CPMGFast:backdoor(newPar)
+      curplot("1d",1,1)
+      (tauArray,ampArray)=getplotdata("1d")
+
+
+
+   # remove first points if desired
+      if(fitType != "none")
+        nrEchoesFit = nrEchoes-nrPntsRemFit
+        tauArrayFit = submatrix(tauArray,nrPntsRemFit,nrEchoes-1)
+        ampArrayFit = submatrix(ampArray,nrPntsRemFit,nrEchoes-1)
+      endif
+   
+      if(fitType == "nnls")
+ 
+      (T2axis,intAxis)                       =:ILFit(tauArrayFit,real(ampArrayFit),nrEchoesFit,guipar)
+      elseif(fitType == "biexp")
+         (resultEa,resultTa,resultEb,resultTb)=:BiExpFit(nrEchoesFit,tauArrayFit,real(ampArrayFit),guipar,depth)
+      elseif(fitType == "exp")
+         (resultE,resultT2)                   =:SingleExpFit(nrEchoesFit,tauArrayFit,real(ampArrayFit),guipar,depth)
+      endif
+
+      data2D[~,z] = real(ampArray)
+
+     
+         curplot("2d",1,1)
+         draw2d("false")
+         image(data2D)
+         title("CPMG decays")
+         ylabel("depth number")
+         xlabel("time")
+         axes("fontsize",11)
+         draw2d("true")
+  
+
+      depthStr = :makeDepthStr(depth,"space")
+
+      if(fitType == "exp")
+         if(enableLift=="yes")
+              resultsFit[z] = "depth = $depthStr$ um,\tE = $resultE$,\tT2 = $resultT2$ ms"
+         else
+             resultsFit[z] = "E = $resultE$,\tT2 = $resultT2$ ms"
+         endif
+      endif
+
+      if(fitType == "biexp")
+         if(enableLift=="yes")
+             resultsFit[z] = "depth = $depthStr$ um,\tEa = $resultEa$,\tTa = $resultTa$ ms,\tEb = $resultEa$,\tTb = $resultTa$ ms"
+         else
+             resultsFit[z] = "Ea = $resultEa$,\tTa = $resultTa$ ms,\tEb = $resultEa$,\tTb = $resultTa$ ms"
+         endif      
+      endif
+
+      depthStr = :makeDepthStr(depth,"zero")
+
+      :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit)
+
+      if(z==nrDepths-1)
+      # Output information to the CLI
+         pr "\n  data saved in:"
+         pr "\n  $dataDirectory$\\$expName$\\$expNr$"
+      endif
+
+      if(fitType == "nnls")
+         :saveDataILFit(newPar,T2axis,intAxis,depthStr)
+      endif
+    
+
+    next(z)
+
+# Increment the experiment number
+   keaNMR:incrementExperiment(incExpNr)
+   :saveLastPar()
+
+
+endproc(tauArray,ampArray)
+
+#------------------------------------
+procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   obj = findobj(0,"name","depthList")
+   depthListValues = getpar(0,obj,"list")
+   guipar = setlistvalue(guipar,"depthListValues","$depthListValues$")
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+
+   save("GUI.par",guipar)              # Save acq. parameters
+   save("acq.par",newPar)              # Save acq. parameters
+   
+   if(fitType=="biexp" | fitType =="exp")
+      save("resultsFit.par",resultsFit)  # Save results of the fit
+   endif
+
+   n = size(data1D)
+   m = matrix(3,n)
+   m[0,~] = (totalTime/1000)'
+   m[1,~] = real(data1D)'
+   m[2,~] = imag(data1D)'
+
+  
+      save("data-$depthStr$um.1d",data1D)     # Save data in Prospa format
+      save("data-$depthStr$um.pt1")           # Save plot
+      save("data-$depthStr$um.emf","emf1d")   # Save plot as picture
+
+      export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+      export2d(m,"data-$depthStr$um.dat")  # Save data for origin
+     
+      export1dpar("ab", "ascii",  "xyrc", "real")
+      export1d(totalTime, "T2Axis.dat")
+
+      export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+      export2d(data2D,"data2D.dat")  # Save data for origin
+
+      save("2Ddata.2d",data2D)     # Save 2d data in Prospa format
+      save("2Ddata.pt2")           # Save 2d plot
+      save("2Ddata.emf","emf2d")   # Save 2d plot as picture
+   
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")
+
+#------------------------------------
+procedure(saveDataILFit,newPar,T2axis,intAxis,depthStr)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+
+   n = size(intAxis)
+   m = matrix(2,n)
+   m[0,~] = T2axis'
+   m[1,~] = intAxis'
+
+   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+   export2d(m,"dataILFit-$depthStr$um.dat")  # Save data for origin
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")
+
+
+#----------------------------------------------------
+procedure(selectProbeHead)
+   
+  if(nrArgs==0);  n=0; endif
+    if (n==-1); return;  endif
+    
+
+   back = getcwd()
+
+   macroDir  = getmacropath()
+   spacerDir=macroDir+"\probeHeads"
+   setcwd(spacerDir)
+
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+   setctrlvalues(n,probeHeadPar)
+   setpar(n,22,"text",Spacer)
+
+   setcwd(back)
+    
+   message("NEW PROBE HEAD","New probe head parameters has been loaded","info") 
+
+endproc()
+
+#--------------------------------------------------
+procedure(saveLastPar)
+    guipar = getctrlvalues(0)
+    assignlist(guipar)
+
+    bak =  getcwd()
+    name = getwindowpar(0,"macroname")
+    name = rmext(name)
+    cd(getmacropath())
+
+    save("$name$LastExp.par",guipar)
+
+    cd(bak)
+
+endproc()
+#----------------------------------------------------
+procedure(loadLastPar,n)
+
+    back =  getcwd()
+   
+    name = getwindowpar(n,"macroname")
+    name = rmext(name)
+    cd(getmacropath())
+
+    if(isfile("$name$LastExp.par"))
+      guipar = load("$name$LastExp.par")
+      setctrlvalues(n,guipar)  
+    else
+      message("Warning!!!","File with initital parameters not found","info")
+    endif
+    
+    dir = getwindowpar(n,"macropath")
+    spacerDir=dir+"\probeHeads"
+       
+    setcwd(spacerDir)
+    probeHeadPar = load("selectedProbeHead.par")
+    assignlist(probeHeadPar)
+   setpar(n,22,"text",Spacer)
+
+  
+    setctrlvalues(n,probeHeadPar)
+   setcwd(back)
+
+endproc()
+#----------------------------------
+procedure(Move,y)
+
+   bak = getcwd()
+   cd(getmacropath())
+   cd("LiftControl")
+
+   if(y > 0)
+      slowSteps = trunc((y-50*trunc(y/50))/10)
+      MoveUpFast(trunc(y/50),63,0)
+      MoveUp(slowSteps,63,0)
+   else
+      slowSteps = trunc((-y-50*trunc(-y/50))/10)
+      MoveDownFast(trunc(-y/50),63,0)
+      MoveDown(slowSteps,63,0)
+   endif
+
+   cd(bak)
+  
+endproc()
+
+#------------------------------------
+procedure(updateDepthList)
+
+   bak = getcwd()
+
+   cd(getmacropath())
+
+   depthListPar = load("depthListCPMGFastAuto.lst","list")
+   obj = findobj(0,"name","depthList")
+   setpar(0,obj,"list",depthListPar)
+
+   cd(bak)
+
+endproc(depthListPar)
+#------------------------------------
+
+procedure(editDepthList,n)
+
+   bak = getcwd() 
+   showwindow(6)# show editor
+   cd(getmacropath())
+   edit("depthListCPMGFastAuto.lst")
+
+   cd(bak)
+
+endproc()
+#------------------------------------
+
+procedure(showTab,n)
+
+   nameTab1 = getpar(0,wv_tabs[0],"label")
+   nameTab2 = getpar(0,wv_tabs[1],"label")
+   nameTab3 = getpar(0,wv_tabs[2],"label")
+   nameTab4 = getpar(0,wv_tabs[3],"label")
+
+   nameTab1 = caseset(nameTab1,"first")
+   nameTab2 = caseset(nameTab2,"first")
+   nameTab3 = caseset(nameTab3,"first")
+   nameTab4 = caseset(nameTab4,"first")
+
+# shows the tab name in capital letters
+
+   if(n==1);  nameTab1 = caseset(nameTab1,"upper"); endif
+   if(n==2);  nameTab2 = caseset(nameTab2,"upper"); endif
+   if(n==3);  nameTab3 = caseset(nameTab3,"upper"); endif
+   if(n==4);  nameTab4 = caseset(nameTab4,"upper"); endif
+
+   setpar(0,wv_tabs[0],"label",nameTab1)
+   setpar(0,wv_tabs[1],"label",nameTab2)
+   setpar(0,wv_tabs[2],"label",nameTab3)
+   setpar(0,wv_tabs[3],"label",nameTab4)
+
+
+# shows the active tab and make invisible the rest 
+
+   if(n==1)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","true")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls4)-1)
+            setpar(0,wv_ctrls4[k],"visible","false")
+      next(k)
+   endif
+
+   if(n==2)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","true")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls4)-1)
+            setpar(0,wv_ctrls4[k],"visible","false")
+      next(k)
+   endif
+
+   if(n==3)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","true")
+      next(k)
+      for(k = 0 to size(wv_ctrls4)-1)
+            setpar(0,wv_ctrls4[k],"visible","false")
+      next(k)
+   endif
+
+   if(n==4)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls4)-1)
+            setpar(0,wv_ctrls4[k],"visible","true")
+      next(k)
+   endif
+
+
+endproc()
+
+#------------------------------------
+procedure(checkDepthList)
+
+  guipar = getctrlvalues(0)
+  assignlist(guipar)
+
+  lstDepths =:updateDepthList()
+  nrDepths = size(lstDepths)
+  depthArray = matrix(nrDepths)
+
+  for (m=0 to nrDepths-1)
+    depthArray[m]=eval(lstDepths[m])
+  next(m)
+  
+  for (m=0 to nrDepths-1)
+   
+    if(depthArray[m] < -500)
+       message("Error!!!","List of depths contains a value < 0","error")
+       return(1,0) 
+    endif()
+
+    if(depthArray[m] > maxDepth)
+       message("Error!!!","List of depths contains a value > $maxDepth$ um","error")
+       return(1,0) 
+    endif()
+
+    if(depthArray[m]%10 != 0)
+       message("Error!!!","List of depths contains a value not multiple of 10 um","error")
+       return(1,0)
+    endif()
+ 
+    if(m < nrDepths-1)
+       if(depthArray[m]<depthArray[m+1])
+          message("Error!!!","List of depths must sorted in desending order","error")
+          return(1,0)
+       endif
+    endif
+
+   
+  next(m)
+
+endproc(0,depthArray)
+#-----------------------------------------------------------
+procedure(load_parameters)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   bak = getcwd()
+   cd(dataDirectory) 
+   file = getfilename("load","Select parameter file","Parameter files","par")
+   plotfile = rmext(file) + ".pt1"
+   if(file != "cancel")
+      newpar = load(file)
+      setctrlvalues(0,newpar)
+      if(isfile(plotfile))
+         load(plotfile)
+      endif
+   endif
+
+   cd(bak)
+       
+endproc()
+#--------------------------------------------
+procedure(enableNorm,start,end,check)
+
+   status = getpar(0,check,"value")
+   if(status==1)
+      for(k = start to end)
+         setpar(0,k,"enable","true")
+      next(k)
+   else
+      for(k = start to end)
+         setpar(0,k,"enable","false")
+      next(k)
+   endif
+
+endproc()
+#--------------------------------------------
+procedure(SingleExpFit,num,tm,amp,guipar,depth)
+
+   assignlist(guipar)
+
+   if(num < 2)
+     return("0","0")
+   endif
+
+   curplot("1d",2,1) 
+
+  # Make local copies of data but with reduced array sizes  
+   E = submatrix(amp,0,num-1)
+   abscissa = submatrix(tm,0,num-1)
+
+  # Get a best fit
+   try
+      (fit,E0,T2,E0err,T2err) = t2fit(abscissa,E)
+ 
+      resultE  = errorstr(E0,E0err,1)       
+      resultT2 = errorstr(T2,T2err,1)
+      pr "\n"
+if(depth!=-1)
+     pr "Depth = $depth$ um\n"
+endif
+      pr "E = $resultE$,T2 = $resultT2$\n"    
+   catch
+      pr "fitting error\n"
+      return("0","0")
+   endtry
+ 
+  # Display raw data and best fit comparison
+  
+   drawplot("false")
+           
+      plot(abscissa,E)
+         trace("tracetype","none",
+               "symbolshape","opensquare",
+               "symbolsize",3,
+               "symbolcolor",[255,0,0])
+         axes("fontsize",11)
+      
+   hold("on")
+    
+      plot(abscissa,fit)
+         trace("tracetype","lines",
+               "symbolshape","none",
+               "tracecolor",[255,255,0])
+         axes("fontsize",11)
+
+
+      title("text","E = $resultE$, T_(2) = $resultT2$ ms","size",12)
+      ylabel("text","Signal amplitude","size",12)
+      xlabel("text","time (ms)","size",12)
+
+
+   hold("off")
+
+   drawplot("true")
+
+endproc(resultE,resultT2)
+
+###################################################################
+ 
+procedure(BiExpFit,num,tm,amp,guipar,depth)
+
+   assignlist(guipar)
+
+   if(num < 2)
+     return("0","0","0","0")
+   endif
+
+   curplot("1d",2,1) 
+
+  # Make local copies of data but with reduced array sizes  
+   E = submatrix(amp,0,num-1)
+   abscissa = submatrix(tm,0,num-1)#/1000
+
+  # Get a best fit
+   try
+     (fit,Ea,Ta,Eb,Tb,EaErr,TaErr,EbErr,TbErr) = biexpfit(abscissa,E)
+     resultEa  = errorstr(Ea,EaErr,1)
+     resultTa  = errorstr(Ta,TaErr,1)
+     resultEb  = errorstr(Eb,EbErr,1)    
+     resultTb  = errorstr(Tb,TbErr,1)
+     pr "\n"
+if(depth!=-1)
+     pr "Depth = $depth$ um\n"
+endif
+     pr "Ea = $resultEa$, Ta = $resultTa$\n"
+     pr "Eb = $resultEb$, Tb = $resultTb$\n"
+   catch
+    pr "fitting error\n"
+    return("0","0","0","0")
+   endtry
+ 
+  # Display raw data and best fit comparison
+   
+   drawplot("false")
+
+      plot(abscissa,E)
+         trace("tracetype","none",
+               "symbolshape","opensquare",
+               "symbolsize",3,
+               "symbolcolor",[255,0,0])
+         axes("fontsize",11)
+  
+   hold("on")
+         
+       plot(abscissa,fit)
+         trace("tracetype","lines",
+               "symbolshape","none",
+               "tracecolor",[255,255,0])
+         axes("fontsize",11)
+
+
+      title("text","Results in CLI","size",15)
+      ylabel("text","Signal amplitude","size",12)
+      xlabel("text","time (ms)","size",12)
+   
+   hold("off")
+
+   drawplot("true")
+
+endproc(resultEa,resultTa,resultEb,resultTb)
+
+###################################################################
+
+procedure(ILFit,x,y,N,guipar)
+
+    assignlist(guipar)
+
+   if(N > 100)
+     x_steps = 100    
+     (timeDat,yData) = pseudologbin(x,y,100)
+   else
+     timeDat = x
+     yData   = y
+     x_steps = N-1
+   endif
+
+
+# Invert meaning of alpha and reduce range
+   alpha = 10^(8-log10(alpha))
+
+   guipar = guipar + ["exp_type = \"exp(-t/T)\"",
+          "designMat = \"exp(-xData'*(1/xSpec))\"",
+          "alpha = $alpha$",
+          "logBin = \"true\"",
+          "weightBins = \"true\"",
+          "x_steps = $x_steps$"]
+
+# Invert using Lawson and Hanson inverstion
+   (specX,specY) = LHInvert(x,y,guipar)
+
+# Get fit parameters
+  (fit,chisq) = LHInvert:calcFit("exp(-t/T)",specX,specY,x,y)
+curplot("1d",2,1) 
+
+   drawplot("false")
+  
+   plot(x,y)
+      trace("tracetype","none",
+            "symbolshape","opensquare",
+            "symbolcolor",[255,255,0])
+      axes("fontsize",11)
+   
+   hold("on")
+   
+   plot(x,fit,"symbolshape","none",
+                      "tracetype","lines",
+                      "tracecolor", [255,255,255],
+                      "tracewidth",1)
+ xlabel("text","time (ms)","size",12)
+      ylabel("Echo sum (a.u)")
+      title("text","Echo attenuation data (with IL fit)","size",12)
+
+ 
+   drawplot("true")
+   hold("off")
+
+ curplot("1d",3,1) 
+
+   draw1d("false")
+      plot(specX,specY)
+      xlabel("text","log_(10)(T) ms","size",12)
+      ylabel("text","Amplitude","size",12)
+      title("text","Relaxation Spectrum","size",12)
+      axes("xmapping","log")
+      trace("tracetype", "lines", "symbolshape", "none",
+            "tracecolor", [255,255,0]) 
+   draw1d("true")
+
+endproc(specX,specY)
+#----------------------------------------
+procedure(makeDepthStr,depth,mode)
+
+   depthStr = ""
+
+   if (mode=="space")
+      if(depth >= 10000)
+         depthStr = "$depth$"
+      elseif(depth >= 1000) 
+         depthStr = "$depth$ "
+      elseif(depth >= 100) 
+         depthStr = "$depth$  "
+      elseif(depth >= 10) 
+         depthStr = "$depth$   "
+      else
+         depthStr = "$depth$    "
+      endif
+   endif
+
+   if (mode=="zero")
+      if(depth >= 10000)
+         depthStr = "$depth$"
+      elseif(depth >= 1000) 
+         depthStr = "0$depth$"
+      elseif(depth >= 100) 
+         depthStr = "00$depth$"
+      elseif(depth >= 10) 
+         depthStr = "000$depth$"
+      else
+         depthStr = "0000$depth$"
+      endif
+   endif
+
+
+endproc(depthStr)
+

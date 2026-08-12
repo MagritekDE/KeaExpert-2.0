@@ -1,0 +1,1326 @@
+#########################################################
+# Magritek
+# www.magritek.com, March 2013
+# Prospa V3.12
+#########################################################
+
+
+procedure(profiles)
+
+   n = :windowdefinition()
+   setwindowpar(n,"exit_procedure",":saveLastPar()")
+   :loadLastPar(n)
+   :enableContrastPar(n)
+   :enableNorm(81,82,83)
+
+# Cache all proc calls
+   keaNMR:initCache(getmacropath(),"CPMGFast")
+
+   showwindow(n) 
+
+endproc()
+#--------------------------------------
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Profiles", -1, -1, 485, 286)
+
+      # Define all controls with basic parameters
+      statictext(1, 410, 195, "right", "Warn")
+      statictext(2, 234, 37, "right", "Contrast1")
+      checkbox(3, 424, 160, "no,yes", "no")
+      button(4, 176, 238, 47, 21, "Help",
+         help("Kea");)
+      statictext(5, 52, 199, "right", "directory")
+      statictext(6, 60, 215, "right", "Exp. name")
+      textbox(7, 240, 34, 60,
+        :setParContrast1();)
+      statictext(8, 234, 62, "right", "Contrast2")
+      textbox(9, 240, 58, 60,
+        :setParContrast2();)
+      textbox(10, 240, 82, 60,
+        :setParContrast3();)
+      statictext(11, 234, 86, "right", "Contrast3")
+      checkbox(12, 303, 39, "no,yes", "yes")
+      checkbox(13, 303, 63, "no,yes", "no",
+           :setEnableContrast2();)
+      checkbox(14, 303, 88, "no,yes", "no",
+           :setEnableContrast3();)
+      checkbox(15, 302, 116, "no,yes", "no",
+           :setEnableW();)
+      statictext(16, 107, 315, "right", "best resolution")
+      textbox(17, 113, 310, 40)
+      statictext(18, 249, 287, "right", "Echotime0")
+      textbox(19, 260, 282, 40)
+      textbox(20, 121, 10, 40,
+        :setResolution();)
+      statictext(21, 113, 13, "right", "Resolution (um)")
+      textbox(22, 55, 131, 108,
+        200;)
+      textbox(23, 121, 83, 40,
+        :setParContrast1();
+        obj = findobj(0,"name","enableContrast2");
+        if(1==getpar(0,obj,"value"));
+        :setParContrast2();
+        endif;
+        obj = findobj(0,"name","enableContrast3");
+        if(1==getpar(0,obj,"value"));
+        :setParContrast3();
+        endif;
+        obj = findobj(0,"name","enableW");
+        if(1==getpar(0,obj,"value"));
+        :setParAmpIni();
+        :setParAmpFin();
+        endif;)
+      statictext(24, 113, 86, "right", "Number of echoes")
+      textbox(25, 424, 130, 40)
+      statictext(26, 113, 38, "right", "Repetition time (ms)")
+      statictext(27, 415, 135, "right", "Delay (s)")
+      statictext(28, 113, 62, "right", "Number of scans")
+      textbox(29, 121, 34, 40)
+      button(30, 5, 238, 47, 21, "Run",
+         ch = :setResolution();
+         :runprofile(ch);)
+      button(31, 119, 238, 47, 21, "Load",
+         keaNMR:load_parameters();)
+      button(32, 421, 238, 47, 21, "Close",
+         :saveLastPar();
+         closewindow(0);)
+      textbox(33, 424, 10, 40)
+      statictext(34, 416, 13, "right", "Initial depth (um)")
+      textbox(35, 424, 34, 40)
+      statictext(36, 416, 38, "right", "Final depth (um)")
+      groupbox(37, "", 5, 0, 464, 182)
+      button(38, 62, 238, 47, 21, "Stop")
+      statictext(39, 285, 116, "right", "Weight function")
+      textbox(40, 240, 130, 60,
+        :setParAmpIni();)
+      textbox(41, 424, 58, 40)
+      statictext(42, 416, 62, "right", "Step size (um)")
+      statictext(43, 230, 134, "right", "Amp. ini.")
+      statictext(44, 230, 158, "right", "Amp. fin.")
+      textbox(45, 240, 155, 60,
+        :setParAmpFin();)
+      statictext(46, 249, 315, "right", "Number of points")
+      textbox(47, 113, 282, 40)
+      textbox(48, 260, 310, 40)
+      statictext(49, 387, 287, "right", "Echo time")
+      statictext(50, 142, 115, "right", "ProbeHead")
+      textbox(51, 399, 282, 40)
+      statictext(52, 419, 210, "right", "overwrite")
+      checkbox(53, 425, 210, "no,yes", "no")
+      statictext(54, 107, 287, "right", "Gradient (kHz/mm) ")
+      textbox(55, 121, 58, 40)
+      textbox(56, 424, 105, 40)
+      statictext(57, 415, 113, "right", "Number of Exp.")
+      statictext(58, 107, 343, "right", "b1Freq")
+      textbox(59, 70, 187, 250)
+      statictext(60, 52, 185, "right", "Working")
+      button(61, 330, 186, 21, 22, "...",
+         keaNMR:setWorkingDir();)
+      textbox(62, 113, 338, 40)
+      button(63, 179, 210, 22, 22, "...",
+         keaFiles:setExpName();)
+      textbox(64, 70, 210, 101)
+      groupbox(65, "", 4, 177, 465, 59)
+      textbox(66, 399, 338, 40)
+      statictext(67, 387, 343, "right", "90Amplitude")
+      statictext(68, 103, 159, "right", "Max. depth (um) ")
+      textbox(69, 110, 156, 52)
+      statusbox(70)
+      statictext(71, 107, 371, "right", "rxPhase")
+      textbox(72, 399, 366, 40)
+      statictext(73, 414, 160, "right", "Wait for keyinput")
+      statictext(74, 387, 371, "right", "180Amplitude")
+      textbox(75, 260, 338, 40)
+      statictext(76, 249, 343, "right", "pulseLength")
+      textbox(77, 399, 310, 40)
+      statictext(78, 387, 315, "right", "bandwidth")
+      textbox(79, 113, 366, 40)
+      button(80, 8, 130, 45, 22, "Update",
+         :selectProbeHead();)
+      textbox(81, 240, 10, 60)
+      statictext(82, 235, 15, "right", "Normalization")
+      checkbox(83, 303, 16, "no,yes", "no",
+           :enableNorm(81,82,83);)
+      textbox(84, 260, 366, 40)
+      statictext(85, 249, 371, "right", "echoShift")
+      statictext(86, 416, 87, "right", "Enable Lift")
+      checkbox(87, 424, 87, "no,yes", "no")
+      textbox(88, 280, 210, 40)
+      statictext(89, 270, 215, "right", "Exp. Nr.")
+
+     # Set other control parameters
+      setpar(n,3,"valueID","waitKey")
+      setpar(n,4,"valueID","help")
+      setpar(n,7,"valueID","parContrast1")
+      setpar(n,9,"valueID","parContrast2")
+      setpar(n,10,"valueID","parContrast3")
+      setpar(n,12,"valueID","enableContrast1")
+      setpar(n,13,"valueID","enableContrast2")
+      setpar(n,14,"valueID","enableContrast3")
+      setpar(n,15,"valueID","enableW")
+      setpar(n,17,"valueID","bestResol")
+      setpar(n,19,"valueID","echoTime0")
+      setpar(n,20,"valueID","resolution")
+      setpar(n,22,"valueID","probeHead")
+      setpar(n,23,"valueID","nrEchoes",
+                  "type","integer",
+                  "range",[1,8192])
+      setpar(n,25,"valueID","expDelay")
+      setpar(n,29,"valueID","repTime")
+      setpar(n,30,"valueID","run")
+      setpar(n,31,"valueID","load")
+      setpar(n,32,"valueID","close")
+      setpar(n,33,"valueID","initDepth")
+      setpar(n,35,"valueID","finalDepth")
+      setpar(n,38,"valueID","stop",
+                  "mode","abort")
+      setpar(n,40,"valueID","parAmpIni")
+      setpar(n,41,"valueID","stepSize")
+      setpar(n,45,"valueID","parAmpFin")
+      setpar(n,47,"valueID","gradient")
+      setpar(n,48,"valueID","nrPnts")
+      setpar(n,51,"valueID","echoTime")
+      setpar(n,53,"valueID","warnOverwrite")
+      setpar(n,55,"valueID","nrScans")
+      setpar(n,56,"valueID","nrExp")
+      setpar(n,59,"valueID","dataDirectory")
+      setpar(n,62,"valueID","b1Freq")
+      setpar(n,64,"valueID","expName")
+      setpar(n,66,"valueID","90Amplitude")
+      setpar(n,69,"valueID","maxDepth")
+      setpar(n,72,"valueID","180Amplitude")
+      setpar(n,75,"valueID","pulseLength")
+      setpar(n,77,"valueID","bandwidth")
+      setpar(n,79,"valueID","rxPhase")
+      setpar(n,81,"valueID","refSignal")
+      setpar(n,83,"valueID","refSignalCheck")
+      setpar(n,84,"valueID","echoShift")
+      setpar(n,87,"valueID","enLift")
+      setpar(n,88,"valueID","expNr")
+
+      setpar(n,69,"enable","false")
+endproc(n)
+
+
+
+
+#---------------------------------------------------------------
+procedure(runprofile,ch)
+
+   if(ch==1); return; endif 
+   PulseSeqName = "CPMGFast"
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+#--Check spacer -------------------------------------------------
+   macroDir  = getmacropath()
+   spacerDir=macroDir+"\probeHeads"
+   setcwd(spacerDir)
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+   
+  
+   if(Spacer!=probeHead)
+   if( "no"== query("Warning","The probe has been modified, do you want to update it and continue?")) 
+        cd(back)
+        return(1)
+      endif   
+   endif
+   setctrlvalues(0,probeHeadPar)
+   setpar(0,22,"text",Spacer)
+   setcwd(macroDir)
+#-----------------------------------------------------------------------
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+
+ if(:checkOverwrite()==1); return; endif;
+
+# checks only when enable is "yes"
+
+    if(1==:setParContrast1(0));                 return ; endif
+    obj = findobj(0,"name","enableContrast2")
+    if(1==getpar(0,obj,"value"))
+     if(1==:setParContrast2(0));               return ; endif
+    endif
+    obj = findobj(0,"name","enableContrast2")
+    if(1==getpar(0,obj,"value"))
+     if(1==:setParContrast3(0));               return ; endif
+    endif
+    obj = findobj(0,"name","enableW");
+    if(1==getpar(0,obj,"value"));
+     if(1==:setParAmpIni(0));                  return ; endif
+     if(1==:setParAmpFin(0));                  return ; endif
+    endif
+
+    nrSteps = round(finalDepth - initDepth)/stepSize +1
+    guipar = setlistvalue(guipar,"nrSteps","$nrSteps$")
+      
+        
+# Check for output directory
+   if(isdir(dataDirectory) == 0)
+      message("Error","Working directory doesn't exist")
+      abort("")
+   endif
+   
+
+    
+   cd("$PulseSeqName$")
+   lastParBackdoor = load("CPMGFastLastExp.par")
+   setcwd(macroDir)   
+   
+   newPar = mergelists(guipar,lastParBackdoor)
+ 
+   dw = 0.5
+
+   if(refSignalCheck == "no")
+      newPar = setlistvalue(newPar,"refSignal","1")
+   endif
+
+   newPar = setlistvalue(newPar,"bandwidth","2000")
+   newPar = setlistvalue(newPar,"bandwidthFile","0.5")
+   newPar = setlistvalue(newPar,"nrPnts","$nrPnts$")
+   newPar = setlistvalue(newPar,"echoTime","$echoTime$")
+   newPar = setlistvalue(newPar,"acqTime","$dw*nrPnts/1000$")
+   newPar = setlistvalue(newPar,"dwellTime","0.5")
+   newPar = setlistvalue(newPar,"showFreqDomain","\"no\"")
+   newPar = setlistvalue(newPar,"autoPhase","\"no\"")
+   newPar = setlistvalue(newPar,"fitType","\"none\"")
+   newPar = setlistvalue(newPar,"saveData","\"false\"")
+   newPar = setlistvalue(newPar,"excecutedBackdoor","\"yes\"")
+   newPar = setlistvalue(newPar,"fitMode","\"manual\"")
+
+  
+  assignlist(newPar)
+
+   # checking measuring depth range
+    if((initDepth < -200)|(initDepth>maxDepth))
+      message("Warning !!!","Initial depth out of range","info")
+      return
+    endif
+
+    if((finalDepth < -1000)|(finalDepth>maxDepth))
+      message("Warning !!!","Final depth out of range","info")
+      return
+    endif
+  if((initDepth < finalDepth))
+      message("Warning !!!","Initial depth has to be larger than final depth","info")
+      return
+    endif
+
+  
+    if((enableW=="yes"))
+    
+    hidewindow(3)
+    hidewindow(2)
+    multiplot("1d",3,1)
+    setwindowpar(3,"dimensions",[0.00,38,1000,400])
+    setwindowpar(2,"dimensions",[740,483,540,265])
+    showwindow(3)
+    showwindow(2)
+
+
+else
+
+    hidewindow(3)
+    hidewindow(2)
+    multiplot("1d",2,1)
+    setwindowpar(3,"dimensions",[0.00,38,1000,400])
+    setwindowpar(2,"dimensions",[740,483,540,265])
+    showwindow(3)
+    showwindow(2)
+    endif
+     
+    depthAxis       = matrix(nrSteps)
+    totalTime       = matrix(nrEchoes)
+#  Calculate time axis (ms) 
+   totalTime = [0:1:nrEchoes-1]*echoTime/1000
+
+#  Calculate depth (um)
+   depthAxis = linvec(initDepth,initDepth+stepSize*(nrSteps-1),nrSteps)
+   
+   wintitle = getwindowpar(0,"title")
+   
+# Check for total RF duty cycle
+# for PM25----------------------------------------------
+       if(pulseLength*nrEchoes/repTime>1.6)
+# for PM5----------------------------------------------
+     #   if(pulseLength*nrEchoes/repTime>3)
+    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
+    return
+  endif
+
+
+
+   time_per_profile = 0
+#  loop number of experiments
+time(0)
+currenttime=0
+exptime           = matrix(nrExp)
+contrast1matrix   = matrix(nrSteps,nrExp)
+contrast2matrix   = matrix(nrSteps,nrExp)
+contrast3matrix   = matrix(nrSteps,nrExp)
+wmatrix           = matrix(nrSteps,nrExp)
+
+contrast1matrixb   = matrix(nrSteps,nrExp+1)
+contrast2matrixb   = matrix(nrSteps,nrExp+1)
+contrast3matrixb   = matrix(nrSteps,nrExp+1)
+wmatrixb           = matrix(nrSteps,nrExp+1)
+
+contrast1matrixb[~,0]=depthAxis
+contrast2matrixb[~,0]=depthAxis
+contrast3matrixb[~,0]=depthAxis
+wmatrixb[~,0]=depthAxis
+if nrExp>1 
+multiplot("2d",2,1)
+endif
+
+
+for(ne = 0 to nrExp-1)
+
+  #  set values to zero
+    contrast1Axis   = matrix(nrSteps)
+    contrast2Axis   = matrix(nrSteps)
+    contrast3Axis   = matrix(nrSteps)
+    wAxis           = matrix(nrSteps)
+    data2D          = matrix(nrEchoes,nrSteps)
+    data2Dtrans     = matrix(nrSteps+1,nrEchoes)     
+  
+ # Move to lift into position
+   if((enLift=="yes"))
+ 
+      :Move(-100)  # Move down 70 um
+         setpar(0,70,"text","MOUSE going home...")
+   
+      MoveHome(-1) # Go home
+
+      if(ne == 0)
+         pause(0.0035*(maxDepth)+ 0.5)  # Wait for home completion 
+      else
+         pause(0.0035*(maxDepth-depth)+ 0.5) # Wait for home completion 
+      endif
+   endif
+
+   if ((nrExp>1)&(waitKey=="no")&(expDelay!=0)& ne>0 & (expDelay!=""))
+         pr "Waiting for experiment no.$ne+1$ \r" 
+         pause(expDelay)
+   endif
+
+
+   if((enLift=="yes")) 
+      :Move(-70)                  # moves down 70 um to avoid mechanical hyteresis
+      setpar(0,70,"text","Moving to $initDepth$ um")
+      :Move(-maxDepth+initDepth)  # Move to initial measurement position
+      #  wait for key input
+      if((waitKey=="yes")&(ne>0))      
+         if(query("Experiment ready - $ne$/$nrExp$","Press ENTER to continue") == "no")
+            return
+         endif
+      endif
+   else
+      if(query("Positioning","Set initial position to: $initDepth$ um") == "no")
+      return
+      endif
+   endif
+
+
+    depth = initDepth           # measuring depth 
+
+    for(z = 0 to nrSteps-1)
+    
+    if(nrExp>1)
+       setpar(0,70,"text","Depth: $depth$ um\tExperiment: $ne+1$/$nrExp$")
+    else
+       setpar(0,70,"text","Depth: $depth$ um")
+    endif
+       
+   
+   setcwd(macroDir)
+
+
+   CPMGFast:backdoor(newPar)
+
+       curplot("1d",1,1)
+      (totalTime,data1D)=getplotdata("1d")
+
+       data2D[~,z] = real(data1D)
+       data2Dtrans[0,~]= trans(totalTime)
+       
+       data2Dtrans[z+1,~]= trans(real(data1D))
+       curplot("2d",1,1)
+       image(data2D)
+       
+     # calculate the contrast and W axe
+         (echoIni,echoFin)=:extractEchoIniFin(parContrast1)
+         contrast1Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+  
+       if(enableContrast2=="yes") 
+          (echoIni,echoFin)=:extractEchoIniFin(parContrast2)
+          contrast2Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+       endif 
+
+       if(enableContrast3=="yes") 
+          (echoIni,echoFin)=:extractEchoIniFin(parContrast3)
+          contrast3Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+       endif
+ 
+       if(enableW=="yes") 
+          (echoIni,echoFin)=:extractEchoIniFin(parAmpIni)
+          ampIni = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+
+          (echoIni,echoFin)=:extractEchoIniFin(parAmpFin)
+          ampFin = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+          wAxis[z] = ampFin/ampIni
+          if((wAxis[z]>1)|(wAxis[z])<0); wAxis[z]=0; endif
+       endif 
+      # Plot
+        curplot("1d",2,1)
+        drawplot("false")
+
+        plot(depthAxis,contrast1Axis,
+         "tracetype", "lines",
+         "tracecolor",[0,0,255],
+         "symbolshape","opensquare",
+         "symbolcolor",[0,0,255])
+     
+        hold("on")
+
+        if(enableContrast2=="yes")
+           plot(depthAxis,contrast2Axis,
+               "tracetype", "lines",
+               "tracecolor",[255,0,0],
+               "symbolshape","opensquare",
+               "symbolcolor",[255,0,0])
+        endif
+
+        if(enableContrast3=="yes")
+              plot(depthAxis,contrast3Axis,
+               "tracetype", "lines",
+               "tracecolor",[0,255,0],
+               "symbolshape","opensquare",
+               "symbolcolor",[0,255,0])
+        endif
+
+        xlabel("Depth (um)") 
+        ylabel("Amplitude")
+        title("depth ($(z+1)$/$nrSteps$)")
+        hold("off")
+        drawplot("true")
+
+        if(enableW=="yes") 
+           curplot("1d",3,1)
+           drawplot("false")
+           plot(depthAxis,wAxis,
+            "tracetype", "lines",
+            "tracecolor",[0,0,255],
+            "symbolshape","circle",
+            "symbolcolor",[0,0,255])
+           xlabel("Depth (um)") 
+           ylabel("w[($parAmpIni$),($parAmpFin$)]")
+           title("depth ($(z+1)$/$nrSteps$)")
+           drawplot("true")
+        endif
+
+        #  saving data
+      
+        tempData = :fillDataForExport(depthAxis,contrast1Axis,contrast2Axis,contrast3Axis,wAxis,guipar)
+
+        setcwd(dataDirectory)
+        mkdir(expName)
+        cd(expName)
+        mkdir("$expNr$")
+        cd("$expNr$")
+
+        export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+       
+        if(nrExp==1)
+          export2d(tempData,"$expName$.dat")
+          export2d(data2Dtrans,"$expName$-decays.dat")
+          save("$expName$.2d",data2D)
+          save("$expName$-position.1d",depthAxis)
+          save("$expName$profile.pt1")
+          curplot("2d",1,1)
+         save("$expName$profile.pt2")
+           
+        else
+            if(ne<9)
+             export2d(tempData,"$expName$0$ne+1$.dat")
+             save("$expName$0$ne+1$.2d",data2D)
+               export2d(data2Dtrans,"$expName$0$ne+1$-decays.dat")
+             save("$expName$0$ne+1$-position.1d",depthAxis)
+             save("$expName$0$ne+1$profile.pt1")
+             curplot("2d",1,1)
+             save("$expName$0$ne+1$profile.pt2")
+           else   
+             export2d(tempData,"$expName$$ne+1$.dat")
+             save("$expName$$ne+1$.2d",data2D)
+             export2d(data2Dtrans,"$expName$$ne+1$-decays.dat")
+             save("$expName$$ne+1$-position.1d",depthAxis)
+             save("$expName$$ne+1$profile.pt1")
+             curplot("2d",1,1)
+             save("$expName$0$ne+1$profile.pt2")
+
+           endif
+        endif
+####Saving profile matrices#####
+
+if nrExp>1
+   if(enableContrast1=="yes")
+   
+   contrast1matrix[~,ne]=contrast1Axis
+   curplot("2d",2,1)
+   image(contrast1matrix)
+   ylabel("Experiment No.")
+   xlabel ("Depth")
+   curplot("2d",2,1)
+   save("$expName$-contrast1matrix.pt2")
+   save("$expName$-contrast1matrix.2d",contrast1matrix)
+   contrast1matrixb[~,ne+1]=contrast1Axis
+   contrast1matrixb=contrast1matrixb'
+   export2d(contrast1matrixb,"$expName$contrast1matrix.dat")
+   contrast1matrixb=contrast1matrixb'
+   endif
+
+
+   if(enableContrast2=="yes")
+   contrast2matrix[~,ne]=contrast2Axis
+   save("$expName$-contrast2matrix.2d",contrast2matrix)
+   contrast2matrixb[~,ne+1]=contrast2Axis
+   contrast2matrixb=contrast2matrixb'
+   export2d(contrast2matrixb,"$expName$contrast2matrix.dat")
+   contrast2matrixb=contrast2matrixb'
+
+   endif
+
+if(enableContrast3=="yes")
+   contrast3matrix[~,ne]=contrast3Axis
+  save("$expName$-contrast3matrix.2d",contrast3matrix)
+   contrast3matrixb[~,ne+1]=contrast3Axis
+   contrast3matrixb=contrast3matrixb'
+   export2d(contrast3matrixb,"$expName$contrast3matrix.dat")
+   contrast3matrixb=contrast3matrixb'
+
+
+   endif
+
+if(enableW=="yes")
+   wmatrix[~,ne]=wAxis
+   save("$expName$-wmatrix.2d",wmatrix)
+wmatrixb[~,ne+1]=wAxis
+   wmatrixb=wmatrixb'
+   export2d(wmatrixb,"$expName$wmatrix.dat")
+   wmatrixb=wmatrixb'
+
+
+   endif
+
+
+endif        
+
+ setcwd(macroDir)
+
+   :saveLastPar()
+   depth = depth + stepSize
+   if(z<(nrSteps-1))
+      if((enLift=="yes")) 
+         :Move(stepSize) # Move to next position
+      else
+         if(query("Positioning","Set position to: $depth$ um") == "no")
+         return
+         endif
+      endif
+   endif
+
+
+
+
+
+   next(z)
+   setcwd(dataDirectory)
+   cd(expName)
+   cd("$expNr$")
+
+ # delete not well defined points in w   
+    if(enableW=="yes") 
+        maxAmp = max(contrast1Axis)
+        for(z = 0 to nrSteps-1)
+          if(contrast1Axis[z]<maxAmp/3)
+          wAxis[z]=0
+          endif
+        next z
+           curplot("1d",3,1)
+           drawplot("false")
+           plot(depthAxis,wAxis,
+            "tracetype", "lines",
+            "tracecolor",[255,255,255],
+            "symbolshape","circle",
+            "symbolcolor",[255,255,255])
+           xlabel("Depth (um)") 
+           ylabel("w[($parAmpIni$),($parAmpFin$)]")
+           title("depth ($(z+1)$/$nrSteps$)")
+           drawplot("true")
+     endif
+
+   currenttime=currenttime+time()
+   exptime[ne]=currenttime
+
+  export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+  export2d(exptime,"$expName$exptime.dat") #Save experimental time for origin
+  setcwd(macroDir) 
+  next(ne)
+  
+endproc()
+#-----------------------------------
+
+procedure(fillDataForExport,depthAxis,contrast1Axis,contrast2Axis,contrast3Axis,wAxis,guipar)
+  
+        assignlist(guipar)
+
+        if((enableContrast2=="no")&((enableContrast3=="no"))&(enableW=="no"))
+           tempData = matrix(2,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+        endif
+
+        if((enableContrast2=="yes")&((enableContrast3=="no"))&(enableW=="no"))
+           tempData = matrix(3,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast2Axis'
+        endif
+
+        if((enableContrast2=="no")&((enableContrast3=="yes"))&(enableW=="no"))
+           tempData = matrix(3,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast3Axis'
+        endif
+
+        if((enableContrast2=="yes")&((enableContrast3=="yes"))&(enableW=="no"))
+           tempData = matrix(4,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast2Axis'
+           tempData[3,~] = contrast3Axis'
+        endif
+
+        if((enableContrast2=="no")&((enableContrast3=="no"))&(enableW=="yes"))
+           tempData = matrix(3,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = wAxis'
+        endif
+
+        if((enableContrast2=="yes")&((enableContrast3=="no"))&(enableW=="yes"))
+           tempData = matrix(4,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast2Axis'
+           tempData[3,~] = wAxis'
+        endif
+
+        if((enableContrast2=="no")&((enableContrast3=="yes"))&(enableW=="yes"))
+           tempData = matrix(4,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast3Axis'
+           tempData[3,~] = wAxis'
+        endif
+
+        if((enableContrast2=="yes")&((enableContrast3=="yes"))&(enableW=="yes"))
+           tempData = matrix(5,nrSteps)
+           tempData[0,~] = depthAxis'
+           tempData[1,~] = contrast1Axis'
+           tempData[2,~] = contrast2Axis'
+           tempData[3,~] = contrast3Axis'
+           tempData[4,~] = wAxis'
+        endif
+
+endproc(tempData)
+#----------------------------------------------------
+procedure(selectProbeHead)
+   
+    if(nrArgs==0);  n=0; endif
+    if (n==-1); return;  endif
+    
+
+   back = getcwd()
+
+   dir = getwindowpar(n,"macropath")
+   spacerDir=dir+"\probeHeads"
+       
+   setcwd(spacerDir)
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+   
+   setctrlvalues(n,probeHeadPar)
+   setpar(n,22,"text",Spacer)
+
+   setcwd(back)
+   message("","New probe head parameters has been loaded","info") 
+
+endproc()
+#------------------------
+procedure(setResolution,n)
+
+    if(nrArgs==0);  n=0; endif
+    if (n==-1); return;  endif    
+ 
+    guipar = getctrlvalues(n)
+    assignlist(guipar)
+    obj = findobj(n,"name","resolution")
+    
+    try
+     a = resolution/1
+    catch
+       setpar(n,obj,"enable","false")
+       message("Error !!!","Resolution must be a number.","error")
+       templist = [" resolution = $bestResol$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+    endtry
+ 
+    if (resolution < bestResol)
+       setpar(n,obj,"enable","false")
+       message("Warning !!!","Resolution < resolution limit ($bestResol$ um)","info")
+       templist = [" resolution = $bestResol$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+    endif
+
+   sliceThickness = 10*round(1e6/(pulseLength*gradient)/10)
+   if (resolution > sliceThickness)
+       setpar(n,obj,"enable","false")
+       message("Warning !!!","Resolution > excited slice thickness ($sliceThickness$ um).","info")
+       templist = [" resolution = $sliceThickness$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+   endif
+
+
+
+   dw       = 0.5
+   nrPnts   = round(1e6/(gradient*dw*resolution))
+   echoTime = echoTime0 + round(dw*nrPnts)-pulseLength
+   
+   templist = mkparlist()
+   setctrlvalues(n,templist)
+
+endproc(0)
+#-----------------------------
+procedure(setEnableContrast2,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     obj = findobj(n,"name","enableContrast2")
+     if(getpar(n,obj,"value"))
+         obj = findobj(n,"name","parContrast2")
+         setpar(n,obj,"enable","true") 
+     else
+         obj = findobj(n,"name","parContrast2")
+         setpar(n,obj,"enable","false") 
+     endif
+endproc()
+#------------------------
+procedure(setEnableContrast3,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     obj = findobj(n,"name","enableContrast3")
+     if(getpar(n,obj,"value"))
+         obj = findobj(n,"name","parContrast3")
+         setpar(n,obj,"enable","true")
+     else
+         obj = findobj(n,"name","parContrast3")
+         setpar(n,obj,"enable","false") 
+     endif
+endproc()
+#------------------------
+procedure(setEnableW,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     obj = findobj(n,"name","enableW")
+     if(getpar(n,obj,"value"))
+           obj = findobj(n,"name","parAmpIni")
+           setpar(n,obj,"enable","true")
+           obj = findobj(n,"name","parAmpFin")
+           setpar(n,obj,"enable","true") 
+     else
+           obj = findobj(n,"name","parAmpIni")
+           setpar(n,obj,"enable","false")
+           obj = findobj(n,"name","parAmpFin")
+           setpar(n,obj,"enable","false")   
+     endif
+
+endproc()
+#-------------------------
+procedure(setParContrast1,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     guipar = getctrlvalues(n)
+     assignlist(guipar)
+
+     (echoIni,echoFin)=:extractEchoIniFin(parContrast1)
+
+     if((echoIni==-1)|(echoFin==-1))
+        message("Error!!!","Wrong value for contrast parameters 1.","error")
+        return(1)
+     endif
+
+     obj = findobj(n,"name","parContrast1")
+    
+     if(echoIni > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Initial echo > total number of echoes.","error")
+       echoIni = 1 
+       templist = [" parContrast1 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoFin > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo > total number of echoes.","error")
+       echoFin = nrEchoes
+       templist = [" parContrast1 = $echoIni$,$nrEchoes$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoIni > echoFin)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo < initial echo.","error")
+       echoIni = 1
+       templist = [" parContrast1 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+   
+endproc(0)
+#--------------------------------------
+procedure(setParContrast2,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     guipar = getctrlvalues(n)
+     assignlist(guipar)
+
+     (echoIni,echoFin)=:extractEchoIniFin(parContrast2)
+
+      if((echoIni==-1)|(echoFin==-1))
+        message("Error!!!","Wrong value for contrast parameters 2.","error")
+        return(1)
+      endif
+   
+     obj = findobj(n,"name","parContrast2")
+    
+     if(echoIni > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Initial echo > total number of echoes.","error")
+       echoIni = 1 
+       templist = [" parContrast2 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoFin > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo > total number of echoes.","error")
+       echoFin = nrEchoes
+       templist = [" parContrast2 = $echoIni$,$nrEchoes$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoIni > echoFin)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo < initial echo.","error")
+       echoIni = 1
+       templist = [" parContrast2 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+   
+endproc(0)
+#--------------------------------------
+procedure(setParContrast3,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     guipar = getctrlvalues(n)
+     assignlist(guipar)
+
+     (echoIni,echoFin)=:extractEchoIniFin(parContrast3)
+
+     if((echoIni==-1)|(echoFin==-1))
+        message("Error!!!","Wrong value for contrast parameters 3.","error")
+        return(1)
+     endif
+   
+     obj = findobj(n,"name","parContrast3")
+    
+     if(echoIni > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Initial echo > total number of echoes.","error")
+       echoIni = 1 
+       templist = [" parContrast3 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoFin > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo > total number of echoes.","error")
+       echoFin = nrEchoes
+       templist = [" parContrast3 = $echoIni$,$nrEchoes$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoIni > echoFin)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo < initial echo.","error")
+       echoIni = 1
+       templist = [" parContrast3 = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+   
+endproc(0)
+#--------------------------------------
+procedure(setParAmpIni,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     guipar = getctrlvalues(n)
+     assignlist(guipar)
+
+     (echoIni,echoFin)=:extractEchoIniFin(parAmpIni)
+     
+     if((echoIni==-1)|(echoFin==-1))
+        message("Error!!!","Wrong value for weight function.","error")
+        return(1)
+     endif
+   
+     obj = findobj(n,"name","parAmpIni")
+    
+     if(echoIni > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Initial echo > total number of echoes.","error")
+       echoIni = 1 
+       templist = [" parAmpIni = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoFin > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo > total number of echoes.","error")
+       echoFin = nrEchoes
+       templist = [" parAmpIni = $echoIni$,$nrEchoes$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoIni > echoFin)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo < initial echo.","error")
+       echoIni = 1
+       templist = [" parAmpIni = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     (echoIniTemp,echoFinTemp)=:extractEchoIniFin(parAmpFin)
+
+     if(echoFin>echoIniTemp)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Wrong range for weight function.\n Amp. ini. final > Amp. fin. initial","error")
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+  
+endproc(0)
+#--------------------------------------
+procedure(setParAmpFin,n)
+
+     if(nrArgs==0);  n=0; endif
+     if (n==-1); return;  endif
+
+     guipar = getctrlvalues(n)
+     assignlist(guipar)
+
+     (echoIni,echoFin)=:extractEchoIniFin(parAmpFin)
+
+     if((echoIni==-1)|(echoFin==-1))
+        message("Error!!!","Wrong value for weight function.","error")
+        return(1)
+     endif
+   
+     obj = findobj(n,"name","parAmpFin")
+    
+     if(echoIni > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Initial echo > total number of echoes.","error")
+       echoIni = 1 
+       templist = [" parAmpFin = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoFin > nrEchoes)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo > total number of echoes.","error")
+       echoFin = nrEchoes
+       templist = [" parAmpFin = $echoIni$,$nrEchoes$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     if(echoIni > echoFin)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Final echo < initial echo.","error")
+       echoIni = 1
+       templist = [" parAmpFin = 1,$echoFin$"]
+       assignlist(templist)
+       setctrlvalues(n,templist)
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+
+     (echoIniTemp,echoFinTemp)=:extractEchoIniFin(parAmpIni)
+
+     if(echoIni<echoFinTemp)
+       setpar(n,obj,"enable","false")
+       message("Error!!!","Wrong range for weight function.\n Amp. ini. final > Amp. fin. initial","error")
+       setpar(n,obj,"enable","true")
+       return(1)
+     endif
+   
+endproc(0)
+
+#----------------------------------------------
+procedure(extractEchoIniFin,parContrast)
+
+# seachs for the comma     
+     stringSize = 0
+     c          = 1
+     commaPos   = 0 
+
+     while(c==1)
+       try
+         a = parContrast[stringSize]
+         if(a==","); commaPos = stringSize; endif;
+         stringSize=stringSize+1  
+       catch
+         c=0
+       endtry
+     endwhile
+
+# calculates Echo initial
+    
+    echoIni=0
+    try
+     for(m=0 to commaPos-1 )
+       echoIni = echoIni + eval(parContrast[m])*10^((commaPos-1)-m)
+     next(m)
+    catch
+      echoIni = -1
+    endtry
+ 
+# calculates Echo final
+     echoFin=0
+   try
+     for(m=commaPos+1 to stringSize-1 )
+       echoFin = echoFin + eval(parContrast[m])*10^((stringSize-1)-m)
+     next(m)
+   catch
+      echoFin = -1
+   endtry
+
+endproc(echoIni,echoFin)
+
+#-----------------------
+procedure(enableContrastPar,n)
+
+      obj = findobj(n,"name","enableContrast2")
+       if(0==getpar(n,obj,"value"))
+           obj = findobj(n,"name","parContrast2")
+           setpar(n,obj,"enable","false") 
+       endif
+
+       obj = findobj(n,"name","enableContrast3")
+       if(0==getpar(n,obj,"value"))
+           obj = findobj(n,"name","parContrast3")
+           setpar(n,obj,"enable","false") 
+       endif
+ 
+       obj = findobj(n,"name","enableW")
+       if(0==getpar(n,obj,"value"))
+           obj = findobj(n,"name","parAmpIni")
+           setpar(n,obj,"enable","false")
+           obj = findobj(n,"name","parAmpFin")
+           setpar(n,obj,"enable","false")  
+       endif
+endproc()
+
+#-----------------------
+procedure(Move,y)
+
+   bak = getcwd()
+   cd(getmacropath())
+   cd("LiftControl")
+
+   if(y > 0)
+      slowSteps = trunc((y-50*trunc(y/50))/10)
+      MoveUpFast(trunc(y/50),70,0)
+      MoveUp(slowSteps,70,0)
+   else
+      slowSteps = trunc((-y-50*trunc(-y/50))/10)
+      MoveDownFast(trunc(-y/50),70,0)
+      MoveDown(slowSteps,70,0)
+   endif
+
+   cd(bak)
+  
+endproc()
+#--------------------------------------------------
+procedure(saveLastPar)
+
+    guipar = getctrlvalues(0)
+    assignlist(guipar)
+    dir = getmacropath()
+    name = getwindowpar(0,"macroname")
+    name = rmext(name)
+    back =  getcwd()
+    cd(dir)
+    save("$name$LastExp.par",guipar)
+   
+    cd(back)
+   
+
+endproc()
+#----------------------------------------------------
+procedure(loadLastPar,n)
+   
+    name = getwindowpar(n,"macroname")
+    name = rmext(name)
+    dir = getwindowpar(n,"macropath")
+    back =  getcwd()
+    cd(dir)
+
+    if(isfile("$name$LastExp.par"))
+       guipar = load("$name$LastExp.par")
+       setctrlvalues(n,guipar)  
+    else
+       message("Warning!!!","File with initital parameters not found","info")
+    endif
+
+    dir = getwindowpar(n,"macropath")
+    spacerDir=dir+"\probeHeads"
+       
+    setcwd(spacerDir)
+    probeHeadPar = load("selectedProbeHead.par")
+    assignlist(probeHeadPar)
+    setpar(n,22,"text",Spacer)
+    setctrlvalues(n,probeHeadPar)
+    setcwd(back)
+
+endproc()
+
+#-----------------------
+procedure(checkOverwrite)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+ 
+   if (warnOverwrite=="no"); return 0; endif
+
+   back = getcwd()
+   cd(dataDirectory)
+   cd(expName)
+   cd("$expNr$")
+
+
+
+   if ((fileinfo("$expName$.dat"  ,"age")<1e20)
+     |(fileinfo("$expName$.txt"  ,"age")<1e20)
+     |(fileinfo("$expName$.1d"   ,"age")<1e20)
+     |(fileinfo("$expName$.2d"   ,"age")<1e20)
+     |(fileinfo("$expName$01.txt","age")<1e20)
+     |(fileinfo("$expName$01.1d" ,"age")<1e20)
+     |(fileinfo("$expName$01.2d" ,"age")<1e20))
+
+      if( "no"== query("Warning","The file $expName$ already exits, would you like to overwrite it?")) 
+        cd(back)
+        return(1)
+      endif
+   endif 
+
+   cd(back)
+   
+endproc(0)
+#--------------------------------------------
+procedure(enableNorm,start,end,check)
+
+   status = getpar(0,check,"value")
+
+   if(status==1)
+      for(k = start to end)
+         setpar(0,k,"enable","true")
+      next(k)
+   else
+      for(k = start to end)
+         setpar(0,k,"enable","false")
+      next(k)
+   endif
+
+endproc()

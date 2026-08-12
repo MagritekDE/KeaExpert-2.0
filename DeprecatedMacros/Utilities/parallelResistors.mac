@@ -1,0 +1,81 @@
+# Calculate the inductance of a cylindrical coil
+# with N turns, radius r and length l
+
+procedure(CalcInductance)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   :select()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate parallel resistors", -1, -1, 250, 126, "resizable")
+
+      # Define all controls with basic parameters
+       windowvar(ctrlR1,ctrlRt,ctrlR2)
+       textbox(1, 50, 19, 50)
+       textbox(2, 50, 49, 50)
+       textbox(3, 50, 80, 50)
+       statictext(4, 42, 24, "right", "R1")
+       statictext(5, 41, 84, "right", "Rt")
+       statictext(6, 44, 54, "right", "R2")
+       button(10, 160, 20, 72, 32, "Calculate",
+          :calc();)
+       button(11, 160, 70, 72, 32, "Close",
+          closewindow(0);)
+       radiobuttons(12, 114, 25, 30, "vertical", "R1,R2,Rt", "R1",:select())
+
+     # Set other control parameters
+       setpar(n,1,"objID","ctrlR1")
+       setpar(n,2,"objID","ctrlR2")
+       setpar(n,3,"objID","ctrlRt")
+       setpar(n,10,"mode","default")
+       setpar(n,12,"objID","ctrlWhich")
+
+endproc(n)
+
+
+procedure(select)
+
+   if(ctrlWhich->text == "R1")
+      ctrlR1->enable("false")
+      ctrlR2->enable("true")
+      ctrlRt->enable("true")
+   elseif(ctrlWhich->text == "R2")
+      ctrlR1->enable("true")
+      ctrlR2->enable("false")
+      ctrlRt->enable("true")
+   elseif(ctrlWhich->text == "Rt")
+      ctrlR1->enable("true")
+      ctrlR2->enable("true")
+      ctrlRt->enable("false")
+   endif
+
+endproc()
+
+
+procedure(calc)
+
+   if(ctrlWhich->text == "R1")
+     r2 = (ctrlR2->value)
+     rt = (ctrlRt->value)
+     r1 = 1/(1/rt-1/r2)
+     ctrlR1->text(r1)
+   elseif(ctrlWhich->text == "R2")
+     r1 = (ctrlR1->value)
+     rt = (ctrlRt->value)
+     r2 = 1/(1/rt-1/r1)
+     ctrlR2->text(r2)
+   elseif(ctrlWhich->text == "Rt")
+     r1 = (ctrlR1->value)
+     r2 = (ctrlR2->value)
+     rt = 1/(1/r1+1/r2)
+     ctrlRt->text(rt)
+   endif
+
+endproc()

@@ -1,0 +1,50 @@
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",    "0","0",     "tbwv",   "freq",
+               "repTime",      "Repetition time (ms)",  "0","1.6",   "tbwv",   "reptime",
+               "O1",           "Offset (Hz)",           "0","3",     "tbwv",   "float", 
+               "pulseLength",  "Pulse length (us)",     "1","0",     "tb",     "pulselength",
+               "SPType",       "Soft pulse shape",      "1","1",     "tm",     "60,[\"sinc3\",\"sinc5\",\"gauss\",\"rect\",\"comp\"]",
+               "deadTime",     "DeadTime (us)",         "1","2",     "tb",     "sdelay",
+               "90AmpIni",     "Initial amp (dB)",      "2","0",     "tb",     "pulseamp",
+               "90AmpFin",     "Final amp (dB)",        "2","1",     "tb",     "pulseamp",
+               "90AmpInc",     "increment amp (dB)",     "2","2",     "tb",     "float,[-6,6]"]
+
+
+  tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = 90AmpIni",
+                    "d500 = 2", 
+                    "n500 = round(pulseLength/d500)",
+                    "(t1,t2,gfac) = B1NutSoft:getRFPulse(SPType,a1,n500)",
+                    "d2 = deadTime",
+                    "n1 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["t1"]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   shapedrf(mode,t1,t2,p1,n500,d500)    #  soft pulse
+
+   delay(d2)                            # dead time delay
+   acquire("overwrite",n1)              # acquire 
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0; # x : 90 phase
+                0] # x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

@@ -1,0 +1,103 @@
+########################################################
+#                T1T2_pp.mac
+#
+# T1-T2 correlation experiment 
+# 180 - delay - 90 - delay - {180 - delay - acqu - {180 - delay} }
+#
+# This pulse sequence will implement an inversion
+# recovery experiment to encode for T1 followed by 
+# a CPMG echo train to measure T2. The CPMG train
+# includes dummy pulses to allow for long acquisition
+# times while still using small echo times.
+#
+# a1 ... amplitude of 180 pulse
+# a2 ... amplitude of 90 pulse
+# p1 ... phase of first 180 pulse
+# p2 ... phase of 90 pulse
+# p3 ... phase of CPMG 180 pulses
+# d1 ... width of pulses
+# d2 ... delay between 90 and CPMG 180
+# d3 ... delay between CPMG 180 and acquisition
+# d4 ... delay between acquisition start and next CPMG 180 
+# d5 ... delay between CPMG 180 dummy pulses
+# n1 ... number of echos to collect
+# n2 ... number of data points to collect per echo
+# n3 ... number of 180 dummy pulses per echo
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+# Interface description (name, label, x, y)
+  interface = ["b1Freq",       "B1 Frequency (MHz)",     "0","0","tbw",  "freq",
+               "ieTime",       "Inter-expt. delay (ms)", "0","1","tbw",  "reptime",
+               "delaySpacing", "Log. spacing",           "0","2","cb",   "lin,log",
+               "autoPhase",     "Auto phase",            "0","3","cb",   "no,yes",
+               "90Amplitude",  "90 amp. (dB)",           "1","0","tb",   "pulseamp",
+               "180Amplitude", "180 amp. (dB)",          "1","1","tb",   "pulseamp",
+               "pulseLength",  "Pulse length (us)",      "1","2","tb",   "pulselength",
+               "phaseMethod",  "Minimize imag. range",   "1.1","3","cb", "minImag,maxReal",
+               "minTau",       "Min. tau (ms)",          "2","0","tb",   "ldelayms",
+               "maxTau",       "Max. tau (ms)",          "2","1","tb",   "ldelayms",
+               "tauSteps",     "Tau steps",              "2","2","tb",   "integer",
+               "echoShift",    "Echo shift (us)",        "2","3","tb",   "float,[-20,20]",
+               "echoTime",     "Echo-time (us)",         "3","0","tb",   "sdelay",
+               "nrEchoes",     "No. of echoes",          "3","1","tb",   "integer,[1,64000]",
+               "dummyEchoes",  "Dummy echoes",           "3","2","tb",   "integer,[0,1000]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["a1 = 90Amplitude",
+                    "a2 = 180Amplitude",
+                    "d1 = pulseLength",
+                    "w1 = minTau*1000-d1-pgo",
+                    "d2 = echoTime/2-d1-pgo",
+                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4 = echoTime-d1-pgo-d3",
+                    "d5 = echoTime-d1-pgo",
+                    "n1 = nrEchoes",
+                    "n2 = nrPnts",
+                    "n3 = dummyEchoes",
+                    "totPnts = nrEchoes",
+                    "totTime = nrEchoes*echoTime*(dummyEchoes+1)"]
+
+  tabs = ["Pulse_sequence","Progress","Acquisition","Inversion_T1T2","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["w1"]
+
+# x0,y0,dx,dy
+   dim = [130,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   cleardata(n1)
+   
+   pulse(mode,a2,p1,d1)         # 180 pulse
+   
+   wait(w1)                     # 180 - 90 delay (T1 encode)
+
+   pulse(mode,a1,p2,d1)         # 90 pulse
+   
+   delay(d2)                    # 90 - 180 delay
+
+# CPMG loop with dummy pulses
+   loop(l1,n1)
+      pulse(mode,a2,p3,d1)             # 180 pulse
+      delay(d3)                        # 180 - acq delay
+      acquire("integrate",n2,d4)       # Integrate echo and wait
+      loop(l2,n3)                      # Dummy echo loop
+         pulse(mode,a2,p3,d1)          # 180 pulse
+         delay(d5)                     # Echo time delay
+      endloop(l2)
+   endloop(l1)
+   
+   lst = endpp() # Return parameter list
+
+   phaseList = [0,2,0,2; # +x,-x,+x,-x : 180 phase
+                0,0,2,2; # +x,+x,-x,-x : 90 phase
+                1,1,1,1; # +y,+y,+y,+y : 180 phase
+                0,0,2,2] # +x,+x,-x,-x : Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+

@@ -1,0 +1,132 @@
+########################################################
+# 
+# Slice selective spin-echo imaging
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq",        "B1 Frequency (MHz)",        "0","0", "tbw", "freq",
+               "repTime",       "Repetition time (ms)",      "0","1", "tbw", "float,[1,40000]",
+               "O1",            "Offset (Hz)",               "0","2", "tbw", "float",
+               "a1",            "90 amplitude (dB)",         "0","3", "tb",  "pulseamp",
+               "PulseLength90", "90 pulse length (us)",      "0","4", "tb",  "pulselength",
+               "repTimeSPRITE", "repTimeSPRITE (ms)",        "0","5", "tb",  "float,[2,1000]",
+
+               "nrDummyScans",  "nrDummyScans",              "1","0", "tb",  "integer,[0,100]",
+               "acqShift",      "acquisition Shift(us)",     "1","1", "tb",  "float,[-1000,1000]",
+               "phDur",         "phDur (us)",                "1","2", "tb",  "sdelay",
+               "FoVPhase1",     "FoV Phase 1 (mm)",          "1","3", "tb",  "float,[-10000,10000]",
+               "FoVPhase2",     "FoV Phase 2 (mm)",          "1","4", "tb",  "float,[-10000,10000]",
+               "FoVPhase3",     "FoV Phase 3 (mm)",          "1","5", "tb",  "float,[-10000,10000]",
+
+               "nrStepsP1",     "nro. pts. phase 1",         "2","0", "tb",  "integer,[1,500]",
+               "nrStepsP2",     "nro. pts. phase 2",         "2","1", "tb",  "integer,[1,500]",
+               "nrStepsP3",     "nro. pts. phase 3",         "2","2", "tb",  "integer,[1,500]",
+               "dirPhase1",     "Phase Dir. 1",              "2","3", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirPhase2",     "Phase Dir. 2",              "2","4", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirPhase3",     "Phase Dir. 3",              "2","5", "tm",  "[\"x\",\"y\",\"z\"]"]
+
+
+              # Relationships to determine remaining variable values
+  relationships = [ "d1 = PulseLength90",
+                    "rampDur = 100",
+                    "d300 = 2.5",
+                    "n300 = round(rampDur/d300)",
+                    "d100 = 50",
+                    "d2   = phDur-d1/2",
+                    "d3   = repTimeSPRITE*1000-6*rampDur-phDur-2*d100",
+                    "n10  = SPRITE_3D:convertDirToChannel(dirPhase1)",
+                    "n20  = SPRITE_3D:convertDirToChannel(dirPhase2)",
+                    "n40  = SPRITE_3D:convertDirToChannel(dirPhase3)",
+                    "(gPhaseAmp1,gPhaseAmpShim1,gPhaseAmp2,gPhaseAmpShim2,gPhaseAmp3,gPhaseAmpShim3) = SPRITE_3D:setImageGradients(dirPhase1,dirPhase2,dirPhase3,FoVPhase1,FoVPhase2,FoVPhase3,phDur,xshim,yshim,zshim,xcal,ycal,zcal)",
+                    "n11  =  gPhaseAmp1+gPhaseAmpShim1",
+                    "n11a =  gPhaseAmpShim1",
+                    "n21  =  gPhaseAmp2+gPhaseAmpShim2",
+                    "n21a =  gPhaseAmpShim2",
+                    "n41  =  gPhaseAmp3+gPhaseAmpShim3",
+                    "n41a  = gPhaseAmpShim3",
+                    "t11  =  SPRITE_3D:getPhaseTable(gPhaseAmp1,gPhaseAmpShim1,nrStepsP1)",                   
+                    "t21  =  SPRITE_3D:getPhaseTable(gPhaseAmp2,gPhaseAmpShim2,nrStepsP2)",                   
+                    "n0  = nrDummyScans",
+                    "n1  = nrStepsP1",
+                    "n2  = nrStepsP2",
+                    "n3  = nrPnts",
+                    "totPnts = nrStepsP1*nrStepsP2",
+                    "totTime = nrStepsP1*nrStepsP2*repTimeSPRITE"]
+
+# Define the tabs and their order
+   tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["n41"]
+
+# dx,dy
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   cleardata(32000)
+
+### start dummy scans  ###
+loop(l0,n0)
+  
+   gradramp(n10,n11a,n11a,n300,d300)   # PHASE1 gradient ON
+   gradramp(n20,n21a,n21a,n300,d300)   # PHASE2 gradient ON
+   gradramp(n40,n41a,n41a,n300,d300)   # PHASE3 gradient ON
+
+      delay(d100)                     # stabilization time 
+      pulse(mode,a1,p1,d1)            # 90 soft pulse
+      delay(d2)
+  
+      delay(d100)                   
+
+   gradramp(n10,n11a,n11a,n300,d300)   # PHASE1 gradient OFF
+   gradramp(n20,n21a,n21a,n300,d300)   # PHASE2 gradient OFF   
+   gradramp(n40,n41a,n41a,n300,d300)   # PHASE3 gradient OFF
+   delay(d3)
+   
+endloop(l0)
+### end dummy scans  ###
+
+setindex(t21,0); 
+
+loop(l2,n2)
+   setindex(t11,0);
+   loop(l1,n1)
+  
+   gradramp(n10,n11a,t11,n300,d300)   # PHASE1 gradient ON
+   gradramp(n20,n21a,t21,n300,d300)   # PHASE2 gradient ON
+   gradramp(n40,n41a,n41,n300,d300)   # PHASE3 gradient ON
+
+      delay(d100)                     # stabilization time 
+      pulse(mode,a1,p1,d1)            # 90 soft pulse
+      delay(d2)
+  
+      acquire("integrate",n3,d100)
+
+   gradramp(n10,t11,n11a,n300,d300)   # PHASE1 gradient OFF
+   gradramp(n20,t21,n21a,n300,d300)   # PHASE2 gradient OFF   
+   gradramp(n40,n41,n41a,n300,d300)   # PHASE3 gradient OFF
+   delay(d3)
+   
+   incindex(t11);
+
+   endloop(l1)
+
+   incindex(t21);
+
+endloop(l2)
+
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle list
+   phaseList = [0,2; # +x,-x : 90 phase
+                0,2] # +x,-x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

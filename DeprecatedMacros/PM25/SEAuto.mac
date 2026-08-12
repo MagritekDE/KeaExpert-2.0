@@ -1,0 +1,763 @@
+#########################################################
+# 
+# Spin Echo Automation
+#
+# Copyright (c) Magritek 2013
+#
+# U.I. V3
+#########################################################
+
+procedure(SEauto)
+
+   n = :windowdefinition()
+
+   windowvar(wv_tabs,wv_ctrls1,wv_ctrls2,wv_ctrls3,wv_other)
+   wv_tabs   = [3,2,1] # Tab controls
+   wv_ctrls1 = [51,49,50,48,8,21,20,16,15,26,29,19,13,28,55,18,11,24,23,17,9,56,57,58,60,62]  # controls in TAB1
+   wv_ctrls2 = [22,25,31,27,32,34,33,30,59]                                             # controls in TAB2
+   wv_ctrls3 = [47,35,36,37,38,39,40,41,42,43,44,45,46]                                 # controls in TAB3
+
+   :loadLastPar(n)
+   :updateDepthList()
+   :showTab(1)
+   :enableNorm(56,57,58)
+   # Cache all proc calls
+   keaNMR:initCache(getmacropath(),"SE")
+
+showwindow(n)
+
+endproc(n)
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("SE AUTO", -1, -1, 343, 234)
+
+      # Define all controls with basic parameters
+       windowvar(wv_other,wv_ctrls3,wv_ctrls2,wv_ctrls1,wv_tabs)
+       button(1, 179, 4, 88, 21, "File settings",
+          :showTab(3);)
+       button(2, 91, 4, 88, 21, "Depths",
+          :showTab(2);)
+       button(3, 3, 4, 88, 21, "MAIN",
+          :showTab(1);)
+       statictext(4, 254, 63, "left", "")
+       button(5, 57, 198, 40, 21, "Stop")
+       button(6, 261, 198, 40, 21, "Close",
+          :saveLastPar();
+          closewindow(0);)
+       button(7, 6, 198, 40, 21, "Run",
+          :measure();)
+       groupbox(8, "", 1, 50, 314, 145)
+       textmenu(9, 258, 164, 40, 200)
+       statictext(10, 240, 161, "left", "")
+       textbox(11, 258, 137, 40)
+       statictext(12, 254, 140, "left", "")
+       textbox(13, 258, 111, 40)
+       statictext(14, 254, 116, "left", "")
+       textbox(15, 258, 59, 40,
+         :printOptTauMaxSE();)
+       statictext(16, 254, 64, "right", "D (10-9 m^2/s)")
+       statictext(17, 254, 168, "right", "Time increment")
+       statictext(18, 254, 142, "right", "No. of time increm.")
+       statictext(19, 254, 116, "right", "tau max (ms)")
+       textbox(20, 85, 59, 40)
+       statictext(21, 77, 64, "right", "Resolution (um)")
+       statictext(22, 288, 39, "right", "Max. depth (um)")
+       textbox(23, 85, 137, 40)
+       statictext(24, 77, 142, "right", "No. of echoes")
+       textbox(25, 221, 57, 56)
+       statictext(26, 78, 90, "right", "Rep. time (ms)")
+       statictext(27, 108, 44, "right", "Measuring depths list")
+       statictext(28, 77, 116, "right", "No. of scans")
+       textbox(29, 85, 85, 40)
+       statictext(30, 293, 102, "right", "Enable Lift Movement")
+       groupbox(31, "", 3, 22, 314, 173)
+       listbox(32, 118, 32, 60, 156)
+       button(33, 38, 111, 45, 20, "Update",
+          :updateDepthList();)
+       button(34, 38, 85, 45, 20, "Edit",
+          :editDepthList();)
+       statictext(35, 90, 41, "right", "Working directory")
+       textbox(36, 7, 58, 269)
+       button(37, 283, 58, 28, 22, "...",
+          keaNMR:setWorkingDir();)
+       statictext(38, 72, 97, "right", "Experiment")
+       statictext(39, 100, 97, "right", "name")
+       textbox(40, 119, 94, 156)
+       statictext(41, 71, 140, "right", "Experiment")
+       statictext(42, 108, 140, "right", "number")
+       textbox(43, 117, 136, 48)
+       statictext(44, 216, 134, "center", "Auto")
+       statictext(45, 212, 146, "center", "increment")
+       checkbox(46, 250, 140, "no,yes", "no")
+       groupbox(47, "", 3, 23, 314, 170)
+       button(48, 242, 30, 45, 20, "upDate",
+          :selectProbeHead();)
+       statictext(49, 76, 34, "right", "ProbeHead")
+       textbox(50, 94, 30, 125, 200)
+       groupbox(51, "", 1, 21, 314, 33)
+       button(52, 108, 198, 40, 21, "Load",
+          :load_parameters();)
+       button(53, 210, 198, 40, 21, "Pref.",
+          cd(getmacropath());
+          preferences();)
+       button(54, 159, 198, 40, 21, "Help",
+          help("Kea.chm","CPMGFast");)
+       textbox(55, 85, 111, 40)
+       textbox(56, 85, 163, 57)
+       statictext(57, 77, 168, "right", "Normalization")
+       checkbox(58, 148, 168, "no,yes", "no",
+            :enableNorm(56,57,58);)
+       checkbox(59, 235, 121, "no,yes", "no")
+       statictext(60, 254, 90, "right", "tau min (ms)")
+       statictext(61, 253, 88, "left", "")
+       textbox(62, 257, 85, 40)
+
+     # Set other control parameters
+       setpar(n,5,"name","stop",
+                   "mode","abort")
+       setpar(n,6,"name","close")
+       setpar(n,7,"name","run")
+       setpar(n,9,"name","index",
+                   "menu",["lin","exp"])
+       setpar(n,11,"name","nrPntsTau")
+       setpar(n,13,"name","tauMax")
+       setpar(n,15,"name","DEst")
+       setpar(n,20,"name","resolution")
+       setpar(n,23,"name","nrEchoes",
+                   "type","integer",
+                   "range",[1,8192])
+       setpar(n,25,"name","maxDepth")
+       setpar(n,29,"name","repTime")
+       setpar(n,32,"name","depthList")
+       setpar(n,36,"name","dataDirectory")
+       setpar(n,40,"name","expName")
+       setpar(n,43,"name","expNr")
+       setpar(n,46,"name","incExpNr")
+       setpar(n,50,"name","probeHead")
+       setpar(n,52,"name","load")
+       setpar(n,53,"name","showPref")
+       setpar(n,54,"name","help")
+       setpar(n,55,"name","nrScans")
+       setpar(n,56,"name","refSignal")
+       setpar(n,58,"name","refSignalCheck")
+       setpar(n,59,"name","enableLift")
+       setpar(n,62,"name","tauMin")
+
+       setpar(n,25,"enable","false")
+       setwindowpar(n,"exit_procedure",":saveLastPar()")
+
+endproc(n)
+
+#------------------------------------------------------------------------------
+procedure(measure,mode)
+
+   PulseSeqName = "SE"
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+#--- Check spacer -------------------------------------------------
+   macroDir  = getmacropath()
+   spacerDir=macroDir+"\probeHeads"
+   setcwd(spacerDir)
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+     
+   if(Spacer!=probeHead)
+      if( "no"== query("Warning","The probe has been modified, do you want to update it and continue?")) 
+        cd(back)
+        return(1)
+      endif   
+   endif
+  setctrlvalues(0,probeHeadPar)
+   setpar(0,50,"text",Spacer)
+   setcwd(macroDir)
+   #-----------------------------------------------------------------------
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   (flag,depthArray)=:checkDepthList(); if (flag==1); return; endif
+
+   if(nrArgs==0)
+   multiplot("1d",3,1)
+   endif
+
+
+   cd("$PulseSeqName$")
+   lastParBackdoor = load("$PulseSeqName$LastExp.par")
+   setcwd(macroDir)
+
+
+   newPar = mergelists(guipar,probeHeadPar)
+   newPar = mergelists(newPar,lastParBackdoor)
+   assignlist(newPar)
+  
+   dw = 0.5
+   nrPnts   = round(1e6/(gradient*dw*resolution))
+   echoTime = echoTime0 + round(dw*nrPnts)-pulseLength
+
+
+# Check RF duty cycle
+# for PM25----------------------------------------------
+       if(pulseLength*nrEchoes/repTime>1.6)
+# for PM5----------------------------------------------
+    #    if(pulseLength*nrEchoes/repTime>3)
+    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime","error") 
+    return
+  endif
+
+
+# Check for p.s. duty cycle should be < 20%
+  if(pulseLength/(echoTime) > 0.25)
+      message("Error","Duty cycle is too high in pulse sequence!\rshould be < 25%\rIncrease echo time\ror reduce pulse length.","error")
+      return(0)
+   endif
+
+   if(resolution < bestResol)
+     message("ERROR","resolution < bestResol\n increase resolution","error")
+     return(0)
+   endif
+
+   if(nrPnts < 2*pulseLength)
+     message("ERROR","resolution > excited slice\n decrease resolution","error")
+    return(0)
+   endif
+
+   if(refSignalCheck == "no")
+      newPar = setlistvalue(newPar,"refSignal","1")
+   endif
+
+   newPar = setlistvalue(newPar,"bandwidth","2000")
+   newPar = setlistvalue(newPar,"bandwidthFile","0.5")
+   newPar = setlistvalue(newPar,"nrPnts","$nrPnts$")
+   newPar = setlistvalue(newPar,"echoTime","$echoTime$")
+   newPar = setlistvalue(newPar,"acqTime","$dw*nrPnts/1000$")
+   newPar = setlistvalue(newPar,"dwellTime","0.5")
+
+   newPar = setlistvalue(newPar,"showTimeDomain","\"yes\"")
+   newPar = setlistvalue(newPar,"showFreqDomain","\"no\"")
+   newPar = setlistvalue(newPar,"tdPhaseCorr","\"none\"") 
+   newPar = setlistvalue(newPar,"filter","\"no\"")
+   newPar = setlistvalue(newPar,"saveData","\"false\"")
+   newPar = setlistvalue(newPar,"excecutedBackdoor","\"yes\"")
+   newPar = setlistvalue(newPar,"nrExp","1")
+
+   depth = -1
+
+   if(enableLift=="yes")
+      :Move(-70)   # Move down 70 um
+      MoveHome(-1) # Go home
+      pr "\nMouse going home...\n"
+      pause(0.0035*(maxDepth)+ 0.5)  # Wait for home completion
+      :Move(-70)   # Move down 70 um
+      depth = maxDepth
+   endif
+   nrDepths = size(depthArray)
+   data2D   = matrix(nrPntsTau,nrDepths)
+   resultsFit = list(nrDepths)
+
+   for z=0 to nrDepths-1
+
+      if(enableLift=="yes")
+         :Move(-(depth-depthArray[z]))
+      else
+           if(query("Positioning","Set initial position to: $depthArray[z]$ um") == "no")
+           return
+           endif
+      endif 
+     
+      depth = depthArray[z]
+      pr "depth = $depth$ um\n "
+
+      SE:backdoor(newPar)
+
+     #(tauArray,ampArray)= SE:backdoor(newPar)
+       curplot("1d",2,1)
+      (tauArray,ampArray)=getplotdata("1d")
+
+      data2D[~,z] = real(ampArray)
+      curplot("2d",1,1)
+      draw2d("false")
+      image(data2D)
+      title("Echo decay")
+      ylabel("depth number")
+      xlabel("\G(t) [ms]")
+      axes("fontsize",11)
+      draw2d("true")
+      
+      tauAxis3 = matrix(nrPntsTau)
+      gradientTperMeter= gradient/42.57
+      tauAxis3[~] = 1e-9*(2/3)*(gamma*gradientTperMeter)^2*(tauArray[~]/1000)^3
+
+      (E,resultE,D,resultD) = :SEFit(tauAxis3,ampArray,newPar,depth)
+       
+      depthStr = :makeDepthStr(depth,"space")
+      
+      resultsFit[z] = "depth = $depthStr$ um,\tE = $resultE$,\tD = $resultD$ ms"
+     
+      depthStr = :makeDepthStr(depth,"zero")
+      :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit)
+
+      if(z==nrDepths-1)
+      # Output information to the CLI
+         pr "\n  data saved in:"
+         pr "\n  $dataDirectory$\\$expName$\\$expNr$\n"
+      endif
+
+    next(z)
+
+# Increment the experiment number
+   keaNMR:incrementExperiment(incExpNr)
+
+endproc(E,D)
+
+#------------------------------------
+procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   obj = findobj(0,"name","depthList")
+   depthListValues = getpar(0,obj,"list")
+   guipar = setlistvalue(guipar,"depthListValues","$depthListValues$")
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+
+   save("GUI.par",guipar)              # Save acq. parameters
+   save("acq.par",newPar)              # Save acq. parameters
+
+   n = size(data1D)
+   m = matrix(3,n)
+   m[0,~] = (totalTime/1000)'
+   m[1,~] = real(data1D)'
+   m[2,~] = imag(data1D)'
+
+   save("resultsFit.par",resultsFit)  # Save results of the fit
+
+
+ 
+      save("data-$depthStr$um.1d",data1D)     # Save data in Prospa format
+      save("data-$depthStr$um.pt1")           # Save plot
+      save("data-$depthStr$um.emf","emf1d")   # Save plot as picture
+   
+      export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+      export2d(m,"data-$depthStr$um.dat")  # Save data for origin
+   
+      export1dpar("ab", "ascii",  "xyrc", "real")
+      export1d(totalTime, "tAxis.dat")
+
+      export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+      export2d(data2D,"data2D.dat")  # Save data for origin
+
+
+      save("2Ddata.2d",data2D)     # Save 2d data in Prospa format
+      save("2Ddata.pt2")           # Save 2d plot
+      save("2Ddata.emf","emf2d")   # Save 2d plot as picture
+   
+
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")
+
+
+#----------------------------------------------------
+procedure(selectProbeHead)
+   
+    if(nrArgs==0);  n=0; endif
+    if (n==-1); return;  endif
+ 
+
+   back = getcwd()
+
+   macroDir  = getmacropath()
+   spacerDir=macroDir+"\probeHeads"
+   setcwd(spacerDir)
+
+   probeHeadPar = load("selectedProbeHead.par")
+   assignlist(probeHeadPar)
+   setctrlvalues(n,probeHeadPar)
+   setpar(n,50,"text",Spacer)
+
+   setcwd(back)   
+   message("NEW PROBE HEAD","New probe head parameters have been loaded","info") 
+
+endproc()
+
+#--------------------------------------------------
+procedure(saveLastPar)
+
+    guipar = getctrlvalues(0)
+    assignlist(guipar)
+
+    bak =  getcwd()
+
+    name = getwindowpar(0,"macroname")
+    name = rmext(name)
+    cd(getmacropath())
+    save("$name$LastExp.par",guipar)
+
+    cd(bak)
+
+endproc()
+#----------------------------------------------------
+procedure(loadLastPar,n)
+
+    back =  getcwd()
+   
+    name = getwindowpar(n,"macroname")
+    name = rmext(name)
+    cd(getmacropath())
+
+    if(isfile("$name$LastExp.par"))
+      guipar = load("$name$LastExp.par")
+      setctrlvalues(n,guipar)  
+    else
+      message("Warning!!!","File with initital parameters not found","info")
+    endif
+
+    dir = getwindowpar(n,"macropath")
+    spacerDir=dir+"\probeHeads"
+       
+    setcwd(spacerDir)
+    probeHeadPar = load("selectedProbeHead.par")
+    assignlist(probeHeadPar)
+    setpar(n,50,"text",Spacer)
+
+  
+    setctrlvalues(n,probeHeadPar)
+    setcwd(back)
+
+
+endproc()
+#----------------------------------
+procedure(Move,y)
+
+   bak = getcwd()
+   cd(getmacropath())
+   cd("LiftControl")
+
+   if(y > 0)
+      slowSteps = trunc((y-50*trunc(y/50))/10)
+      MoveUpFast(trunc(y/50),-1,0)
+      MoveUp(slowSteps,-1,0)
+   else
+      slowSteps = trunc((-y-50*trunc(-y/50))/10)
+      MoveDownFast(trunc(-y/50),-1,0)
+      MoveDown(slowSteps,-1,0)
+   endif
+
+   cd(bak)
+  
+endproc()
+
+#------------------------------------
+procedure(updateDepthList)
+
+   bak = getcwd()
+
+   cd(getmacropath())
+
+   depthListPar = load("depthListSEAuto.lst","list")
+   obj = findobj(0,"name","depthList")
+   setpar(0,obj,"list",depthListPar)
+
+   cd(bak)
+
+endproc(depthListPar)
+#------------------------------------
+
+procedure(editDepthList,n)
+
+   bak = getcwd()
+   showwindow(6)
+   cd(getmacropath())
+   edit("depthListSEAuto.lst")
+
+   cd(bak)
+
+endproc()
+#------------------------------------
+procedure(showTab,n)
+
+   nameTab1 = getpar(0,wv_tabs[0],"label")
+   nameTab2 = getpar(0,wv_tabs[1],"label")
+   nameTab3 = getpar(0,wv_tabs[2],"label")
+
+   nameTab1 = caseset(nameTab1,"first")
+   nameTab2 = caseset(nameTab2,"first")
+   nameTab3 = caseset(nameTab3,"first")
+
+# shows the tab name in capital letters
+
+   if(n==1);  nameTab1 = caseset(nameTab1,"upper"); endif
+   if(n==2);  nameTab2 = caseset(nameTab2,"upper"); endif
+   if(n==3);  nameTab3 = caseset(nameTab3,"upper"); endif
+
+   setpar(0,wv_tabs[0],"label",nameTab1)
+   setpar(0,wv_tabs[1],"label",nameTab2)
+   setpar(0,wv_tabs[2],"label",nameTab3)
+
+# shows the active tab and make invisible the rest 
+
+   if(n==1)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","true")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","false")
+      next(k)
+   endif
+
+   if(n==2)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","true")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","false")
+      next(k)
+   endif
+
+   if(n==3)
+      for(k = 0 to size(wv_ctrls1)-1)
+            setpar(0,wv_ctrls1[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls2)-1)
+            setpar(0,wv_ctrls2[k],"visible","false")
+      next(k)
+      for(k = 0 to size(wv_ctrls3)-1)
+            setpar(0,wv_ctrls3[k],"visible","true")
+      next(k)
+   endif
+
+
+endproc()
+
+#------------------------------------
+procedure(checkDepthList)
+
+  guipar = getctrlvalues(0)
+  assignlist(guipar)
+
+  lstDepths =:updateDepthList()
+  nrDepths = size(lstDepths)
+  depthArray = matrix(nrDepths)
+
+  for (m=0 to nrDepths-1)
+    depthArray[m]=eval(lstDepths[m])
+  next(m)
+  
+  for (m=0 to nrDepths-1)
+   
+    if(depthArray[m] < 0)
+       message("Error!!!","list of depths contains a value < 0","error")
+       return(1,0) 
+    endif()
+
+    if(depthArray[m] > maxDepth)
+       message("Error!!!","list of depths contains a value > $maxDepth$ um","error")
+       return(1,0) 
+    endif()
+
+    if(depthArray[m]%10 != 0)
+       message("Error!!!","list of depths contains a value not multiple of 10 um","error")
+       return(1,0)
+    endif()
+
+    if(m < nrDepths-1)
+       if(depthArray[m]<depthArray[m+1])
+          message("Error!!!","List of depths must sorted in desending order","error")
+          return(1,0)
+       endif
+    endif
+
+   next(m)
+
+endproc(0,depthArray)
+
+#--------------------------------------------
+procedure(enableNorm,start,end,check)
+
+   status = getpar(0,check,"value")
+
+   if(status==1)
+      for(k = start to end)
+         setpar(0,k,"enable","true")
+      next(k)
+   else
+      for(k = start to end)
+         setpar(0,k,"enable","false")
+      next(k)
+   endif
+
+endproc()
+#-----------------------------------------------------------
+procedure(load_parameters)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   bak = getcwd()
+   cd(dataDirectory) 
+   file = getfilename("load","Select parameter file","Parameter files","par")
+   plotfile = rmext(file) + ".pt1"
+   if(file != "cancel")
+      newpar = load(file)
+      setctrlvalues(0,newpar)
+      if(isfile(plotfile))
+         load(plotfile)
+      endif
+   endif
+
+   cd(bak)
+       
+endproc()
+#----------------------------------------
+procedure(makeDepthStr,depth,mode)
+
+   depthStr = ""
+
+   if (mode=="space")
+      if(depth >= 10000)
+         depthStr = "$depth$"
+      elseif(depth >= 1000) 
+         depthStr = "$depth$ "
+      elseif(depth >= 100) 
+         depthStr = "$depth$  "
+      elseif(depth >= 10) 
+         depthStr = "$depth$   "
+      else
+         depthStr = "$depth$    "
+      endif
+   endif
+
+   if (mode=="zero")
+      if(depth >= 10000)
+         depthStr = "$depth$"
+      elseif(depth >= 1000) 
+         depthStr = "0$depth$"
+      elseif(depth >= 100) 
+         depthStr = "00$depth$"
+      elseif(depth >= 10) 
+         depthStr = "000$depth$"
+      else
+         depthStr = "0000$depth$"
+      endif
+   endif
+
+
+endproc(depthStr)
+#---------------------------------------
+procedure(SEFit,tauAxis3,ampAxis,guipar,depth)
+   assignlist(guipar)
+
+   (x,y,nrPntsNew)=:removeNegativeValues(tauAxis3,ampAxis/ampAxis[0],nrPntsTau)
+   
+    y[~]= loge(y[~])
+try
+   (a,b,aErr,bErr) = linfit:fit(x,y)
+    aStr = errorstr(a,aErr,1,3)
+    Eerr = ampAxis[0]*(exp(b + bErr)-exp(b))
+    bStr = errorstr(exp(b)*ampAxis[0],Eerr,1,0)
+  
+      pr "\n"
+if(depth!=-1)
+      pr "Depth = $depth$ um\n"
+endif
+      pr "E = $bStr$, a = $aStr$\n"    
+   catch
+      pr "fitting error\n"
+      return("0","0")
+   endtry
+
+   yfit = matrix(nrPntsNew)
+   yfit[~] = b + a*x[~]
+
+   curplot("1d",3,1)
+   drawplot("false")
+
+   plot(x,yfit)
+         trace("tracetype","lines",
+         "tracewidth",2,
+         "symbolshape","none",
+         "tracecolor",[255,0,0])
+  
+   hold("on")
+
+   plot(x,y,
+          "tracetype", "lines",
+          "tracecolor",[255,255,255],
+          "symbolshape","opensquare",
+          "symbolcolor",[0,255,0])
+    xlabel(" 2/3 \G(g)^(2) G_(0)^(2) \G(t)^(3) (10^(9) m^(-2)s)") 
+    ylabel("ln (amplitude)")
+    title("D = $errorstr(-a,aErr,1,3)$ 10^(-9) m^(2)/s")
+    hold("off")
+    drawplot("true") 
+
+endproc(exp(b)*ampAxis[0],bStr,a,aStr)
+
+#################################################
+
+procedure(removeNegativeValues,t,data,nrPnts) 
+  
+  countNeg = nrPnts
+
+  for (x = 0 to nrPnts-1 step 1)
+     if (data[x]< 0.001)
+         countNeg=x
+     endif
+  next(x)
+
+  if (countNeg<nrPnts)
+     pr "\n Some negative data points were removed before fitting\n"
+  endif
+
+  tNew = submatrix(t   ,0,countNeg-1) 
+  dadaNew = submatrix(data,0,countNeg-1) 
+  
+endproc(tNew,dadaNew,countNeg)
+
+#----------------------------------------------
+procedure(printOptTauMaxSE,nada)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   bak = getcwd()
+   cd(getmacropath())
+   probeHeadPar = load("$probeHead$.par")
+   assignlist(probeHeadPar)
+   cd(bak)
+
+   try
+      gradientTperMeter = gradient/42.57
+      # the factor 1000 is to change from seconds to ms 
+      t2Diff = 1000*(DEst*1e-9*(2/3)*(gamma*gradientTperMeter)^2)^(-1/3)
+         if(nrArgs==0)
+        pr "\n Optimum tauMax ~ $t2Diff,3.2g$ ms  \n" 
+      endif
+
+   catch
+      return -1 
+   endtry  
+
+endproc(t2Diff)
+
+
+

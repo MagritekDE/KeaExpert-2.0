@@ -1,0 +1,67 @@
+########################################################
+#               
+# CPMG Add
+# CPMG in which the echoes are coadded to improve the signal to noise ratio.
+#
+# www.magritek.com, March 2013
+# Prospa V3.12
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y)
+  interface = ["b1Freq","B1 Frequency (MHz)",        "0","0","tbw",   "freq",
+               "repTime","Repetition time (ms)",     "0","1","tbw",   "reptime",
+               "90Amplitude","90 amplitude (dB)",    "1","0","tb",    "pulseamp",
+               "180Amplitude","180 amplitude (dB)",  "1","1","tb",    "pulseamp",
+               "pulseLength","Pulse length (us)",    "1","2","tb",    "pulselength",
+               "echoTime","Echotime (us)",           "2","0","tb",    "sdelay",
+               "nrEchoes","Number of echoes",        "2","1","tb",    "integer",
+               "echoShift","Echo shift (us)",         "2","2","tb",     "float,[-100,100]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["a1 = 90Amplitude",
+                    "a2 = 180Amplitude",
+                    "d1 = pulseLength",
+                    "d2 = echoTime/2-d1-pgo",
+                    "d3 = echoTime/2-acqTime*500-d1/2+echoShift+rxLat",
+                    "d4 = echoTime-d1-pgo-d3",
+                    "d5 = echoTime-d1",
+                    "n2 = nrPnts",
+                    "n1 = nrEchoes",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# Define the tabs and their order
+  tabs = ["Pulse_sequence","Acquisition","Processing_Display_Std","File_Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [180,26]
+
+# Pulse sequence
+   initpp(dir)               # Reset internal parameter list
+
+   cleardata(n2)
+
+   pulse(mode,a1,p1,d1)      # 90 pulse
+   delay(d2)                 # 90 - 180 delay
+
+   loop(l1,n1)
+      pulse(mode,a2,p2,d1)   # 180 pulse
+      delay(d3)              # 180 - acq delay
+      acquire("sum",n2,d4)   # Acquire echo and wait
+   endloop(l1)
+
+   lst = endpp()             # Return parameter list
+
+# Phase cycle
+   phaseList = [0,2; #  x,-x : 90 phase
+                1,1; #  y, y : 180 phase
+                0,2] #  x,-x : Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

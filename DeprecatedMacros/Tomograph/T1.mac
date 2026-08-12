@@ -1,0 +1,580 @@
+#########################################################
+# 
+# T1
+#
+# Copyright (c) Magritek Ltd 2014
+#
+# U.I. V3
+#########################################################
+
+procedure(T1, guipar)
+
+   keaCtrl:checkVersion(2.15,1.1)
+
+   n = :windowdefinition()
+
+   windowvar(wv_dispMode,wv_ctrls,wv_shift,wv_other,wv_rel,
+             wv_pp_list,wv_pp_name,wv_var,wv_tabs,wv_phase_list)
+
+   wv_tabs  = ["Pulse Sequence","acquisition","processing+display","File settings"] # Tab names
+   wv_ctrls = [2,30,31,54,55,68,69,89,90,99] # Control groups
+   wv_shift = [-14,137,288,439,442] # Amount to shift control groups
+   wv_other = [98,219,655]  # Collapse control and window size
+   wv_saved = "false"
+
+   (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar()
+
+   if(nrArgs == 0)
+      guipar = "show"
+   endif
+
+   keaCtrl:setUp(n,"T1",getmacropath(),guipar)
+   if(guipar == "hide")
+      return(n)
+   elseif(guipar == "show")
+      try; :initGUI(n); catch; endtry;
+      showwindow(n)
+      return(n)
+   else
+      setwindowpar(n,"type","dialog")
+      guipar = showdialog(n)
+      return(guipar)
+   endif
+
+endproc()
+
+#########################################################
+# 
+# Returns important pulse sequence parameters
+#
+# rel ......... relationship between pulse sequence parameters
+# var ......... variable which change during the pulse sequence
+# pp_list ..... list of pulse sequence parameters sent to DSP
+# pp_name ..... name of DSP pulse program to run
+# phase_list .. phase cycling information
+#
+#########################################################
+
+procedure(getseqpar)
+
+   rel = ["d1 = pulseLength",
+          "rampDur = 200",
+          "d300 = 4",
+          "n300 = round(rampDur/d300)",
+          "d100 = durSpoil",
+          "n10 = xshim*xcal/1000",
+          "n20 = yshim*ycal/1000",
+          "n30 = zshim*zcal/1000",
+          "n11 = gxSpoil*xcal/1000",
+          "n21 = gySpoil*ycal/1000",
+          "n31 = gzSpoil*zcal/1000",
+          "d2 = deadTime",
+          "w1 = 300",
+          "w3 = round(repTime*1000)",
+          "n2 = nrPnts",
+          "totPnts = nrPnts",
+          "totTime = acqTime"]
+   var = ["w1"]
+   pp_list = ["a1","p1","d1","n10","n11","n300","d300","n20","n21","n30","n31","d100","w1","p2","d2","n2","w3"]
+   pp_name = "T1.p"
+   phase_list = [0,0;2,0;2,0]
+
+endproc(rel,var,pp_list,pp_name,phase_list)
+
+
+#########################################################
+# 
+# Provide an interface to this macro which does not
+# require the use of the window interface
+#
+# User must supply a list of parameter (see help file)
+# and the pulse program name if different from 
+# "$macro$_ext.p"
+#
+#########################################################
+
+procedure(backdoor, guipar)
+
+   keaCtrl:checkVersion(2.15,1.1)
+
+   (rel,var,pp_list,pp_name,phase_list) = :getseqpar()
+  
+   (guipar,ppList,pcList,pcIndex,varList) = keaCtrl:initialisePP(getmacropath(),getmacroname(),guipar,rel,var,pp_list,pp_name,phase_list)
+   
+   r = keaCtrl:runBDPP(guipar,ppList,pcList,pcIndex,varList)
+
+endproc(r)
+
+#########################################################
+# 
+# Define the window gui
+#
+#########################################################
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("T1", -1, -1, 648, 652)
+
+      # Define all controls with basic parameters
+      getmessage(0,
+        keaCtrl:processMessage();)
+      tab(1, 6, 7, 630, 207,
+         which = getpar(0,1,"currenttab");
+         if(which == 2);
+         fn = findobj(0,"name","filter");
+         keaCtrl:enableControls(fn+1,fn+3,fn);
+         fn = findobj(0,"name","showFreqDomain");
+         keaCtrl:enableControls(fn+1,fn+4,fn);
+         endif();)
+      groupbox(2, "Pulse sequence", 9, 9, 622, 144)
+      statictext(3, 66, 27, "center", "B1 Frequency (MHz)")
+      textbox(4, 43, 42, 46)
+      statictext(5, 66, 67, "center", "Repetition time (ms)")
+      textbox(6, 43, 82, 46)
+      statictext(7, 66, 104, "center", "Offset (Hz)")
+      textbox(8, 43, 119, 46)
+      statictext(9, 236, 35, "right", "90 amplitude (dB)")
+      textbox(10, 242, 31, 40)
+      statictext(11, 236, 61, "right", "rf pulse length (us)")
+      textbox(12, 242, 57, 40)
+      statictext(13, 236, 87, "right", "DeadTime (us)")
+      textbox(14, 242, 83, 40)
+      statictext(15, 406, 35, "right", "Spoil grad x (mT/m)")
+      textbox(16, 412, 31, 40)
+      statictext(17, 406, 61, "right", "Spoil grad y (mT/m)")
+      textbox(18, 412, 57, 40)
+      statictext(19, 406, 87, "right", "Spoil grad z (mT/m)")
+      textbox(20, 412, 83, 40)
+      statictext(21, 406, 113, "right", "Spoil grad dur (us)")
+      textbox(22, 412, 109, 40)
+      statictext(23, 576, 35, "right", "T1 estimation [ms]")
+      textbox(24, 582, 31, 40)
+      statictext(25, 576, 61, "right", "Max. recov. time [ms]")
+      textbox(26, 582, 57, 40)
+      statictext(27, 576, 87, "right", "No of t1 points")
+      textbox(28, 582, 83, 40)
+      statictext(29, 576, 113, "right", "Sampling")
+      textmenu(30, 582, 109, 40, 200)
+      groupbox(31, "Acquisition", 9, 160, 622, 144)
+      statictext(32, 114, 187, "center", "Rx Gain (dB)")
+      textmenu(33, 97, 205, 39, 200)
+      statictext(34, 114, 236, "center", "Rx Phase (degrees)")
+      textbox(35, 97, 252, 39)
+      statictext(36, 222, 189, "center", "Number of")
+      statictext(37, 222, 202, "center", "complex points")
+      textmenu(38, 269, 191, 62, 200,
+         keaCtrl:updateAcqTime();)
+      statictext(39, 222, 221, "center", "Dwell time")
+      statictext(40, 222, 234, "center", "(us)")
+      textmenu(41, 269, 224, 62, 200,
+         keaCtrl:updateFilters();)
+      statictext(42, 222, 255, "center", "Number of")
+      statictext(43, 222, 268, "center", "scans")
+      textbox(44, 269, 256, 62)
+      statictext(45, 396, 203, "center", "Flat filter")
+      checkbox(46, 432, 204, "no,yes", "no",
+           keaCtrl:setDwellTimeMenu();
+           keaCtrl:updateFilters();)
+      statictext(47, 396, 227, "center", "Accumulate")
+      checkbox(48, 432, 228, "no,yes", "no")
+      statictext(49, 396, 251, "center", "Phase cycle")
+      checkbox(50, 432, 253, "no,yes", "yes")
+      statictext(51, 524, 187, "center", "Spectral width (kHz)")
+      textbox(52, 495, 201, 56)
+      statictext(53, 524, 238, "center", "Acquisition time (ms)")
+      textbox(54, 495, 252, 56)
+      groupbox(55, "Processing_Display", 9, 311, 622, 144)
+      statictext(56, 243, 346, "right", "Filter time domain")
+      checkbox(57, 251, 347, "no,yes", "no",
+           fn = findobj(0,"name","filter");
+           keaCtrl:enableControls(fn+1,fn+3,fn);)
+      statictext(58, 125, 377, "right", "Filter")
+      textmenu(59, 132, 373, 108, 200)
+      button(60, 249, 373, 22, 22, "...",
+         filters();)
+      statictext(61, 243, 409, "right", "Time domain magnitude")
+      checkbox(62, 251, 410, "no,yes", "no")
+      statictext(63, 514, 344, "right", "Show frequency domain data")
+      checkbox(64, 522, 345, "no,yes", "no",
+           fn = findobj(0,"name","showFreqDomain");
+           keaCtrl:enableControls(fn+1,fn+4,fn);)
+      statictext(65, 514, 374, "right", "Frequency domain magnitude")
+      checkbox(66, 522, 375, "no,yes", "no")
+      statictext(67, 464, 407, "right", "Display range (kHz)")
+      textbox(68, 474, 404, 61)
+      groupbox(69, "File_Settings", 9, 462, 622, 144)
+      statictext(70, 117, 507, "right", "Working")
+      statictext(71, 117, 520, "right", "directory")
+      textbox(72, 133, 508, 215)
+      button(73, 353, 508, 22, 22, "...",
+         keaFiles:setWorkingDir();)
+      statictext(74, 124, 544, "right", "Experiment")
+      statictext(75, 109, 557, "right", "name")
+      textbox(76, 133, 547, 105)
+      button(77, 244, 547, 22, 22, "...",
+         keaFiles:setExpName();)
+      statictext(78, 346, 544, "right", "Experiment")
+      statictext(79, 336, 557, "right", "number")
+      textbox(80, 354, 547, 25)
+      button(81, 384, 547, 22, 22, "...",
+         keaFiles:setExpNr();)
+      statictext(82, 408, 506, "center", "Save")
+      statictext(83, 408, 519, "center", "data")
+      checkbox(84, 436, 513, "false,true", "true")
+      statictext(85, 452, 544, "center", "Auto")
+      statictext(86, 452, 557, "center", "increment")
+      checkbox(87, 487, 552, "no,yes", "no")
+      button(88, 473, 501, 40, 36, "Load Data",
+         keaFiles:loadData();)
+      button(89, 528, 501, 40, 50, "Open data folder",
+         keaFiles:openDataFolder();)
+      colorbox(90, 55, 619, 10, 10, [255,255,255,255])
+      colorbox(91, 55, 632, 10, 10, [255,255,255,255])
+      button(92, 75, 616, 54, 29, "Run",
+         (wv_rel,wv_var,wv_pp_list,wv_pp_name,wv_phase_list) = :getseqpar();
+         keaCtrl:runPP(getmacropath(),wv_pp_name);)
+      button(93, 140, 616, 54, 29, "Abort",
+         setwindowpar(0,"title","Wait for macro to abort ...");
+         wvExpStatus = "stop";)
+      button(94, 205, 616, 54, 29, "Finish",
+         setwindowpar(0,"title","Wait for phase-cycling to complete ...");
+         wvExpStatus = "finish";)
+      button(95, 270, 616, 54, 29, "Load Par.",
+         keaFiles:loadParameters();)
+      button(96, 335, 616, 54, 29, "Help",
+         help("Macros\Tomograph","T1.htm");)
+      button(97, 400, 616, 54, 29, "Kea Pref.",
+         keaCtrl:showPreferences();)
+      button(98, 465, 616, 54, 29, "Collapse",
+         keaCtrl:toggleWindowSize(1);)
+      button(99, 530, 616, 54, 29, "Close",
+         guipar = getctrlvalues(0);
+         if(getwindowpar(0,"type") == "dialog");
+         guipar = keaFiles:addWindowSpecifics(guipar);
+         keaFiles:saveCommonPar(guipar);
+         closedialog(guipar);
+         else;
+         keaFiles:saveParameters();
+         closewindow(0);
+         endif;)
+      menu(100, "bkgMenu", "Edit macro\tCtrl+Dbl-Click", edit("$getmacroname()$"),
+                "Show compiler\tCtrl+Shift+Dbl-Click", MakePulseProgram("$getmacropath()$","$rmext(getmacroname())$"))
+
+     # Set other control parameters
+      setpar(n,1,"active","true",
+                  "inittabs",[""])
+      setpar(n,4,"valueID","b1Freq",
+                  "tag","freqRange",
+                  "type","double",
+                  "range",[1,400])
+      setpar(n,6,"valueID","repTime",
+                  "type","float",
+                  "range",[1,1e+008])
+      setpar(n,8,"valueID","O1",
+                  "type","float")
+      setpar(n,10,"valueID","a1",
+                  "type","float",
+                  "range",[-85,0])
+      setpar(n,12,"valueID","pulseLength",
+                  "type","float",
+                  "range",[0.5,1000])
+      setpar(n,14,"valueID","deadTime",
+                  "type","float",
+                  "range",[2,327670])
+      setpar(n,16,"valueID","gxSpoil",
+                  "type","integer",
+                  "range",[-10,10])
+      setpar(n,18,"valueID","gySpoil",
+                  "type","integer",
+                  "range",[-10,10])
+      setpar(n,20,"valueID","gzSpoil",
+                  "type","integer",
+                  "range",[-10,10])
+      setpar(n,22,"valueID","durSpoil",
+                  "type","float",
+                  "range",[2,327670])
+      setpar(n,24,"valueID","t1Est",
+                  "type","float",
+                  "range",[2,327670])
+      setpar(n,26,"valueID","tMax",
+                  "type","float",
+                  "range",[2,327670])
+      setpar(n,28,"valueID","nrPntsT1",
+                  "type","integer",
+                  "range",[1,1000])
+      setpar(n,30,"valueID","index",
+                  "menu",["lin","exp"])
+      setpar(n,33,"valueID","rxGain",
+                  "type","integer",
+                  "tooltip","20-40 dB gives optimal SNR.\rDecrease if overload occurs.",
+                  "range",[-20,70],
+                  "menu",["-20","-17","-14","-11","-8","-5","-2","1","4","7","10","13","16","19","22","25","28","31","34","37","40","43","46","49","52","55","58","61","64","67","70"])
+      setpar(n,35,"valueID","rxPhase",
+                  "type","float",
+                  "tooltip","Applies a fixed phase shift to collected data.\rIgnored if autophasing.")
+      setpar(n,38,"valueID","nrPnts",
+                  "type","integer",
+                  "range",[2,65536],
+                  "menu",["2","4","8","16","32","64","128","256","512","1024","2048","4096","8192","16384","32768","65536"])
+      setpar(n,41,"valueID","dwellTime",
+                  "type","float",
+                  "menu",[""])
+      setpar(n,44,"valueID","nrScans",
+                  "type","integer",
+                  "range",[1,1e+006])
+      setpar(n,46,"valueID","flatFilter",
+                  "tooltip","On: all frequencies equally weighted.\rOff: center frequencies enhanced.")
+      setpar(n,48,"valueID","accumulate")
+      setpar(n,50,"valueID","usePhaseCycle")
+      setpar(n,52,"valueID","bandwidth",
+                  "tag","disable")
+      setpar(n,54,"valueID","acqTime",
+                  "tag","disable")
+      setpar(n,57,"valueID","filter")
+      setpar(n,59,"valueID","filterType",
+                  "menu",[""])
+      setpar(n,62,"valueID","timeMag")
+      setpar(n,64,"valueID","showFreqDomain")
+      setpar(n,66,"valueID","freqMag")
+      setpar(n,68,"valueID","dispRange",
+                  "type","float")
+      setpar(n,72,"valueID","dataDirectory",
+                  "type","string",
+                  "tooltip","Where experimental data will be stored.")
+      setpar(n,76,"valueID","expName",
+                  "type","string",
+                  "tooltip","A subdirectory of the data working directory to store different experiments.")
+      setpar(n,80,"valueID","expNr",
+                  "tooltip","A numbered subdirectory below the experiment name.\rNot made if entry is blank.")
+      setpar(n,84,"valueID","saveData")
+      setpar(n,87,"valueID","incExpNr",
+                  "tooltip","Increment the experiment number after each experiment.")
+      setpar(n,88,"tooltip","Load and display the data specified in the directories fields")
+      setpar(n,89,"tooltip","View the data directory in Windows Explorer.")
+      setpar(n,90,"objID","ppStatus",
+                  "tooltip","Experiment Status Indicator\rGreen: running\rBlue: processing\rYellow: waiting")
+      setpar(n,91,"objID","rxOverflow",
+                  "tooltip","Receiver Overflow Indicator\rRed: overflow")
+      setpar(n,92,"valueID","run",
+                  "tooltip","Start the experiment.")
+      setpar(n,93,"valueID","stop",
+                  "tooltip","Stop the experiment without saving data.",
+                  "active","true")
+      setpar(n,94,"valueID","finish",
+                  "tooltip","Finish the current phase cycle and save data.",
+                  "active","true")
+      setpar(n,95,"valueID","load",
+                  "tooltip","Load a parameter set for a similar experiment.")
+      setpar(n,96,"valueID","help",
+                  "tooltip","Display HTML help for this experiment.",
+                  "active","true")
+      setpar(n,97,"valueID","showPref",
+                  "tooltip","Display a preferences dialog for the Kea spectrometer.")
+      setpar(n,98,"valueID","size",
+                  "tooltip","Expand or collapse the window size to show all or fewer controls.",
+                  "active","true")
+      setpar(n,99,"valueID","close",
+                  "tooltip","Close the window saving all parameters.")
+
+     # Set other window parameters
+      setwindowpar(n,"bkgmenu",100)
+
+endproc(n)
+
+
+#######################################################
+# Execute the pulse program, collecting nrScans of 
+# data and displaying the result in the 1D plot. 
+#
+# This procedure can be modified to perform more
+# complex functions using the passed parameters:
+#
+# guipar ..... all parameters from the user interface
+# ppList ..... the pulse program parameter list
+# pcList ..... phase-cycle list
+# pcIndex .... indices of phase parameters in ppList
+# varIndex ... indices of variable parameters in ppList
+#
+#######################################################
+
+procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
+
+# Make all gui parameters available
+   assignlist(guipar)
+
+#pr n10,n11
+#pr n20,n21
+#pr n30,n31
+#
+#return
+
+   t1Axis  = matrix(nrPntsT1)
+   amax = 1
+   amin = exp(-tMax/t1Est)
+   astep= (amax-amin)/(nrPntsT1-1)
+
+   for(m = 1 to nrPntsT1-1)
+    #lineal time increment
+      if(index=="lin")
+        t1Axis[m] = m*tMax/(nrPntsT1-1) 
+      endif 
+   #exponetial time increment
+      if(index=="exp")
+      t1Axis[m] = t1Est*(-loge(amax-astep*(m)))^(1/1)
+      if (t1Est<0.1*tMax); t1Axis[nrPntsT1-1] = tMax; endif
+      endif
+   next(m)
+
+
+   sumData = cmatrix(totPnts)
+   totalTime = [0:1:nrPnts-1]*dwellTime
+   t1Amp  = matrix(nrPntsT1)
+   t1Amp[0] = 0 
+
+   wvPP->multiplot(2,1)
+   winNr1d = wvPP->parent()->winnr()
+   winNr2d = wvPP2->parent()->winnr()
+
+
+# Reset the timer
+   time(0)
+
+   for(nt1 = nrPntsT1-1 to 1 step -1)  
+
+      t1 = time()
+      w1 = t1Axis[nt1]*1000-6*rampDur-d100
+   
+      if(w1<0)
+       pr w1
+       return
+      endif
+   
+      ppList = keaNMR:setPPLongDelay(ppList,varIndex[0],w1)
+   
+      sumData = cmatrix(totPnts)
+   
+   # Accumulate scan
+      for(scan = 0 to nrScans-1)
+     
+       # Note the time at scan start
+         t1 = time()   
+   
+       # Set phases for this scan
+         (ppList,pAcq) = keaNMR:setPPPhase(ppList,scan,pcList,pcIndex)
+   
+       # Send phase parameters to DSP
+         dspwrite("x",0x00,ppList)
+   
+       # Collect the data
+         (status,data) = keaNMR:getData(totPnts,guipar)
+         if(status != "ok")
+            keaNMR:enableButtons()
+            abort("")
+         endif
+   
+       # Accumlate the data
+         sumData = keaNMR:accumulate(accumulate,pAcq,sumData,data)
+   
+            if(accumulate=="yes")
+               sf = 1/(scan+1)
+            else
+               sf = 1
+            endif
+   
+            t1Amp[nt1]=real(sum(sumData))*sf/nrPnts
+   
+            pd = wvPP->subplot(1,1)
+            pd->draw("false")
+            pd->plot(totalTime,sf*sumData)
+            pd->title("text","FID ($scan+1$/$nrScans$)")
+            pd->xlabel("text","time (us)")
+            pd->ylabel("text","amplitude")
+            pd->draw("true")
+   
+            pd = wvPP->subplot(2,1)
+            pd->draw("false")
+            pd->plot(t1Axis,t1Amp,"tracetype","lines","tracecolor",black,"symbolshape","square","symbolcolor",black)
+            pd->title("text","nutation curve ($scan+1$/$nrScans$)")
+            pd->xlabel("text","time (ms)")
+            pd->ylabel("text","amplitude")
+            pd->draw("true")
+   
+   
+          # Check timing
+            check = keaRun:checkTimeAndAbort(guipar,t1,scan,pcList)
+            if(check == "abort")
+               return(0)
+            elseif(check == "finish")
+               scan = scan+1
+               nt1 = 10000000000
+               exitfor()
+            endif
+   
+  
+      next(scan)
+   
+   next(nt1)
+
+   if(saveData == "true")
+      :saveData(guipar,t1Axis,t1Amp)
+      keaFiles:incrementExperiment(guipar)
+   endif
+
+   try
+     t1Axis = submatrix(t1Axis,1,nrPntsT1-1)
+     t1Amp  = submatrix(t1Amp,1,nrPntsT1-1)
+     (fit,E0,T1,E0err,T1err) = t1fit(t1Axis,t1Amp,"vd")
+     result = errorstr(T1,T1err,1)
+     pr "\nT1 = $result$ ms\n"  
+
+      pd = wvPP->subplot(2,1)
+      pd->draw("false")
+      pd->hold("on")
+      pd->plot(t1Axis,fit,"tracecolor",red)
+      pd->title("text","T1 = $result$ ms")
+      pd->xlabel("text","time (ms)")
+      pd->ylabel("text","amplitude")
+      pd->hold("off")
+      pd->draw("true")
+
+   catch
+     result = ""
+   endtry
+
+  endproc("execpp")
+
+
+#######################################################
+# Save the accumulated data
+# Either pass the parameters to save or use
+# window variables of the same name.
+#######################################################
+
+procedure(saveData,guipar,nutTime,dataNut)
+
+# Extract GUI parameters
+   assignlist(guipar)
+
+# Save data and plot in chosen folder
+   bak = getcwd()
+   cd(dataDirectory)
+   mkdir(expName)
+   cd(expName)
+   mkdir("$expNr$")
+   cd("$expNr$")
+   save("data.emf","emf1d")
+
+   n = size(dataNut)
+   m = matrix(3,n)
+   m[0,~] = (nutTime*1)'
+   m[1,~] = real(dataNut)'
+   m[2,~] = imag(dataNut)'
+   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+   export2d(m,"dataT1.dat")  # Save spectrum as an origin file
+
+# Restore cwd
+   cd(bak)
+
+endproc("saveData")

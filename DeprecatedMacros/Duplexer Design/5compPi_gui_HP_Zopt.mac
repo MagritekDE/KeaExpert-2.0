@@ -1,0 +1,611 @@
+procedure(5compPi_gui)
+
+   n = :windowdefinition()
+   :loadPix()
+   if(:loadParameters()) 
+      :updateValues(); 
+   endif 
+   showwindow(n)
+
+   multiplot("1d",2,1)
+   curplot("1d",1,1)
+   title("Transmit")
+   curplot("1d",2,1)
+   title("Receive")
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("5 Component Low-pass Pi filter (high power) ", -1, -1, 583, 375)
+
+      # Define all controls with basic parameters
+       statictext(1, 32, 123, "center", "L1")
+       statictext(2, 32, 151, "center", "L2")
+       statictext(3, 32, 179, "center", "C1")
+       statictext(4, 32, 207, "center", "C2")
+       statictext(5, 32, 235, "center", "C3")
+       slider(6, 99, 119, 300, 20, "horizontal",
+            :updateValues();
+            :transmit();
+            :receive();
+            :impedance();)
+       slider(7, 99, 147, 300, 20, "horizontal",
+            :updateValues();
+            :transmit();
+            :receive();
+            :impedance();)
+       slider(8, 99, 175, 300, 20, "horizontal",
+            :updateValues();
+            :transmit();
+            :receive();
+            :impedance();)
+       slider(9, 99, 203, 300, 20, "horizontal",
+            :updateValues();
+            :transmit();
+            :receive();
+            :impedance();)
+       slider(10, 99, 231, 300, 20, "horizontal",
+            :updateValues();
+            :transmit();
+            :receive();
+            :impedance();)
+       button(11, 508, 283, 54, 71, "Close",
+          :saveParameters();
+          closewindow(0);)
+       textmenu(12, 504, 130, 50, 200)
+       button(13, 195, 323, 65, 32, "Print current values",
+          :printValues();)
+       statictext(14, 143, 37, "right", "Minumum Frequency")
+       statictext(15, 329, 38, "right", "Maximum Frequency")
+       textbox(16, 148, 33, 40,
+         :transmit();
+         :receive();
+         :impedance();)
+       textbox(17, 335, 33, 40,
+         :transmit();
+         :receive();
+         :impedance();)
+       textmenu(18, 502, 34, 50, 200)
+       statictext(19, 496, 38, "right", "Frequency Units")
+       textmenu(20, 504, 203, 50, 200)
+       groupbox(21, "Parameters", 6, 83, 558, 179)
+       textbox(22, 53, 116, 40)
+       textbox(23, 53, 144, 40)
+       textbox(24, 53, 200, 40)
+       textbox(25, 53, 172, 40)
+       textbox(26, 53, 228, 40)
+       textbox(27, 454, 143, 40)
+       textbox(28, 454, 115, 40)
+       textbox(29, 454, 227, 40)
+       textbox(30, 454, 199, 40)
+       textbox(31, 454, 171, 40)
+       statictext(32, 64, 97, "left", "Min.")
+       statictext(33, 463, 97, "left", "Max")
+       statictext(34, 515, 97, "left", "Units")
+       groupbox(35, "Frequency", 7, 14, 558, 61)
+       radiobuttons(36, 127, 300, 20, "vertical", "a,b,c", "a",
+            :transmit();
+            :receive();)
+       statictext(37, 121, 298, "right", "Reflected Power")
+       statictext(38, 121, 339, "right", "VSWR")
+       groupbox(39, "Transmit Display", 6, 273, 154, 92)
+       statictext(40, 121, 318, "right", "Voltage Divider")
+       statictext(41, 406, 202, "left", "0.0")
+       statictext(42, 406, 174, "left", "0.0")
+       statictext(43, 406, 147, "left", "0.0")
+       statictext(44, 406, 120, "left", "0.0")
+       statictext(45, 406, 231, "left", "0.0")
+       button(46, 195, 283, 65, 32, "Apply",
+          :updateValues();
+          :transmit();
+          :receive();
+          :impedance();)
+       button(47, 271, 283, 65, 32, "Save",
+          :savePar();)
+       button(48, 271, 322, 65, 32, "Load",
+          :loadPar();)
+       picture(49, 350, 285, 140, 70)
+
+     # Set other control parameters
+       setpar(n,6,"name","L1slide")
+       setpar(n,7,"name","L2slide")
+       setpar(n,8,"name","c1slide")
+       setpar(n,9,"name","c2slide")
+       setpar(n,10,"name","c3slide")
+       setpar(n,11,"name","close")
+       setpar(n,12,"name","l1units",
+                   "menu",["uH","mH"])
+       setpar(n,13,"name","print")
+       setpar(n,16,"name","fmin")
+       setpar(n,17,"name","fmax")
+       setpar(n,18,"name","funits",
+                   "menu",["kHz","MHz"])
+       setpar(n,20,"name","CapUnits",
+                   "menu",["pF","nF"])
+       setpar(n,22,"name","l1min")
+       setpar(n,23,"name","l2min")
+       setpar(n,24,"name","c2min")
+       setpar(n,25,"name","c1min")
+       setpar(n,26,"name","c3min")
+       setpar(n,27,"name","l2max")
+       setpar(n,28,"name","l1max")
+       setpar(n,29,"name","c3max")
+       setpar(n,30,"name","c2max")
+       setpar(n,31,"name","c1max")
+       setpar(n,36,"name","TransDisplay")
+
+endproc(n)
+
+###########################
+# Receive mode
+#
+# >---- L1 -------L2--->
+#   |        |       |
+#   C1      C2       C3
+#   |        |       |
+#  Gnd      Gnd     Gnd
+###########################
+
+procedure(receive)
+   
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   
+   
+   # Set up values
+   if(l1units = "uH")
+      L1 = (l1min+(l1max-l1min)/100*L1slide)*1e-6
+      L2 = (l2min+(l2max-l2min)/100*L2slide)*1e-6
+   endif
+   if(l1units = "nH")
+      L1 = (l1min+(l1max-l1min)/100*L1slide)*1e-9
+      L2 = (l2min+(l2max-l2min)/100*L2slide)*1e-9
+   endif
+   
+   if(funits = "kHz")
+      fmin = fmin*1e3
+      fmax = fmax*1e3
+   endif
+   if(funits = "MHz")
+      fmin = fmin*1e6
+      fmax = fmax*1e6
+   endif
+   
+   if(CapUnits = "nF")
+   c1 = (c1min+(c1max-c1min)/100*c1slide)*1e-9
+   c2 = (c2min+(c2max-c2min)/100*c2slide)*1e-9
+   c3 = (c3min+(c3max-c3min)/100*c3slide)*1e-9
+   endif
+   if(CapUnits = "pF")
+   c1 = (c1min+(c1max-c1min)/100*c1slide)*1e-12
+   c2 = (c2min+(c2max-c2min)/100*c2slide)*1e-12
+   c3 = (c3min+(c3max-c3min)/100*c3slide)*1e-12
+   endif
+   
+   x = [fmin :.001*(fmax-fmin):fmax] 
+   
+   omega = 2*pi*x
+
+   c1 = c1 + 20e-12
+   c2 = c2 + 5e-12
+   c3 = c3 + 5e-12
+   c4 = 1e-9
+   
+   R = 50
+   Xc1 = 1/(i*omega*c1)
+   Xc2 = 1/(i*omega*c2)
+   Xc3 = 1/(i*omega*c3)
+   Xc4 = 1/(i*omega*c4)
+   XL1 = i*omega*L1
+   XL2 = i*omega*L2
+   
+   z4 = R*Xc3/(R+Xc3)
+   z2 = z4+XL2
+   z3 = z2.*Xc2/(z2+Xc2)
+   z1 = (XL1 + z3).*Xc1/(Xc1+XL1+z3)
+   
+   v2 = z1/(R+z1)
+   v3 = v2.*z3/(z3+XL1)
+   v4 = v3.*z4/(XL2+z4)
+  # v4 = v4*50/(Xc4+50)
+   
+
+   curplot("1d",2,1)
+   draw1d("false")
+   plot(x/1e6,mag(v4))
+   #plot(x/1e6,mag(v3)) # Voltage across cap 2
+   #plot(x/1e6,mag(v2)) # Voltage across cap 1
+   zoom1d(fmin/1e6,fmax/1e6,0,0.55)
+   title("Receive")
+   xlabel("Frequency (MHz)")
+   ylabel("Gain")
+   draw1d("true")
+   
+
+endproc()
+
+#####################################
+# Transmit mode
+#
+# Model used
+#     >-C1---L1-RD----- RD--L2------>
+#                  |            |
+#                C2  R1       C2 RL
+#                  |            |
+#                 Gnd          Gnd
+#
+#    >---- L3 -------
+#      |        |   |
+#      C3      C4   L4
+#      |        |   |
+#     Gnd      Gnd Gnd
+#
+# C1 is the input capacitance which 
+# determines the response time.
+# C2 is stray board capacitiance.
+# RD is diode resistance
+# L1 and L2 are stray board inductance
+# C3, C4, L3 ans L4 are the filter
+# components. C3 and C4 also include
+# stray capacitance of 10 and 5 pF.
+#####################################
+
+procedure(transmit)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   
+   # Set up values
+   if(l1units = "uH")
+      L3 = (l1min+(l1max-l1min)/100*L1slide)*1e-6
+      L4 = (l2min+(l2max-l2min)/100*L2slide)*1e-6
+   endif
+   if(l1units = "nH")
+      L3 = (l1min+(l1max-l1min)/100*L1slide)*1e-9
+      L4 = (l2min+(l2max-l2min)/100*L2slide)*1e-9
+   endif
+   
+   if(funits = "kHz")
+      fmin = fmin*1e3
+      fmax = fmax*1e3
+   endif
+   if(funits = "MHz")
+      fmin = fmin*1e6
+      fmax = fmax*1e6
+   endif
+   
+   if(CapUnits = "nF")
+   C4 = (c1min+(c1max-c1min)/100*c1slide)*1e-9
+   C5 = (c2min+(c2max-c2min)/100*c2slide)*1e-9
+   C6 = (c3min+(c3max-c3min)/100*c3slide)*1e-9
+   endif
+   if(CapUnits = "pF")
+   C4 = (c1min+(c1max-c1min)/100*c1slide)*1e-12
+   C5 = (c2min+(c2max-c2min)/100*c2slide)*1e-12
+   C6 = (c3min+(c3max-c3min)/100*c3slide)*1e-12
+   endif
+   
+   x = [fmin :.001*(fmax-fmin):fmax] 
+   
+   omega = 2*pi*x
+   
+   C1 = 1e-9 
+   RS = 50
+   R2 = 50
+   R1 = 2350.0
+
+# Stray C, L and R
+   L1 = 15e-9
+   L2 = 15e-9
+   C2 = 20e-12
+   C3 = 10e-12
+   RD = 1
+
+#   C4 = C4 + 10e-12 # Add stray cap
+#   C5 = C5 + 5e-12 # Add stray cap
+#   C4 = 10e-12
+#   C5 = 44e-12
+#   L3 = 800e-9
+#   L4 = L3
+
+
+
+   C4 = 20e-16
+   C5 = 50e-16
+   L3 = 0.8e-1
+   L4 = 0.8e-1
+
+   Xc1 = 1/(i*omega*C1)
+   Xc2 = 1/(i*omega*C2)
+   Xc3 = 1/(i*omega*C3)
+   XL1 = i*omega*L1 + RD
+   XL2 = i*omega*L2 + RD
+
+   Xc4 = 1/(i*omega*C4)
+   Xc5 = 1/(i*omega*C5)
+   XL3 = i*omega*L3
+   XL4 = i*omega*L4
+   
+   z1 = Xc1+XL1
+   z2 = Xc2.*R1/(Xc2+R1)
+   z3 = XL2 
+   z4 = Xc3.*R2/(Xc3+R2)
+   z5 = XL3 
+   z6 = Xc5.*XL4/(Xc5+XL4)
+   z7 = z5+z6
+   z8 = z7.*Xc4/(z7+Xc4)
+   z9 = z8.*z4/(z8+z4)
+   z10 = z9+z3
+   z11 = z2.*z10/(z2+z10)
+   zt = z11+z1
+
+   P_r = (zt-RS)/(zt+RS)
+   
+  multiplot("1d",3,1)
+   draw1d("false")
+   curplot("1d",1,1)
+
+   if(TransDisplay = "a")
+      P_ref = P_r^2
+      plot(x/1e6,mag(P_ref))
+      title("Transmit: Reflected Power")
+      xlabel("Frequency (MHz)")
+      ylabel("Fraction Reflected Power")
+   elseif(TransDisplay = "b")
+      v2 = z1/(R+z1)
+      plot(x/1e6,mag(v2))
+      title("Transmit: Voltage Divider")
+      xlabel("Frequency (MHz)")
+      ylabel("Vout/Vin")
+   elseif(TransDisplay = "c")
+      VSWR = (1+mag(P_r))/(1-mag(P_r))
+      plot(x/1e6,mag(VSWR))
+      title("Transmit: VSWR")
+      xlabel("Frequency (MHz)")
+      ylabel("VSWR")
+      zoom1d(min(x)/1e6,max(x)/1e6,0,10)
+   endif
+
+#   curplot("1d",3,1)
+#   plot(x/1e6,mag(v2/XL2))
+#   title("Voltage across L2")
+# #  title("Diode current")
+#   xlabel("Frequency (MHz)")
+# #  ylabel("Current (RMS A)")
+#   ylabel("Voltage (RMS V)")
+   draw1d("true")
+endproc()
+
+###########################
+# Imedance mode
+#
+# R50------ L1 -------L2---> Z
+#  |    |        |       |
+#  |   C1      C2       C3
+#  |    |        |       |
+# Gnd  Gnd      Gnd     Gnd
+###########################
+
+procedure(impedance)
+   
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   
+   # Set up values
+   if(l1units = "uH")
+      L1 = (l1min+(l1max-l1min)/100*L1slide)*1e-6
+      L2 = (l2min+(l2max-l2min)/100*L2slide)*1e-6
+   endif
+   if(l1units = "nH")
+      L1 = (l1min+(l1max-l1min)/100*L1slide)*1e-9
+      L2 = (l2min+(l2max-l2min)/100*L2slide)*1e-9
+   endif
+   
+   if(funits = "kHz")
+      fmin = fmin*1e3
+      fmax = fmax*1e3
+   endif
+   if(funits = "MHz")
+      fmin = fmin*1e6
+      fmax = fmax*1e6
+   endif
+   
+   if(CapUnits = "nF")
+      c1 = (c1min+(c1max-c1min)/100*c1slide)*1e-9
+      c2 = (c2min+(c2max-c2min)/100*c2slide)*1e-9
+      c3 = (c3min+(c3max-c3min)/100*c3slide)*1e-9
+   endif
+   if(CapUnits = "pF")
+      c1 = (c1min+(c1max-c1min)/100*c1slide)*1e-12
+      c2 = (c2min+(c2max-c2min)/100*c2slide)*1e-12
+      c3 = (c3min+(c3max-c3min)/100*c3slide)*1e-12
+   endif
+   
+   x = [fmin :.001*(fmax-fmin):fmax] 
+   
+   omega = 2*pi*x
+#
+#   c1 = c1 + 20e-12
+#   c2 = c2 + 5e-12
+#   c3 = c3 + 5e-12
+   pr c1,c2,c3,L1,L2
+   Rs = 50
+   
+   Xc1 = 1/(i*omega*c1)
+   Xc2 = 1/(i*omega*c2)
+   Xc3 = 1/(i*omega*c3)
+   XL1 = i*omega*L1
+   XL2 = i*omega*L2
+
+   z1 = Rs
+   z2 = Xc1.*z1/(Xc1+z1)
+   z3 = z2 + XL1
+   z4 = Xc2.*z3/(Xc2+z3)
+   z5 = z4 + XL2
+   z6 = Xc3.*z5/(Xc3+z5)
+
+
+   draw1d("false")
+   curplot("1d",3,1)
+   plot(x/1e6,z6,"color",[255,0,0])
+   hold("on")
+   plot(x/1e6,mag(z6),"color",[0,0,255])
+   title("Impedance")
+   xlabel("Frequency (MHz)")
+   ylabel("Ohms")
+   hold("off")
+
+   draw1d("true")
+
+endproc()
+
+######################################################
+# Prints the component values
+######################################################
+procedure(printValues)
+
+guipar = getctrlvalues(0)
+assignlist(guipar)
+
+L1 = getpar(0, 6, "value")
+L2 = getpar(0, 7, "value")
+c1 = getpar(0, 8, "value")
+c2 = getpar(0, 9, "value")
+c3 = getpar(0, 10, "value")
+
+
+# Set up values
+if(l1units = "uH")
+   L1 = (l1min+(l1max-l1min)/100*L1)*1e-6
+   L2 = (l2min+(l2max-l2min)/100*L2)*1e-6
+endif
+if(l1units = "nH")
+   L1 = (l1min+(l1max-l1min)/100*L1)*1e-9
+   L2 = (l2min+(l2max-l2min)/100*L2)*1e-9
+endif
+
+if(funits = "kHz")
+   fmin = fmin*1e3
+   fmax = fmax*1e3
+endif
+if(funits = "MHz")
+   fmin = fmin*1e6
+   fmax = fmax*1e6
+endif
+
+if(CapUnits = "nF")
+c1 = (c1min+(c1max-c1min)/100*c1)*1e-9
+c2 = (c2min+(c2max-c2min)/100*c2)*1e-9
+c3 = (c3min+(c3max-c3min)/100*c3)*1e-9
+endif
+if(CapUnits = "pF")
+c1 = (c1min+(c1max-c1min)/100*c1)*1e-12
+c2 = (c2min+(c2max-c2min)/100*c2)*1e-12
+c3 = (c3min+(c3max-c3min)/100*c3)*1e-12
+endif
+
+pr "\r L1 = $L1$ H \r L2 = $L2$ H \r C1 = $c1$ F \r C2 = $c2$ F \r C3 = $c3$ F" 
+
+
+endproc
+
+###########################################
+#
+#  Saves the Current parameters
+#
+###########################################
+
+procedure(saveParameters)
+
+   bakdir = getcwd()
+   lst = getctrlvalues(0)
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   save("5comppi_gui.par",lst)
+   cd(bakdir)
+
+endproc()
+
+procedure(loadPix)
+
+   bak = getcwd()
+   cd(getmacropath())
+   setpar(0,49,"file","filter.jpg")
+   cd(bak)
+
+endproc()
+
+###########################################
+#
+#  Loads the Current parameters
+#
+###########################################
+
+procedure(loadParameters)
+
+   bakdir = getcwd()
+   cd(prefdir)
+   cd("Other Macros")
+   fnd = 0
+   if(isfile("5comppi_gui.par"))
+     par = load("5comppi_gui.par")
+     setctrlvalues(0,par)
+     fnd = 1
+   endif
+   cd(bakdir)
+ 
+endproc(fnd)
+
+procedure(updateValues)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   L1 = (l1min+(l1max-l1min)/100*L1slide)
+   L2 = (l2min+(l2max-l2min)/100*L2slide)
+
+   C1 = (c1min+(c1max-c1min)/100*c1slide)
+   C2 = (c2min+(c2max-c2min)/100*c2slide)
+   C3 = (c3min+(c3max-c3min)/100*c3slide)
+
+   setpar(0,44,"text",L1)
+   setpar(0,43,"text",L2)
+   setpar(0,42,"text",C1)
+   setpar(0,41,"text",C2)
+   setpar(0,45,"text",C3)
+
+endproc()
+
+procedure(savePar)
+
+   guipar = getctrlvalues(0)
+   bakdir = getcwd()
+   cd(workdir)
+   name = getfilename("save","Save duplexer parameters","Parameter file","par")
+   if(name != "cancel")
+     save(name,guipar)
+   endif
+   assign("workdir",getcwd(),"global")
+   cd(bakdir)
+
+endproc()
+
+procedure(loadPar)
+
+   bakdir = getcwd()
+   cd(workdir)
+   name = getfilename("open","Load duplexer parameters","Parameter file","par")
+   if(name != "cancel")
+     lst = load(name)
+     setctrlvalues(0,lst)
+     :updateValues()
+   endif
+   assign("workdir",getcwd(),"global")
+   cd(bakdir)
+  
+
+endproc()

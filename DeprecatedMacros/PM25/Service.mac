@@ -1,0 +1,173 @@
+procedure(Service)
+
+   n = :windowdefinition()
+   :loadLastPar(n)
+   setpar(n,5,"text","0")
+   windowvar(position)
+   position = 0
+   setpar(0,10,"text","Initial position = undefined")
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Service", -1, -1, 272, 117)
+
+      # Define all controls with basic parameters
+       windowvar(position)
+       button(1, 202, 62, 45, 20, "Service",
+          :service();)
+       button(2, 202, 35, 45, 20, "Home",
+          :home();)
+       button(3, 202, 8, 45, 20, "Move",
+          :move();)
+       groupbox(4, "", 1, -3, 192, 91)
+       textbox(5, 89, 9, 47)
+       statictext(6, 76, 8, "right", "distance to  ")
+       groupbox(7, "", 196, -3, 57, 91)
+       statictext(8, 83, 64, "right", "SPACER (um)")
+       statictext(9, 76, 21, "right", " move (um)")
+       statusbox(10)
+       textmenu(11, 89, 60, 96, 200,
+          :selectSpacer();)
+       statictext(12, 83, 39, "right", "Max. depth (um)")
+       textbox(13, 89, 35, 47)
+
+     # Set other control parameters
+       setpar(n,11,"name","spacer",
+                   "menu",["PM25-20mm","PM25-15mm","PM25-10mm","PM25-05mm","PM25-00mm"])
+       setpar(n,13,"name","maxDepth")
+       setpar(n,13,"enable","false")
+       setwindowpar(n,"exit_procedure",":saveLastPar()")
+
+endproc(n)
+  #     setwindowpar(n,"exit_procedure",":saveLastPar()")
+procedure(service)
+
+   cd(getmacropath())
+   cd("LiftControl")
+   MoveToService()
+
+endproc()
+
+procedure(home)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   cd(getmacropath())
+   cd("LiftControl")
+  
+ MoveHome(10)
+   position = 0
+   setpar(0,10,"text","position = $position$ um")
+   setpar(0,5,"text","0")
+endproc()
+
+
+procedure(move)
+   cd(getmacropath())
+   cd("LiftControl")
+   
+   y = getpar(0,5,"value")
+   if( y == 0 ); return; endif; 
+   sign = abs(y)/y
+   y = abs(y)
+
+   if(sign > 0)
+    slowSteps = trunc((y-50*trunc(y/50))/10)
+#  slowSteps = trunc((y)/10)
+   MoveUpFast(trunc(y/50),10,position)
+   position = position + 50*trunc(y/50)
+  
+    MoveUp(slowSteps,10,position)
+    position = position + 10*slowSteps
+   else
+    slowSteps = trunc((y-50*trunc(y/50))/10)
+ #  slowSteps = trunc((y)/10)
+
+   MoveDownFast(trunc(y/50),10,position)
+   position = position - 50*trunc(y/50)
+    MoveDown(slowSteps,10,position)
+    position = position - 10*slowSteps
+
+
+  endif
+endproc()
+
+#---------------------------------
+procedure(selectSpacer,n)
+    
+    if(nrArgs==0);  n=0; endif
+    if (n==-1); return;  endif
+
+    guipar = getctrlvalues(n)
+    assignlist(guipar)
+   
+    dir = getwindowpar(n,"macropath")
+    obj = findobj(n,"name","spacer")
+    
+    cd(dir)
+    cd("..\PM25\\ProbeHeads\\PM25\\1H-L")
+  
+ 
+    spacerpar = load("$spacer$.par")
+    assignlist(spacerpar)
+
+    templist = mkparlist()
+    setctrlvalues(n,templist)
+
+endproc()
+#-------------------------
+procedure(closeWin)
+   
+   n=0
+   name = getwindowpar(n,"macroname")
+   name = rmext(name)
+   dir  = getwindowpar(n,"macropath")
+        
+   guipar = getctrlvalues(n)
+   assignlist(guipar)
+
+   # always save last experiment parameters
+   cd(dir)
+   cd(name)
+   tempguipar = guipar + "macroName = \"$name$\""
+   save("$name$LastExp.par",tempguipar)
+
+   closewindow(0);
+endproc()
+#----------------------------------------------------
+procedure(loadLastPar,n)
+   
+    name = getwindowpar(n,"macroname")
+    name = rmext(name)
+    dir = getwindowpar(n,"macropath")
+    back =  getcwd()
+    cd(dir)
+
+    if(isfile("$name$LastExp.par"))
+      guipar = load("$name$LastExp.par")
+      setctrlvalues(n,guipar)  
+    else
+       message("Warning!!!","File with initital parameters not found","info")
+    endif
+    cd(back)
+endproc()
+
+#--------------------------------------------------
+procedure(saveLastPar)
+
+    guipar = getctrlvalues(0)
+    assignlist(guipar)
+    dir = getmacropath()
+    name = getwindowpar(0,"macroname")
+    name = rmext(name)
+    back =  getcwd()
+    cd(dir)
+    save("$name$LastExp.par",guipar)
+    cd(back)
+endproc()

@@ -1,0 +1,1048 @@
+###################################################################
+# Perform a 1D non-negative least squares fit on an ascii x-y data set
+# (Fits to an exp(-at) type distribution)
+####################################################################
+
+procedure(nnls1dfede)
+
+   n = :windowdefinition()
+   :load_parameters()
+
+   showwindow(n)
+
+endproc()
+
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("NNLS 1D", -1, -1, 451, 312)
+
+      # Define all controls with basic parameters
+      windowvar(dir,wv_xdata,wv_ydata,wv_xlabel,wv_ylabel,wv_title,wvExpDir,wv_relaxAxis,wv_spectrum,wv_fit,wv_error)
+      statictext(1, 55, 17, "right", "Working")
+      statictext(1, 55, 30, "right", "Directory")
+      textbox(2, 69, 22, 220)
+      button(3, 307, 22, 21, 20, "...",
+         :setWorkingDir();)
+      statictext(4, 55, 49, "right", "Exp.")
+      statictext(4, 55, 62, "right", "Name")
+      textbox(5, 69, 54, 82)
+      button(6, 165, 54, 21, 20, "...",
+         :setExpName();)
+      textbox(7, 293, 237, 43)
+      textbox(8, 293, 210, 43)
+      textbox(9, 221, 210, 43)
+      button(10, 362, 110, 51, 29, "Execute",
+         :process_data();)
+      button(11, 362, 231, 51, 29, "Exit",
+         :save_parameters();
+         closewindow(0);)
+      groupbox(12, "Fitting Parameters", -3, 146, 190, 123)
+      statictext(13, 90, 189, "center", "Relaxation range (s)")
+      statictext(14, 270, 241, "right", "Alpha steps")
+      button(15, 362, 141, 52, 27, "Save",
+         :saveData();)
+      statictext(16, 52, 215, "right", "Min")
+      statictext(17, 129, 213, "right", "Max")
+      statictext(18, 112, 248, "right", "Relaxation steps")
+      textbox(19, 58, 210, 43)
+      statictext(20, 287, 213, "right", "Max")
+      textbox(21, 136, 210, 43)
+      statictext(22, 214, 215, "right", "Min")
+      textbox(23, 138, 244, 43)
+      groupbox(24, "Alpha Loop", 192, 146, 150, 122)
+      statictext(25, 47, 168, "right", "Alpha")
+      textbox(26, 54, 163, 44)
+      textbox(27, 134, 163, 45)
+      statictext(28, 127, 168, "right", "Beta")
+      button(29, 273, 161, 60, 29, "Run Loop",
+         :execute_alpha_loop();)
+      groupbox(30, "Input Data Source", 5, 2, 333, 78)
+      statusbox(31)
+      button(32, 362, 170, 51, 29, "Undo",
+         :undo();)
+      statictext(33, 409, 46, "right", "Diffus")
+      statictext(34, 409, 25, "right", "Relax")
+      radiobuttons(35, 364, 26, 20, "vertical", "relax,diffusion", "relax",
+           :select_axis_type();)
+      groupbox(36, "ImportData", 8, 83, 332, 60)
+      button(37, 250, 100, 57, 29, "LoadData",
+           :loadData();)
+      statictext(38, 93, 111, "right", "Cut Initial Points")
+      textbox(39, 103, 106, 40)
+      statictext(40, 225, 49, "right", "Exp.")
+      statictext(40, 225, 62, "right", "number")
+      textbox(41, 235, 54, 58)
+      button(42, 307, 54, 21, 20, "...",
+         keaFiles:setExpNr();)
+      groupbox(56, "Data type", 345, 2, 81, 78)
+      statictext(58, 266, 191, "center", "Alpha range")
+      groupbox(59, "NNLS Fit", 345, 94, 81, 175)
+      button(60, 362, 199, 51, 29, "Help",
+         :load_help();)
+
+     # Set other control parameters
+      setpar(n,2,"valueID","dataDirectory",
+                  "type","string")
+      setpar(n,5,"valueID","expName",
+                  "type","string")
+      setpar(n,7,"valueID","alpha_loop_step")
+      setpar(n,8,"valueID","alpha_loop_end")
+      setpar(n,9,"valueID","alpha_loop_start")
+      setpar(n,19,"valueID","x_minimum")
+      setpar(n,21,"valueID","x_maximum")
+      setpar(n,23,"valueID","x_steps")
+      setpar(n,26,"valueID","alpha")
+      setpar(n,27,"valueID","beta")
+      setpar(n,35,"valueID","exp_type")
+      setpar(n,39,"valueID","pntsCut")
+      setpar(n,41,"valueID","expNr")
+
+endproc(n)
+
+
+procedure(load_help)
+
+   help("Macros\\NNLS","NNLS1D.htm")
+
+endproc()
+
+procedure(undo)
+
+   if(wv_xdata != null & wv_ydata != null)
+      draw1d("false")
+         plot(wv_xdata,wv_ydata)
+         xlabel(wv_xlabel)
+         ylabel(wv_ylabel)
+         title(wv_title)
+         axes("xmapping","lin")
+      draw1d("true")
+   endif
+
+endproc()
+
+procedure(load_file,title,ctrl)
+
+   file = getfilename("load",title,"1D data","1d")
+   if(file != "cancel")
+      setpar(0,ctrl,"text",file)
+   endif
+   dir = getcwd()
+
+endproc()
+
+
+procedure(select_axis_type)
+
+   typex = getpar(0,35,"text")
+   data_src = getpar(0,15,"text")
+
+   if(typex == "relax")
+      setpar(0,50,"enable","false")
+      setpar(0,49,"enable","false")
+      setpar(0,48,"enable","false")
+      setpar(0,37,"enable","false")
+      setpar(0,38,"enable","false")
+      setpar(0,39,"enable","false")
+      setpar(0,40,"enable","false")
+      setpar(0,41,"enable","false")
+      setpar(0,42,"enable","false")
+      setpar(0,43,"enable","false")
+      setpar(0,44,"enable","false")
+      setpar(0,45,"enable","false")
+      setpar(0,46,"enable","false")
+      setpar(0,47,"enable","false")
+      setpar(0,13,"text","Relaxation range (s)")
+      setpar(0,18,"text","Relaxation steps")
+      :filename_visibility();
+   else
+      if(data_src == "plot")
+         setpar(0,49,"enable","false")
+         setpar(0,48,"enable","false")
+         setpar(0,37,"enable","false")
+         setpar(0,50,"enable","false")
+      else
+         setpar(0,49,"enable","true")
+         setpar(0,48,"enable","true")
+         setpar(0,37,"enable","true")
+         setpar(0,50,"enable","true")
+      endif
+      setpar(0,13,"text","Diffusion range (1e-9 m^2/s)")
+      setpar(0,18,"text","Diffusion steps")
+
+      :select_pgse_type()
+      :filename_visibility();
+   endif
+
+endproc()
+
+
+procedure(filename_visibility)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+   if(diffusion_axis == "file")
+      if(data_src == "files")
+         setpar(0,6,"enable","true")
+      elseif(data_src == "vectors")
+         setpar(0,54,"enable","true")
+      else
+         setpar(0,54,"enable","false")
+      endif
+   else
+      if(exp_type == "diffusion")
+         setpar(0,6,"enable","false")
+         setpar(0,54,"enable","false")
+      else
+         if(data_src == "files")
+            setpar(0,6,"enable","true")
+            setpar(0,54,"enable","false")
+         elseif(data_src == "vectors")
+            setpar(0,6,"enable","true")
+            setpar(0,54,"enable","true")
+         else
+            setpar(0,6,"enable","false")
+            setpar(0,54,"enable","false")
+         endif
+      endif
+
+   endif
+
+endproc()
+
+#########################################################
+# Perform nnls for a particular alpha value
+#########################################################
+
+procedure(process_data)
+
+   setpar(0,31,"text","Working ...")
+
+   time(0)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+   if(isvar("dir"))
+      cd(dir)
+   endif
+   :save_parameters()
+
+# Get in the data sets
+   
+    curplot("1d",1,1)
+
+   timeDat=wv_xdata
+   yData  =real(wv_ydata)
+   dataSize = size(yData)
+
+   if(x_steps > dataSize)
+      message("Error","Reduce number of steps")
+      return()
+   endif
+
+   if(min(timeDat) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return
+   endif
+
+ 
+   wv_xlabel = xlabel("getargs")
+   wv_ylabel = ylabel("getargs")
+   wv_title =  title("getargs")
+
+# Provide three plots
+
+
+   (spectrum,chisq,count,tau) = :backdoor(timeDat,yData,lst,1)
+
+   curplot("1d",3,1)
+   clear("plot")
+   draw1d("false")
+   if(exp_type == "diffusion")
+      spectrum = reflect(spectrum,"horizontal")
+      stepsize = (log10(x_maximum)-log10(x_minimum))/(x_steps-1)
+      tau = 10^[log10(x_minimum): stepsize: log10(x_maximum)]
+      plot(tau,spectrum)
+      xlabel("text","log_(10)(D) 10^(-9)m^(2)/s","size",11)
+      ylabel("Amplitude")
+      title("Diffusion Spectrum")
+      wv_relaxAxis=tau
+      wv_spectrum=spectrum
+
+   else
+      plot(tau,spectrum)
+      xlabel("log_(10)(T) s")
+      ylabel("Amplitude")
+      title("Relaxation Spectrum")
+      wv_relaxAxis=tau
+      wv_spectrum=spectrum
+
+   endif
+
+   axes("xmapping","log")
+   axes("ymapping","lin")
+   trace("tracetype", "lines", "symbolshape", "none") 
+   draw1d("true")
+
+# Export results to global variables
+   if(exp_type == "diffusion")
+      assign("diff_axis",tau,"global")
+   else
+      assign("relax_axis",tau,"global")
+   endif
+   assign("spec_axis",spectrum,"global")
+
+ 
+
+# Display the fit
+
+    curplot("1d",2,1)
+    clear("plot")
+   if(exp_type == "diffusion")
+
+      draw1d("false")
+                 plot(timeDat,yData,"symbolshape","circle",
+                      "tracetype","none",
+                      "tracewidth",2);
+      hold("on")
+
+     (fit,chisq) = :calcFitDiff(tau,spectrum,timeDat,yData,[255,0,0],2)
+      wv_fit=fit
+
+      xlabel("text","\G(g)^(2)G^(2)\G(d)^(2)(\G(D)-\G(d)/3) / (10^(9) sm^(-2))","size",11)
+      title("Attenuation data with NNLS fit")
+      title("Diffusion data (yellow) & NNLS fit (red)")
+
+      ylabel("text","Attenuation","size",11)
+      axes("xmapping","lin")
+      axes("ymapping","lin")
+      draw1d("true")
+      hold("on")
+
+      pr("\n   Chi-squared = $chisq$\n")
+      pr("\n   Chi-squared/N = $chisq/dataSize$\n")
+      pr("\n   S.D. = $sqrt(chisq/dataSize)$\n")
+
+   else
+
+      draw1d("false")
+           
+      plot(timeDat,yData,"symbolshape","circle",
+                      "tracetype","none",
+                      "tracewidth",2);
+      hold("on")
+      (fit,chisq) = :calcFitT2(tau,spectrum,timeDat,yData,[255,0,0],2)
+
+       wv_fit=fit
+
+      xlabel("text",wv_xlabel,"size",11)
+      ylabel("text",wv_ylabel,"size",11)
+      title("Relaxation data (yellow) & NNLS fit (red)")
+      axes("xmapping","lin")
+      axes("ymapping","lin")
+      draw1d("true")
+      hold("on")
+
+      pr("\n   Chi-squared = $chisq$\n")
+      pr("\n   Chi-squared/N = $chisq/dataSize$\n")
+      pr("\n   S.D. = $sqrt(chisq/dataSize)$\n")
+
+   endif
+
+   
+# Plot residuals
+   if(exp_type == "diffusion")
+      draw1d("false")
+      plot(timeDat,yData-fit)
+      wv_error=yData-fit
+      xlabel("text","\G(g)^(2)G^(2)\G(d)^(2)(\G(D)-\G(d)/3) / (10^(9) sm^(-2))","size",11)
+      ylabel("text","data - fit","size",11)
+      title("Residuals (\G(c)^(2)/N = $chisq/dataSize$)")
+      draw1d("true")
+    
+   else
+      draw1d("false")
+      plot(timeDat,yData-fit)
+      wv_error=yData-fit
+      xlabel("text",wv_xlabel,"size",11)
+      ylabel("text","data - fit","size",11)
+      title("Residuals (\G(c)^(2)/N = $chisq/dataSize$)")
+      draw1d("true")
+  
+   endif
+
+# Peak pick and integrate
+   sz = size(spectrum)
+   sm = sum(spectrum)
+   pr ("\n\n Peak Integrals\n\n")
+   for(k = 1 to sz-2)
+      if(:is_peak(spectrum,k))
+         (left,right) = :peak_width(spectrum,k)
+         smx = submatrix(spectrum,left,right)     
+         pr("   peak at $tau[k],2.2g$, integral = $sum(smx),2.2g$ ($sum(smx)/sm*100,2.2f$%)\n")
+      endif
+   next(k)
+
+  setpar(0,31,"text","Chi squared/N = $chisq/dataSize,0.3g$ Time taken = $time(),0.3g$s")
+
+endproc()
+
+####################################################
+#
+# NNLS back-door
+#
+# timeDat ... time axis input data
+# yData ..... attenuation input data
+#
+# parList should supply the following variables:
+#
+# exp_type ... type of experiment "diffusion/relaxation"
+# x_minimum .. smallest spectral value
+# x_maximum .. largest spectral value
+# x_steps .... number of steps in spectru,
+# alpha ...... 1e6->1e12
+# beta ....... -1
+# 
+###################################################
+
+procedure(backdoor,timeDat,yData,parList,showFit)
+
+   assignlist(parList)
+
+   alpha = alpha*size(yData)
+
+   timeSize = size(timeDat)
+
+# Scale x and/or y axis range if measuring diffusion
+   if (exp_type == "diffusion")
+      a = x_minimum
+      x_min = 1/x_maximum
+      x_max = 1/a
+   else
+      x_max = x_maximum
+      x_min = x_minimum
+   endif
+
+# Work out result time axis (tau)
+   stepsize = (log10(x_max)-log10(x_min))/(x_steps-1)
+   tau = 10^[log10(x_min): stepsize: log10(x_max)]
+
+   tauSize = size(tau)
+   range = (log10(timeDat[timeSize-1]) - log10(timeDat[0]))/(timeSize-1)
+
+# Alpha contraint
+   constraint = 1/(sqrt(range^2*stepsize^3*alpha))
+   if(constraint > 300)
+      message("Error","Make alpha bigger")
+      return
+   endif
+
+# Initialization for Uniform Penalty Loop
+   spectrum = matrix(tauSize)
+   beta = beta / (yData[0])^2;
+   if(beta < 0)
+      beta_loc = 0
+      Max = 1
+   else
+      beta_loc = beta
+      Max = 20
+   endif
+
+# Start of uniform penalty loop
+   for(uploop = 1 to Max)
+      slope = diff(spectrum)/stepsize
+      e = spectrum[tauSize-1]
+      slope = join(slope,[e])
+      curvature = diff(diff(spectrum))/stepsize^2
+      curvature = join([0],curvature)
+      curvature = join(curvature,[0])
+      softslope = soften(slope)
+      softcurvature = soften(curvature)
+      weighting = 1/(range^2*stepsize^3*(alpha + beta_loc*(softcurvature^2 + 5*softslope^2)))
+      (spectrum,chisq,count) = :nnlsmooth(timeDat,yData,tau,spectrum,weighting)
+      if(Max > 1)
+         pr "\n  up = $uploop$ chisq = $chisq$"
+      endif
+   next(uploop)
+
+
+endproc(spectrum,chisq,count,tau)
+
+########################################################
+# Calculate the chisquared given the original
+# data (timeDat,yData) and the spectrum.
+########################################################
+
+procedure(getchisq,timeDat,yData,tau,spectrum)
+
+   ss  = size(spectrum)
+   sd  = size(timeDat)
+   dat = matrix(sd)
+
+   for(ii = 0 to ss-1)
+      A = spectrum[ii]
+      T = tau[ii]
+      dat = dat + A*exp(-timeDat/T)
+   next(ii)
+   chisq = sum((yData-dat)^2)
+
+endproc(chisq)
+
+########################################################
+# Draw the T2 fit over the current plot
+########################################################
+
+procedure(calcFitT2,tau,spectrum,timeDat,yData,colour,width)
+
+   ss  = size(spectrum)
+   sd  = size(timeDat)
+   dat = matrix(sd)
+
+   for(ii = 0 to ss-1)
+      A = spectrum[ii]
+      T = tau[ii]
+      dat = dat + A*exp(-timeDat/T)
+   next(ii)
+
+   if(nrArgs == 6)
+      plot(timeDat,dat,"symbolshape","none",
+                      "tracetype","lines",
+                      "tracecolor", [255,255,255],
+                      "tracewidth",1)
+   endif
+   
+   chisq = sum((yData-dat)^2)
+
+endproc(dat,chisq)
+
+########################################################
+# Draw the diffusion fit over the current plot
+########################################################
+
+procedure(calcFitDiff,tau,spectrum,timeDat,yData,colour,width)
+
+  ss = size(spectrum)
+  sd = size(timeDat)
+  dat = matrix(sd)
+  
+  for(ii = 0 to ss-1)
+     A = spectrum[ii]
+     D = tau[ii]
+     dat = dat + A*exp(-timeDat*D)
+  next(ii)
+
+   plot(timeDat,dat,"symbolshape","none",
+                   "tracetype","lines",
+                   "tracewidth",1);
+
+   chisq = sum((yData-dat)^2)
+
+endproc(dat,chisq)
+
+
+########################################################
+# See if data[pos] is larger than surrounding values
+# if so then its a peak
+########################################################
+
+procedure(is_peak,data,pos)
+
+   if(data[pos] > data[pos-1] & data[pos] > data[pos+1])
+      return(1)
+   else
+      return(0)
+   endif
+
+endproc()
+
+########################################################
+# Return the extent for a peak at position pos in data
+# set d. Criterion is that the peak edge is a minimum
+# zero or edge of data set.
+########################################################
+
+procedure(peak_width,d,pos)
+
+   sz = size(d)
+   mx = d[pos]
+
+   for(ii = pos+2 to sz-2)
+      if((d[ii] < d[ii-1] & d[ii] < d[ii+1]) | d[ii] == 0 | ii == sz-2)
+         right = ii
+         exitfor
+      endif
+   next(ii)
+
+   if(pos-2 <= 0)
+      left = 0
+   else
+      for(ii = pos-2 to 1 step -1)
+         if((d[ii] < d[ii-1] & d[ii] < d[ii+1]) | d[ii-1] == 0 | ii == 1)
+            left = ii
+            exitfor
+         endif
+      next(ii)
+   endif
+
+endproc(left,right)
+
+
+procedure(nnlsmooth,timeData,yData,tau,spectrum,weighting)
+
+# Get matrix sizes
+   tauSize = size(tau)
+   dataSize = size(yData)
+
+# Make design matrices
+   systemMat = matrix(tauSize,dataSize);
+   for(k = 0 to tauSize-1) 
+      systemMat[k,~] = exp(-timeData'/tau[k])
+   next(k)
+
+# Simplify the design matrices
+   (U,V,S) = svd(systemMat)
+    systemMat = -U'*systemMat
+    yData = -U'*yData'
+
+# Add weighting to design matrix
+    curve = matrix(tauSize,tauSize-2)
+    for(k = 0 to tauSize-3)
+       curve[k,k] = weighting[k+1]
+       curve[k+1,k] = -2*weighting[k+1]
+       curve[k+2,k] = weighting[k+1]
+    next(k)
+
+    systemMat = join(systemMat,curve)
+    designMat = systemMat
+
+# Add data to design matrix
+    conct = matrix(1,tauSize-2)
+    datac = join(yData,conct)
+    systemMat = join(systemMat,datac)
+    chivector = matrix(1,tauSize)
+    answ = matrix(1,2*tauSize-2)
+    oldsetp = matrix(tauSize)
+    setp = matrix(tauSize)
+    soln = matrix(tauSize)
+    setz = matrix(tauSize)+1
+    for(k = 0 to tauSize-1)
+       answ[0,k] = yData[0,k]-answ[0,k]
+    next(k)
+
+    W = designMat'*answ
+    (spectrum,count) = nnls(systemMat,spectrum,yData',W')
+    for(k = 0 to tauSize-1)
+       chivector[0,k] = designMat[~,k]*spectrum'
+    next(k)
+
+    chisq = sum((chivector'-yData')^2)
+
+endproc(spectrum, chisq, count)
+
+#########################################################
+# Perform nnls for a range of alpha values plotting chisq
+#########################################################
+
+procedure(execute_alpha_loop)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)
+   time(0)
+
+# Read in the data set (time and data files)
+  curplot("1d",1,1)
+
+   timeDat=wv_xdata
+   yData  =real(wv_ydata)
+   dataSize = size(yData)
+   timeSize = size(yData)
+
+     if(x_steps > dataSize)
+      message("Error","Reduce number of steps")
+      return()
+   endif
+
+   if(min(timeDat) <= 0)
+      message("Error","x-axis data contains zero or negative values")
+      return
+   endif
+
+
+
+# Save to window variables for undo
+   wv_xdata = timeDat
+   wv_ydata = yData
+   wv_xlabel = xlabel("getargs")
+   wv_ylabel = ylabel("getargs")
+   wv_title =  title("getargs")
+
+# Scale x and/or y axis range if measuring diffusion
+   if(exp_type == "diffusion")
+      a = x_minimum
+      x_min = 1/x_maximum
+      x_max = 1/a;
+   else
+      x_max = x_maximum
+      x_min = x_minimum
+   endif
+
+# Work out result time axis (tau)
+   stepsize = (log10(x_max)-log10(x_min))/(x_steps-1)
+   tau = 10^[log10(x_min): stepsize: log10(x_max)]
+   tauSize = size(tau)
+   range = (log10(timeDat[timeSize-1]) - log10(timeDat[0]))/(timeSize-1)
+
+# Alpha contraint
+   constraint = 1/(sqrt(range^2*stepsize^3*alpha))
+   if(constraint > 300)
+      message("Make alpha bigger")
+      return
+   endif
+
+# Initialization for Alpha Loop
+   spectrum = matrix(tauSize)
+   ones = matrix(tauSize)+1
+   ns = alpha_loop_step
+   chsq = matrix(ns)
+   alp = matrix(ns)
+
+   ss = (log10(alpha_loop_end)-log10(alpha_loop_start))/(alpha_loop_step-1)
+   alp = 10^[log10(alpha_loop_start): ss: log10(alpha_loop_end)]
+
+# Start alpha loop
+   for(n = 0 to ns-1)
+      alpha =  alp[n]
+      weighting = ones/(range^2*stepsize^3*alpha)
+      (spectrum,chisq,count) = :nnlsmooth(timeDat,yData,tau,spectrum,weighting)
+      chisq = :getchisq(timeDat,yData,tau,spectrum)
+      chsq[n] = chisq
+      alp[n] = alpha
+      setpar(0,31,"text","step $n+1$ of $ns$, Chi squared = $chisq,0.3g$")
+   next(n)
+   curplot("1d",2,1)
+   clear("plot")
+   draw1d("false")
+
+   plot(alp,chsq/dataSize)
+   axes("xmapping","log")
+   trace("tracetype", "lines", "symbolshape", "circle") 
+   title("Normalised \G(c)^(2) vs \G(a)")
+   xlabel("\G(a)")
+   ylabel("(\G(c)^(2)/N)")
+   draw1d("true")
+   setpar(0,31,"text", "time taken = $time()$")
+
+endproc()
+
+#########################################################
+# Save window parameters to preferences file
+#########################################################
+
+procedure(save_parameters)
+
+   lst = getctrlvalues(0)
+   lst = lst + "dir = \"$getcwd()$\""
+   dir = getcwd()
+   cd(prefdir)
+   mkdir("Other Macros")
+   cd("Other Macros")
+   save("nnls1d.par",lst)
+   cd(dir)
+
+endproc()
+
+#########################################################
+# Load window parameters from preferences file
+#########################################################
+
+procedure(load_parameters)
+
+   cd(prefdir)
+   cd("Other Macros")
+   if(isfile("nnls1d.par"))
+      lst = load("nnls1d.par")
+      setctrlvalues(0,lst)
+      assignlist(lst)
+      cd(dir)
+   endif
+
+endproc()
+
+#########################################################
+# Generate x axes from file or the current PGSE parameters
+#########################################################
+
+procedure(get_x_axis_data,Nx)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)  
+
+   if(exp_type == "relax")
+      if(data_src == "files")
+         x_data = load(x_axis_name)
+      elseif (data_src == "vectors")
+         x_data = eval(getpar(0,54,"text"))
+      else
+         (x_data,y) = getplotdata("1d")
+      endif
+   else
+      x_data = :get_pgse_axis(Nx, x_axis_name)
+   endif
+
+endproc(x_data)
+
+#########################################################
+# Generate y axes from file or the current PGSE parameters
+#########################################################
+
+procedure(get_y_axis_data, fileName)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)  
+
+   if(data_src == "files")
+      y_data = load(fileName)
+   elseif (data_src == "vectors")
+      y_data = eval(getpar(0,55,"text"))
+   else
+      (x,y_data) = getplotdata("1d")
+   endif
+
+
+endproc(y_data)
+
+
+#########################################################
+# Generate an axis based on the current PGSE parameters
+#########################################################
+
+procedure(get_pgse_axis,N,fileName)
+
+   lst = getctrlvalues(0)
+   assignlist(lst)  
+
+   if(diffusion_axis == "grad")
+      axis = 1e-9*([1:N]/N*Gmax*delta*1e-3*gamma)^2*(DELTA-delta/3)*1e-3
+   elseif(diffusion_axis == "delta")
+      ramp = (delta_min+[0:N-1]*delta_step)*1e-3
+      axis = 1e-9*(Gmax*ramp*gamma)^2.*(DELTA*1e-3-ramp/3)
+   else
+      if(data_src == "files")
+         if(isfile(fileName))
+            axis = load(fileName)
+         else
+            message("Error","File \"$fileName$\" not found")
+            abort("")
+         endif
+      elseif(data_src == "vectors")
+         axis = eval(getpar(0,54,"text"))
+      else
+         (axis,y) = getplotdata("1d")
+      endif
+   endif
+
+endproc(axis)
+
+procedure(setWorkingDir)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   dir = getfolder(dir,"Select the Working Directory.\rThis is the folder where all output data will be stored.")
+   if(dir != "cancel")
+      assign("workdir",dir,"global")
+      wvOutputDir = dir
+      setpar(0,n,"text",dir)
+      return(1)
+   endif
+
+endproc(0)
+
+
+procedure(setExpName)
+
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   topDir = dir
+   dir = getfolder(dir+"\\"+name,"Select the data directory name.\rThis is the folder where specific output data will be stored.",topDir,"false")
+pr dir 
+if(dir != "cancel")
+      setpar(0,n,"text",getbasedir(dir))
+
+   endif
+
+endproc(0)
+
+procedure(loadData)
+   lst = getctrlvalues(0)
+   assignlist(lst)
+
+# Determine the data directory
+   n = findobj(0,"name","dataDirectory")
+   dir = getpar(0,n,"text")
+   n = findobj(0,"name","expName")
+   name = getpar(0,n,"text")
+   n = findobj(0,"name","expNr")
+   expNr = getpar(0,n,"text")
+   if(expNr == "")
+      dir = dir + "\\" + name
+   else
+      dir = dir + "\\" + name + "\\" + expNr
+   endif
+   # Move to the data directory
+   if(isdir(dir))
+      cd(dir)
+found = 0
+ acqupar = load("acqu.par")
+ assignlist(acqupar)
+ pr nrEchoes
+
+  # Load any 1D plot files
+      multiplot("1d",3,1)
+      lstpt1 = ls("*.pt1")
+      szpt1 = size(lstpt1)
+      lst1d = ls("*.1D")
+      sz1d = size(lst1d)
+      lstcsv = ls("*.csv")
+      szcsv = size(lstcsv)
+      pr szcsv
+
+      if(szpt1 == 1) # Load single plot file
+         load(lstpt1[0])
+         (timeDat,yData) = getplotdata("1d")
+         dataSize = size(yData)
+         yData  =submatrix(yData  ,pntsCut,dataSize-1)
+         timeDat=submatrix(timeDat,pntsCut,dataSize-1)
+         wv_ydata=yData
+         wv_xdata=timeDat
+           multiplot("1d",3,1)
+           plot(timeDat,yData)
+         found = 1
+      elseif(szpt1 == 0 & sz1d == 1) # Load single data file
+         (x,y) = load(lst1d[0])
+         plot(x,y)
+         title(lst1d[0])
+         found = 1
+        (timeDat,yData) = getplotdata("1d")
+         dataSize = size(yData)
+         yData  =submatrix(yData  ,pntsCut,dataSize-1)
+         timeDat=submatrix(timeDat,pntsCut,dataSize-1)
+         wv_ydata=yData
+         wv_xdata=timeDat
+         multiplot("1d",3,1)
+         plot(timeDat,yData)
+      elseif(szpt1 == 0 & sz1d == 0 &szcsv==1) # Load single data file
+         import2dpar("ab", "ascii", "xyrc","real", "delimiter", "tab")   # Choose parameters
+         datacsv = import2d("data.csv",3,nrEchoes)             # Import data
+         pr size(datacsv)
+         x=datacsv[0,~]'
+         y=datacsv[1,~]'
+
+         plot(x,y)
+         title(lstcsv[0])
+         found = 1
+        (timeDat,yData) = getplotdata("1d")
+         dataSize = size(yData)
+         yData  =submatrix(yData  ,pntsCut,dataSize-1)
+         timeDat=submatrix(timeDat,pntsCut,dataSize-1)
+         wv_ydata=yData
+         wv_xdata=timeDat
+         multiplot("1d",3,1)
+         plot(timeDat,yData)
+
+       elseif(szpt1 > 1 | sz1d > 1) # Choose from multiple files
+         name = getfilename("Open","Select 1D plot or data file","1D Plot file,1D data file","pt1,1d")
+         if(name != "cancel")
+            if(caseset(getext(name),"lower") == "pt1")
+               load(name)
+            else
+               (x,y) = load(name)
+               plot(x,y)
+               title(name)
+            endif
+            found = 1
+            (timeDat,yData) = getplotdata("1d")
+         dataSize = size(yData)
+         yData  =submatrix(yData  ,pntsCut,dataSize-1)
+         timeDat=submatrix(timeDat,pntsCut,dataSize-1)
+         wv_ydata=yData
+         wv_xdata=timeDat
+         multiplot("1d",3,1)
+         plot(timeDat,yData)
+
+         else
+            return(0)
+         endif
+
+      endif
+
+   # Load any 2D plot files
+      lstpt2 = ls("*.pt2")
+      szpt2 = size(lstpt2)
+      lst2d = ls("*.2D")
+      sz2d = size(lst2d)
+
+      if(szpt2 == 1) # Load single plot file
+         load(lstpt2[0])
+         found = 1
+      elseif(szpt2 == 0 & sz2d == 1) # Load single data file
+         image(load(lst2d[0]))
+         found = 1
+      elseif(szpt2 > 1 | sz2d > 1) # Choose from multiple files
+         name = getfilename("Open","Select 2D plot or data file","2D Plot file,2D data file","pt2,2d")
+         if(name != "cancel")
+            if(getext(name) == "pt2")
+               load(name)
+            else
+               image(load(name))
+               title(name)
+            endif
+            found = 1
+         else
+            return(0)
+         endif
+      endif
+   else
+      message("Error","The following data directory does not exist:\r$dir$","error")
+      return(0)
+   endif
+
+# Nothing found
+   if(found == 0)
+      message("Information","No plot or image data found.","info")
+   endif
+
+endproc(0)
+procedure(saveData)
+
+ 
+   save("spectrum.1d",wv_relaxAxis,wv_spectrum)  # Save data in Prospa format
+   save("spectrum.pt1")                     # Save plot
+   save("spectrum.emf","emf1d")             # Save plot as picture
+   n = size(wv_relaxAxis)
+   m = matrix(2,n)
+   m[0,~] = wv_relaxAxis'
+   m[1,~] = wv_spectrum'
+   
+   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+   export2d(m,"spectrum.dat")  # Save data for origin
+
+   n = size(wv_xdata)
+   m = matrix(4,n)
+   m[0,~] = wv_xdata'
+   m[1,~] = real(wv_ydata)'
+   m[2,~] = wv_fit'
+   m[3,~] = wv_error'
+   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+   export2d(m,"fit.dat")  # Save data for origin
+
+
+
+endproc("saveData")
+
+#################################################################
+

@@ -1,0 +1,171 @@
+########################################################
+# 
+# Slice selective spin-echo imaging
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq",        "B1 Frequency (MHz)",        "0","0",   "tbw", "freq",
+               "repTime",       "Repetition time (ms)",      "0","1",   "tbw", "float, [1,4e+004]",
+               "O1",            "Offset (Hz)",               "0","2",   "tbw", "float",
+               "SPType",        "Soft pulse shape",          "0","3", "tm",  "60,[\"sinc3\",\"sinc5\",\"gauss\",\"rect\"]",
+               "pulseLength90", "90 pulse length (us)",      "0","4", "tb",  "pulselength",
+               "a1",            "90 amplitude (dB)",         "0","5", "tb",  "pulseamp",
+         
+               "estTimeR",      "estabil. Time read (us)",   "1","0", "tb",  "sdelay",
+               "acqShiftRead",  "acqShiftRead (us)",         "1","1", "tb",  "float,[-1000,1000]",
+               "sliceComp",     "sliceComp(us)",             "1","2", "tb",  "float,[-1000,1000]",
+               "repTimeFlash",  "repTimeFlash (ms)",         "1","3", "tb",  "float,[2,1000]",
+               "nrDummyScans",  "nrDummyScans",              "1","4", "tb",  "integer,[0,20]",
+               "phDss90",       "phase dss 90",              "1","5", "tb",  "float,[-1000,1000]",
+
+               "FoVRead",       "FoV Read (mm)",             "2","0", "tb",  "float,[-10000,10000]",
+               "FoVPhase",      "FoV Phase (mm)",            "2","1", "tb",  "float,[-10000,10000]",
+               "nrStepsP",      "nro. pts. phase",           "2","2", "tb",  "integer,[1,500]",
+               "sliceTickness", "Slice thickness (mm)",      "2","3", "tb",  "float,[0,10000]",
+               "sliceShift",    "Slice shift (mm)",          "2","4", "tb",  "float,[-10000,10000]",
+
+               "dirRead",       "",                          "2.3","0", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirPhase",      "",                          "2.3","1", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirSlice",      "",                          "2.3","3", "tm",  "[\"x\",\"y\",\"z\"]"]      
+
+ # Relationships to determine remaining variable values
+  relationships = [ "d600 = 2",     
+                    "n600 = round(pulseLength90/d600)",
+                    "(t1,t2,gfac) = B1NutSoft:getRFPulse(SPType,a1,n600)",
+                    "rampDur = 100",
+                    "d300 = 2.5",
+                    "n300 = round(rampDur/d300)",
+                    "d101 = 100",
+                    "(del6,del69)   = Flash_2D:getRewindSliceDelay(pulseLength90,sliceComp,rampDur)",
+                    "d69=del69",
+                    "d6=del6",   
+                    "d3   = 200",
+                    "phDur = d3+2*rampDur",
+                    "d4   = estTimeR", 
+                    "d5   = 1000*acqTime-rxLat + 200",
+                    "d44  = pulseLength90 +d101+d69+pgo+2*rampDur+phDss90",
+                    "d10  = repTimeFlash*1000 - d101-d69 -pulseLength90-d3-d4-d5-d6-d44-10*rampDur",
+                    "n10  = Flash_2D:convertDirToChannel(dirRead)",
+                    "n20  = Flash_2D:convertDirToChannel(dirPhase)",
+                    "n30  = Flash_2D:convertDirToChannel(dirSlice)",
+                    "(gReadAmp,gReadAmpShim,gPhaseAmp,gPhaseAmpShim,gSliceAmp,gSliceAmpShim,sliceOffSet) = Flash_2D:setImageGradients(dirRead,dirPhase,dirSlice,FoVRead,FoVPhase,phDur,sliceTickness,sliceShift,gfac,xshim,yshim,zshim,xcal,ycal,zcal)",
+                    "n31a =  gSliceAmpShim", 
+                    "n31  =  gSliceAmp+gSliceAmpShim", 
+                    "n32  = -gSliceAmp+gSliceAmpShim",
+                    "n11a =  gReadAmpShim",
+                    "readGradFac = (0.5*rampDur+d4+1000*acqTime/2-rxLat+acqShiftRead)/(d3+2*rampDur)",
+                    "n11  = -readGradFac*gReadAmp+gReadAmpShim",
+                    "n12  =  gReadAmp+gReadAmpShim",
+                    "n12a =  gReadAmpShim",
+                    "n21a =  gPhaseAmpShim",
+                    "t21  =  Flash_2D:getPhaseTable(gPhaseAmp,gPhaseAmpShim,nrStepsP)",
+                    "f1   =  b1Freq+O1/1e6+sliceOffSet",
+                    "f2   =  b1Freq+O1/1e6", 
+                    "f3   =  b1Freq+O1/1e6-sliceOffSet", 
+                    "n0   =  nrDummyScans",                   
+                    "n1   =  nrStepsP",
+                    "n2   =  nrPnts",              
+                    "totPnts = nrPnts*nrStepsP",
+                    "totTime = repTimeFlash*nrStepsP"]
+
+# Define the tabs and their order
+   tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# dx,dy
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+# dummy scans
+   loop(l0,n0)
+
+      settxfreq(f1)                         
+      gradramp(n30,n31a,n31,n300,d300)        # Slice grad ON
+         delay(d101)                          # stabilization time slice
+         shapedrf(mode,t1,t2,p1,n600,d600)    # 90 soft pulse
+         delay(d69)
+      gradramp(n30,n31,n31a,n300,d300)        # Slice grad OFF
+
+      settxfreq(f2) 
+
+      gradramp(n30,n31a,n32,n300,d300)        # SLICE gradient ON 
+         delay(d6)
+      gradramp(n30,n32,n31a,n300,d300)        # SLICE gradient OFF                      
+      
+      gradramp(n10,n11a,n11,n300,d300)        # READ gradient ON
+      gradramp(n20,n21a,n21a,n300,d300)       # PHASE gradient ON
+         delay(d3)
+      gradramp(n10,n11,n11a,n300,d300)        # READ gradient OFF
+      gradramp(n20,n21a,n21a,n300,d300)       # PHASE gradient OFF
+   
+      gradramp(n10,n12a,n12,n300,d300)        # READ gradient ON
+         delay(d4)
+         acquire("overwrite",n2,d5)
+      gradramp(n10,n12,n12a,n300,d300)        # READ gradient OFF
+
+      settxfreq(f3)                         
+         delay(d44)           
+      settxfreq(f2) 
+
+      delay(d10)
+
+   endloop(l0)
+
+ # end dummy scans
+
+   setindex(t21,0); 
+
+   loop(l1,n1)
+
+      settxfreq(f1)                         
+      
+      gradramp(n30,n31a,n31,n300,d300)        # Slice grad ON
+         delay(d101)                          # stabilization time slice
+         shapedrf(mode,t1,t2,p1,n600,d600)    # 90 soft pulse
+         delay(d69)
+      gradramp(n30,n31,n31a,n300,d300)        # Slice grad OFF
+      
+      settxfreq(f2) 
+      
+      gradramp(n30,n31a,n32,n300,d300)        # SLICE gradient ON 
+         delay(d6)
+      gradramp(n30,n32,n31a,n300,d300)        # SLICE gradient OFF                      
+      
+      gradramp(n10,n11a,n11,n300,d300)        # READ gradient ON
+      gradramp(n20,n21a,t21,n300,d300)        # PHASE gradient ON
+         delay(d3)
+      gradramp(n10,n11,n11a,n300,d300)        # READ gradient OFF
+      gradramp(n20,t21,n21a,n300,d300)        # PHASE gradient OFF
+   
+      gradramp(n10,n12a,n12,n300,d300)        # READ gradient ON
+         delay(d4)
+         acquire("append",n2,d5)
+      gradramp(n10,n12,n12a,n300,d300)        # READ gradient OFF
+
+      settxfreq(f3)                         
+         delay(d44)           
+      settxfreq(f2) 
+
+      delay(d10)
+
+    incindex(t21);
+
+   endloop(l1)
+
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle list
+   phaseList = [0; # +x,-x : 90 phase
+                0] # +x,-x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

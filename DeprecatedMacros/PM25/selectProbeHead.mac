@@ -1,0 +1,135 @@
+procedure(selectProbeHead)
+
+   n = window("Select Sensor/Probe", 200, 400, 400, 120)
+   
+   macroDir = getmacropath()
+   sensorDir=macroDir+"\\probeHeads"
+   setcwd(sensorDir)   
+   guipar = load("selectedProbeHead.par")
+   assignlist(guipar)
+
+   textmenu(1, 70, 20, 150, 200,:updateSensor())
+   textmenu(2,70, 50, 150, 200,:updateProbe())
+   textmenu(3,70, 80, 150, 200,:updateSpacer())
+   statictext(4, 50, 22, "right", "Sensor")
+   statictext(5, 50, 52, "right", "Probe")
+   statictext(6, 50, 82, "right", "Spacer")
+   button(7, 300, 20, 50, 40, "Edit",
+          :editProbeHeadPar();)
+   button(8, 300, 60, 50, 40, "Update",
+          :upDateProbeHeadFile();)
+
+   setpar(n,1,"name","Sensor")
+   setpar(n,2,"name","Probe")
+   setpar(n,3,"name","Spacer")
+
+   setctrlvalues(n,guipar)
+
+   sensorlist = getdirlist(".")
+   probeDir=sensorDir+"\\$Sensor$"
+   setcwd(probeDir)
+   probelist = getdirlist(".")
+   
+   spacerDir=probeDir+"\\$Probe$"
+   setcwd(spacerDir)
+   spacerlist = getfilelist(".")
+
+   setpar(n,1,"menu",sensorlist)
+   setpar(n,2,"menu",probelist)
+   setpar(n,3,"menu",spacerlist)
+
+   showwindow(n)
+
+endproc()
+procedure(updateSensor)
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   macroDir = getmacropath()
+   probeDir=macroDir+"\\probeHeads"+"\\$Sensor$"
+   setcwd(probeDir)   
+  
+   probelist = getdirlist(".")
+   setpar(0,2,"menu",probelist)
+   setpar(0,2,"text",probelist[0])
+
+   spacerDir=probeDir+"\\$probelist[0]$"
+   setcwd(spacerDir)
+   spacerlist = getfilelist(".")
+
+   setpar(0,3,"menu",spacerlist)
+   setpar(0,3,"text",spacerlist[0])
+
+   newProbeHead = load(spacerlist[0])
+   macroDir = getmacropath()
+   sensorDir=macroDir+"\probeHeads"
+   setcwd(sensorDir)   
+   save("selectedProbeHead.par",newProbeHead)
+endproc()
+
+procedure(updateProbe)
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   macroDir = getmacropath()
+   spacerDir=macroDir+"\probeHeads"+"\\$Sensor$"+"\\$Probe$"
+   setcwd(spacerDir)     
+   spacerlist = getfilelist(".")
+
+   setpar(0,3,"menu",spacerlist)
+   setpar(0,3,"text",spacerlist[0])
+
+   newProbeHead = load(spacerlist[0])
+   macroDir = getmacropath()
+   sensorDir=macroDir+"\probeHeads"
+   setcwd(sensorDir)   
+   save("selectedProbeHead.par",newProbeHead)
+endproc()
+
+procedure(updateSpacer)
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+
+   macroDir = getmacropath()
+   spacerDir=macroDir+"\probeHeads"+"\\$Sensor$"+"\\$Probe$"
+
+   setcwd(spacerDir)     
+  
+   newProbeHead = load(Spacer)
+   macroDir = getmacropath()
+   sensorDir=macroDir+"\probeHeads"
+   setcwd(sensorDir)   
+   save("selectedProbeHead.par",newProbeHead)
+endproc()
+procedure(editProbeHeadPar)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   showwindow(6)
+   macroDir = getmacropath()
+   spacerDir=macroDir+"\probeHeads"+"\\$Sensor$"+"\\$Probe$"
+
+   setcwd(spacerDir)       
+   edit(Spacer)
+
+
+
+endproc()
+procedure(upDateProbeHeadFile)
+
+   guipar = getctrlvalues(0)
+   assignlist(guipar)
+   
+   macroDir = getmacropath()
+   spacerDir=macroDir+"\probeHeads"+"\\$Sensor$"+"\\$Probe$"
+
+   setcwd(spacerDir)     
+  
+   newProbeHead = load(Spacer)
+   macroDir = getmacropath()
+   sensorDir=macroDir+"\probeHeads"
+   setcwd(sensorDir)   
+   save("selectedProbeHead.par",newProbeHead)
+   message("info","The probeHead has been updated")
+
+endproc()

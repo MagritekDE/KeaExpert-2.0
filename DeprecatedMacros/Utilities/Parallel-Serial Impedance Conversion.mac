@@ -1,0 +1,65 @@
+procedure(Parallel-Serial Impedance Conversion)
+
+   n = :windowdefinition()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Parallel-Serial Impedance Conversion", -1, -1, 370, 120, "resizable")
+
+      # Define all controls with basic parameters
+       statictext(1, 67, 19, 95, 13, "center", "Parallel components")
+       textbox(2, 41, 50, 50)
+       statictext(3, 30, 53, 8, 13, "right", "R")
+       statictext(4, 126, 53, 27, 13, "right", "Ohms")
+       textbox(5, 41, 79, 50)
+       statictext(6, 30, 82, 7, 13, "right", "X")
+       statictext(7, 126, 82, 27, 13, "right", "Ohms")
+       statictext(8, 278, 19, 90, 13, "center", "Series components")
+       textbox(9, 252, 50, 50)
+       statictext(10, 241, 53, 8, 13, "right", "R")
+       statictext(11, 337, 53, 27, 13, "right", "Ohms")
+       textbox(12, 252, 79, 50)
+       statictext(13, 241, 82, 7, 13, "right", "X")
+       statictext(14, 337, 82, 27, 13, "right", "Ohms")
+       button(15, 151, 51, 40, 20, "->",:parToser())
+       button(16, 151, 81, 40, 20, "<-",:serTopar())
+
+     # Set other control parameters
+       setpar(n,2,"objID","rPar")
+       setpar(n,5,"objID","xPar")
+       setpar(n,9,"objID","rSer")
+       setpar(n,12,"objID","xSer")
+
+endproc(n)
+
+procedure(parToser)
+
+   Rp = rPar->value
+   Xp = xPar->value
+
+   Rs = Rp*Xp^2/(Rp^2+Xp^2)
+   Xs = Rp^2*Xp/(Rp^2+Xp^2)
+
+   rSer->text(Rs)
+   xSer->text(Xs) 
+
+endproc()
+
+procedure(serTopar)
+
+   Rs = rSer->value
+   Xs = xSer->value
+
+   Rp = (Rs^2+Xs^2)/Rs
+   Xp = (Rs^2+Xs^2)/Xs
+
+   rPar->text(Rp)
+   xPar->text(Xp)  
+
+
+endproc()

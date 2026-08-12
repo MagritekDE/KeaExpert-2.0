@@ -1,0 +1,64 @@
+########################################################
+#
+# Frequency sweep pulse program used for probe tuning
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+# Modify mode for wobble
+  mode = "w" + mode
+
+# Interface description (name, label, x, y)
+  interface = ["repTime",   "Repetition time (ms)",     "0","0","tb", "reptime",
+               "centFreq",   "Centre frequency (MHz)",   "1.1","0","tbw", "freq",
+               "freqWidth",  "Frequency width (MHz)",    "1.1","1","tbw", "float,[0.01,5]",
+               "freqSteps", "Number of freq. steps",    "1.1","2","tbw", "integer",
+               "a1",        "RF amplitude",             "2","1","tb", "float,[-85,-30]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["n1 = nrPnts",
+                    "n2 = freqSteps",
+                    "b1Freq = centFreq-freqWidth/2",
+                    "f1 = b1Freq",
+                    "f2 = freqScaleFactor*f1",
+                    "f3 = (freqWidth)/(freqSteps-1)",
+                    "f4 = freqScaleFactor*f3",
+                    "totPnts = n2",
+                    "d1 = 60",
+                    "d2 = 2000",
+                    "totTime = acqTime",
+                    "specialMode = \"wobble\""]
+ 
+
+# Define the tabs and their order
+   tabs = ["Pulse sequence","Acquisition","amplitude_control","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# x and y spacing between controls
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir)                     # Reset internal parameter list
+
+      cleardata(n2)                # Clear data space
+      loop(l1,n2)                  # Measure at n2 frequency steps
+         txon(mode,a1,p1)          # Switch on Tx 
+         delay(d1)                 # Wait for stability
+         acquire("integrate",n1)   # Acquire and integrate n1 data points
+         txoff(w)                  # Switch off the Tx
+         inctxfreq(f3)             # Increment Tx frequency
+         incrxfreq(f4)             # Increment Rx frequency
+         delay(d2)                 # Wait for HPA to recover
+      endloop(l1)                  # Next measurement
+      txoff(w)                     # Switch off the transmitter
+
+   lst = endpp()                  # Return parameter list
+
+# Phase cycle
+   phaseList = [0;
+                0]
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

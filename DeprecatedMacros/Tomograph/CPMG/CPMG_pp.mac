@@ -1,0 +1,59 @@
+
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",     "tbwv",   "freq",
+               "repTime",      "Repetition time (ms)", "0","1.6",   "tbwv",   "reptime",
+               "O1",           "Offset (Hz)",          "0","3",     "tbwv",   "float",
+               "rfAmplitude",  "rf amplitude (dB)",    "1","0",     "tb",     "pulseamp",
+               "pulseLength90","90 Pulse length (us)", "1","1",     "tb",     "pulselength",
+               "pulseLength180","180 Pulse length (us)","1","2",    "tb",     "pulselength",
+               "echoTime",     "Echotime (us)",        "2","0",     "tb",     "sdelay",
+               "nrEchoes",     "Number of echoes",     "2","1",     "tb",     "integer,[1,16000]",
+               "echoShift",    "Echo shift (us)",      "2","2",     "tb",     "float,[-20,20]"]
+
+
+  tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = rfAmplitude",
+                    "d1 = pulseLength90",
+                    "d5 = pulseLength180",
+                    "d2 = echoTime/2-pulseLength90/2-pulseLength180/2-pgo",
+                    "d3 = echoTime/2-acqTime*500-pulseLength180/2+rxLat+echoShift",
+                    "d4 = echoTime-pulseLength180-pgo-d3",
+                    "n1 = nrPnts",
+                    "n2 = nrEchoes",
+                    "totPnts = nrPnts*nrEchoes",
+                    "totTime = nrEchoes*echoTime"]
+
+# These parameters will be changed between experiments
+   variables = [""] 
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   pulse(mode,a1,p1,d1)           # 90 pulse
+   delay(d2)                      # 90 - 180 delay
+
+   loop(l1,n2)
+      pulse(mode,a1,p2,d5)        # 180 internal pulse
+      delay(d3)                   # 180 - acq delay
+      acquire("append",n1,d4)     # Acquire echo and wait
+   endloop(l1)
+
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0,2; # -x,x : 90 phase
+                1,1; #  y,y : 180 phase
+                0,2] # -x,x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

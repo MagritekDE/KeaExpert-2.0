@@ -1,0 +1,134 @@
+########################################################
+# 
+# Slice selective spin-echo imaging
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, control_type, variable_type)
+  interface = ["b1Freq",        "B1 Frequency (MHz)",        "0","0", "tbw", "freq",
+               "repTime",       "Repetition time (ms)",      "0","1", "tbw", "reptime",
+               "O1",            "Offset (Hz)",               "0","2", "tbw",   "float", 
+               "a1",            "rf amplitude (dB)",         "0","3", "tb",  "pulseamp",
+               "pulseLength90", "90 pulse length (us)",      "0","4", "tb",  "pulselength",
+               "pulseLength180","180 pulse length (us)",     "0","5", "tb",  "pulselength",
+
+               "echoTime",      "Echotime (us)",             "1","0", "tb",  "sdelay",
+               "acqShift",      "acquisition Shift(us)",     "1","1", "tb",  "sdelay",
+               "estTimeR",      "estabil. Time read (us)",   "1","2", "tb",  "sdelay",
+               "acqShiftRead",  "acqShiftRead (us)",         "1","3", "tb",  "float,[ -1000,1000]",
+               "timeReadCPMG",  "timining CPMG Read (us)",   "1","4", "tb",  "float,[ -1000,1000]",
+               "phDur",         "duration phase (us)",       "1","5", "tb",  "sdelay",
+            
+               "FoVRead",       "FoV Read (mm)",             "2","0", "tb",  "float,[-10000,10000]",
+               "FoVPhase1",     "FoV Phase1 (mm)",          "2","1", "tb",  "float,[-10000,10000]",
+               "FoVPhase2",     "FoV Phase2 (mm)",          "2","2", "tb",  "float,[-10000,10000]",
+               "nrStepsP1",     "nro. pts. phase1",         "2","3", "tb",  "integer,[1,500]", 
+               "nrStepsP2",     "nro. pts. phase2",         "2","4", "tb",  "integer,[1,500]",          
+            
+               "dirRead",       "Read Dir.",                 "3","0", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirPhase1",     "Phase Dir.1",               "3","1", "tm",  "[\"x\",\"y\",\"z\"]",
+               "dirPhase2",     "Phase Dir.2",               "3","2", "tm",  "[\"x\",\"y\",\"z\"]"]
+      
+
+ # Relationships to determine remaining variable values
+  relationships = [ "d1 = pulseLength90",
+                    "d2 = pulseLength180",
+                    "rampDur = 100",
+                    "d300 = 2.5",
+                    "n300 = round(rampDur/d300)",
+                    "d8 = estTimeR",
+                    "d3 = 1000*acqTime/2+rxLat+d8-rampDur/2-acqShiftRead",
+                    "d4 = echoTime/2-d3-2*rampDur-pulseLength90/2-pulseLength180/2-pgo",
+                    "d5 = 10",
+                    "d6 = phDur-rampDur",
+                    "d7 = echoTime/2-1000*acqTime/2+acqShift+rxLat-d5-d6-d8-pulseLength180/2-5*rampDur",
+                    "d9 = 2*d3 - d8 + rampDur + timeReadCPMG",
+                    "d10 = echoTime-pulseLength180-pgo-d5-2*d6-d7-d8-d9-10*rampDur",
+                    "n10  = RARE_3D:convertDirToChannel(dirRead)",
+                    "n20  = RARE_3D:convertDirToChannel(dirPhase1)",
+                    "n30  = RARE_3D:convertDirToChannel(dirPhase2)",
+                    "(gReadAmp,gReadAmpShim,gPhaseAmp1,gPhaseAmpShim1,gPhaseAmp2,gPhaseAmpShim2) = RARE_3D:setImageGradients(dirRead,dirPhase1,dirPhase2,FoVRead,FoVPhase1,FoVPhase2,phDur,xshim,yshim,zshim,xcal,ycal,zcal)",
+                    "n1 = nrStepsP1",
+                    "n11 = gReadAmp+gReadAmpShim",
+                    "n11a = gReadAmpShim",
+                    "t21  =  ([0:1:nrStepsP1]-nrStepsP1/2+1/2)*gPhaseAmp1/((nrStepsP1-1)/2) + gPhaseAmpShim1 ",
+                    "t22  = -([0:1:nrStepsP1]-nrStepsP1/2+1/2)*gPhaseAmp1/((nrStepsP1-1)/2) + gPhaseAmpShim1 ",
+                    "n21a = gPhaseAmpShim1",
+                    "n31  =-gPhaseAmp2 + gPhaseAmpShim2",
+                    "n32  = gPhaseAmp2 + gPhaseAmpShim2",
+                    "n31a = gPhaseAmpShim2",
+                    "n2 = nrPnts-0",
+                    "n3 = 0",
+                    "totPnts = nrPnts*nrStepsP1",
+                    "totTime = echoTime*nrStepsP1"]
+
+
+# Define the tabs and their order
+   tabs = ["Pulse sequence","Acquisition","Processing+Display","File Settings"]
+
+# These parameters will be changed between experiments
+   variables = ["n31","n32"]
+
+# dx,dy
+   dim = [170,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   pulse(mode,a1,p1,d1)        # 90 pulse
+   
+   gradramp(n10,n11a,n11,n300,d300)       # READ ON gradient
+      delay(d3)
+   gradramp(n10,n11,n11a,n300,d300)       # READ OFF gradient
+    
+   delay(d4)
+
+   setindex(t21,0); 
+   setindex(t22,0); 
+
+   loop(l1,n1)
+
+      pulse(mode,a1,p2,d2)        #180 pulse
+      
+      delay(d5)
+   
+      gradramp(n20,n21a,t21,n300,d300)     # PHASE1 ON gradient
+      gradramp(n30,n31a,n31,n300,d300)     # PHASE2 ON gradient
+         delay(d6)
+      gradramp(n20,t21,n21a,n300,d300)     # PHASE1 OFF gradient
+      gradramp(n30,n31,n31a,n300,d300)     # PHASE2 OFF gradient
+
+      delay(d7)
+      
+      gradramp(n10,n11a,n11,n300,d300)       # READ ON gradient
+         delay(d8)
+         acquire("append",n2,d9)
+      gradramp(n10,n11,n11a,n300,d300)       # READ OFF gradient  
+
+
+      gradramp(n20,n21a,t22,n300,d300)     # PHASE1 ON gradient
+      gradramp(n30,n31a,n32,n300,d300)     # PHASE2 ON gradient
+      delay(d6)
+      gradramp(n20,t22,n21a,n300,d300)     # PHASE1 OFF gradient
+      gradramp(n30,n32,n31a,n300,d300)     # PHASE2 OFF gradient
+
+   #   acquire("append",n3,d10)
+      delay(d10)
+
+      incindex(t21);
+      incindex(t22);
+
+   endloop(l1)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle list
+   phaseList = [0,2; # +x,-x : 90 phase
+                1,1; # +y,+y : 180 phase
+                0,2] # +x,-x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

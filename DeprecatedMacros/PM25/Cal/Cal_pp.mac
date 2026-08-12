@@ -1,0 +1,72 @@
+########################################################
+#
+# Cal
+# CPMG sequence for calibration.
+# www.magritek.com, March 2013
+# Prospa V3.12
+#
+########################################################
+
+procedure(pulse_program,dir,mode)
+
+
+# Interface description (name, label, x, y, ctrlType, varType)
+   interface = ["b1Freq",      "B1 Frequency (MHz)",   "0","0",    "tbwv",    "freq",
+               "repTime",      "Repetition time (ms)", "0","1.6",   "tbwv",   "float,[20,1e8]",
+
+               "90Amplitude",  "90 amplitude (dB)",    "1","0",     "tb",     "float,[-72,0]",
+               "180Amplitude", "180 amplitude (dB)",   "1","1",     "tb",     "pulseamp",
+               "pulseLength",  "Pulse length (us)",    "1","2",     "tb",     "float,[1,500]",
+
+               "echoTime",     "Echotime (us)",        "2","0",     "tb",     "sdelay",
+               "nrEchoes",     "Number of echoes",     "2","1",     "tb",     "integer,[1,16000]",
+               "echoShift",    "Echo shift (us)",      "2","2",     "tb",     "float,[-20,20]",
+               "autoPhase",    "Auto-phase",           "2","3",     "cb",     "no,yes",
+          
+               "p90Ini",       "Init. Puls. (us)",     "3","0",     "tb",     "float,[1,500]",
+               "p90Incr",      "Increment (us)",       "3","1",     "tb",     "float,[0,500]",
+               "nrIncr",       "Number of increm.",    "3","2",     "tb",     "integer,[1,1000]"]
+
+  tabs = ["Pulse sequence","Acquisition","File Settings"]
+
+# Relationships between pulse-sequence and GUI parameters
+   relationships = ["a1 = 90Amplitude",
+                    "a2 = 180Amplitude",
+                    "d1 = pulseLength",
+                    "d2 = echoTime/2-d1-pgo",
+                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
+                    "d4 = echoTime-d1-pgo-d3",
+                    "d5 = 2*d1",
+                    "n1 = nrEchoes",
+                    "n2 = nrPnts",
+                    "totPnts = nrPnts",
+                    "totTime = acqTime"]
+
+# These parameters will be changed between experiments
+   variables = ["d1","d2","d3","d4"]
+
+# x and y spacing between controls
+   dim = [155,26]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   cleardata(64000)
+   pulse(mode,a1,p1,d1)           # 90 pulse
+   delay(d2)                      # 90 - 180 delay
+
+   loop(l1,n1)
+      pulse(mode,a2,p2,d1)        # 180 internal pulse
+      delay(d3)                   # 180 - acq delay
+      acquire("sum",n2,d4)     # Acquire echo and wait
+   endloop(l1)
+
+   lst = endpp() # Return parameter list
+
+# Phase cycle
+   phaseList = [0,2; # x,-x : 90 phase
+                1,1; # y,y : 180 phase
+                0,2] # x,-x : Acquire phase
+
+
+endproc(lst,tabs,interface,relationships,variables,dim,phaseList)

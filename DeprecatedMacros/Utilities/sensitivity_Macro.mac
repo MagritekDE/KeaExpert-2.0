@@ -1,0 +1,72 @@
+lb = 1.0
+b1Freq = 42.8657851562724
+zf = 2
+p0 = 3.6
+p1 = 180
+curplot("1d",1,1)
+(ttt,fid) = getplotdata("1d")
+nrPnts = size(fid)
+specSize = zf*nrPnts
+dw = ttt[1]-ttt[0]
+fff = linvec(0,specSize-1,specSize)/dw/specSize-1.0/2/dw
+ppm = fff/b1Freq
+flt = exp(-ttt*lb*pi)
+fidflt = fid.*flt
+spectrum = fft_local:1d(fidflt,specSize)
+spectrumphased = spectrum.*exp(i*(p0+p1*2*dw*fff)/180*pi)
+
+curplot("1d",2,1)
+plot(ppm,spectrumphased)
+axes("xrange", [-6,6])
+title("Please phase spectrum manually and calibrate ppm scale")
+manualphase1d_bm()
+axes("xrange", [-6,6])
+      title("Select 2.7 ppm calibration point")
+      s = getx()
+ppmcalib = ppm-s+2.7
+plot(ppmcalib,spectrumphased)
+axes("xrange", [0,10])
+axes("xdirection", "reversed")
+(x1,x2,x3,x4) = findindex(ppmcalib,2,3.5,4,6)
+peaks = submatrix(spectrumphased,x1,x2)
+f_peaks = submatrix(ppmcalib,x1,x2)
+ns = submatrix(spectrumphased,x3,x4)
+f_ns = submatrix(ppmcalib,x3,x4)
+peaks_with_ns = submatrix(spectrumphased,x1,x4)
+f_peaks_with_ns = submatrix(ppmcalib,x1,x4)
+
+(meannoise,rmsnoise) = :getmeansd(real(ns))
+pr meannoise,rmsnoise
+         (m,c,mErr,cErr) = linfit:fit(f_ns,real(ns))
+pr m,c
+nscorr = ns - c - m*f_ns
+         (mcorr,ccorr,mErr,cErr) = linfit:fit(f_ns,real(nscorr))
+pr mcorr,ccorr
+peaks_with_ns_corr = peaks_with_ns  - c - m*f_peaks_with_ns
+spectrumcorr = spectrumphased  - c - m*ppmcalib
+plot(ppmcalib,spectrumcorr)
+axes("xrange", [0,10])
+axes("xdirection", "reversed")
+
+maxval1 = max(real(peaks_with_ns_corr))
+maxval2 = max(abs(peaks_with_ns_corr))
+pr maxval1, maxval2
+
+(meannoise,rmsnoise) = :getmeansd(real(nscorr))
+pr meannoise,rmsnoise
+
+title("Peak = $maxval1$, rms_noise = $rmsnoise$, SNR = $maxval1/2/rmsnoise$")
+
+##########################################
+# Calculate the standard deviation
+# of the vector v
+##########################################
+
+procedure(getmeansd,v)
+
+   N = size(v)
+   s = sum(v)
+   avg = s/N
+   sd = sqrt(sum((v-avg)^2)/(N-1))
+   
+endproc(avg,sd)

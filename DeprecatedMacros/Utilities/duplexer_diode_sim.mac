@@ -1,0 +1,68 @@
+   fmin = 6e6
+   fmax = 29e6 
+
+   x = [fmin :.001*(fmax-fmin):fmax]   
+   omega = 2*pi*x
+   
+#   C1 = 1e-9
+#   L1 = 100e-9
+#   L2 = 100e-9
+#   R1 = 2350.0
+#   C2 = 20e-12
+#   C3 = 50e-12
+#   RS = 50
+#   R2 = 50
+#   RD = 9
+
+   C1 = 1e-9
+   L1 = 15e-9
+   L2 = 15e-9
+   R1 = 2350.0
+   C2 = 20e-12
+   C3 = 10e-12
+   RS = 50
+   R2 = 50
+   RD = 1
+
+   C4 = 10e-12
+   C5 = 44e-12
+   L3 = 800e-9
+   L4 = L3
+
+
+
+#   C4 = 20e-16
+#   C5 = 50e-16
+#   L3 = 0.8e-1
+#   L4 = 0.8e-1
+
+   Xc1 = 1/(i*omega*C1)
+   Xc2 = 1/(i*omega*C2)
+   Xc3 = 1/(i*omega*C3)
+   XL1 = i*omega*L1 + RD
+   XL2 = i*omega*L2 + RD
+
+   Xc4 = 1/(i*omega*C4)
+   Xc5 = 1/(i*omega*C5)
+   XL3 = i*omega*L3
+   XL4 = i*omega*L4
+   
+   z1 = Xc1+XL1
+   z2 = Xc2.*R1/(Xc2+R1)
+   z3 = XL2 
+   z4 = Xc3.*R2/(Xc3+R2)
+   z5 = XL3 
+   z6 = Xc5.*XL4/(Xc5+XL4)
+   z7 = z5+z6
+   z8 = z7.*Xc4/(z7+Xc4)
+   z9 = z8.*z4/(z8+z4)
+   z10 = z9+z3
+   z11 = z2.*z10/(z2+z10)
+   zt = z11+z1
+
+   P_r = (zt-RS)/(zt+RS)
+
+   plot(x/1e6,100*mag(P_r^2))
+   xlabel("Frequency MHz")
+   ylabel("Reflected power (%)")
+   title("Reflected power vs Frequency")

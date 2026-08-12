@@ -1,0 +1,81 @@
+# Calculate the inductance of a cylindrical coil
+# with N turns, radius r and length l
+
+procedure(resonanceCalc)
+
+   n = :windowdefinition()
+   assignctrls(n)
+   :select()
+   showwindow(n)
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Calculate resonance", -1, -1, 250, 126, "resizable")
+
+      # Define all controls with basic parameters
+       windowvar(ctrlR1,ctrlRt,ctrlR2)
+       textbox(1, 50, 19, 50)
+       textbox(2, 50, 49, 50)
+       textbox(3, 50, 80, 50)
+       statictext(4, 42, 24, "right", "L (uH)")
+       statictext(5, 41, 54, "right", "C (nF)")
+       statictext(6, 44, 84, "right", "f (MHz)")
+       button(10, 160, 20, 72, 32, "Calculate",
+          :calc();)
+       button(11, 160, 70, 72, 32, "Close",
+          closewindow(0);)
+       radiobuttons(12, 114, 25, 30, "vertical", "L,C,f", "f",:select())
+
+     # Set other control parameters
+       setpar(n,1,"objID","ctrlL")
+       setpar(n,2,"objID","ctrlC")
+       setpar(n,3,"objID","ctrlf")
+       setpar(n,10,"mode","default")
+       setpar(n,12,"objID","ctrlWhich")
+
+endproc(n)
+
+
+procedure(select)
+
+   if(ctrlWhich->text == "L")
+      ctrlL->enable("false")
+      ctrlC->enable("true")
+      ctrlf->enable("true")
+   elseif(ctrlWhich->text == "C")
+      ctrlL->enable("true")
+      ctrlC->enable("false")
+      ctrlf->enable("true")
+   elseif(ctrlWhich->text == "f")
+      ctrlL->enable("true")
+      ctrlC->enable("true")
+      ctrlf->enable("false")
+   endif
+
+endproc()
+
+
+procedure(calc)
+
+   if(ctrlWhich->text == "L")
+     f = (ctrlf->value)*1e6
+     C = (ctrlC->value)*1e-9
+     L = 1/((2*pi*f)^2*C)
+     ctrlL->text(L*1e6)
+   elseif(ctrlWhich->text == "C")
+     f = (ctrlf->value)*1e6
+     L = (ctrlL->value)*1e-6
+     C = 1/((2*pi*f)^2*L)
+     ctrlC->text(C*1e9)
+   elseif(ctrlWhich->text == "f")
+     L = (ctrlL->value)*1e-6
+     C = (ctrlC->value)*1e-9
+     f = 1/(2*pi*sqrt(L*C))
+     ctrlf->text(f/1e6)
+   endif
+
+endproc()

@@ -1,0 +1,70 @@
+procedure(calculator)
+
+   n = :windowdefinition()
+   windowvar(mode)
+   result = 0
+   showwindow(n)
+   setwindowpar(n,"keepinfront","true")
+   assignctrls(n)
+   display->text(0)
+   mode = "reset"
+
+endproc()
+
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Simple calculator", -1, -1, 176, 212)
+
+     #  message(-1
+      # Define all controls with basic parameters
+       button(1, 13, 42, 33, 20, "1",:enter("1"))
+       button(2, 63, 42, 33, 20, "2",:enter("2"))
+       button(3, 113, 42, 33, 20, "3",:enter("3"))
+       button(4, 13, 69, 33, 20, "4",:enter("4"))
+       button(5, 63, 69, 33, 20, "5",:enter("5"))
+       button(6, 113, 69, 33, 20, "6",:enter("6"))
+       button(7, 13, 96, 33, 20, "7",:enter("7"))
+       button(8, 63, 96, 33, 20, "8",:enter("8"))
+       button(9, 113, 96, 33, 20, "9",:enter("9"))
+       button(10, 13, 126, 33, 20, "0",:enter("0"))
+       button(11, 112, 126, 33, 20, "CE",:CE())
+       button(12, 13, 154, 33, 20, "+",:enter("+"))
+       button(13, 63, 154, 33, 20, "-",:enter("-"))
+       button(14, 13, 180, 33, 20, "/",:enter("/"))
+       button(15, 63, 180, 33, 20, "*",:enter("*"))
+       button(16, 109, 154, 39, 48, "=",:equals())
+       textbox(17, 11, 10, 138)
+
+     # Set other control parameters
+       setpar(n,17,"objID","display")
+
+endproc(n)
+
+procedure(enter,n)
+
+  if(mode = "reset")
+    display->text("")
+  endif
+
+  txt = display->text + n
+  display->text(txt)
+  mode = "enter"
+
+endproc()
+
+procedure(CE)
+
+  display->text("")
+
+endproc()
+
+procedure(equals)
+
+  express = display->text
+  result = eval(express)
+  display->text("$express$ = $result$")
+  mode = "reset"
+
+endproc()
