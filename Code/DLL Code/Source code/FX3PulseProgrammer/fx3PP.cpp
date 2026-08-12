@@ -755,17 +755,6 @@ short EndPP(DLLParameters* par, char* args)
 	if ((nrArgs = ArgScan(par->itfc, args, 0, "print ps?", "e", "q", &verboseStr)) < 0)
 		return(nrArgs);
 
-	// Print out the event table if argument is 1
-	Evaluate(par->itfc, NORMAL, verboseStr.Str(), &result);
-	if (result.GetType() == FLOAT32)
-		verbose = (bool)result.GetReal();
-	else
-		verbose = false;
-	if (verbose)
-	{
-		Report(par, args);
-	}
-
 	// Generate the event entry to end the PS
 	if (psInfo.mode == "compile" || psInfo.mode == "both")
 	{
@@ -777,7 +766,7 @@ short EndPP(DLLParameters* par, char* args)
 		AddEvent(200, 0x07000002, 0); // Reset y grad
 		AddEvent(200, 0x07000001, 0); // Reset z grad
 		AddEvent(80,  0x03000000, 0); // Reset o grad
-
+	
 		// Text for the report command
 		CText txt = "endpp";
 		ETInfo info = { lineCnt, txt.Str() };
@@ -830,6 +819,17 @@ short EndPP(DLLParameters* par, char* args)
 		{
 			Variable* v = struc->Add(DMATRIX2D, "ps");
 			v->AssignDMatrix2D(psM, psLines, 1);
+		}
+
+		// Print out the event table if argument is 1
+		Evaluate(par->itfc, NORMAL, verboseStr.Str(), &result);
+		if (result.GetType() == FLOAT32)
+			verbose = (bool)result.GetReal();
+		else
+			verbose = false;
+		if (verbose)
+		{
+			Report(par, args);
 		}
 
 		// Check if a gradient level is left high
