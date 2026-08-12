@@ -1,0 +1,197 @@
+procedure(writeToFlash)
+
+   # FIFO control
+   ADDR_CTRLREG    = 0x7000
+   ADDR_FIFO       = 0x7001
+   ADDR_BYTECOUNT  = 0x7002
+   CMD_START_TX    = 0x100
+   CMD_ENABLE_QUAD = 0x200
+   CMD_ENABLE_CCLK = 0x02
+   # Memory commands
+   WRITE_ENABLE = 0x06
+   WR_ENH_CFG_REG  = 0x61   #set register to 0x2f to enable Quad-SPI and disable #HOLD functionality
+   BULK_ERASE = 0xC7
+   PAGE_PROGRAM = 0x02
+
+   path="C:\\Users\\Raschid\\AppData\\Roaming\\Xilinx\\Vivado"
+   #file="TReX5_FW222_FLASH.bin"
+   file="TReX5_v222_FLASH.bin"
+
+   tStart = time()
+
+   HWver = fx3read("E",0x82,1)
+   FWver = fx3read("E",0x83,1)
+   pr "Hardware version: $HWver$\n"
+   pr "Firmware version: $FWver$\n"
+
+
+## write new firmware
+   :TReXFirmwareUpdater(path, file)
+
+   tEnd = time()
+   pr ("   Time taken = $tEnd-tStart$\n")
+   pr ("\n=== Please restart your Spinsolve now ===\n")
+   
+endproc()
+
+procedure(TReXFirmwareUpdater, fwFolder, fwName)
+   USBTIMEOUT = 6000 #milliseconds
+   PAGESIZE = 256 #bytes
+
+   w = guiwinnr()
+
+   pr "\n   Flashing TRex firmware with file $fwName$."
+
+   fx3timeout(USBTIMEOUT)
+   pr "\n   USB timeout increased to $USBTIMEOUT/1000$ s.\n"
+
+   cd(fwFolder)
+
+   # Run Update 
+   if(isfile(fwName))
+      ## set up Quad-SPI
+      :initQuadSpi()
+      ## bulk erase
+      :bulkErase()
+
+      # TODO check for hardware compatibility
+      import1dpar("ab","binary","xyrc","real","fls","short","machine","bigend")
+
+
+      fwData16 = import1d(fwName) 
+      fwSize16 = size(fwData16)
+      #pr fwSize16
+
+      fwSize8 = fwSize16 * 2   # size in no. of bytes
+      numOfFullBlocks = floor(fwSize8 / PAGESIZE)   # FPGA data fifo size is 256 bytes wide
+      #pr numOfFullBlocks
+      residualBytes = fwSize8-(numOfFullBlocks*PAGESIZE)
+      #pr residualBytes
+      currentBlock = matrix(PAGESIZE)
+      addr=0
+      for(k=0 to numOfFullBlocks-1)
+         for(n=0 to PAGESIZE/2-1)
+            currentBlock[2*n]   = (fwData16[k*PAGESIZE/2+n]&0xFF00) / (2^8)
+            currentBlock[2*n+1] = (fwData16[k*PAGESIZE/2+n]&0x00FF)
+         next(n)
+         if(k%1000==0)
+            pr "Writing page #$k$ of $numOfFullBlocks$ to addr 0x$hex(addr)$.\n"
+         endif
+         :writeBlock(addr,currentBlock,PAGESIZE)
+         addr = addr+PAGESIZE
+
+      next(k)
+      if(residualBytes > 0)
+         residualWords = floor(residualBytes/2)-1
+         for(n=0 to residualWords-1)
+            currentBlock[2*n]   = (fwData16[numOfFullBlocks*PAGESIZE/2+n]&0xFF00) / (2^8)
+            currentBlock[2*n+1] = (fwData16[numOfFullBlocks*PAGESIZE/2+n]&0x0000FF)
+         next(n)
+         if(residualBytes%2!=0) # if number of bytes is uneven, add last byte
+            currentBlock[residualBytes-1] = fwData16[numOfFullBlocks*PAGESIZE/2+residualWords]&0xFF00 / 2^8
+         endif
+         #pr residualBytes
+         #pr hex(currentBlock[0:residualBytes-1])
+         :writeBlock(addr,currentBlock,residualBytes)
+      endif
+   else   
+      pr "File $fwName$ not found. Abort.\n"
+   endif
+   #statusCtrl->text("Please restart spectrometer to finalised firmware update")
+
+   fx3timeout(3000)
+   pr "   USB timeout set back to 3 s.\n"
+endproc()
+
+##############################################
+## This procedure initialises the Quad-SPI mode of the flash memory chip and the FPGA.
+## After a reset everything is set to single SPI mode. So this has to be called once
+## before any other command, since those assume the use of Quad-SPI.
+procedure(initQuadSpi)
+   ADDR_CTRLREG    = 0x7000
+   CMD_ENABLE_QUAD = 0x0200
+
+   fx3write("e",ADDR_CTRLREG,[CMD_ENABLE_QUAD])   # enable Quad-SPI mode
+endproc()
+
+##############################################
+## This procedure sets the byteCount register of the SPI state machine.
+## It has to match the number of bytes loaded in the command FIFO to be send to
+## the flash memory over SPI.
+procedure(setByteCount,numOfBytes)
+   ADDR_BYTECOUNT  = 0x7002
+
+   fx3write("e",ADDR_BYTECOUNT,[numOfBytes])
+endproc()
+
+##############################################
+## The flash memory need a WRITE_ENABLE command before every write to memory,
+## registers or any erase command.
+## This procedure has the setByteCount() and startSpiTransfer() included.
+procedure(writeEnable)
+   ADDR_FIFO       = 0x7001
+   WRITE_ENABLE    = 0x06
+
+   fx3write("e",ADDR_FIFO,[WRITE_ENABLE])
+   :setByteCount(1)
+   :startSpiTransfer()
+endproc()
+
+##############################################
+## This procedure starts the bulk erase command. The data sheet gives a typical duration
+## of 38s and a maximum duration of 114s. It is recommended to poll the flag status register
+## to detect the end of the erase progress. For now it is waiting for a fixed amount of time.
+procedure(bulkErase)
+   ADDR_FIFO       = 0x7001
+   BULK_ERASE      = 0xC7
+   ERASETIME       = 80   #in seconds
+
+   :writeEnable()
+   fx3write("e",ADDR_FIFO,[BULK_ERASE])
+   :setByteCount(1)
+   :startSpiTransfer()
+   pr "\nDeleting flash memory...\n"
+  
+   for(k=1 to 4)
+      pause(ERASETIME/5)
+      pr " $k*20$% done.\n"
+   next(k)
+   
+endproc()
+
+##############################################
+## This procedure starts the SPI transmission to ne Flash memory.
+## Before running this a valid command needs to be loaded into the FIFO and
+## the correct number of bytes needs to be set in the byteCount register.
+procedure(startSpiTransfer)
+   ADDR_CTRLREG    = 0x7000
+   CMD_START_TX    = 0x100
+
+   #pr "Run command...\n"
+   fx3write("e",ADDR_CTRLREG,[CMD_START_TX])
+endproc()
+
+##############################################
+## This procedure writes the PROGRAM_PAGE command byte to the FIFO, followed by a
+## 24 bit starting address and a full page of data (256 bytes).
+## Includes setByteCount() and startSpiTransfer().
+procedure(writeBlock,addr,block,numOfBytes)
+   ADDR_FIFO       = 0x7001
+   CMD_PAGE_PROGRAM    = 0x02
+   HEADERSIZE      = 4
+
+   addrByte1 = (addr&0xFF0000) / (2^16)
+   addrByte2 = (addr&0x00FF00) / (2^8)
+   addrByte3 = (addr&0x0000FF)
+   
+   :writeEnable()
+   fx3write("d",ADDR_FIFO,[CMD_PAGE_PROGRAM])
+   fx3write("d",ADDR_FIFO,[addrByte1])   # write adress byte 1 (MSB)
+   fx3write("d",ADDR_FIFO,[addrByte2])   # write adress byte 2
+   fx3write("d",ADDR_FIFO,[addrByte3])   # write adress byte 3 (LSB)
+   fx3write("d",ADDR_FIFO,block)         # write full page of data to FIFO
+   :setByteCount(numOfBytes+HEADERSIZE)
+   :startSpiTransfer()
+   pause(0.001)
+   
+endproc()
