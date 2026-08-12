@@ -10,7 +10,7 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 * Some experiments show incorrect pulse sequence visualisation.
 * Check that all pulse experiment understand the different mode options.
 * Check that external mode works with DSP spectrometers.
-* Check that the firmware updater works for Spartan6/7 and FX3/DSP systems and that the lastest binaries are included.
+* Check that the firmware updater works for Spartan6/7 and FX3/DSP systems ~~and that the lastest binaries are included.~~
 
 
 
@@ -44,7 +44,7 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 
 
 
-* Figure out how to switch end codes on the signal generator experiment so the RF stays on.
+* ~~Figure out how to switch end codes on the signal generator experiment so the RF stays on.~~
 * Figure out a way to get delays the same on the FX3 and the DSP (see CPMGFast)
 * In T1Sat replace repTime with ieTime.
 * How to handle different probeheads? Do we want this to be loadable as it is at present?
@@ -58,15 +58,18 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 * Merge all changes from Craig's 2.02.16 version to Bulat's 2.02.17
 * Make sure the Prospa software is up to date wrt Spinsolve.
 * Move the Prospa code to support 64 bit.
-* The Transceiver firmware folder does not include V3013.bin.
-* Reading the firmware versions on an old DSP system will latch up the software. How to resolve?
+* ~~The Transceiver firmware folder does not include V3013.bin.~~
+* ~~Reading the firmware versions on an old DSP system will latch up the software. How to resolve?~~
 * It would be useful to have an internal temperature sensor. Does it have to be a PT100 probe input (check with Raschid).
 * Parameter reader/writer:
 
   * A help file for the Kea Parameter reader/write would be useful.
-  * The button Reset tab and all parameters doesn't work in Kea parameter reader/writer.
+  * The button 'Reset tab' and 'Reset all' parameters doesn't work in Kea parameter reader/writer.
   * The hardware capabilities button gives an error message.
-  * The firmware version numbers should be read only
+  * ~~The firmware version numbers should be read only~~
   * Any changes to the interface should be noted and warning given when closing
-
+* Ensure that FX3 firmware update for the TRex5 is working.
+* Add simulators to as many experiments as possible.
+* Remove unnecessary DLLs from KeaExpert (such as Spinsolve and Terranova)
+* ~~Have an option to leave the RF on at the end of the sequence. (Both DSP and FX3)~~
 
