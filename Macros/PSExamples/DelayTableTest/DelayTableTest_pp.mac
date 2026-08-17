@@ -16,10 +16,9 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
-               "b1Freq1H",        "1H frequency (MHz)",        "tb",  "freq";
-               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
-               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
+  interface = ["b1FreqCh1",       "B1 frequency (MHz)",        "tb",  "freq";
+               "90AmplitudeCh1",  "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",         "tb",  "pulselength";
                "startDelay",      "Initial delay (us)",        "tb",  "float,[10,327600]";
                "endDelay",        "Final delay (us)",          "tb", "float,[10,327600]";
                "nrSteps",         "Nr. steps",                 "tb",  "integer,[2,1000]";
@@ -32,8 +31,8 @@ procedure(pulse_program,dir,mode,pars)
 
 # Relationships to determine remaining variable values
    relationships = ["nDataPnts    = nrPnts",
-                    "a90Amp       = 90Amplitude1H",
-                    "d90Dur       = pulseLength1H",
+                    "a90Amp       = 90AmplitudeCh1",
+                    "d90Dur       = pulseLengthCh1",
                     "delays       = linspace(startDelay,endDelay,nrSteps)",
                     "tDelays      = DelayTableTest_pp:convertDelays(delays-4.45-pgo)",
                     "totPnts      = nrPnts",
@@ -93,20 +92,17 @@ endproc(out)
 
 procedure(getFactoryBasedParameters, par)
 
-   specPar = gData->getXChannelParameters("1H")
+   specPar = gData->specParameters
    if(specPar == null)
       return(null)
    endif
    assignlist(specPar)
 
-   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
-
-   par = ["rxGain        = $modelPar->rxGain$",
-          "pulseLength1H = $PulseLength_1H$",
-          "90Amplitude1H = $PowerLevel_1H$",
-          "b1Freq1H      = $Frequency_1H$",
-          "b1Freq13C     = $Frequency_X$"]
-
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+ 
 endproc(par)
 
 

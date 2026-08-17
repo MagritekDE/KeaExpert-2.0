@@ -89,12 +89,12 @@ procedure(getseqpar)
           "tAmpPhase     = gFX3->interleaveTables(ampSweepa,phSweepa,ampSweepb,phSweepb)",
           "nTabSz4       = size(tAmpPhase)/4",
           "dTabStep      = stepDur",
-          "f1            = b1Freq1H",
-          "f2            = b1Freq13C",
+          "f1            = b1FreqCh1",
+          "f2            = b1FreqCh2",
           "totPnts       = nrPnts",
           "totTime       = acqTime"]
    var = [""]
-   pp_list = ["a1","f1","p1","a2","f2","nDataPnts"]
+   pp_list = ["a1","f1","p1","a2","f2","tAmpPhase","p2","nTabSz4","dTabStep","nDataPnts"]
    pp_name = "DualShapedRF2Test.p"
    phase_list = [0,0,0,0;0,1,2,3;0,1,2,3]
 
@@ -115,7 +115,6 @@ endproc(seqInfo)
 # pcIndex .... indices of phase parameters in ppList
 # varIndex ... indices of variable parameters in ppList
 #
-# March 2021 CDE
 #########################################################
 
 procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
@@ -145,48 +144,37 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    prt->showimag("true")
    prf->showimag("false")
 
-# Work out frequency axis scale, label and range
-   (fAxisDisp,fAxisLabel,fRange) = ucsPlot:generate1DFrequencyAxis(prf, fAxis, b1Freq1H, wvPPMOffset1H, 0, guipar)
-
 # Accumulate scans
    for(scan = 0 to nrScans-1)
 
-    # Check timing, update the parameters, run the sequence and return the data
-      (data,pAcq,status) = ucsRun:runSequence(guipar,ppList,pcList,pcIndex,scan)
+     # Set phases for this scan
+      (ppList,pAcq) = ucsRun:setPPPhase(ppList,scan,pcList,pcIndex)
+
+    # Send all parameter values to DSP/FX3
+       ucsRun:updatePPParameters(ppList,guipar)
+
+    # Wait for repetition time and check for abort
+      check = ucsRun:checkTiming(guipar,scan,pcList)
+      if(check == "abort")
+         return(check)
+      endif
+
+    # Run the pulse program and collect the data
+      (status,data) = ucsRun:getData(totPnts,guipar)
 
     # See if the abort button has been pressed
       if(status == "abort")
          return(0)
       endif
 
-    # Correct for p1 errors
-      if(isvar("shiftPoints"))
-   
-       # Shift the data to minimise p1
-         data = shift(data,round(shiftPoints)) 
-   
-       # Correct the distortions in start of FID due to digital filter 
-         data = ucsUtilities:correctFilter1(data,dwellTime)
-   
-      endif
-
     # Accumlate the data
       sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
 
-    # Correct the first data point
-      datacorr = ucsRun:correctFirstDataPoint(sumData,shiftPoints,fdPhaseCorr)
-
-    # Process data
-      (phasedTimeData,spectrum,ph0) = ucsRun:transformData(zerofill(datacorr.*flt,zf*totPnts,"end"),fAxis,guipar,"fid",1,1)
-
     # Plot the data 
-      ucsPlot:graphTimeAndFreq(prt,prf,tAxis,datacorr,fAxisDisp,spectrum,scan,guipar,
-                               "Time data (scan : $scan+1$)","Spectral data",
-                               "","",
-                               fAxisLabel,"Amplitude")
+      ucsPlot:graphTime(prt,tAxis,sumData,scan,guipar,"Time data (scan : $scan+1$)","Spectral data")
 
     # Check if complete button pressed
-      if(status == "finish")
+      if(check == "finish")
          scan = scan+1
          exitfor()
       endif
@@ -196,19 +184,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 # Save the data
    ucsFiles:savePlot(prt,:getPlotInfo("pt1"),guipar,"noReport")
    ucsFiles:savePlot(prf,:getPlotInfo("pt2"),guipar,"simpleReport")
-   ucsFiles:saveMNovaData(prt,"",guipar,"simpleReport",phase0=ph0)
-
-# Save the processing parameters
-   :saveProcPar(guipar,ph0,fRange)
 
 # Pack the data into a structure
    result = struct()
    result->tAxis = tAxis
    result->tData = sumData/scan
-   result->fAxis = fAxisDisp
-   result->fData = spectrum/scan
    result->par = struct(guipar)
-   result->p0 = phCor/pi*180+ph0
 
 # Return result
    return(result)
@@ -247,53 +228,3 @@ procedure(expectedDuration, guipar)
    duration = (totScans*repTime)/1000
 
 endproc(duration)
-
-#################################
-# Save the processing parameters
-#################################
-
-procedure(saveProcPar,guipar,p0,xrange)
-
-   assignlist(guipar)
-  
-   if(saveData == "false")
-      return
-   endif
-
-   if(usePPMScale == "yes")
-      xrange = xrange*single(b1Freq1H)
-   endif
-
-   procpar = ["apodizationFunction = \"$filterType$\"",
-              "baseLineCorrectionMethod = \"None\"",
-              "displayInPPM = \"$usePPMScale$\"",
-              "ftOrigin = \"Start\"",
-              "ftType = \"Complex\"",
-              "p0Phase = $p0$",
-              "p1Phase = 0",
-              "p1Pivot = 0",
-              "p1FixedPhase = 0",
-              "phaseMethod = \"p0, p1 fixed phase\"",
-              "zeroFill = $zf$",
-              "plotWidth = $xrange[1]-xrange[0]$",
-              "plotStart = $xrange[0]$",
-              "shiftPoints = 1"]
-
-   if(isvar("exptNr"))
-      cd("$dataDirectory$\\$expName$\\$exptNr$")
-   else
-      cd("$dataDirectory$\\$expName$")
-   endif
-
-   if(isfile("proc.par"))
-      par = load("proc.par")
-      procpar = mergelists(procpar,par)
-   endif
-   save("proc.par",procpar)
-
-   if(isfile("proc_temp.par"))
-      rmfile("proc_temp.par")
-   endif
-
-endproc()
-

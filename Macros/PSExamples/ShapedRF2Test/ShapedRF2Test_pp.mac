@@ -18,8 +18,7 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
-               "b1Freq",          "Pulse frequency",              "tb",  "float";
+  interface = ["b1FreqCh1",       "Pulse frequency",              "tb",  "freq";
                "txMaxdB",         "Pulse max amplitude (dB)",     "tb",  "float";
                "nAmpSteps",       "Amplitude steps",              "tb",  "integer";
                "stepDur",         "Table step length (us)",       "tb",  "pulselength";
@@ -31,7 +30,6 @@ procedure(pulse_program,dir,mode,pars)
 
 # Relationships to determine remaining variable values
    relationships = ["nDataPnts     = nrPnts",
-                    "b1Freq1H      = b1Freq",
                     "a1            = 0",
                     "aMax          = gFX3->convertAmplitude(txMaxdB)",
                     "ampSweep1     = linspace(0,aMax,nAmpSteps/2)",
@@ -53,7 +51,7 @@ procedure(pulse_program,dir,mode,pars)
    initpp(dir)      
    pulse(1,a1,p1,10)                         # Generate a pulse for scope triggering with constant phase            
    delay(10)
-   shapedrf2(1,tAmpPhase,p2,nTabSz,dTabStep) # Shaped amplitude/phase pulse
+   shapedrf2(2,tAmpPhase,p2,nTabSz,dTabStep) # Shaped amplitude/phase pulse
    delay(10)                                 # Pulse - acquire delay
    acquire("overwrite",nDataPnts)            # Acquire FID
 
@@ -67,3 +65,23 @@ procedure(pulse_program,dir,mode,pars)
 
 endproc(parList,groups,interface,relationships,variables,null,phaseList)
 
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)

@@ -15,9 +15,8 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
-               "b1Freq1H",        "1H frequency",                 "tb",  "freq";
-               "b1Freq13C",       "13C frequency",                "tb",  "freq";
+  interface = ["b1FreqCh1",       "Ch1 frequency",                 "tb",  "freq";
+               "b1FreqCh2",       "Ch2 frequency",                "tb",  "freq";
                "txMaxdB",         "Pulse max amplitude (dB)",     "tb",  "float";
                "nAmpSteps",       "Amplitude steps",              "tb",  "integer";
                "stepDur",         "Table step length (us)",       "tb",  "pulselength";
@@ -37,8 +36,8 @@ procedure(pulse_program,dir,mode,pars)
                     "tAmp          = gFX3->interleaveTables(ampSweep1,ampSweep2)",
                     "nTabSz2       = size(tAmp)/2",
                     "dTabStep      = stepDur",
-                    "f1            = b1Freq1H",
-                    "f2            = b1Freq13C",
+                    "f1            = b1FreqCh1",
+                    "f2            = b1FreqCh2",
                     "totPnts       = nrPnts",
                     "totTime       = acqTime"]
 
@@ -47,9 +46,9 @@ procedure(pulse_program,dir,mode,pars)
 
 # Pulse sequence
    initpp(dir)     
-   pulse(1,a1,p1,f1,2,a2,p1,f2,10)    # Dual channel pulse for scope triggering 
+   pulse("1nb",a1,p1,f1,"2nb",a2,p1,f2,10)    # Dual channel pulse for scope triggering 
    delay(10) 
-   dualshapedrf1(tAmp,p2,p2,nTabSz2,dTabStep) # Dual channel shaped pulse
+   dualshapedrf1("no",tAmp,p2,p2,nTabSz2,dTabStep) # Dual channel shaped pulse
    delay(10)                          
    acquire("overwrite",nDataPnts)  
 
@@ -59,7 +58,6 @@ procedure(pulse_program,dir,mode,pars)
    phaseList  = [0,0,0,0;   # p1 : Trigger phase
                  0,1,2,3;   # p2 : Shaped phase
                  0,1,2,3]   # pA : Acquire phase
-
 
 endproc(parList,groups,interface,relationships,variables,null,phaseList)
 
@@ -71,17 +69,15 @@ endproc(parList,groups,interface,relationships,variables,null,phaseList)
 
 procedure(getFactoryBasedParameters, par)
 
-   specPar = gData->getXChannelParameters("13C")
+   specPar = gData->specParameters
    if(specPar == null)
       return(null)
    endif
    assignlist(specPar)
 
-   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
-
-   par = ["rxGain        = $modelPar->rxGain$",
-          "b1Freq13C     = $Frequency_X$",
-          "b1Freq1H      = $Frequency_1H$"]
+   par = ["rxGain        = $rxOptGaindB$",
+          "b1FreqCh1     = $frequencyCh1$",
+          "b1FreqCh2     = $frequencyCh2$"]
 
 endproc(par)
 

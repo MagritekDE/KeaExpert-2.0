@@ -1,14 +1,14 @@
 ############################################################
 #  
-# Tests the spinsolve gradient board
+# Tests the Kea gradient controller by switching one
+# channel positive then negative and then applying
+# a ramp up, down and then up again.
+#
+# 2 RF pulses are also applied; one before and one after  
+# gradient stepping.
 #
 #
-# The acquisition delay is optimised to reduce 1st order
-# phase errors when the data is shifted forward in time 
-# (effectively putting the missed data at time zero where 
-# it just introduces a baseline offset.)
-#
-# pulse - delay - acq
+# pulse - gradpos - gradneg - gradramps - pulse
 #
 ############################################################
 
@@ -20,11 +20,11 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
-               "b1Freq1H",        "1H frequency (MHz)",        "tb",  "freq";
+  interface = ["b1FreqCh1",       "B1 frequency (MHz)",        "tb",  "freq";
                "centerFreqPPM",   "Centre frequency (ppm)",    "tb",  "float";
-               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
-               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
+               "90AmplitudeCh1",  "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",         "tb",  "pulselength";
+               "gradChannel",      "Gradient channel",         "tm",  "string,[\"x\",\"y\",\"z\",\"o\"]";
                "repTime",         "Repetition time (ms)",      "tb",  "reptime";
                "rampDiv",         "Shim ramp",                 "dv",   "";
                "rampSteps",       "Nr. steps",                 "tb",  "integer";
@@ -57,17 +57,13 @@ procedure(pulse_program,dir,mode,pars)
                "filesDiv",        "Files",                     "dv",  "";
                "saveData",        "Save data?",                "cb",  "false,true"]
 
-# Define the tab groups and their order
-#   groups = ["Pulse_sequence","Acquisition",
-#             "Processing_Std","Display_Std","File_Settings"]
-
 # Relationships to determine remaining variable values
    relationships = ["nDataPnts    = nrPnts",
-                    "a90Amp       = 90Amplitude1H",
-                    "d90Dur       = pulseLength1H",
-                    "freqCh1  = double(b1Freq1H)",
-                    "freqRx     = double(b1Freq1H)",
-                    "freqRx     = double(b1Freq1H)",
+                    "a90Amp       = 90AmplitudeCh1",
+                    "d90Dur       = pulseLengthCh1",
+                    "nCh          = GradTest_pp:channelToNumber(gradChannel)",
+                    "freqCh1      = double(b1FreqCh1)",
+                    "freqRx       = double(b1FreqCh1)",
                     "nSteps       = rampSteps",
                     "nSteps2      = rampSteps+1",
                     "dDur         = rampDuration",
@@ -85,21 +81,21 @@ procedure(pulse_program,dir,mode,pars)
 
    pulse(1,a90Amp,p1,d90Dur)
 
-   gradon(nAmpPos)
+   gradon(nCh,nAmpPos)
    delay(100)
-   gradoff()
+   gradoff(nCh)
    delay(100)
-   gradon(nAmpNeg)
+   gradon(nCh,nAmpNeg)
    delay(100)
-   gradoff()
+   gradoff(nCh)
    delay(100)
 
-   gradramp(0,nAmpPos,nSteps,dDur)
-   gradramp(nAmpPos,0,nSteps,dDur)
-   gradramp(0,nAmpNeg,nSteps,dDur)
-   gradramp(nAmpNeg,0,nSteps,dDur)
+   gradramp(nCh,0,nAmpPos,nSteps,dDur)
+   gradramp(nCh,nAmpPos,0,nSteps,dDur)
+   gradramp(nCh,0,nAmpNeg,nSteps,dDur)
+   gradramp(nCh,nAmpNeg,0,nSteps,dDur)
 
-   pulse(1,a90Amp,p1,d90Dur)
+   pulse("1nb",a90Amp,p1,d90Dur)
 
    delay(10)
 
@@ -114,6 +110,24 @@ procedure(pulse_program,dir,mode,pars)
 
 endproc(lst,list(0),interface,relationships,variables,null,phaseList)
 
+#####################################################
+# Grad commands require a numerical channel
+# if it is a variable
+#####################################################
+
+procedure(channelToNumber, chanIn)
+
+   if(chanIn == "x")
+      chOut = 3
+   elseif(chanIn == "y")
+      chOut = 2
+   elseif(chanIn == "z")
+      chOut = 1
+   elseif(chanIn == "o")
+      chOut = 0
+   endif
+
+endproc(chOut)
 
 #####################################################
 # Assign those parameters which should take their 
@@ -123,19 +137,16 @@ endproc(lst,list(0),interface,relationships,variables,null,phaseList)
 
 procedure(getFactoryBasedParameters, par)
 
-   specPar = gData->getXChannelParameters("1H")
+   specPar = gData->specParameters
    if(specPar == null)
       return(null)
    endif
    assignlist(specPar)
 
-   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
-
-   par = ["rxGain        = $modelPar->rxGain$",
-          "pulseLength1H = $PulseLength_1H$",
-          "90Amplitude1H = $PowerLevel_1H$",
-          "b1Freq1H      = $Frequency_1H$",
-          "b1Freq13C     = $Frequency_X$"]
-
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+ 
 endproc(par)
 

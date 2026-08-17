@@ -18,8 +18,7 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
-               "b1Freq",          "Pulse frequency",              "tb",  "float";
+  interface = ["b1FreqCh1",       "Pulse frequency",              "tb",  "float";
                "ampMin",          "Pulse min dig amplitude",      "tb",  "float";
                "ampMax",          "Pulse max dig amplitude",      "tb",  "float";
                "ampSteps",        "Amplitude steps",              "tb",  "integer";
@@ -61,3 +60,23 @@ procedure(pulse_program,dir,mode,pars)
 
 endproc(parList,groups,interface,relationships,variables,null,phaseList)
 
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)

@@ -1,8 +1,9 @@
 ############################################################
 #  
-# Generates a pulse with a ramped amplitude using a table
+# Generates a single RF pulse and then a train of pulses
+# with a ramped amplitude using a table.
 #
-# pulse - delay - acq
+# pulse - delay - pulseramp - acq
 #
 ############################################################
 
@@ -14,12 +15,11 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                      "tb",  "readonly_string";
-               "ampMin",          "Pulse min amplitude (dig)",    "tb",  "float";
+  interface = ["ampMin",          "Pulse min amplitude (dig)",    "tb",  "float";
                "ampMax",          "Pulse max amplitude (dig)",    "tb",  "float";
                "ampSteps",        "Amplitude steps",              "tb",  "integer";
-               "b1Freq1H",         "Pulse frequency 1 (MHz)",      "tb",  "freq";
-               "pulseLength",     "Pulse length (us)",            "tb",  "pulselength";
+               "b1FreqCh1",       "B1 frequency (MHz)",           "tb",  "freq";
+               "pulseLengthCh1",  "Pulse length (us)",            "tb",  "pulselength";
                "pulseDelay",      "Interpulse delay (us)",        "tb",  "pulselength";
                "repTime",         "Repetition time (ms)",         "tb",  "reptime"]
 
@@ -29,17 +29,17 @@ procedure(pulse_program,dir,mode,pars)
 
 # Relationships to determine remaining variable values
    relationships = ["nDataPnts     = nrPnts",
-                    "dPulse        = pulseLength",
+                    "dPulse        = pulseLengthCh1",
                     "dDelay        = pulseDelay",
                     "tAmp          = linspace(ampMin,ampMax,ampSteps)",
-                    "freq          = b1Freq1H",
+                    "freq          = b1FreqCh1",
                     "nAmpSteps     = size(tAmp)",
                     "dAcqDelay     = 20",
                     "totPnts       = nrPnts",
                     "totTime       = acqTime",
-                    "freqCh2   = 2",
-                    "freqCh1   = freq",
-                    "freqRx      = freq"]
+                    "freqCh2       = 2",
+                    "freqCh1       = b1FreqCh1",
+                    "freqRx        = b1FreqCh1"]
 
 # These parameters will be changed between experiments
    variables = [""]
@@ -48,7 +48,7 @@ procedure(pulse_program,dir,mode,pars)
    initpp(dir)                      # Define compile directory and clear parameter list
    setindex(tAmp,0)
 
-   pulse(1,0,p1,10)
+   pulse("1nb",0,p1,10)
    delay(10)
    loop("l1",nAmpSteps)
      pulse(1,tAmp,p1,dPulse)        # RF pulse on channel 1 with phase p1
@@ -67,3 +67,23 @@ procedure(pulse_program,dir,mode,pars)
 
 endproc(parList,groups,interface,relationships,variables,null,phaseList)
 
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)
