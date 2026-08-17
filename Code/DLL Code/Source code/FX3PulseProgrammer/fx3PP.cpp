@@ -131,7 +131,12 @@ V2.0
   1. Port from Spinsolve to Kea code, removal of Spinsolve only commands
   2. Replacement of explicit event push commands with AddEvent function and general tidyup
 
-	Last modified 29 July 2025
+V2.1
+  1. Updated pulse command to better support tables.
+  2. Fixed a bug in EvaluateArg when an error occurs.
+  3. Added noblanking option to dual channel RF commands (for testing).
+
+	Last modified 18 August 2026
 
 **************************************************************************************************/
 
@@ -150,7 +155,7 @@ V2.0
 
 using namespace std;
 
-#define VERSION 2.0
+#define VERSION 2.1
 
 #define MAX_STACK_SIZE 4096      // Maximum number of points which can be summed or stacked
 #define MAX_DATA_POINTS 128*1024 // Maximum number of complex data points which can be collected
@@ -330,8 +335,6 @@ EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
    else if (!strcmp(command, "incrxfreq"))         r = IncRxFrequency(dpar,parameters);   
    else if (!strcmp(command, "inctxfreq"))         r = IncTxFrequency(dpar,parameters);
 	else if (!strcmp(command, "initpp"))            r = InitialisePP(dpar,parameters);  
-   //else if(!strcmp(command,"lockoff"))           r = Lockoff(dpar,parameters);     
-   //else if(!strcmp(command,"lockon"))            r = Lockon(dpar,parameters);  
    else if (!strcmp(command, "loop"))              r = LoopStart(dpar,parameters);     
    //else if(!strcmp(command,"memreset"))          r = ResetMemoryPointer(dpar,parameters);     
    //else if(!strcmp(command,"nop"))               r = NoOperation(dpar,parameters);     
@@ -456,16 +459,16 @@ EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
 	else if (!strcmp(cmd, "cleardata"))            strcpy(syntax, "cleardata(nr_points:n, nr_summations:n)");
    else if (!strcmp(cmd ,"decindex"))             strcpy(syntax, "decindex(table:t)");
 	else if (!strcmp(cmd, "delay"))                strcpy(syntax, "delay(duration:d/t)");
-	else if (!strcmp(cmd, "dualshapedrf1"))        strcpy(syntax, "dualshapedrf1(atable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d)");
-	else if (!strcmp(cmd, "dualshapedrf2"))        strcpy(syntax, "dualshapedrf1(aptable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d)");
+	else if (!strcmp(cmd, "dualshapedrf1"))        strcpy(syntax, "dualshapedrf1(atable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d[, blanking: yes/no])");
+	else if (!strcmp(cmd, "dualshapedrf2"))        strcpy(syntax, "dualshapedrf1(aptable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d[, blanking: yes/no])");
 	else if (!strcmp(cmd, "endloop"))              strcpy(syntax, "endloop(name, [duration:d])");
 	else if (!strcmp(cmd, "endpp"))                strcpy(syntax, "endpp([print ps? (0/1)])");
 	else if (!strcmp(cmd, "endskip"))              strcpy(syntax, "endskip(name)");
 	else if (!strcmp(cmd, "endiftrue"))            strcpy(syntax, "endiftrue(name)");
 	//  else if(!strcmp(cmd,"execwait"))          strcpy(syntax,"execwait(program,arguments)");
-	else if (!strcmp(cmd, "gradon"))               strcpy(syntax, "gradon(level:n/t)");
-	else if (!strcmp(cmd, "gradoff"))              strcpy(syntax, "gradoff()");
-   else if (!strcmp(cmd, "gradramp"))             strcpy(syntax, "gradramp(start:n, end:n, steps:n, delay:d)");
+	else if (!strcmp(cmd, "gradon"))               strcpy(syntax, "gradon(channel:t, level:n/t)");
+	else if (!strcmp(cmd, "gradoff"))              strcpy(syntax, "gradoff(channel:t)");
+   else if (!strcmp(cmd, "gradramp"))             strcpy(syntax, "gradramp(channel:t, start:n, end:n, steps:n, delay:d)");
 	else if (!strcmp(cmd, "iftrue"))               strcpy(syntax, "iftrue(name, value (0/1)))");
 	else if (!strcmp(cmd, "incindex"))             strcpy(syntax, "incindex(table:t, [increment:d])");
 	else if (!strcmp(cmd, "incrxfreq"))            strcpy(syntax, "incrxfreq(increment:f)");
@@ -1618,9 +1621,10 @@ short ChirpedRF2(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, phName.Str(), INTEGER, phaseOffset);
 			EvaluateArg(par->itfc, stepName.Str(), FLOAT32, tableStep);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -1783,9 +1787,10 @@ short DecrementTableIndex(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, tableName.Str(), MATRIX2D, tableAdrs, tableEntries);
 			EvaluateArg(par->itfc, decrementName.Str(), INTEGER, decrement);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -1853,9 +1858,10 @@ short Delay(DLLParameters* par, char* args)
 			{
 				EvaluateArg(par->itfc, delayName.Str(), FLOAT32, delay);
 			}
-			catch (char* errStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 			if (delay < 0)
@@ -1875,9 +1881,10 @@ short Delay(DLLParameters* par, char* args)
 			{
 				EvaluateArg(par->itfc, delayName.Str(), MATRIX2D, tableAdrs, tableEntries);
 			}
-			catch (char* errStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -2079,9 +2086,10 @@ short Wait(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, delayName.Str(), FLOAT64, delay);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 		// For  delays > 42 repeat the 42 s delay and then add a remainder
@@ -2187,9 +2195,10 @@ short LoopStart(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, nrLoopsName.Str(), INTEGER, nrLoops);
 			EvaluateArg(par->itfc, durationName.Str(), FLOAT32, durationF);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2279,9 +2288,10 @@ short LoopEnd(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, durationName.Str(), FLOAT32, durationF);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2371,9 +2381,10 @@ short ShapedRFPulse1(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, phName.Str(), INTEGER, phaseOffset);
 			EvaluateArg(par->itfc, stepName.Str(), FLOAT32, tableStep);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2542,9 +2553,10 @@ short ShapedRFPulse2(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, phName.Str(), INTEGER, phaseOffset);
 			EvaluateArg(par->itfc, stepName.Str(), FLOAT32, tableStep);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2728,12 +2740,12 @@ short ShapedRFPulse2(DLLParameters* par, char* args)
 
 short DualShapedRFPulse1(DLLParameters* par, char* args)
 {
-	CText channelName = " ", tableName = " ", ph1Name = " ", ph2Name = " ", tableSizeName = " ", stepName = " ";
+	CText blanking = "no", tableName = " ", ph1Name = " ", ph2Name = " ", tableSizeName = " ", stepName = " ";
 	short nrArgs;
 
 	if (psInfo.mode == "compile" || psInfo.mode == "both")
 	{
-		if ((nrArgs = ArgScan(par->itfc, args, 5, "aptables, phase1Offset, phase2Offset, tableSize, stepDuration", "ccccc", "ttttt", &tableName, &ph1Name, &ph2Name, &tableSizeName, &stepName)) < 0)
+		if ((nrArgs = ArgScan(par->itfc, args, 5, "aptables, phase1Offset, phase2Offset, tableSize, stepDuration, blanking", "cccccc", "tttttt", &tableName, &ph1Name, &ph2Name, &tableSizeName, &stepName, &blanking)) < 0)
 			return(nrArgs);
 
 		// Extract the values from the arguments checking data type
@@ -2751,9 +2763,10 @@ short DualShapedRFPulse1(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, ph2Name.Str(), INTEGER, phaseOffset2);
 			EvaluateArg(par->itfc, stepName.Str(), FLOAT32, tableStep);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2764,7 +2777,11 @@ short DualShapedRFPulse1(DLLParameters* par, char* args)
 
 		ddsAdrs1 = 0x118E;
 		ddsAdrs2 = 0x128E;
-		hpaGate = 0x4100;
+		if(blanking == "yes")
+			hpaGate = 0x4100;
+		else
+			hpaGate = 0x0000;
+
 		ddsGate = 0x000A;
 
 
@@ -2891,12 +2908,12 @@ short DualShapedRFPulse1(DLLParameters* par, char* args)
 
 short DualShapedRFPulse2(DLLParameters* par, char* args)
 {
-	CText channelName = " ", tableName = " ", ph1Name = " ", ph2Name = " ", tableSizeName = " ", stepName = " ";
+	CText blanking = "no", tableName = " ", ph1Name = " ", ph2Name = " ", tableSizeName = " ", stepName = " ";
 	short nrArgs;
 
 	if (psInfo.mode == "compile" || psInfo.mode == "both")
 	{
-		if ((nrArgs = ArgScan(par->itfc, args, 5, "aptables, phase1Offset, phase2Offset, tableSize, stepDuration", "ccccc", "ttttt",&tableName, &ph1Name, &ph2Name , &tableSizeName, &stepName)) < 0)
+		if ((nrArgs = ArgScan(par->itfc, args, 5, "aptables, phase1Offset, phase2Offset, tableSize, stepDuration, blanking", "cccccc", "tttttt", &tableName, &ph1Name, &ph2Name , &tableSizeName, &stepName, &blanking)) < 0)
 			return(nrArgs);
 
 		CText txt;
@@ -2919,9 +2936,10 @@ short DualShapedRFPulse2(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, ph2Name.Str(), INTEGER, phaseOffset2);
 			EvaluateArg(par->itfc, stepName.Str(), FLOAT32, tableStep);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -2932,9 +2950,12 @@ short DualShapedRFPulse2(DLLParameters* par, char* args)
 	
 		ddsAdrs1 = 0x118E;
 		ddsAdrs2 = 0x128E;
-		hpaGate = 0x4100;
-		ddsGate = 0x000A;
+	   if(blanking == "yes")
+			hpaGate = 0x4100;
+		else
+			hpaGate = 0x0000;
 
+		ddsGate = 0x000A;
 
 		float pgo = psInfo.pgo * 100;
 
@@ -3114,9 +3135,10 @@ short ClearData(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, nrSumsName.Str(), INTEGER, nrSums);
 
 			}
-			catch (char* errStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -3187,9 +3209,10 @@ short SetRxFreq(DLLParameters* par, char* args)
 		{
 			freqType = EvaluateArg(par->itfc, freqName.Str(), &freqVar);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -3309,9 +3332,10 @@ short SetTxFreq(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, freqName.Str(), FLOAT64, frequency);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -3401,9 +3425,10 @@ short SetTxFreqs(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, ch1Freq.Str(), FLOAT64, freq1);
 			EvaluateArg(par->itfc, ch2Freq.Str(), FLOAT64, freq2);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -3602,9 +3627,10 @@ short RFPulseBoost(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, channelName.Str(), INTEGER, channel);
 			EvaluateArg(par->itfc, boostName.Str(), INTEGER, boost);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -3688,6 +3714,7 @@ short RFPulseBoost(DLLParameters* par, char* args)
 
 short SinglePulse(DLLParameters* par, char* args)
 {
+	Variable chVar, ampVar, phVar, durVar, freqVar;
 	CText chName, ampName, phName, durName, freqName = " ";
 	short nrArgs;
 	float amplitude, duration;
@@ -3696,90 +3723,181 @@ short SinglePulse(DLLParameters* par, char* args)
 	uint32 ddsAdrs, ddsGate, hpaGate;
 	uint32  tableAdrs, tableEntries;
 	CText channel;
+	int nrTables = 0;
 
 	uint32 startAdrs = psInfo.lineCnt * 6; // Start 16 bit word address for this part of the event table
 
 	// In compile mode extract and evaluate the value of each passed argument and embed these in the event table (psInfo.ps) which is designed to generate an RF pulse
 	if (psInfo.mode == "compile" || psInfo.mode == "both")
 	{
+		// Get the argument values (for the sequence)
+		if ((nrArgs = ArgScan(par->itfc, args, 4, "channel, amplitude, phase, duration, [frequency]", "eeeee", "vvvvv", &chVar, &ampVar, &phVar, &durVar, &freqVar)) < 0)
+			return(nrArgs);
+
+		// Get the argument names (for annotation)
 		if ((nrArgs = ArgScan(par->itfc, args, 4, "channel, amplitude, phase, duration, [frequency]", "ccccc", "ttttt", &chName, &ampName, &phName, &durName, &freqName)) < 0)
 			return(nrArgs);
 
-		// Update the event-table info vector
-		if (nrArgs == 5)
-		{
-			CText txt;
-			txt.Format("pulse(%s,%s,%s,%s,%s)", chName.Str(), ampName.Str(), phName.Str(), durName.Str(), freqName.Str());
-			ETInfo info = { psInfo.lineCnt, txt.Str() };
-			eventTableInfo.push_back(info);
-		}
-		else
-		{
-			CText txt;
-			txt.Format("pulse(%s,%s,%s,%s)", chName.Str(), ampName.Str(), phName.Str(), durName.Str());
-			ETInfo info = { psInfo.lineCnt, txt.Str() };
-			eventTableInfo.push_back(info);
-		}
 
-		if (ampName[0] == 't')
+		// Process the channel name
+		if (chVar.GetType() == UNQUOTED_STRING)
 		{
-			try
-			{
-				EvaluateArg(par->itfc, chName.Str(), UNQUOTED_STRING, channel);
-				EvaluateArg(par->itfc, ampName.Str(), MATRIX2D, tableAdrs, tableEntries);
-				EvaluateArg(par->itfc, phName.Str(), INTEGER, digPhase);
-				EvaluateArg(par->itfc, durName.Str(), FLOAT32, duration);
-			}
-			catch (char* errorStr)
-			{
-				ErrorMessage(errorStr);
-				return(ERR);
-			}
+			channel = chVar.GetString();
 		}
-		else if (freqName[0] == 't')
+		else if (chVar.GetType() == FLOAT32)
 		{
-			try
+			channel.Format("%d", nint(chVar.GetReal()));
+		}
+		chName = channel;
+
+
+		// Process the other parameters
+		if (ampVar.GetType() == FLOAT32)
+		{
+			digAmp = ConvertTxGain(ampVar.GetReal());
+		}
+		else if (ampVar.GetType() == FLOAT64)
+		{
+			digAmp = ConvertTxGain((float)ampVar.GetDouble());
+		}
+		else if (ampVar.GetType() == MATRIX2D)
+		{
+			if (ampVar.GetDimX() == 2 && ampVar.GetDimY() == 1)
 			{
-				EvaluateArg(par->itfc, chName.Str(), UNQUOTED_STRING, channel);
-				EvaluateArg(par->itfc, ampName.Str(), FLOAT32, amplitude);
-				EvaluateArg(par->itfc, phName.Str(), INTEGER, digPhase);
-				EvaluateArg(par->itfc, durName.Str(), FLOAT32, duration);
-				EvaluateArg(par->itfc, freqName.Str(), MATRIX2D, tableAdrs, tableEntries);
-				digAmp = ConvertTxGain(amplitude);
+				float** m = ampVar.GetMatrix2D();
+				tableAdrs = nuint(m[0][0]);
+				tableEntries = nuint(m[0][1]) - 1;
+				nrTables++;
 			}
-			catch (char* errorStr)
+			else
 			{
-				ErrorMessage(errorStr);
-				return(ERR);
+				CText errStr;
+				errStr.Format("Invalid size for %s (should be 2x1)", ampName.Str());
+				throw(errStr.Str());
 			}
 		}
 		else
 		{
-			try
-			{
-				EvaluateArg(par->itfc, chName.Str(), UNQUOTED_STRING, channel);
-				EvaluateArg(par->itfc, ampName.Str(), FLOAT32, amplitude);
-				EvaluateArg(par->itfc, phName.Str(), INTEGER, digPhase);
-				EvaluateArg(par->itfc, durName.Str(), FLOAT32, duration);
-				digAmp = ConvertTxGain(amplitude);
-			}
-			catch (char* errorStr)
-			{
-				ErrorMessage(errorStr);
-				return(ERR);
-			}
-		}
-
-		digDur = nuint(100 * duration);
-		float pgo = psInfo.pgo * 100;
-		if (pgo < 250)
-		{
-			ErrorMessage("pgo must be at least 1.5 us");
+			ErrorMessage("Unsupport data type for amplitude in pulse command");
 			return(ERR);
 		}
 
+		if (phVar.GetType() == FLOAT32)
+		{
+			digPhase = phVar.GetReal();
+		}
+		else if (ampVar.GetType() == FLOAT64)
+		{
+			digPhase = (float)phVar.GetDouble();
+		}
+		else if (phVar.GetType() == MATRIX2D)
+		{
+			if (phVar.GetDimX() == 2 && phVar.GetDimY() == 1)
+			{
+				float** m = phVar.GetMatrix2D();
+				if (nrTables > 0 && nuint(m[0][0]) != tableAdrs)
+				{
+					ErrorMessage("All table names should be the same");
+					return(ERR);
+				}
+				tableAdrs = nuint(m[0][0]);
+				tableEntries = nuint(m[0][1]) - 1;
+				nrTables++;
+			}
+			else
+			{
+				CText errStr;
+				errStr.Format("Invalid size for %s (should be 2x1)", phName.Str());
+				throw(errStr.Str());
+			}
+		}
+		else
+		{
+			ErrorMessage("Unsupport data type for phase in pulse command");
+			return(ERR);
+		}
+
+		if (durVar.GetType() == FLOAT32)
+		{
+			duration = durVar.GetReal();
+		}
+		else if (ampVar.GetType() == FLOAT64)
+		{
+			duration = (float)durVar.GetDouble();
+		}
+		else if (durVar.GetType() == MATRIX2D)
+		{
+			if (durVar.GetDimX() == 2 && durVar.GetDimY() == 1)
+			{
+				float** m = durVar.GetMatrix2D();
+				if (nrTables > 0 && nuint(m[0][0]) != tableAdrs)
+				{
+					ErrorMessage("All table names should be the same");
+					return(ERR);
+				}
+				tableAdrs = nuint(m[0][0]);
+				tableEntries = nuint(m[0][1]) - 1;
+				nrTables++;
+			}
+			else
+			{
+				CText errStr;
+				errStr.Format("Invalid size for %s (should be 2x1)", durName.Str());
+				throw(errStr.Str());
+			}
+		}
+		else
+		{
+			ErrorMessage("Unsupport data type for duration in pulse command");
+			return(ERR);
+		}
+
+		if (nrArgs == 5)
+		{
+			if (freqVar.GetType() == FLOAT64)
+			{
+				frequency = freqVar.GetDouble();
+			}
+			else if (freqVar.GetType() == FLOAT32)
+			{
+				frequency = (double)freqVar.GetReal();
+			}
+			else if (freqVar.GetType() == MATRIX2D)
+			{
+				if (freqVar.GetDimX() == 2 && freqVar.GetDimY() == 1)
+				{
+					float** m = freqVar.GetMatrix2D();
+					if (nrTables > 0 && nuint(m[0][0]) != tableAdrs)
+					{
+						ErrorMessage("All table names should be the same");
+						return(ERR);
+					}
+					tableAdrs = nuint(m[0][0]);
+					tableEntries = nuint(m[0][1]) - 1;
+					nrTables++;
+				}
+				else
+				{
+					CText errStr;
+					errStr.Format("Invalid size for %s (should be 2x1)", freqName.Str());
+					throw(errStr.Str());
+				}
+			}
+			else
+			{
+				ErrorMessage("Unsupport data type for frequency in pulse command");
+				return(ERR);
+			}
+		}
+
+		if (durVar.GetType() != MATRIX2D)
+			digDur = nuint(100 * duration);
+
+		float pgo = psInfo.pgo * 100;
+
 		// The pulse sequence event table
 		std::vector<uint32>* ps = &(psInfo.ps);
+
 
 		if (channel == "i" || channel == "internal")
 		{
@@ -3829,18 +3947,22 @@ short SinglePulse(DLLParameters* par, char* args)
 			return(ERR);
 		}
 
+		// Record the start location in the PS table
+		uint32 startIdx = ps->size();
+		uint32 startLineNr = psInfo.lineCnt;
 
-		if (nrArgs == 5) // Frequency included in argument list
+		// Was a frequency included in argument list?
+		if (nrArgs == 5)
 		{
 			uint32 txFreq1, txFreq2;
 
-			if (freqName[0] != 't')
+			if (freqVar.GetType() != MATRIX2D)
 			{
 				EvaluateArg(par->itfc, freqName.Str(), FLOAT64, frequency);
 				ConvertFrequency(frequency, txFreq1, txFreq2);
 			}
 
-			if (ampName[0] == 't') // Amplitude is defined in a table
+			if (ampVar.GetType() == MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() != MATRIX2D) // Amplitude is defined in a table
 			{
 				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
 				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // dspWrite to set start table address
@@ -3852,7 +3974,7 @@ short SinglePulse(DLLParameters* par, char* args)
 				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write amplitude to DDS
 				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(digPhase);        // Write phase to DDS
 				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(txFreq1);
-				ps->push_back(nint(pgo - 60));   ps->push_back(ddsAdrs);      ps->push_back(txFreq2);
+				ps->push_back(nint(pgo - 130));  ps->push_back(ddsAdrs);      ps->push_back(txFreq2);
 				ps->push_back(digDur);           ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate | ddsGate);
 				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL);
 				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
@@ -3860,7 +3982,27 @@ short SinglePulse(DLLParameters* par, char* args)
 				ps->push_back(100 - 45);         ps->push_back(0x09000000);   ps->push_back(0);
 				psInfo.lineCnt += 16;
 			}
-			else if (freqName[0] == 't') // Frequency is defined in a table
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() == MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() != MATRIX2D) // Phase is defined by a table
+			{
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // SRAM streaming address <= current table index location
+				ps->push_back(10);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (FIFO dummy)
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (real) and send to DSPWrite tableValue input
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(0x01000000);      // SRAM streaming address <=  Current table index
+				ps->push_back(10);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read of table phase (FIFO)
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Real read of table phase. Send to DSPWrite tableValue input
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(digAmp);          // Write amplitude to DDS
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write phase to DDS using tableValue
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(txFreq1);
+				ps->push_back(nint(pgo - 130)); ps->push_back(ddsAdrs);      ps->push_back(txFreq2);
+				ps->push_back(digDur);          ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
+				ps->push_back(15);              ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL); // Stop pulse
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0); // Zero amplitude and phase
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);        ps->push_back(0x09000000);   ps->push_back(0); // Pad timing
+				psInfo.lineCnt += 16;
+			}
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() == MATRIX2D) // Frequency is defined in a table
 			{
 				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
 				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // dspWrite to set start table address
@@ -3881,7 +4023,73 @@ short SinglePulse(DLLParameters* par, char* args)
 				ps->push_back(100 - 45);         ps->push_back(0x09000000);   ps->push_back(0);
 				psInfo.lineCnt += 17;
 			}
-			else // Amplitude and frequency are scalars
+			else if (ampVar.GetType() == MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() == MATRIX2D) // Amplitude and frequency are tables
+			{
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(0x01000000);      // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read amplitude from table
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write amplitude to DDS
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(digPhase);        // Write phase to DDS
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 1 to DDS
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(nint(pgo - 160));  ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 2 to DDS
+				ps->push_back(digDur);           ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate | ddsGate);
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);         ps->push_back(0x09000000);   ps->push_back(0);
+				psInfo.lineCnt += 18;
+			}
+			else if (ampVar.GetType() == MATRIX2D && phVar.GetType() == MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() != MATRIX2D) // Amplitude and phase are tables
+			{
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(0x01000000);      // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read phase from table
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(digAmp);          // Write amplitude to DDS
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write phase to DDS from table
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 1 to DDS
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(nint(pgo - 160));  ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 2 to DDS
+				ps->push_back(digDur);           ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate | ddsGate);
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);         ps->push_back(0x09000000);   ps->push_back(0);
+				psInfo.lineCnt += 18;
+			}
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() == MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() == MATRIX2D) // Phase and frequency are tables
+			{
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(10);               ps->push_back(0x00006084);   ps->push_back(0x01000000);      // dspWrite to set start table address
+				ps->push_back(10);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read for FIFO
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read phase from table
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(digAmp);          // Write amplitude to DDS
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write phase to DDS from table
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 1 to DDS
+				ps->push_back(15);               ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read table offset
+				ps->push_back(nint(pgo - 160));  ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write freq word 2 to DDS
+				ps->push_back(digDur);           ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate | ddsGate);
+				ps->push_back(15);               ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(15);               ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);         ps->push_back(0x09000000);   ps->push_back(0);
+				psInfo.lineCnt += 18;
+			}
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D && freqVar.GetType() != MATRIX2D)  // All arguments are scalars
 			{
 				ps->push_back(15);               ps->push_back(0x00000000); ps->push_back(psInfo.currentTTL | hpaGate);
 				ps->push_back(15);               ps->push_back(ddsAdrs);    ps->push_back(digAmp);
@@ -3895,33 +4103,97 @@ short SinglePulse(DLLParameters* par, char* args)
 				ps->push_back(100 - 45);         ps->push_back(0x09000000); ps->push_back(0);
 				psInfo.lineCnt += 10;
 			}
+			else
+			{
+				ErrorMessage("Not a valid combination of scalars and tables in pulse command");
+				return(ERR);
+			}
 		}
 		else // Frequency is not supplied in the argument list so use default
 		{
-			CText txt;
-			txt.Format("pulse(%s,%s,%s,%s)", chName.Str(), ampName.Str(), phName.Str(), durName.Str());
-			ETInfo info = { psInfo.lineCnt, txt.Str() };
-			eventTableInfo.push_back(info);
 
-			if (ampName[0] == 't') // Amplitude is defined by a table
+			if (ampVar.GetType() == MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D) // Amplitude is defined by a table all others are scalars
 			{
-				ps->push_back(15);             ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
-				ps->push_back(10);             ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // SRAM streaming address <= current table index location
-				ps->push_back(10);             ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (FIFO dummy)
-				ps->push_back(15);             ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (real) and send to DSPWrite tableValue input
-				ps->push_back(10);             ps->push_back(0x00006084);   ps->push_back(0x01000000);      // SRAM streaming address <=  Current table index
-				ps->push_back(10);             ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read of table amplitude (FIFO)
-				ps->push_back(15);             ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Real read of table amplitude. Send to DSPWrite tableValue input
-				ps->push_back(15);             ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write amplitude to DDS using tableValue
-				ps->push_back(15);             ps->push_back(ddsAdrs);      ps->push_back(digPhase);        // Write phase to DDS
-				ps->push_back(digDur);         ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
-				ps->push_back(15);             ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL); // Stop pulse
-				ps->push_back(15);             ps->push_back(ddsAdrs);      ps->push_back(0);               // Zero amplitude and phase
-				ps->push_back(15);             ps->push_back(ddsAdrs);      ps->push_back(0);
-				ps->push_back(100 - 45);       ps->push_back(0x09000000);   ps->push_back(0);               // Pad timing
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // SRAM streaming address <= current table index location
+				ps->push_back(10);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (FIFO dummy)
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (real) and send to DSPWrite tableValue input
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(0x01000000);      // SRAM streaming address <=  Current table index
+				ps->push_back(10);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read of table amplitude (FIFO)
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Real read of table amplitude. Send to DSPWrite tableValue input
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write amplitude to DDS using tableValue
+				ps->push_back(nint(pgo - 100)); ps->push_back(ddsAdrs);      ps->push_back(digPhase);        // Write phase to DDS
+				ps->push_back(digDur);          ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
+				ps->push_back(15);              ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL); // Stop pulse
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);                 // Zero amplitude and phase
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);        ps->push_back(0x09000000);   ps->push_back(0);                 // Pad timing
 				psInfo.lineCnt += 14;
 			}
-			else // Amplitude is supplied as a scalar 
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() == MATRIX2D && durVar.GetType() != MATRIX2D) // Phase is defined by a table
+			{
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);     // SRAM streaming address <= current table index location
+				ps->push_back(10);              ps->push_back(0x01006086);   ps->push_back(0x00000000);        // Read contents of this address (FIFO dummy)
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);        // Read contents of this address (real) and send to DSPWrite tableValue input
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(0x01000000);        // SRAM streaming address <=  Current table index
+				ps->push_back(10);              ps->push_back(0x01006085);   ps->push_back(0x00000000);        // Dummy read of table phase (FIFO)
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);        // Real read of table phase. Send to DSPWrite tableValue input
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(digAmp);            // Write amplitude to DDS
+				ps->push_back(nint(pgo - 100)); ps->push_back(ddsAdrs);      ps->push_back(0x01000000);        // Write phase to DDS using tableValue
+				ps->push_back(digDur);          ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
+				ps->push_back(15);              ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL); // Stop pulse
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);                 // Zero amplitude and phase
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);        ps->push_back(0x09000000);   ps->push_back(0);                 // Pad timing
+				psInfo.lineCnt += 14;
+			}
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() == MATRIX2D) // Duration is defined by a table 
+			{
+				uint32 valueAdrsLo = psInfo.lineCnt * 6 + 14 * 6 + psInfo.etStartAdrs; // Points to lower word in digDelay in event table
+				uint32 valueAdrsHi = psInfo.lineCnt * 6 + 14 * 6 + 1 + psInfo.etStartAdrs; // Points to higher word in digDelay in event table
+
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(digAmp);            // Write amplitude to DDS
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(digPhase);          // Write phase to DDS 
+				ps->push_back(15);              ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);     // SRAM streaming address <= current table index location
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);        // Read contents of this address (FIFO dummy)
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);        // Read contents of this address (real) and send to DSPWrite tableValue input
+				ps->push_back(15);              ps->push_back(0x00006084);   ps->push_back(0x01000000);        // SRAM streaming address <=  Current table index
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);        // Dummy read of table  (FIFO)
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);        // Real delay from table phase. 
+				ps->push_back(15);              ps->push_back(valueAdrsHi);  ps->push_back(0x01000000);        // Write high amp word to last delay 
+				ps->push_back(15);              ps->push_back(0x09000000);   ps->push_back(0x00000000);        // Need a delay here
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);        // Real delay from table phase. 
+				ps->push_back(15);              ps->push_back(valueAdrsLo);  ps->push_back(0x01000000);        // Write low amp word to last delay 
+				ps->push_back(nint(pgo - 195)); ps->push_back(0x09000000);   ps->push_back(0x00000000);        // Need a delay here
+				ps->push_back(100);             ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL); // Stop pulse
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);                 // Zero amplitude and phase
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);        ps->push_back(0x09000000);   ps->push_back(0);                 // Pad timing
+				psInfo.lineCnt += 19;
+			}
+			else if (ampVar.GetType() == MATRIX2D && phVar.GetType() == MATRIX2D && durVar.GetType() != MATRIX2D) // Amplitude and phase are defined by a table others are scalars
+			{
+				ps->push_back(15);              ps->push_back(0x00000000);   ps->push_back(psInfo.currentTTL | hpaGate);
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(tableAdrs - 1);   // SRAM streaming address <= current table index location
+				ps->push_back(10);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (FIFO dummy)
+				ps->push_back(15);              ps->push_back(0x01006086);   ps->push_back(0x00000000);      // Read contents of this address (real) and send to DSPWrite tableValue input
+				ps->push_back(10);              ps->push_back(0x00006084);   ps->push_back(0x01000000);      // SRAM streaming address <=  Current table index
+				ps->push_back(10);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Dummy read of table amplitude (FIFO)
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Real read of table amplitude. Send to DSPWrite tableValue input
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write amplitude to DDS using tableValue
+				ps->push_back(15);              ps->push_back(0x01006085);   ps->push_back(0x00000000);      // Read phase from table
+				ps->push_back(nint(pgo - 115)); ps->push_back(ddsAdrs);      ps->push_back(0x01000000);      // Write phase to DDS using tableValue
+				ps->push_back(digDur);          ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL | hpaGate | ddsGate); // Start pulse
+				ps->push_back(15);              ps->push_back(0x00000);      ps->push_back(psInfo.currentTTL); // Stop pulse
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);                 // Zero amplitude and phase
+				ps->push_back(15);              ps->push_back(ddsAdrs);      ps->push_back(0);
+				ps->push_back(100 - 45);        ps->push_back(0x09000000);   ps->push_back(0);                 // Pad timing
+				psInfo.lineCnt += 15;
+			}
+			else if (ampVar.GetType() != MATRIX2D && phVar.GetType() != MATRIX2D && durVar.GetType() != MATRIX2D)  // All arguments are scalars
 			{
 				ps->push_back(15);               ps->push_back(0x00000000); ps->push_back(psInfo.currentTTL | hpaGate);
 				ps->push_back(15);               ps->push_back(ddsAdrs);    ps->push_back(digAmp);
@@ -3933,6 +4205,54 @@ short SinglePulse(DLLParameters* par, char* args)
 				ps->push_back(100 - 45);         ps->push_back(0x09000000); ps->push_back(0);
 				psInfo.lineCnt += 8;
 			}
+			else
+			{
+				ErrorMessage("Not a valid combination of scalars and tables in pulse command");
+				return(ERR);
+			}
+		}
+
+		// Calculate the duration of the command
+		uint32 endIdx = ps->size();
+		uint32 totDuration = 0;
+		for (int i = startIdx; i < endIdx; i += 3)
+			totDuration = totDuration + ps->at(i);
+
+		// Update the event-table info vector with the parameter names and duration
+		if (durVar.GetType() != MATRIX2D)
+		{
+			if (nrArgs == 5)
+			{
+				CText txt;
+				txt.Format("pulse(%s,%s,%s,%s,%s) [%g us]", chName.Str(), ampName.Str(), phName.Str(), durName.Str(), freqName.Str(), (totDuration) / 100.0);
+				ETInfo info = { startLineNr, txt.Str() };
+				eventTableInfo.push_back(info);
+			}
+			else
+			{
+				CText txt;
+				txt.Format("pulse(%s,%s,%s,%s) [%g us]", chName.Str(), ampName.Str(), phName.Str(), durName.Str(), (totDuration) / 100.0);
+				ETInfo info = { startLineNr, txt.Str() };
+				eventTableInfo.push_back(info);
+			}
+		}
+		else
+		{
+			if (nrArgs == 5)
+			{
+				CText txt;
+				txt.Format("pulse(%s,%s,%s,%s,%s) [variable duration]", chName.Str(), ampName.Str(), phName.Str(), durName.Str(), freqName.Str());
+				ETInfo info = { startLineNr, txt.Str() };
+				eventTableInfo.push_back(info);
+			}
+			else
+			{
+				CText txt;
+				txt.Format("pulse(%s,%s,%s,%s) [variable duration]", chName.Str(), ampName.Str(), phName.Str(), durName.Str());
+				ETInfo info = { startLineNr, txt.Str() };
+				eventTableInfo.push_back(info);
+			}
+
 		}
 	}
 
@@ -3958,15 +4278,17 @@ short SinglePulse(DLLParameters* par, char* args)
 
 		if (nrArgs == 5)
 		{
-
 			if (ampName[0] == 't')
+			{
+				psOffset = 16;
+			}
+			else if (phName[0] == 't')
 			{
 				psOffset = 16;
 			}
 			else if (freqName[0] == 't')
 			{
 				psOffset = 17;
-
 			}
 			else
 			{
@@ -4006,14 +4328,10 @@ short SinglePulse(DLLParameters* par, char* args)
 
 			if (ampName[0] == 't')
 			{
-				//if (IsSequenceVariable(ampName.Str(), varPos))
-				//	AddToUpdateTable(varPos, startAdrs + 10, 0);
-				//if (IsSequenceVariable(durName.Str(), varPos))
-				//{
-				//	AddToUpdateTable(varPos,          startAdrs + 18, 0);
-				//	AddToUpdateTable(varPos + 0x1000, startAdrs + 19, 0);
-				//}
-				//AddPhaseToUpdateTable(phName.Str(), astartAdrsdrs + 16, 0);
+				psOffset = 14;
+			}
+			else if (phName[0] == 't')
+			{
 				psOffset = 14;
 			}
 			else
@@ -4047,6 +4365,7 @@ short SinglePulse(DLLParameters* par, char* args)
 
 	return(OK);
 }
+
 
 
 /*******************************************************************************
@@ -4097,9 +4416,10 @@ short DualPulse(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, freqName2.Str(), FLOAT64, frequency2);
 			EvaluateArg(par->itfc, durName.Str(), FLOAT32, duration);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -4286,9 +4606,10 @@ short GradientRamp(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, stepsName.Str(), INTEGER, nrSteps);
 				EvaluateArg(par->itfc, durationName.Str(), INTEGER, duration);
 			}
-			catch (char* errorStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errorStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -4303,9 +4624,10 @@ short GradientRamp(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, stepsName.Str(), INTEGER, nrSteps);
 				EvaluateArg(par->itfc, durationName.Str(), INTEGER, duration);
 			}
-			catch (char* errorStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errorStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -4320,9 +4642,10 @@ short GradientRamp(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, stepsName.Str(), INTEGER, nrSteps);
 				EvaluateArg(par->itfc, durationName.Str(), INTEGER, duration);
 			}
-			catch (char* errorStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errorStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -4499,9 +4822,10 @@ short SkipOnZero(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, testValueName.Str(), INTEGER, skip);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 		std::vector<uint32>* ps = &(psInfo.ps);
@@ -4666,9 +4990,10 @@ short GradientOn(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, channelName.Str(), INTEGER, channel);
 				EvaluateArg(par->itfc, amplitudeName.Str(), INTEGER, amplitude);
 			}
-			catch (char* errStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -4679,9 +5004,10 @@ short GradientOn(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, channelName.Str(), INTEGER, channel);
 				EvaluateArg(par->itfc, amplitudeName.Str(), MATRIX2D, tableAdrs, tableEntries);
 			}
-			catch (char* errorStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errorStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -4786,9 +5112,10 @@ short GradientOff(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, channelName.Str(), INTEGER, channel);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -4844,9 +5171,10 @@ short TTLOn(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, byteName.Str(), INTEGER, byteValue);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -4912,9 +5240,10 @@ short TTLOff(DLLParameters* par, char* args)
 		{
 			EvaluateArg(par->itfc, byteName.Str(), INTEGER, byteValue);
 		}
-		catch (char* errStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -5009,9 +5338,10 @@ short TxOn(DLLParameters* par, char* args)
 			if (nrArgs == 4)
 				freqType = EvaluateArg(par->itfc, freqName.Str(), &freqVar);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -5283,9 +5613,10 @@ short TxOff(DLLParameters* par, char* args)
 				EvaluateArg(par->itfc, chName.Str(), UNQUOTED_STRING, channel);
 				chName = channel;
 			}
-			catch (char* errorStr)
+			catch (CText* errStr)
 			{
-				ErrorMessage(errorStr);
+				ErrorMessage(errStr->Str());
+				delete errStr;
 				return(ERR);
 			}
 		}
@@ -5403,9 +5734,10 @@ short WaitForTrigger(DLLParameters* par, char* args)
 			short type;
 			EvaluateArg(par->itfc, conditionName.Str(), UNQUOTED_STRING , condition);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -5502,9 +5834,10 @@ short IncTableIndex(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, tableName.Str(), MATRIX2D, tableAdrs, tableEntries);
 			EvaluateArg(par->itfc, incrementName.Str(), INTEGER, increment);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -5570,9 +5903,10 @@ short SetTableIndex(DLLParameters* par, char* args)
 			EvaluateArg(par->itfc, tableName.Str(), MATRIX2D, tableAdrs, tableEntries);
 			EvaluateArg(par->itfc, indexName.Str(), INTEGER, index);
 		}
-		catch (char* errorStr)
+		catch (CText* errStr)
 		{
-			ErrorMessage(errorStr);
+			ErrorMessage(errStr->Str());
+			delete errStr;
 			return(ERR);
 		}
 
@@ -5880,9 +6214,9 @@ void EvaluateArg(void* itfc, char* varName, short varType, float& result)
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s", varName);
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s", varName);
+		throw(errStr);
 	}
 }
 
@@ -5906,9 +6240,9 @@ void EvaluateArg(void* itfc, char* varName, short varType, double &result)
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s", varName);
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s", varName);
+		throw(errStr);
 	}
 }
 
@@ -5932,9 +6266,9 @@ void EvaluateArg(void* itfc, char* varName, short varType, uint32& result)
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s (type=%d)", varName, resultVar.GetType());
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s (type=%d)", varName, resultVar.GetType());
+		throw(errStr);
 	}
 }
 
@@ -5971,9 +6305,9 @@ void EvaluateArg(void* itfc, char* varName, short varType, CText& result)
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s", varName, resultVar.GetType());
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s", varName, resultVar.GetType());
+		throw(errStr);
 	}
 }
 
@@ -5996,9 +6330,9 @@ void EvaluateArg(void* itfc, char* varName, short varType, int32& result)
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s", varName);
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s", varName);
+		throw(errStr);
 	}
 }
 
@@ -6021,16 +6355,16 @@ void EvaluateArg(void* itfc, char* varName, short varType, uint32& tableAdrs, ui
 		}
 		else
 		{
-			CText errStr;
-			errStr.Format("Invalid size for %s (should be 2x1)", varName);
-			throw(errStr.Str());
+			CText *errStr = new CText;
+			errStr->Format("Invalid size for %s (should be 2x1)", varName);
+			throw(errStr);
 		}
 	}
 	else
 	{
-		CText errStr;
-		errStr.Format("Invalid type for %s", varName);
-		throw(errStr.Str());
+		CText* errStr = new CText;
+		errStr->Format("Invalid type for %s", varName);
+		throw(errStr);
 	}
 }
 
