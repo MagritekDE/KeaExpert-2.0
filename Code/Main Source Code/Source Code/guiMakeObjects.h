@@ -45,6 +45,7 @@ int MakeHTMLBox(Interface* itfc ,char args[]);
 int MakeGridCtrl(Interface* itfc ,char args[]);
 int MakeImageWindow(Interface* itfc ,char args[]);
 int MakeListBox(Interface* itfc ,char args[]);
+int MakeListBoxES(Interface* itfc, char args[]);
 int MakeMenu(Interface* itfc ,char args[]);
 int MakeMenuWithKeys(Interface* itfc ,char args[]);
 int MakePanel(Interface* itfc ,char args[]);

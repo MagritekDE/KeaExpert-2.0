@@ -58,7 +58,7 @@ int IfStatement(Interface* itfc, char statement[])
    Variable ans;
    
 /* Extract value of statement  *********************/
-	short type = Evaluate(itfc,RESPECT_ALIAS,statement,&ans);
+   short type = Evaluate(itfc,RESPECT_ALIAS,statement,&ans);
 
    if (type == FLOAT32)
       result = (abs(nint(ans.GetReal())) >= 1);
@@ -195,11 +195,11 @@ int EndTry(Interface* itfc, char args[])
 
 int CatchError(Interface* itfc, char args[])
 {
-	extern bool errorDetected;
+   extern bool errorDetected;
    itfc->macro->inTryBlock = false;
 //   TextMessage("Catch thread ID %lX\n", GetCurrentThreadId());
    gInTryBlock = false;
-	errorDetected = false;
+   errorDetected = false;
    return(OK);
 }
 
@@ -292,11 +292,11 @@ int ForLoop(Interface *itfc, char str[])
            ErrorMessage("Loop variable not defined");
            return(ERR);
         }
-		  if((!strcmp(initVar,"i")) || (!strcmp(initVar,"j")))
-		  {
-		     ErrorMessage("Can't use i or j as variable names");
-		     return(ERR);
-		  }
+        if((!strcmp(initVar,"i")) || (!strcmp(initVar,"j")))
+        {
+           ErrorMessage("Can't use i or j as variable names");
+           return(ERR);
+        }
 
         k = 0;
         found = 0;
@@ -342,10 +342,10 @@ int ForLoop(Interface *itfc, char str[])
    for(i = posTo+2; i < len; i++)
    {
       if(i < len-5 && str[i] == ' ' && str[i+1] == 's' && str[i+2] == 't' && str[i+3] == 'e' && str[i+4] == 'p' && str[i+5] == ' ')
-	   {
-	      found = 1;
-	      break;
-	   }
+      {
+         found = 1;
+         break;
+      }
       finalExp[k++] = str[i];
    }
    finalExp[k] = '\0';
@@ -358,9 +358,9 @@ int ForLoop(Interface *itfc, char str[])
 // Extract step size *****************************************************
    if(found == 1)
    {  
-	   for(j = i+5; j < len; j++) // Extract step size
-	      stepStr[j-i-5] = str[j];
-	   stepStr[j-i-5] = '\0';
+      for(j = i+5; j < len; j++) // Extract step size
+         stepStr[j-i-5] = str[j];
+      stepStr[j-i-5] = '\0';
 
       if(IsWhiteSpaceString(stepStr))
       {
@@ -399,12 +399,12 @@ int ForLoop(Interface *itfc, char str[])
 
    if(type == FLOAT32)
       loopEnd = result.GetReal();	
-	else if(type == FLOAT64)
+   else if(type == FLOAT64)
       loopEnd = (float)result.GetDouble();	
-	else
+   else
    {
-	  ErrorMessage("loop limit should be a real number");
-	  return(ERR);
+     ErrorMessage("loop limit should be a real number");
+     return(ERR);
    }
 
 // Work out the number of steps to take **************************
@@ -511,28 +511,28 @@ char*
 LoadFileMacro(char* fileName)
 
 {
-	FILE *fp;
-	long size;	
-	static char *data;
+   FILE *fp;
+   long size;	
+   static char *data;
 
-	if((fp = fopen(fileName,"rb")) == (FILE*)0)
-	{
-	   ErrorMessage("LoadFileMacro -> can't open file");
-	   return(0);
-	}
-	   
-	size = GetFileLength(fp);
-	if((data = new char[size+1]) == (char*)0)
-	{
-	   ErrorMessage("LoadFileMacro -> out of memory");
-	   return(0);
-	}
-	   
-	fread(data,1,size,fp);
-	fclose(fp);
-	data[size] = '\0';
+   if((fp = fopen(fileName,"rb")) == (FILE*)0)
+   {
+      ErrorMessage("LoadFileMacro -> can't open file");
+      return(0);
+   }
+      
+   size = GetFileLength(fp);
+   if((data = new char[size+1]) == (char*)0)
+   {
+      ErrorMessage("LoadFileMacro -> out of memory");
+      return(0);
+   }
+      
+   fread(data,1,size,fp);
+   fclose(fp);
+   data[size] = '\0';
 
-	return(data);
+   return(data);
 }
 
 
@@ -575,23 +575,23 @@ int PrintStringLocal(Interface* itfc, char args[], int scope, char pmode)
    for(int arg = 1; arg <= nrArgs; arg++)
    {   
       argumentN = carg.Extract(arg);
-	   
+      
   // Visible global variables
-	   if(argumentN == "glo" || argumentN == "global")
-	   {
-	      var = &globalVariable;
-	      TextMessage("\n\n###### Global Variables ######\n");
+      if(argumentN == "glo" || argumentN == "global")
+      {
+         var = &globalVariable;
+         TextMessage("\n\n###### Global Variables ######\n");
 
       // Add all global variable names to a list
          char **list = NULL;
          int cnt = 0;
-	      while(var)
-	      {
-	         var = var->GetNext(type);
-	         if(!var) break;
+         while(var)
+         {
+            var = var->GetNext(type);
+            if(!var) break;
             if(var->GetVisible() == false) continue;
             AppendStringToList(var->GetName(),&list,cnt++);
-	      }
+         }
 
       // Sort the list alphabetically
          SortList(list,cnt);
@@ -609,24 +609,24 @@ int PrintStringLocal(Interface* itfc, char args[], int scope, char pmode)
          FreeList(list,cnt);
          TextMessage("\n\n###### End global variables ######\n");
          continue;
-	   }
+      }
 
   // Hidden global variables
-	   if(argumentN == "hidden" || argumentN == "hid")
-	   {
-	      var = &globalVariable;
-	      TextMessage("\n\n###### Hidden Variables ######\n");
+      if(argumentN == "hidden" || argumentN == "hid")
+      {
+         var = &globalVariable;
+         TextMessage("\n\n###### Hidden Variables ######\n");
 
       // Add all hidden global variable names to a list
          char **list = NULL;
          int cnt = 0;
-	      while(var)
-	      {
-	         var = var->GetNext(type);
-	         if(!var) break;
+         while(var)
+         {
+            var = var->GetNext(type);
+            if(!var) break;
             if(var->GetVisible() == true) continue;
             AppendStringToList(var->GetName(),&list,cnt++);
-	      }
+         }
 
       // Sort the list alphabetically
          SortList(list,cnt);
@@ -644,29 +644,29 @@ int PrintStringLocal(Interface* itfc, char args[], int scope, char pmode)
          FreeList(list,cnt);
          TextMessage("\n\n###### End hidden variables ######\n");
          continue;
-	   }
+      }
 
   // Window variables
-	   if(argumentN == "winvar")
-	   {
-	      if(itfc && itfc->win)
+      if(argumentN == "winvar")
+      {
+         if(itfc && itfc->win)
 //	      if(GetGUIWin())
-	      {
-	//	      var = &(GetGUIWin()->varList);
-		      var = &(itfc->win->varList);
-			   TextMessage("\n\n###### Window Variables ######\n");
+         {
+   //	      var = &(GetGUIWin()->varList);
+            var = &(itfc->win->varList);
+            TextMessage("\n\n###### Window Variables ######\n");
        //     if(var && itfc->win && (itfc->win == GetGUIWin()))
             if(var)
-		      {
+            {
             // Add all window variable names to a list
                char **list = NULL;
                int cnt = 0;
-	            while(var)
-	            {
-	               var = var->GetNext(type);
-	               if(!var) break;
+               while(var)
+               {
+                  var = var->GetNext(type);
+                  if(!var) break;
                   AppendStringToList(var->GetName(),&list,cnt++);
-	            }
+               }
 
             // Sort the list alphabetically
                SortList(list,cnt);
@@ -681,30 +681,30 @@ int PrintStringLocal(Interface* itfc, char args[], int scope, char pmode)
                   }
                }
                FreeList(list,cnt);
-		      }
+            }
             TextMessage("\n\n###### End window variables ######\n");
-		   }
+         }
          continue;
-	   }
-	
+      }
+   
    // Local variables
-	   if(argumentN == "loc" || argumentN == "local")
-	   {      
-	      if(itfc->macro)
-	      {
-			   TextMessage("\n\n###### Local Variables ######\n");
-		      var = &(itfc->macro->varList);
-		      if(var)
-		      {
+      if(argumentN == "loc" || argumentN == "local")
+      {      
+         if(itfc->macro)
+         {
+            TextMessage("\n\n###### Local Variables ######\n");
+            var = &(itfc->macro->varList);
+            if(var)
+            {
            // Add all local variable names to a list
                char **list = NULL;
                int cnt = 0;
-	            while(var)
-	            {
-	               var = var->GetNext(type);
-	               if(!var) break;
+               while(var)
+               {
+                  var = var->GetNext(type);
+                  if(!var) break;
                   AppendStringToList(var->GetName(),&list,cnt++);
-	            }
+               }
 
             // Sort the list alphabetically
                SortList(list,cnt);
@@ -719,11 +719,11 @@ int PrintStringLocal(Interface* itfc, char args[], int scope, char pmode)
                   }
                }
                FreeList(list,cnt);
-		      }
+            }
             TextMessage("\n\n###### End local variables ######\n");
-		   }
+         }
          continue;
-		}
+      }
 
       else
       {
@@ -746,7 +746,7 @@ short PrintVariable(Interface *itfc, char *name, short scope, char pmode, short 
       int err = Evaluate(itfc, RESPECT_ALIAS, name, &result);
       if(err < 0)
          return(err);
-	
+   
    // Check to see if print argument returns multiple variables
    // If it does then call this routine iteratively until all
    // have been listed.	  
@@ -953,7 +953,7 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                                EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()),suffix);
          else
          {
-				TextMessage("%s%.9g%s",prefix,VarReal(var),suffix);
+            TextMessage("%s%.9g%s",prefix,VarReal(var),suffix);
          }
          
          break;
@@ -977,82 +977,82 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {     
-	         TextMessage("\n\n   %s = {\n",name);
-	         for(short i = 0; i < xsize; i++)
-	         {
-	            locstr = VarList(var)[i];
-	            if(FormatTextMessage("       %s\n",locstr) == ERR)
-	               return(ERR);
-	         }
+            TextMessage("\n\n   %s = {\n",name);
+            for(short i = 0; i < xsize; i++)
+            {
+               locstr = VarList(var)[i];
+               if(FormatTextMessage("       %s\n",locstr) == ERR)
+                  return(ERR);
+            }
             TextMessage("   }");
 
-	      }
-	      else
+         }
+         else
          {
             if(var->GetAlias() && pmode == 'v')
                TextMessage("%s(list with %ld elements) - (alias to '%s' a %s)",prefix,xsize,var->GetAlias()->GetName(),
                            EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()));
             else
                TextMessage("%s(list with %ld elements)",prefix,xsize);
-	         break;
+            break;
             
          }
          break;
       }   
       case(LIST2D):
       {
-			List2DData* list = (List2DData*)VarList2D(var);
+         List2DData* list = (List2DData*)VarList2D(var);
          char *locstr;
          long ysize = VarHeight(var);
       
          if(pmode == 'n')
          {     
-	         TextMessage("\n\n   %s =\n",name);
-	         for(short j = 0; j < ysize; j++)
-				{
-					for(short i = 0; i < list->rowSz[j]; i++)
-					{
-						locstr = list->strings[j][i];
-					   if(i == 0)
-						{
-							if(list->rowSz[j] > 1)
-							{
-							   if(FormatTextMessage("       \"%s\",",locstr) == ERR)
-								   return(ERR);
-							}
-							else
-							{
-							   if(FormatTextMessage("       \"%s\"",locstr) == ERR)
-								   return(ERR);
-							}
-						}
-						else
-						{
-							if(i < list->rowSz[j]-1)
-							{
-								if(FormatTextMessage("   \"%s\",",locstr) == ERR)
-									return(ERR);
-							}
-							else
-							{
-								if(FormatTextMessage("   \"%s\"",locstr) == ERR)
-									return(ERR);
-							}
-						}
-					}
-					TextMessage("\n");
+            TextMessage("\n\n   %s =\n",name);
+            for(short j = 0; j < ysize; j++)
+            {
+               for(short i = 0; i < list->rowSz[j]; i++)
+               {
+                  locstr = list->strings[j][i];
+                  if(i == 0)
+                  {
+                     if(list->rowSz[j] > 1)
+                     {
+                        if(FormatTextMessage("       \"%s\",",locstr) == ERR)
+                           return(ERR);
+                     }
+                     else
+                     {
+                        if(FormatTextMessage("       \"%s\"",locstr) == ERR)
+                           return(ERR);
+                     }
+                  }
+                  else
+                  {
+                     if(i < list->rowSz[j]-1)
+                     {
+                        if(FormatTextMessage("   \"%s\",",locstr) == ERR)
+                           return(ERR);
+                     }
+                     else
+                     {
+                        if(FormatTextMessage("   \"%s\"",locstr) == ERR)
+                           return(ERR);
+                     }
+                  }
+               }
+               TextMessage("\n");
 
-				}
+            }
 
-	      }
-	      else
+         }
+         else
          {
             if(var->GetAlias() && pmode == 'v')
                TextMessage("%s(2D jagged list with ?? by %ld elements) - (alias to '%s' a %s)",prefix,ysize,var->GetAlias()->GetName(),
                            EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()));
             else
                TextMessage("%s(2D jagged list with ?? by %ld elements)",prefix,ysize);
-	         break;
+            break;
             
          }
          break;
@@ -1062,11 +1062,11 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
          Variable *struc,*svar;
 
          struc = var->GetStruct();
-			if(!struc)
-			{
-				ErrorMessage("Null structure to print");
-				return(ERR);
-			}
+         if(!struc)
+         {
+            ErrorMessage("Null structure to print");
+            return(ERR);
+         }
          svar = struc->next;
 
          char format[100];
@@ -1140,10 +1140,10 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
          ClassData *cData = (ClassData*)var->GetData();
 
          if(CheckClassValidity(cData,false) == ERR)
-			{
+         {
             TextMessage("%sreference object has been deleted!%s",prefix,suffix);
             break;
-			}
+         }
 
          if(pmode == 'n')
          {
@@ -1174,38 +1174,38 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                case(XLABEL_CLASS):
                {
                   Plot* plt = (Plot*)cData->data;
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(plt->FormatXLabelParameters().c_str());
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(plt->FormatXLabelParameters().c_str());
                   break;
                }
                case(YLABEL_CLASS):
                {
                   Plot* plt = (Plot*)cData->data;
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(plt->FormatYLabelParameters().c_str());
-						break;
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(plt->FormatYLabelParameters().c_str());
+                  break;
                }
                case(YLABEL_LEFT_CLASS):
                {
                   Plot* plt = (Plot*)cData->data;
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(plt->FormatYLabelLeftParameters().c_str());
-						break;
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(plt->FormatYLabelLeftParameters().c_str());
+                  break;
                }
                case(YLABEL_RIGHT_CLASS):
                {
                   Plot* plt = (Plot*)cData->data;
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(plt->FormatYLabelRightParameters().c_str());
-						break;
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(plt->FormatYLabelRightParameters().c_str());
+                  break;
                }
                case(TITLE_CLASS):
                {
                   Plot* plt = (Plot*)cData->data;
-						PlotLabel& title = plt->title();
+                  PlotLabel& title = plt->title();
                   TextMessage("\n\n   PARAMETER     VALUE\n\n");
                   TextMessage("   parent .... (%hd,%hd)\n",plt->plotParent->obj->winParent->nr,plt->plotParent->obj->nr());
-						TextMessage("   color ..... %s\n",Plot::GetColorStr(title.fontColor()));
+                  TextMessage("   color ..... %s\n",Plot::GetColorStr(title.fontColor()));
                   TextMessage("   font ...... '%s'\n",title.font().lfFaceName);
                   TextMessage("   size ...... %hd\n",title.fontSize());
                   TextMessage("   style ..... %s\n",GetFontStyleStr(title.fontStyle()));
@@ -1221,7 +1221,7 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                   TextMessage("   finecolor ... %s\n",Plot::GetColorStr(plt->curXAxis()->grid()->fineColor()));
                   TextMessage("   finexgrid ... %s\n",(plt->curXAxis()->grid()->drawFineGrid()) ? "true" : "false");
                   TextMessage("   fineygrid ... %s\n",(plt->curYAxis()->grid()->drawFineGrid()) ? "true" : "false");
-						TextMessage("   xgrid ....... %s\n",(plt->curXAxis()->grid()->drawGrid()) ? "true" : "false");
+                  TextMessage("   xgrid ....... %s\n",(plt->curXAxis()->grid()->drawGrid()) ? "true" : "false");
                   TextMessage("   ygrid ....... %s\n",(plt->curYAxis()->grid()->drawGrid()) ? "true" : "false");
 
                   break;
@@ -1233,25 +1233,25 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                   TextMessage("   parent ........ (%hd,%hd)\n",plt->plotParent->obj->winParent->nr,plt->plotParent->obj->nr());
                   TextMessage("   autoscale ..... %s\n",(plt->curXAxis()->autoScale())?"true":"false");
                   TextMessage("   axescolor ..... %s\n",Plot::GetColorStr(plt->axesColor));
-						TextMessage("   fontcolor ..... %s\n",Plot::GetColorStr(plt->curXAxis()->ticks().fontColor()));
+                  TextMessage("   fontcolor ..... %s\n",Plot::GetColorStr(plt->curXAxis()->ticks().fontColor()));
                   TextMessage("   fontname ...... '%s'\n",plt->title().font().lfFaceName);
-						TextMessage("   fontsize ...... %hd\n",plt->curXAxis()->ticks().fontSize());
+                  TextMessage("   fontsize ...... %hd\n",plt->curXAxis()->ticks().fontSize());
                   TextMessage("   fontstyle ..... '%s'\n",GetFontStyleStr(plt->title().fontStyle()));
-						TextMessage("   minaxisvalue .. %g\n",plt->curYAxis()->MinIndep());
-						TextMessage("   maxaxisvalue .. %g\n",plt->curYAxis()->MaxIndep());
-						TextMessage("   linewidth ..... %hd\n",plt->curXAxis()->lineWidth());
-						TextMessage("   lgticksize .... %g\n",plt->getXTicks().majorLength());
-						TextMessage("   smticksize .... %g\n",plt->getXTicks().minorLength());
+                  TextMessage("   minaxisvalue .. %g\n",plt->curYAxis()->MinIndep());
+                  TextMessage("   maxaxisvalue .. %g\n",plt->curYAxis()->MaxIndep());
+                  TextMessage("   linewidth ..... %hd\n",plt->curXAxis()->lineWidth());
+                  TextMessage("   lgticksize .... %g\n",plt->getXTicks().majorLength());
+                  TextMessage("   smticksize .... %g\n",plt->getXTicks().minorLength());
                   TextMessage("   type .......... \"%s\"\n",plt->GetAxesTypeStr());
                   TextMessage("   xdirection .... '%s'\n",(plt->curXAxis()->plotDirection() == PLT_FORWARD) ? "forward":"reversed");
-						TextMessage("   xmapping ...... %s\n",plt->curXAxis()->mapping_s());
-						TextMessage("   xppmscale ..... %s\n",(plt->curXAxis()->ppmScale())?"true":"false");
+                  TextMessage("   xmapping ...... %s\n",plt->curXAxis()->mapping_s());
+                  TextMessage("   xppmscale ..... %s\n",(plt->curXAxis()->ppmScale())?"true":"false");
                   TextMessage("   xrange ........ %g,%g\n",plt->curXAxis()->Min(),plt->curXAxis()->Max());
                   TextMessage("   xtickspacing .. %g\n",plt->getXTicks().spacing());
                   TextMessage("   xticksperlabel  %g\n",plt->getXTicks().perLabel());
                   TextMessage("   ydirection .... '%s'\n",(plt->curYAxis()->plotDirection() == PLT_FORWARD) ? "forward":"reversed");
                   TextMessage("   ymapping ...... %s\n",plt->curYAxis()->mapping_s());
-						TextMessage("   yppmscale ..... %s\n",(plt->curYAxis()->ppmScale())?"true":"false");
+                  TextMessage("   yppmscale ..... %s\n",(plt->curYAxis()->ppmScale())?"true":"false");
                   TextMessage("   yrange ........ %g,%g\n",plt->curYAxis()->Min(),plt->curYAxis()->Max());
                   TextMessage("   ytickspacing .. %g\n",plt->getYTicks().spacing());
                   TextMessage("   yticksperlabel  %g\n",plt->getYTicks().perLabel());
@@ -1260,20 +1260,20 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                }
                case(TRACE_CLASS):
                {
-						Trace *di = (Trace*)cData->data;
+                  Trace *di = (Trace*)cData->data;
                   TracePar *tp = &(di->tracePar);
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(di->FormatState().c_str());
-						TextMessage(tp->FormatState().c_str());
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(di->FormatState().c_str());
+                  TextMessage(tp->FormatState().c_str());
                   break;
                }
-					case(INSET_CLASS):
-					{
-						Inset* inset = (Inset*)cData->data;
-						TextMessage(formatNoArgHeader().c_str());
-						TextMessage(inset->FormatState().c_str());
-						break;
-					}
+               case(INSET_CLASS):
+               {
+                  Inset* inset = (Inset*)cData->data;
+                  TextMessage(formatNoArgHeader().c_str());
+                  TextMessage(inset->FormatState().c_str());
+                  break;
+               }
             }
          }
          else
@@ -1334,7 +1334,7 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                   TextMessage("%s(plot user)",prefix);
                   break;
                }
-					default:
+               default:
                {
                   TextMessage("%s(unknown)",prefix);
                   break;
@@ -1357,7 +1357,7 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
          else
             TextMessage("%s",suffix);
        
-	      break;
+         break;
       }
       case(CHARACTER):
       {      
@@ -1400,22 +1400,22 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
                if(FormatTextMessage("%s%s",prefix,locstr) == ERR)
                   return(ERR);
             }
-	         if(var->GetAlias() && pmode == 'v')
-	            TextMessage(" - (alias to '%s' a %s%s)",var->GetAlias()->GetName(),
-	                        EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()),suffix);
-	         else
-	            TextMessage("%s",suffix);            
+            if(var->GetAlias() && pmode == 'v')
+               TextMessage(" - (alias to '%s' a %s%s)",var->GetAlias()->GetName(),
+                           EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()),suffix);
+            else
+               TextMessage("%s",suffix);            
          }   
          else
          {
             if(FormatTextMessage("%s\"%s\"",prefix,locstr) == ERR)
                return(ERR);
                
-	         if(var->GetAlias() && pmode == 'v')
-	            TextMessage(" - (alias to '%s' a %s%s)",var->GetAlias()->GetName(),
-	                        EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()),suffix);
-	         else
-	            TextMessage("%s",suffix);                 
+            if(var->GetAlias() && pmode == 'v')
+               TextMessage(" - (alias to '%s' a %s%s)",var->GetAlias()->GetName(),
+                           EnumToString(VARIABLE_SOURCE,var->GetAlias()->GetScope()),suffix);
+            else
+               TextMessage("%s",suffix);                 
          }
          break;  
       }
@@ -1431,32 +1431,32 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
-	
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
+   
         // Print out the matrix
             
-				short maxlen = MaxArrayElementLength(&mat[0][0],xsize*ysize);
+            short maxlen = MaxArrayElementLength(&mat[0][0],xsize*ysize);
             sprintf(format,"%%%hdg",maxlen+3);
             sprintf(format2,"%%%hds",maxlen+3);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long y = 0; y < ysize; y++)
-	         {
-	            for(long x = 0; x < xsize; x++)
-	            {
-	               sprintf(str,format,mat[y][x]);
+            for(long y = 0; y < ysize; y++)
+            {
+               for(long x = 0; x < xsize; x++)
+               {
+                  sprintf(str,format,mat[y][x]);
 
                   if(ProcessBackgroundEvents() != OK)
-	               {
-	               	y = ysize;
-	                  break;
-	               }
-	               TextMessage(str);
-	            }
-	            TextMessage("\n");
-	         }
+                  {
+                     y = ysize;
+                     break;
+                  }
+                  TextMessage(str);
+               }
+               TextMessage("\n");
+            }
             gKeepCurrentFocus = kcf;
          }
          else
@@ -1478,31 +1478,31 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
-	
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
+   
         // Print out the matrix
             short maxlen = MaxArrayElementLength(&mat[0][0],xsize*ysize);
             sprintf(format,"%%%hdg",maxlen+3);
             sprintf(format2,"%%%hds",maxlen+3);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long y = 0; y < ysize; y++)
-	         {
-	            for(long x = 0; x < xsize; x++)
-	            {
-	               sprintf(str,format,mat[y][x]);
+            for(long y = 0; y < ysize; y++)
+            {
+               for(long x = 0; x < xsize; x++)
+               {
+                  sprintf(str,format,mat[y][x]);
 
                   if(ProcessBackgroundEvents() != OK)
-	               {
-	               	y = ysize;
-	                  break;
-	               }
-	               TextMessage(str);
-	            }
-	            TextMessage("\n");
-	         }
+                  {
+                     y = ysize;
+                     break;
+                  }
+                  TextMessage(str);
+               }
+               TextMessage("\n");
+            }
             gKeepCurrentFocus = kcf;
          }
          else
@@ -1523,32 +1523,32 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
-				short maxLenReal,maxLenImag;
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
+            short maxLenReal,maxLenImag;
             MaxCArrayElementLength(&cmat[0][0],xsize*ysize,maxLenReal,maxLenImag);
             sprintf(format1,"%%%hdg + %%%hdgi",maxLenReal+3,maxLenImag);
             sprintf(format2,"%%%hdg - %%%hdgi",maxLenReal+3,maxLenImag);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long y = 0; y < ysize; y++)
-	         {
-	            for(long x = 0; x < xsize; x++)
-	            {
-	               if(cmat[y][x].i >= 0)
-	                  sprintf(str,format1,cmat[y][x].r,fabs(cmat[y][x].i));
-	               else
-	                  sprintf(str,format2,cmat[y][x].r,fabs(cmat[y][x].i));
+            for(long y = 0; y < ysize; y++)
+            {
+               for(long x = 0; x < xsize; x++)
+               {
+                  if(cmat[y][x].i >= 0)
+                     sprintf(str,format1,cmat[y][x].r,fabs(cmat[y][x].i));
+                  else
+                     sprintf(str,format2,cmat[y][x].r,fabs(cmat[y][x].i));
                   if(ProcessBackgroundEvents() != OK)
-	               {
-	               	y = ysize;
-	                  break;
-	               }	
-	               TextMessage(str);
-	            }
-	            TextMessage("\n");
-	         }
+                  {
+                     y = ysize;
+                     break;
+                  }	
+                  TextMessage(str);
+               }
+               TextMessage("\n");
+            }
             gKeepCurrentFocus = kcf;
          }
          else
@@ -1571,42 +1571,42 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
 
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
 
             short maxlen = MaxArrayElementLength(&mat[0][0][0],xsize*ysize*zsize);
             sprintf(format,"%%%hdg",maxlen+3);
             sprintf(format2,"%%%hds",maxlen+3);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long z = 0; z < zsize; z++)
-	         {
-	            TextMessage("\n   Plane %ld:\n\n",z);
-	         	
-		         for(long y = 0; y < ysize; y++)
-		         {
-		            TextMessage("   ");
-		            for(long x = 0; x < xsize; x++)
-		            {
+            for(long z = 0; z < zsize; z++)
+            {
+               TextMessage("\n   Plane %ld:\n\n",z);
+               
+               for(long y = 0; y < ysize; y++)
+               {
+                  TextMessage("   ");
+                  for(long x = 0; x < xsize; x++)
+                  {
                      //if(_isnan(mat[z][y][x]))
-	                    // sprintf(str,format2,"NaN");
+                       // sprintf(str,format2,"NaN");
                      //else if(!_finite(mat[z][y][x]))
-	                    // sprintf(str,format2,"Inf");
+                       // sprintf(str,format2,"Inf");
                      //else
-		                  sprintf(str,format,mat[z][y][x]);
+                        sprintf(str,format,mat[z][y][x]);
 
                      if(ProcessBackgroundEvents() != OK)
-		               {
-		               	y = ysize;
-		               	z = zsize;
-		                  break;
-		               }
-		               TextMessage(str);
-		            }
-		            TextMessage("\n");
-		         }
-		      }
+                     {
+                        y = ysize;
+                        z = zsize;
+                        break;
+                     }
+                     TextMessage(str);
+                  }
+                  TextMessage("\n");
+               }
+            }
             gKeepCurrentFocus = kcf;
          }
          else
@@ -1628,40 +1628,40 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
 
-				short maxLenReal,maxLenImag;
+            short maxLenReal,maxLenImag;
             MaxCArrayElementLength(&cmat[0][0][0],xsize*ysize*zsize,maxLenReal,maxLenImag);
             sprintf(format1,"%%%hdg + %%%hdgi   ",maxLenReal,maxLenImag);
             sprintf(format2,"%%%hdg - %%%hdgi   ",maxLenReal,maxLenImag);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long z = 0; z < zsize; z++)
-	         {
-	            TextMessage("\n   Plane %ld:\n\n",z);
+            for(long z = 0; z < zsize; z++)
+            {
+               TextMessage("\n   Plane %ld:\n\n",z);
 
-		         for(long y = 0; y < ysize; y++)
-		         {
-		            TextMessage("   ");
-		            for(long x = 0; x < xsize; x++)
-		            {
-		               if(cmat[z][y][x].i >= 0)
-		                  sprintf(str,format1,cmat[z][y][x].r,fabs(cmat[z][y][x].i));
-		               else
-		                  sprintf(str,format2,cmat[z][y][x].r,fabs(cmat[z][y][x].i));
+               for(long y = 0; y < ysize; y++)
+               {
+                  TextMessage("   ");
+                  for(long x = 0; x < xsize; x++)
+                  {
+                     if(cmat[z][y][x].i >= 0)
+                        sprintf(str,format1,cmat[z][y][x].r,fabs(cmat[z][y][x].i));
+                     else
+                        sprintf(str,format2,cmat[z][y][x].r,fabs(cmat[z][y][x].i));
                      if(ProcessBackgroundEvents() != OK)
-		               {
-		               	y = ysize;
-		               	z = zsize;
-		                  break;
-		               }
-		               TextMessage(str);
-		            }
-		            TextMessage("\n");
-		         }
-		      }
+                     {
+                        y = ysize;
+                        z = zsize;
+                        break;
+                     }
+                     TextMessage(str);
+                  }
+                  TextMessage("\n");
+               }
+            }
             gKeepCurrentFocus = kcf;
          }
          else
@@ -1685,47 +1685,47 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
 
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
 
             short maxlen = MaxArrayElementLength(&mat[0][0][0][0],xsize*ysize*zsize*qsize);
             sprintf(format,"%%%hdg",maxlen+3);
             sprintf(format2,"%%%hds",maxlen+3);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long q = 0; q < qsize; q++)
+            for(long q = 0; q < qsize; q++)
             {
-	            TextMessage("\n   Hyperplane %ld:\n\n",q);
+               TextMessage("\n   Hyperplane %ld:\n\n",q);
 
-	            for(long z = 0; z < zsize; z++)
-	            {
-	               TextMessage("\n      Plane %ld:\n\n",z);
-   	         	
-		            for(long y = 0; y < ysize; y++)
-		            {
-		               TextMessage("      ");
-		               for(long x = 0; x < xsize; x++)
-		               {
+               for(long z = 0; z < zsize; z++)
+               {
+                  TextMessage("\n      Plane %ld:\n\n",z);
+                  
+                  for(long y = 0; y < ysize; y++)
+                  {
+                     TextMessage("      ");
+                     for(long x = 0; x < xsize; x++)
+                     {
    /*                     if(_isnan(mat[q][z][y][x]))
-	                        sprintf(str,format2,"NaN");
+                           sprintf(str,format2,"NaN");
                         else if(!_finite(mat[q][z][y][x]))
-	                        sprintf(str,format2,"Inf");
+                           sprintf(str,format2,"Inf");
                         else*/
-		                     sprintf(str,format,mat[q][z][y][x]);
+                           sprintf(str,format,mat[q][z][y][x]);
 
                         if(ProcessBackgroundEvents() != OK)
-		                  {
-		               	   y = ysize;
-		               	   z = zsize;
-		               	   q = qsize;
-		                     break;
-		                  }
-		                  TextMessage(str);
-		               }
-		               TextMessage("\n");
-		            }
-		         }
+                        {
+                           y = ysize;
+                           z = zsize;
+                           q = qsize;
+                           break;
+                        }
+                        TextMessage(str);
+                     }
+                     TextMessage("\n");
+                  }
+               }
             }
             gKeepCurrentFocus = kcf;
          }
@@ -1749,44 +1749,44 @@ short PrintOneItem(Variable *var, char *name, char pmode, short pos, bool inCLI,
       
          if(pmode == 'n')
          {
-	         sprintf(str,"\n\n   %s = \n\n",name);
-	
-	         TextMessage(str);
-				short maxLenReal,maxLenImag;
+            sprintf(str,"\n\n   %s = \n\n",name);
+   
+            TextMessage(str);
+            short maxLenReal,maxLenImag;
             MaxCArrayElementLength(&cmat[0][0][0][0],xsize*ysize*zsize*qsize,maxLenReal,maxLenImag);
             sprintf(format1,"%%%hdg + %%%hdgi   ",maxLenReal,maxLenImag);
             sprintf(format2,"%%%hdg - %%%hdgi   ",maxLenReal,maxLenImag);
             bool kcf = gKeepCurrentFocus;
             gKeepCurrentFocus = true;
-	         for(long q = 0; q < qsize; q++)
+            for(long q = 0; q < qsize; q++)
             {
-	            TextMessage("\n   Hyperplane %ld:\n\n",q);
+               TextMessage("\n   Hyperplane %ld:\n\n",q);
 
-	            for(long z = 0; z < zsize; z++)
-	            {
-	               TextMessage("\n      Plane %ld:\n\n",z);
+               for(long z = 0; z < zsize; z++)
+               {
+                  TextMessage("\n      Plane %ld:\n\n",z);
 
-		            for(long y = 0; y < ysize; y++)
-		            {
-		               TextMessage("      ");
-		               for(long x = 0; x < xsize; x++)
-		               {
-		                  if(cmat[q][z][y][x].i >= 0)
-		                     sprintf(str,format1,cmat[q][z][y][x].r,fabs(cmat[q][z][y][x].i));
-		                  else
-		                     sprintf(str,format2,cmat[q][z][y][x].r,fabs(cmat[q][z][y][x].i));
+                  for(long y = 0; y < ysize; y++)
+                  {
+                     TextMessage("      ");
+                     for(long x = 0; x < xsize; x++)
+                     {
+                        if(cmat[q][z][y][x].i >= 0)
+                           sprintf(str,format1,cmat[q][z][y][x].r,fabs(cmat[q][z][y][x].i));
+                        else
+                           sprintf(str,format2,cmat[q][z][y][x].r,fabs(cmat[q][z][y][x].i));
                         if(ProcessBackgroundEvents() != OK)
-		                  {
-		               	   y = ysize;
-		               	   z = zsize;
-		               	   q = qsize;
-		                     break;
-		                  }
-		                  TextMessage(str);
-		               }
-		               TextMessage("\n");
-		            }
-		         }
+                        {
+                           y = ysize;
+                           z = zsize;
+                           q = qsize;
+                           break;
+                        }
+                        TextMessage(str);
+                     }
+                     TextMessage("\n");
+                  }
+               }
             }
             gKeepCurrentFocus = kcf;
          }
@@ -1812,7 +1812,7 @@ short MaxArrayElementLength(float *m, long N)
 
    for(long i = 0; i < N; i++)
    {
-	   sprintf(str,"%g",m[i]);
+      sprintf(str,"%g",m[i]);
       len = strlen(str);
       if(len > maxlen) maxlen = len;
    }
@@ -1827,7 +1827,7 @@ short MaxArrayElementLength(double *m, long N)
 
    for(long i = 0; i < N; i++)
    {
-	   sprintf(str,"%Lg",m[i]);
+      sprintf(str,"%Lg",m[i]);
       len = strlen(str);
       if(len > maxlen) maxlen = len;
    }
@@ -1843,10 +1843,10 @@ void MaxCArrayElementLength(complex *m, long N, short &maxLenReal, short &maxLen
 
    for(long i = 0; i < N; i++)
    {
-	   sprintf(str,"%g",m[i].r);
+      sprintf(str,"%g",m[i].r);
       len = strlen(str);
       if(len > maxLenReal) maxLenReal = len;
-	   sprintf(str,"%g",m[i].i);
+      sprintf(str,"%g",m[i].i);
       len = strlen(str);
       if(len > maxLenImag) maxLenImag = len;
    }
@@ -1860,8 +1860,8 @@ void MaxCArrayElementLength(complex *m, long N, short &maxLenReal, short &maxLen
 
 void ListWindowParameters(Interface *itfc, WinData *win)
 {
-	TextMessage(formatNoArgHeader().c_str());
-	TextMessage(win->FormatState().c_str()); 
+   TextMessage(formatNoArgHeader().c_str());
+   TextMessage(win->FormatState().c_str()); 
 }
 
 /****************************************************************
@@ -1875,8 +1875,8 @@ void ListObjectParameters(Interface *itfc, ObjectData *obj)
    CText txt,title;
 
    TextMessage("\n\n   Generic control parameters\n");
-	TextMessage(formatNoArgHeader().c_str());
-	TextMessage(obj->FormatState().c_str());
+   TextMessage(formatNoArgHeader().c_str());
+   TextMessage(obj->FormatState().c_str());
 
    TextMessage("\n\n   Specific control parameters\n");
    TextMessage("\n   PARAMETER     VALUE\n");
@@ -1960,7 +1960,7 @@ void ListObjectParameters(Interface *itfc, ObjectData *obj)
          TextMessage("\n   subplot ..... cmd: select a sub-plot");
          TextMessage("\n   titlemenu ... %hd",pp->titleMenuNr);
          TextMessage("\n   tracemenu ... %hd",pp->traceMenuNr);
-	      break;	
+         break;	
       }
       case(IMAGEWINDOW):
       {
@@ -1979,7 +1979,7 @@ void ListObjectParameters(Interface *itfc, ObjectData *obj)
          TextMessage("\n   showborder .. \"%s\"",pp->showLabels ? "true" : "false");
          TextMessage("\n   subplot ..... cmd: select a sub-plot");
          TextMessage("\n   titlemenu ... %hd",pp->titleMenuNr);
-	      break;	
+         break;	
       }
       case(TABCTRL):
       {
@@ -2006,7 +2006,7 @@ void ListObjectParameters(Interface *itfc, ObjectData *obj)
          TextMessage("\n   currenttab .... %d",(int)TabCtrl_GetCurSel(obj->hWnd));
          TextMessage("\n   zindex ........ %d",(int)TabCtrl_GetCurSel(obj->hWnd));
          TextMessage("\n   index ......... %d",(int)TabCtrl_GetCurSel(obj->hWnd)+1);
-	      break;	
+         break;	
       }
       case(LISTBOX):
       {
@@ -2020,8 +2020,25 @@ void ListObjectParameters(Interface *itfc, ObjectData *obj)
          txt = "selection";
          GetListBoxParameter(itfc, obj, txt, &result);
          float** selection = result.GetMatrix2D();
-         TextMessage("\n   selection ... %d->%d", nint(selection[0][0]),nint(selection[0][1]));
+         ListBoxInfo* info = (ListBoxInfo*)obj->data;
+         if (info->allowExtendedSelections)
+         {
+            if (selection && result.GetDimY() == 1)
+            {
+               int n = result.GetDimX();
+               TextMessage("\n   selection ... ");
+               for (int i = 0; i < n - 1; i++)
+                  TextMessage("%d,", nint(selection[0][i]));
+               TextMessage("%d\n", nint(selection[0][n - 1]));
+            }
+         }
+         else
+         {
+            if (selection && result.GetDimY() == 1)
+               TextMessage("\n   selection ... %d->%d", nint(selection[0][0]), nint(selection[0][1]));
+         }
          break;
+
       }
    }
 }
@@ -2034,7 +2051,7 @@ void ListPlotRegionParameters(Plot* plt)
    {
       TextMessage("\n #### 1D plot-region object ####\n");
       TextMessage("\n   PARAMETER           VALUE\n\n");
-		TextMessage("   antialiasing1d..... \"%s\"\n",plt->isAntiAliasing() ? "true" : "false");
+      TextMessage("   antialiasing1d..... \"%s\"\n",plt->isAntiAliasing() ? "true" : "false");
       TextMessage("   autorange ......... \"%s\"\n",plt->getOverRideAutoRange() ? "false" : "true");
       TextMessage("   axes .............. object : defines the plot axes\n");
       TextMessage("   bordercolor ....... %s\n",Plot::GetColorStr(plt->borderColor));
@@ -2042,7 +2059,7 @@ void ListPlotRegionParameters(Plot* plt)
       TextMessage("   clear ............. cmd : clear all trace data\n");
       TextMessage("   dim ............... \"%s\"\n",(plt->getDimension() == 1) ? "1d" : "2d");
       TextMessage("   draw .............. \"%s\"\n",plt->plotParent->updatePlots() ? "true" : "false");
-		TextMessage("   filename .......... \"%s\"\n",plt->getFileName());
+      TextMessage("   filename .......... \"%s\"\n",plt->getFileName());
       TextMessage("   filepath .......... \"%s\"\n",plt->getFilePath());
       if(plt->getFileVersion() == 0)
          TextMessage("   fileversion ....... file not loaded\n");
@@ -2093,8 +2110,8 @@ void ListPlotRegionParameters(Plot* plt)
       TextMessage("   contour ........... cmd : display image data\n");
       TextMessage("   contourlinewidth .. %g\n", static_cast<Plot2D*>(plt)->contourLineWidth);
       TextMessage("   dim ............... \"%s\"\n",(plt->getDimension() == 1) ? "1d" : "2d");
-		TextMessage("   filename........... \"%s\"\n",plt->getFileName());
-		TextMessage("   filepath........... \"%s\"\n",plt->getFilePath());
+      TextMessage("   filename........... \"%s\"\n",plt->getFileName());
+      TextMessage("   filepath........... \"%s\"\n",plt->getFilePath());
       if(plt->getFileVersion() == 0)
          TextMessage("   fileversion ....... file not loaded\n");
       else
@@ -2102,7 +2119,7 @@ void ListPlotRegionParameters(Plot* plt)
       TextMessage("   getdata ........... cmd : extract image data\n");
       TextMessage("   grid .............. object\n");
       TextMessage("   imagerange......... [%g,%g]\n",static_cast<Plot2D*>(plt)->minVal(),
-																		static_cast<Plot2D*>(plt)->maxVal());
+                                                      static_cast<Plot2D*>(plt)->maxVal());
       TextMessage("   load .............. cmd : load a pt2 file into plot region\n");
       TextMessage("   margins ....... ... cmd : set or return margins for plot region\n");
       TextMessage("   parent ............ control: %hd\n",plt->plotParent->obj->nr());
@@ -2145,23 +2162,23 @@ int Abort(Interface* itfc ,char args[])
 
 int MakeErrorString(Interface* itfc ,char args[])
 {
-	short r;
-	float number,error;
-	short res = 1;
-	float mantissaNum,mantissaErr;
-	short exponentNum,exponentErr;
-	char format[100];
-	char out[100];
-	float factor;
-	short digits;
-	char mantissaStr[100],exponentStr[100];
-	short modeSwitch = 5;
-	char destination[100];
+   short r;
+   float number,error;
+   short res = 1;
+   float mantissaNum,mantissaErr;
+   short exponentNum,exponentErr;
+   char format[100];
+   char out[100];
+   float factor;
+   short digits;
+   char mantissaStr[100],exponentStr[100];
+   short modeSwitch = 5;
+   char destination[100];
 
-	strcpy(destination,"plot");
+   strcpy(destination,"plot");
 
-	if((r = ArgScan(itfc,args,2,"number, error, [resolution], [mode switch], [destination]","eeeee","ffdds",&number,&error,&res,&modeSwitch,destination)) < 0)
-		return(r); 
+   if((r = ArgScan(itfc,args,2,"number, error, [resolution], [mode switch], [destination]","eeeee","ffdds",&number,&error,&res,&modeSwitch,destination)) < 0)
+      return(r); 
 
    if (error == Inf)
    {
@@ -2181,109 +2198,109 @@ int MakeErrorString(Interface* itfc ,char args[])
    }
 
 
-	// Make sure the number of significant digits in the error is at least 1 and not too many
-	if(res < 1 || res > 7)
-	{
-		ErrorMessage("invalid number of error resolution");
-		return(ERR);
-	}
+   // Make sure the number of significant digits in the error is at least 1 and not too many
+   if(res < 1 || res > 7)
+   {
+      ErrorMessage("invalid number of error resolution");
+      return(ERR);
+   }
 
-	// Make sure power for switching between print modes is realistic
-	if(modeSwitch < 0)
-	{
-		ErrorMessage("invalid mode switch power");
-		return(ERR);
-	}
+   // Make sure power for switching between print modes is realistic
+   if(modeSwitch < 0)
+   {
+      ErrorMessage("invalid mode switch power");
+      return(ERR);
+   }
 
-	// Separate out the mantissa and exponent for each number
-	FloatSplit(error,mantissaStr,exponentStr,7);
-	sscanf(mantissaStr,"%f",&mantissaErr);
-	sscanf(exponentStr,"%hd",&exponentErr);
+   // Separate out the mantissa and exponent for each number
+   FloatSplit(error,mantissaStr,exponentStr,7);
+   sscanf(mantissaStr,"%f",&mantissaErr);
+   sscanf(exponentStr,"%hd",&exponentErr);
 
-	FloatSplit(number,mantissaStr,exponentStr,7);
-	sscanf(mantissaStr,"%f",&mantissaNum);
-	sscanf(exponentStr,"%hd",&exponentNum);
+   FloatSplit(number,mantissaStr,exponentStr,7);
+   sscanf(mantissaStr,"%f",&mantissaNum);
+   sscanf(exponentStr,"%hd",&exponentNum);
 
-	// Make sure the number and error are rounded correctly
-	factor = pow(10.0,(res+exponentNum-exponentErr-1));
-	number = nint(mantissaNum*factor)/factor*pow(10.0,exponentNum);
-	factor = pow(10.0,res-1);
-	error = nint(mantissaErr*factor)/factor*pow(10.0,exponentErr);
+   // Make sure the number and error are rounded correctly
+   factor = pow(10.0,(res+exponentNum-exponentErr-1));
+   number = nint(mantissaNum*factor)/factor*pow(10.0,exponentNum);
+   factor = pow(10.0,res-1);
+   error = nint(mantissaErr*factor)/factor*pow(10.0,exponentErr);
 
-	// Print out for small numbers (0.0001 to 999999)
-	if(exponentNum < modeSwitch && exponentNum > -modeSwitch)
-	{
-		digits = res-1-exponentErr;
+   // Print out for small numbers (0.0001 to 999999)
+   if(exponentNum < modeSwitch && exponentNum > -modeSwitch)
+   {
+      digits = res-1-exponentErr;
       if (digits > 10)
       {
          ErrorMessage("invalid number of digits in errorstr");
          return(ERR);
       }
-		if(!strcmp(destination,"plot"))
-		{
-			if(digits >= 0) // Error is less than number
-				sprintf(format,"(%%1.%hdf ± %%1.%hdf)",digits,digits);
-			else // Error is bigger than number
-				sprintf(format,"(%%1.0f ± %%1.0f)");
-			sprintf(out,format,number,error);
-		}
-		else
-		{
-			if(digits >= 0) // Error is less than number
-				sprintf(format,"(%%1.%hdf +- %%1.%hdf)",digits,digits);
-			else // Error is bigger than number
-				sprintf(format,"(%%1.0f +- %%1.0f)");
-			sprintf(out,format,number,error);
-		}
-		itfc->retVar[1].MakeAndSetString(out);
-	}
-	else
-	{
-		FloatSplit(error,mantissaStr,exponentStr,7);
-		sscanf(mantissaStr,"%f",&mantissaErr);
-		sscanf(exponentStr,"%hd",&exponentErr);
+      if(!strcmp(destination,"plot"))
+      {
+         if(digits >= 0) // Error is less than number
+            sprintf(format,"(%%1.%hdf ± %%1.%hdf)",digits,digits);
+         else // Error is bigger than number
+            sprintf(format,"(%%1.0f ± %%1.0f)");
+         sprintf(out,format,number,error);
+      }
+      else
+      {
+         if(digits >= 0) // Error is less than number
+            sprintf(format,"(%%1.%hdf +- %%1.%hdf)",digits,digits);
+         else // Error is bigger than number
+            sprintf(format,"(%%1.0f +- %%1.0f)");
+         sprintf(out,format,number,error);
+      }
+      itfc->retVar[1].MakeAndSetString(out);
+   }
+   else
+   {
+      FloatSplit(error,mantissaStr,exponentStr,7);
+      sscanf(mantissaStr,"%f",&mantissaErr);
+      sscanf(exponentStr,"%hd",&exponentErr);
 
-		FloatSplit(number,mantissaStr,exponentStr,7);
-		sscanf(mantissaStr,"%f",&mantissaNum);
-		sscanf(exponentStr,"%hd",&exponentNum);
+      FloatSplit(number,mantissaStr,exponentStr,7);
+      sscanf(mantissaStr,"%f",&mantissaNum);
+      sscanf(exponentStr,"%hd",&exponentNum);
 
-		if(!strcmp(destination,"plot"))
-		{
-			if(exponentNum >= exponentErr) // Error is smaller than number
-			{
-				mantissaErr *= pow(10.0,exponentErr - exponentNum);
-				digits = exponentNum-exponentErr+res-1;
-				sprintf(format,"(%%1.%hdf ± %%1.%hdf) × 10^(%hd)",digits,digits,exponentNum);
-			}
-			else // Error is bigger than number
-			{
-				digits = res-1;
-				mantissaNum /= pow(10.0,exponentErr - exponentNum);
-				sprintf(format,"(%%1.%hdf ± %%1.%hdf) × 10^(%hd)",digits,digits,exponentErr);
-			}
-		}
-		else
-		{
-			if(exponentNum >= exponentErr) // Error is smaller than number
-			{
-				mantissaErr *= pow(10.0,exponentErr - exponentNum);
-				digits = exponentNum-exponentErr+res-1;
-				sprintf(format,"(%%1.%hdf +- %%1.%hdf) × 1e%hd",digits,digits,exponentNum);
-			}
-			else // Error is bigger than number
-			{
-				digits = res-1;
-				mantissaNum /= pow(10.0,exponentErr - exponentNum);
-				sprintf(format,"(%%1.%hdf +- %%1.%hdf) × 1e%hd",digits,digits,exponentErr);
-			}
-		}
+      if(!strcmp(destination,"plot"))
+      {
+         if(exponentNum >= exponentErr) // Error is smaller than number
+         {
+            mantissaErr *= pow(10.0,exponentErr - exponentNum);
+            digits = exponentNum-exponentErr+res-1;
+            sprintf(format,"(%%1.%hdf ± %%1.%hdf) × 10^(%hd)",digits,digits,exponentNum);
+         }
+         else // Error is bigger than number
+         {
+            digits = res-1;
+            mantissaNum /= pow(10.0,exponentErr - exponentNum);
+            sprintf(format,"(%%1.%hdf ± %%1.%hdf) × 10^(%hd)",digits,digits,exponentErr);
+         }
+      }
+      else
+      {
+         if(exponentNum >= exponentErr) // Error is smaller than number
+         {
+            mantissaErr *= pow(10.0,exponentErr - exponentNum);
+            digits = exponentNum-exponentErr+res-1;
+            sprintf(format,"(%%1.%hdf +- %%1.%hdf) × 1e%hd",digits,digits,exponentNum);
+         }
+         else // Error is bigger than number
+         {
+            digits = res-1;
+            mantissaNum /= pow(10.0,exponentErr - exponentNum);
+            sprintf(format,"(%%1.%hdf +- %%1.%hdf) × 1e%hd",digits,digits,exponentErr);
+         }
+      }
 
-		sprintf(out,format,mantissaNum,mantissaErr);
-		itfc->retVar[1].MakeAndSetString(out);
-	}
-	itfc->nrRetValues = 1;
+      sprintf(out,format,mantissaNum,mantissaErr);
+      itfc->retVar[1].MakeAndSetString(out);
+   }
+   itfc->nrRetValues = 1;
 
-	return(OK);
+   return(OK);
 }
 
 
@@ -2301,19 +2318,19 @@ int AbortOnError(Interface* itfc ,char arg[])
    if((n = ArgScan(itfc,arg,1,"true/false","e","t",&abort)) < 0)
       return(n);
    
-	if(abort == "true")
-	{
-	   abortOnError = true;
-	}
-	else if(abort == "false")
-	{
-	   abortOnError = false;
-	}
-	else
-	{
-	   ErrorMessage("invalid argument (true/false)");
-	   return(ERR);
-	}	
+   if(abort == "true")
+   {
+      abortOnError = true;
+   }
+   else if(abort == "false")
+   {
+      abortOnError = false;
+   }
+   else
+   {
+      ErrorMessage("invalid argument (true/false)");
+      return(ERR);
+   }	
    itfc->nrRetValues = 0;
    return(OK);
 }
@@ -2399,7 +2416,7 @@ short ParseAssignmentString(char *str, char *name, char *value)
       }
    }
 
-	if(pos == -1) // Not an assignment so just return the str in name
+   if(pos == -1) // Not an assignment so just return the str in name
    {
       strcpy(name,str);
       strcpy(value,"");
@@ -2407,55 +2424,55 @@ short ParseAssignmentString(char *str, char *name, char *value)
    }
    else // An assignment exists
    {
-	   LeftStr(str,pos-1,name);
-	   RightStr(str,pos+1,value);
+      LeftStr(str,pos-1,name);
+      RightStr(str,pos+1,value);
    }
-	return(OK);
+   return(OK);
 }
 
 
 void SimpleErrorMessage(char *text)
 {
-	ErrorMessage(text);
+   ErrorMessage(text);
 }
 
 void AddProcedures(Interface *itfc, char *path, char* name)
 {
-	char fileName[MAX_PATH];
-	long startLine = 0;
-	long lineNr = 0;
+   char fileName[MAX_PATH];
+   long startLine = 0;
+   long lineNr = 0;
 
-	strcpy(fileName,name);
+   strcpy(fileName,name);
 
-	// Read in the text 
-	char *text = LoadTextFileFromFolder(path, fileName,".mac");
-	if(!text) return;
+   // Read in the text 
+   char *text = LoadTextFileFromFolder(path, fileName,".mac");
+   if(!text) return;
 
-	char *procedure;
-	char procName[MAX_STR];
-	long i = 0;
-	long len = strlen(text);
-	Variable* procVar;
+   char *procedure;
+   char procName[MAX_STR];
+   long i = 0;
+   long len = strlen(text);
+   Variable* procVar;
 
-	// Make sure we have an filename extension and are lower case
-	AddExtension(fileName,".mac");
-	//  ToLowerCase(fileName);
+   // Make sure we have an filename extension and are lower case
+   AddExtension(fileName,".mac");
+   //  ToLowerCase(fileName);
 
-	// Search for all procedures in text
-	while(FindProcedures(text, i, &procedure, procName, len, lineNr, startLine))
-	{
+   // Search for all procedures in text
+   while(FindProcedures(text, i, &procedure, procName, len, lineNr, startLine))
+   {
       // If this procedure is already in the macro list remove it
       procVar = itfc->baseMacro->GetProcedure(path,name,procName);
       if(procVar) // Remove previous cached procedure
-		{
+      {
          procVar->Remove();
-			delete procVar;
-		}
-		procVar = itfc->baseMacro->procList.Add(PROCEDURE,procName);
-		procVar->MakeAndSetProcedure(procedure,procName,fileName,path,startLine);
-		delete [] procedure;
-	}
-	delete [] text;
+         delete procVar;
+      }
+      procVar = itfc->baseMacro->procList.Add(PROCEDURE,procName);
+      procVar->MakeAndSetProcedure(procedure,procName,fileName,path,startLine);
+      delete [] procedure;
+   }
+   delete [] text;
 }
 
 // List all macros in the window, local or global caches
@@ -2464,34 +2481,34 @@ int ListCachedProcedures(Interface *itfc,  char args[])
 {
    CText mode = "global";
    short nrArgs;
-	CText path = "";
-	CText macro = "";
-	CText macroFilter = "";
-	extern Variable gCachedProc;
+   CText path = "";
+   CText macro = "";
+   CText macroFilter = "";
+   extern Variable gCachedProc;
 
-	// Get filename from user  
-	if((nrArgs = ArgScan(itfc,args,0,"mode, [macro]","ee","tt",&mode,&macroFilter)) < 0)
-		return(ERR); 
+   // Get filename from user  
+   if((nrArgs = ArgScan(itfc,args,0,"mode, [macro]","ee","tt",&mode,&macroFilter)) < 0)
+      return(ERR); 
 
    if(mode == "window")
    {
       TextMessage("\n\n   ### Window macro cache ###\n\n");
       Variable *procList = &(itfc->win->procList);
 
-	   for(Variable *var = procList->next; var != NULL; var = var->next)
-	   {
+      for(Variable *var = procList->next; var != NULL; var = var->next)
+      {
          ProcedureInfo *procInfo = (ProcedureInfo*)var->GetData();
 
-			if(macroFilter == "" || macroFilter == procInfo->macroName)
-			{
-				if(procInfo->macroName != macro)
-					TextMessage("   Macro = '%s' (Path = '%s')\n",procInfo->macroName,procInfo->macroPath);
+         if(macroFilter == "" || macroFilter == procInfo->macroName)
+         {
+            if(procInfo->macroName != macro)
+               TextMessage("   Macro = '%s' (Path = '%s')\n",procInfo->macroName,procInfo->macroPath);
 
-				macro = procInfo->macroName;
-				path = procInfo->macroPath;
+            macro = procInfo->macroName;
+            path = procInfo->macroPath;
 
-				TextMessage("            Procedure = '%s'\n",procInfo->procName);
-			}
+            TextMessage("            Procedure = '%s'\n",procInfo->procName);
+         }
       }
       TextMessage("\n");
    }
@@ -2500,27 +2517,27 @@ int ListCachedProcedures(Interface *itfc,  char args[])
       TextMessage("\n\n   ### Local macro cache ###\n\n");
       Variable *procList = &(itfc->baseMacro->procList);
 
-	   for(Variable *var = procList->next; var != NULL; var = var->next)
-	   {
+      for(Variable *var = procList->next; var != NULL; var = var->next)
+      {
          ProcedureInfo *procInfo = (ProcedureInfo*)var->GetData();
 
-			if(macroFilter == "" | macroFilter == procInfo->macroName)
-			{
-				if(procInfo->macroName != macro)
-					TextMessage("   Macro = '%s' (Path = '%s')\n",procInfo->macroName,procInfo->macroPath);
+         if(macroFilter == "" | macroFilter == procInfo->macroName)
+         {
+            if(procInfo->macroName != macro)
+               TextMessage("   Macro = '%s' (Path = '%s')\n",procInfo->macroName,procInfo->macroPath);
 
-				macro = procInfo->macroName;
-				path = procInfo->macroPath;
+            macro = procInfo->macroName;
+            path = procInfo->macroPath;
 
-				TextMessage("            Procedure = '%s'\n",procInfo->procName);
-			}
-		}
+            TextMessage("            Procedure = '%s'\n",procInfo->procName);
+         }
+      }
       TextMessage("\n");
    }
    else if(mode == "global")
    {
-		ListGlobalsCachedProcs(macroFilter);
+      ListGlobalsCachedProcs(macroFilter);
    }
-	itfc->nrRetValues = 0;
+   itfc->nrRetValues = 0;
    return(OK);
 }

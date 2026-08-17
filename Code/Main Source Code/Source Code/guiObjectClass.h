@@ -36,6 +36,7 @@
 #define TABCTRL       28
 #define GRIDCTRL		 29
 #define PANEL		    30
+#define LISTBOX_ES    31
 
 extern WNDPROC OldButtonProc;
 extern WNDPROC OldCLIProc;
@@ -409,6 +410,7 @@ typedef struct
 	int menuNr;
 	bool hasIcons;
 	bool allowMultipleSelections;
+   bool allowExtendedSelections;
 	int firstLineSelected;
 	int lastLineSelected;
 }

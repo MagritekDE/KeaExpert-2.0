@@ -10,7 +10,8 @@ class WinData;
 extern WNDPROC OldListBoxProc;
 void ListBoxCallBack(WinData *win, ObjectData *obj);
 
-void MakeListBoxObject(ObjectData *obj, long x, long y, long w, long h, DWORD visibility);
+void MakeListBoxObject(ObjectData* obj, long x, long y, long w, long h, DWORD visibility);
+void MakeListBoxEsObject(ObjectData* obj, long x, long y, long w, long h, DWORD visibility);
 int GetListBoxParameter(Interface *itfc, ObjectData *obj, CText &parameter, Variable *ans);
 int SetListBoxParameter(ObjectData *obj, CText &parameter, Variable *value);
 int DrawListBoxItem(ObjectData *obj, LPDRAWITEMSTRUCT pdis);

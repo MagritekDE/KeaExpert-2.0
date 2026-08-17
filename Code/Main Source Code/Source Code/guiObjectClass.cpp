@@ -477,6 +477,12 @@ ObjectData::ObjectData(WinData *parent, short type, short objNr,
          MakeListBoxObject(this, x, y, w, h, visibility);
 		   break; 
 	   }
+      case(LISTBOX_ES):
+      {
+         MakeListBoxEsObject(this, x, y, w, h, visibility);
+         this->type = LISTBOX;
+         break;
+      }
       case(GROUP_BOX):
 	   {
 		   this->hWnd = CreateWindow("static", label, WS_CHILD  | SS_OWNERDRAW	 | visibility,
@@ -2393,6 +2399,14 @@ ObjectData* ObjectData::Copy(HWND newParent)
          MakeListBoxObject(obj, x, y, w, h, true);
 		   break; 
 	   }
+      case(LISTBOX_ES):
+      {
+         short size = sizeof(ListBoxInfo);
+         obj->data = (char*)new ListBoxInfo;
+         memcpy(obj->data, data, size);
+         MakeListBoxEsObject(this, x, y, w, h, true);
+         break;
+      }
       case(GROUP_BOX):
 	   {
 		   obj->hWnd = CreateWindow("static", label.Str(), WS_CHILD  | SS_OWNERDRAW,

@@ -2194,12 +2194,61 @@ int MakeListBox(Interface* itfc ,char args[])
 	info->nrColumns = 1;
 	info->hasIcons = false;
 	info->allowMultipleSelections = false;
+   info->allowExtendedSelections = false;
 	info->firstLineSelected = -1;
 	info->lastLineSelected = -1;
 
    obj->keepFocus = true;
 
    itfc->retVar[1].MakeClass(OBJECT_CLASS,(void*)obj);
+   itfc->retVar[1].SetScope(WINDOW);
+   itfc->nrRetValues = 1;
+
+   return(0);
+}
+
+
+int MakeListBoxES(Interface* itfc, char args[])
+{
+   static short nr, x, y, w, h;
+   short r;
+   Variable wx, wy, ww, wh;
+   ObjPos pos;
+
+   objCommand[0] = '\0';
+
+   if ((r = ArgScan(itfc, args, 5, "nr,x,y,w,h,[objCommand]", "eeeeec", "dvvvvs", &nr, &wx, &wy, &ww, &wh, objCommand)) < 0)
+      return(r);
+
+   if (!editGUIWindow)
+   {
+      ErrorMessage("No window being edited");
+      return(ERR);
+   }
+
+   if (ProcessObjectPosition(editGUIWindow, &wx, &wy, &ww, &wh, x, y, w, h, &pos) == ERR)
+      return(ERR);
+
+   ObjectData* obj = new ObjectData(editGUIWindow, LISTBOX_ES, nr, x, y, w, h, "", objCommand, (char*)0, g_objVisibility, itfc->lineNr);
+   editGUIWindow->widgets.add(obj);
+
+   SaveObjectPosition(obj, &pos);
+
+   obj->data = (char*)new ListBoxInfo;
+   ListBoxInfo* info = (ListBoxInfo*)obj->data;
+   info->colWidth = NULL;
+   info->menu = NULL;
+   info->menuNr = 0;
+   info->nrColumns = 1;
+   info->hasIcons = false;
+   info->allowMultipleSelections = false;
+   info->allowExtendedSelections = true;
+   info->firstLineSelected = -1;
+   info->lastLineSelected = -1;
+
+   obj->keepFocus = true;
+
+   itfc->retVar[1].MakeClass(OBJECT_CLASS, (void*)obj);
    itfc->retVar[1].SetScope(WINDOW);
    itfc->nrRetValues = 1;
 
