@@ -39,11 +39,14 @@ class Variable
       void MakeAndLoadCMatrix4D(complex ****,long,long,long,long);  // Allocate and set 4D complex float array
 
       void MakeMatrix2DFromVector(float*, long,long);               // Convert a vector to a 2D real data set
+      void MakeMatrix2DFromDVector(double*, long, long);            // Convert a double vector to a 2D real data set
       void MakeMatrix3DFromVector(float*, long,long,long);          // Convert a vector to a 3D real data set
       void MakeMatrix4DFromVector(float*, long,long,long,long);     // Convert a vector to a 4D real data set
       void MakeCMatrix2DFromCVector(complex*, long,long);           // Convert a vector to a 2D complex data set
       void MakeCMatrix3DFromCVector(complex*, long,long,long);      // Convert a vector to a 3D complex data set
       void MakeCMatrix4DFromCVector(complex*, long,long,long,long); // Convert a vector to a 4D complex data set
+
+      void MakeDMatrix2DFromVector(double*, long, long);             // Convert a vector to a 2D double data set
 
       void SetReal(float in) {*((float*)data) = in;}                // Set float variable from number
       void SetFloat(float in) {*((float*)data) = in;}               // Set float variable from number
