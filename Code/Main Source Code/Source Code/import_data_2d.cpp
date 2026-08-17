@@ -742,7 +742,7 @@ short Import2DData(Interface *itfc, bool displayData, char fileName[], long type
 
 size_t CalcExpectedFileSize(long type, long xsize,long ysize, long zsize, long fileHeader, long rowHeader)
 {
-   long wordLength = ((type & INT_32) > 0) * 4 + ((type & INT_16) > 0) * 2 + ((type & FLOAT_32) > 0) * 4;
+   long wordLength = ((type & INT_32) > 0) * 4 + ((type & INT_16) > 0) * 2 + ((type & FLOAT_32) > 0) * 4 + ((type & FLOAT_64) > 0) * 8;
    wordLength *= ((type & COMP_DATA)>0)*2 + ((type & REAL_DATA)>0)*1;
    size_t size = (size_t)xsize*ysize*zsize*wordLength + ysize*zsize*rowHeader + fileHeader;
    return(size);
@@ -755,7 +755,7 @@ size_t CalcExpectedFileSize(long type, long xsize,long ysize, long zsize, long f
 
 size_t CalcNumberPointsInFile(long size, long type, long xsize, long fileHeader, long rowHeader, size_t &matrixSize)
 {
-   long wordLength = ((type & INT_32) > 0) * 4 + ((type & INT_16) > 0) * 2 + ((type & FLOAT_32) > 0) * 4;
+   long wordLength = ((type & INT_32) > 0) * 4 + ((type & INT_16) > 0) * 2 + ((type & FLOAT_32) > 0) * 4 + ((type & FLOAT_64) > 0) * 8;
    long compreal = ((type & COMP_DATA)>0)*2 + ((type & REAL_DATA)>0)*1;
    wordLength *= compreal;
    long nrBytes = size - fileHeader;
