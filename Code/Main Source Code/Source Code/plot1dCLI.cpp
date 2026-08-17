@@ -150,16 +150,16 @@ int PlotFileSaveVersion(Interface* itfc, char args[])
 
 int Clear1D(Interface* itfc, char args[])
 {
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
    if(cur1DPlot)
    {
-		cur1DPlot->clearData();
+      cur1DPlot->clearData();
       cur1DPlot->setOverRideAutoRange(false);
       MyInvalidateRect(cur1DPlot->win,NULL,false);
       cur1DPlot->initialiseMenuChecks("clear");
-	   //std::for_each(cur1DPlot->insets_.begin(), cur1DPlot->insets_.end(), delete_object());
+      //std::for_each(cur1DPlot->insets_.begin(), cur1DPlot->insets_.end(), delete_object());
     //  cur1DPlot->insets_.clear();
-	   std::for_each(cur1DPlot->lines_.begin(), cur1DPlot->lines_.end(), delete_object());
+      std::for_each(cur1DPlot->lines_.begin(), cur1DPlot->lines_.end(), delete_object());
       cur1DPlot->lines_.clear();
    }
    itfc->nrRetValues = 0;
@@ -171,11 +171,11 @@ int SetPlotState(Interface *itfc, char args[])
    short r;
    CText state;
 
-	if((r = ArgScan(itfc,args,1,"state","e","t",&state)) < 0)
-	   return(r); 
-	   
+   if((r = ArgScan(itfc,args,1,"state","e","t",&state)) < 0)
+      return(r); 
+      
    if(Plot::curPlot())
-		Plot::curPlot()->setPlotState(state.Str());
+      Plot::curPlot()->setPlotState(state.Str());
       
    return(OK);
 }
@@ -185,7 +185,7 @@ int GetPlotState(Interface *itfc, char arg[])
 {
    if(Plot::curPlot())
       itfc->retVar[1].MakeAndSetString(Plot::curPlot()->getPlotState());
-	itfc->nrRetValues = 1;
+   itfc->nrRetValues = 1;
    return(OK);
 }
 
@@ -215,9 +215,9 @@ int GetPlotState(Interface *itfc, char arg[])
 int PlotXY(Interface* itfc ,char arg[])
 {
    long r;
-	MSG msg;
+   MSG msg;
 
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
    if(!cur1DPlot)
    {
@@ -236,14 +236,14 @@ int PlotXY(Interface* itfc ,char arg[])
 
    LeaveCriticalSection(&cs1DPlot);
    cur1DPlot->plotParent->decCriticalSectionLevel();
-	//printf("Leaving critical section PLOTXY\n");
+   //printf("Leaving critical section PLOTXY\n");
 
    if(r == ERR)
       return(ERR);
 
    itfc->retVar[1].MakeAndSetFloat(r); // Return trace ID
    itfc->nrRetValues = 1;
-	cur1DPlot->makeCurrentPlot();
+   cur1DPlot->makeCurrentPlot();
 
    return(OK);
 }
@@ -253,9 +253,9 @@ int GetCurrentPlot(Interface* itfc, char arg[])
 {
    itfc->nrRetValues = 2;
 
-	if(Plot1D::curPlot())
+   if(Plot1D::curPlot())
    {
-		PlotWindow* pp = Plot1D::curPlot()->plotParent;
+      PlotWindow* pp = Plot1D::curPlot()->plotParent;
       ObjectData *obj = pp->obj;
       itfc->retVar[1].MakeAndSetFloat(obj->winParent->nr);
       itfc->retVar[2].MakeAndSetFloat(obj->nr());
@@ -276,16 +276,16 @@ int AutoRange(Interface* itfc, char arg[])
    CText ar;
    short r;
 
-	Plot* curPlot = Plot::curPlot();
-	Plot1D* cur1DPlot = Plot1D::curPlot();
-	Plot2D* cur2DPlot = Plot2D::curPlot();
+   Plot* curPlot = Plot::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot2D* cur2DPlot = Plot2D::curPlot();
 
    if(curPlot)
    {  
-		if(curPlot->getOverRideAutoRange())
-		   ar = "off";
-		else
-		   ar = "on";
+      if(curPlot->getOverRideAutoRange())
+         ar = "off";
+      else
+         ar = "on";
    } 
    else
       return(OK);
@@ -306,11 +306,11 @@ int AutoRange(Interface* itfc, char arg[])
          CheckMenuItem(hMenu,ID_PLOT2D_AUTOSCALE,MF_UNCHECKED);
          cur2DPlot->setOverRideAutoRange(true);
       }
-		else
-		{
-		  ErrorMessage("invalid parameter");
-		  return(ERR);
-		} 
+      else
+      {
+        ErrorMessage("invalid parameter");
+        return(ERR);
+      } 
    }
    else if(curPlot->win == cur1DPlot->win)
    {  
@@ -324,11 +324,11 @@ int AutoRange(Interface* itfc, char arg[])
       {
          cur1DPlot->setOverRideAutoRange(true);
       }
-		else
-		{
-		  ErrorMessage("invalid parameter");
-		  return(ERR);
-		} 
+      else
+      {
+        ErrorMessage("invalid parameter");
+        return(ERR);
+      } 
    }
    else
    {
@@ -336,9 +336,9 @@ int AutoRange(Interface* itfc, char arg[])
       return(ERR);
    }
 
-	itfc->nrRetValues = 0;
+   itfc->nrRetValues = 0;
            
-	return(0);
+   return(0);
 }
 
  
@@ -351,7 +351,7 @@ int DrawPlot(Interface* itfc, char args[])
    short nrArgs;
    CText draw;
 
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
    if(cur1DPlot->plotParent->updatePlots())
       draw = "true";
@@ -392,8 +392,8 @@ int ModifyTrace(Interface* itfc, char args[])
 {
    CArg carg;
 
-	Plot* curPlot = Plot::curPlot();
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot* curPlot = Plot::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
 // Check for current plot
    if(curPlot == NULL)
@@ -402,7 +402,7 @@ int ModifyTrace(Interface* itfc, char args[])
       return(ERR);
    }
 
-	if(cur1DPlot->hasNoCurTrace())
+   if(cur1DPlot->hasNoCurTrace())
    {
       ErrorMessage("no data defined");
       return(ERR);
@@ -415,20 +415,20 @@ int ModifyTrace(Interface* itfc, char args[])
    {
       Trace *di = cur1DPlot->curTrace();
       TracePar *tp = &(di->tracePar);
-		TextMessage(formatNoArgHeader().c_str());
-		TextMessage(di->FormatState().c_str());
-		TextMessage(tp->FormatState().c_str());
+      TextMessage(formatNoArgHeader().c_str());
+      TextMessage(di->FormatState().c_str());
+      TextMessage(tp->FormatState().c_str());
       return(0);
    }
 
-	Trace* di = cur1DPlot->curTrace();
+   Trace* di = cur1DPlot->curTrace();
    if((GetOrSetTraceParameters(itfc,&carg,nrArgs,1,di,di->tracePar,cur1DPlot)) == OK)
    {
       cur1DPlot->DisplayAll(false); 
       return(0);
    }
 
-	return(ERR);
+   return(ERR);
 }
 
 
@@ -442,7 +442,7 @@ int ModifyTraceDefault(Interface* itfc ,char args[])
    int r;
    CArg carg;
    short nrArgs = carg.Count((char*)args);
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
    if(cur1DPlot == NULL)
    {
@@ -454,8 +454,8 @@ int ModifyTraceDefault(Interface* itfc ,char args[])
    if(nrArgs == 0)
    {
       TracePar *tp = cur1DPlot->getTracePar();
-		TextMessage(formatNoArgHeader().c_str());
-		TextMessage(tp->FormatState().c_str());
+      TextMessage(formatNoArgHeader().c_str());
+      TextMessage(tp->FormatState().c_str());
       return(0);
    }
   
@@ -906,7 +906,7 @@ int SetPlotHoldMode(Interface* itfc, char args[])
    CText hold;
    short r;
    
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
    if(cur1DPlot->displayHold)
       hold = "on";
@@ -916,7 +916,7 @@ int SetPlotHoldMode(Interface* itfc, char args[])
    if((r = ArgScan(itfc,args,0,"on/off","e","t",&hold)) < 0)
       return(r); 
 
-	WinData* parent = cur1DPlot->plotParent->obj->winParent;
+   WinData* parent = cur1DPlot->plotParent->obj->winParent;
    if(hold == "on")
    {
       cur1DPlot->displayHold = true;
@@ -925,7 +925,7 @@ int SetPlotHoldMode(Interface* itfc, char args[])
    }   
    else if(hold == "off")
    {
-		cur1DPlot->displayHold = false;
+      cur1DPlot->displayHold = false;
       parent->setToolBarItemCheck(cur1DPlot->plotParent->toolbarName(), "hold", false);
       parent->setMenuItemCheck(cur1DPlot->plotParent->menuName(),"hold",false);
    }
@@ -950,7 +950,7 @@ int SetPlotHoldMode(Interface* itfc, char args[])
 // Zoom into the current 1D plot
 int Zoom1D(Interface* itfc, char args[])
 {
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
    if(!cur1DPlot)
    {
       ErrorMessage("1D plot not defined");
@@ -979,7 +979,7 @@ int GetOrSetCurrentTrace(Interface* itfc, char args[])
    short n;
    Variable ID;
    Trace *di = 0;
-	CArg carg;
+   CArg carg;
 
    n = carg.Count(args);
 
@@ -1003,7 +1003,7 @@ int GetOrSetCurrentTrace(Interface* itfc, char args[])
       return(n);
 
 // Set the trace via id number or trace class instance
-	if(Plot1D::curPlot())
+   if(Plot1D::curPlot())
    {
       if(ID.GetType() == CLASS)
       {
@@ -1018,7 +1018,7 @@ int GetOrSetCurrentTrace(Interface* itfc, char args[])
       
       if(di)
       {
-			Plot1D::curPlot()->setCurTrace((Trace*)di);
+         Plot1D::curPlot()->setCurTrace((Trace*)di);
          HWND hWnd = Plot1D::curPlot()->win;
          MyInvalidateRect(hWnd,NULL,false);
       }
@@ -1033,7 +1033,7 @@ int GetOrSetCurrentTrace(Interface* itfc, char args[])
       ErrorMessage("no current 1D plot found");
       return(ERR);
    }   
-	itfc->nrRetValues = 0;
+   itfc->nrRetValues = 0;
    return(OK);
 }
 
@@ -1046,9 +1046,9 @@ int GetOrSetCurrentTrace(Interface* itfc, char args[])
 
 int Get1DCoordinate(Interface *itfc, char args[])
 {
-	MSG msg ;
+   MSG msg ;
    short x1,y1;
-	long xmin,xmax,ymin,ymax;
+   long xmin,xmax,ymin,ymax;
    bool drawing = false;
    CText mode = "value";
    short r;
@@ -1056,15 +1056,15 @@ int Get1DCoordinate(Interface *itfc, char args[])
    HCURSOR trackingCursor;
    extern bool gScrollWheelEvent;
 
-	Plot1D* cur1DPlot = Plot1D::curPlot();
+   Plot1D* cur1DPlot = Plot1D::curPlot();
 
 // Don't bother if there is no 1D plot   
    if(!cur1DPlot)
      return(0);
 
 // See if user wants to use index mode
-	if((r = ArgScan(itfc,args,0,"mode","e","t",&mode)) < 0)
-	   return(r); 
+   if((r = ArgScan(itfc,args,0,"mode","e","t",&mode)) < 0)
+      return(r); 
 
    if(r == 1 && (mode != "index" && mode != "value" && mode != "both"))
    {
@@ -1078,16 +1078,16 @@ int Get1DCoordinate(Interface *itfc, char args[])
    SetCursor(outofboundsCursor);
        
 // Get some variables defined
-	PlotDimensions dim (cur1DPlot->GetTop(),
-	cur1DPlot->GetLeft(), 
-	cur1DPlot->GetWidth(),
-	cur1DPlot->GetHeight());
+   PlotDimensions dim (cur1DPlot->GetTop(),
+   cur1DPlot->GetLeft(), 
+   cur1DPlot->GetWidth(),
+   cur1DPlot->GetHeight());
    
-	xmin = dim.left();
-	ymin = dim.top();
-	xmax = xmin+dim.width();
-	ymax = ymin+dim.height();
-	   
+   xmin = dim.left();
+   ymin = dim.top();
+   xmax = xmin+dim.width();
+   ymax = ymin+dim.height();
+      
    HWND hWnd = cur1DPlot->win;
 
    gBlockWaitCursor = true;
@@ -1097,10 +1097,10 @@ int Get1DCoordinate(Interface *itfc, char args[])
 // Make sure the event queue is processed before capturing the cursor
 // This ensures the button which initiated this call is deactivated
 // This loop is exited after we have left the button and repainted it
-	if(itfc->obj && itfc->obj->type == BUTTON)
-	{
-		int state = 0;
-		bool hasLeft = false;
+   if(itfc->obj && itfc->obj->type == BUTTON)
+   {
+      int state = 0;
+      bool hasLeft = false;
 
       if (itfc->obj->hWnd)
       {
@@ -1110,9 +1110,9 @@ int Get1DCoordinate(Interface *itfc, char args[])
 
       PushButtonInfo* info = (PushButtonInfo*)itfc->obj->data;
       if(info->hovering || (state & BST_HOT))
-		{
-			while(true)
-			{
+      {
+         while(true)
+         {
             if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
             {
                if ((msg.message == WM_MOUSELEAVE && itfc->obj->hWnd))
@@ -1132,80 +1132,80 @@ int Get1DCoordinate(Interface *itfc, char args[])
                   DispatchMessage(&msg);
                }
 
-					if(hasLeft && msg.message == WM_PAINT)
-						break;
-				}
-			}
-		}
-	}
+               if(hasLeft && msg.message == WM_PAINT)
+                  break;
+            }
+         }
+      }
+   }
 
 
 // Force plot window to capture mouse events
    SetCapture(hWnd);
-   	
+      
 // Draw cursor until user presses left mouse button
-	bool button_pressed = false;
+   bool button_pressed = false;
    while(true)
    {
-	   if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
-	   {	
+      if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+      {	
          if(msg.hwnd == hWnd)
          {
-				if(msg.message == WM_MOUSEMOVE && msg.wParam == 0) // Track movement
-				{
-	      		x1 = LOWORD(msg.lParam);
-					y1 = HIWORD(msg.lParam);
-			  
-				 // Check for out of bounds mouse movement			   
-					if(x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
-						 SetCursor(outofboundsCursor);
-					else
-						 SetCursor(trackingCursor);
-	             			   
-					if(x1 <= xmin) x1 = xmin+1; 
-					if(x1 >= xmax) x1 = xmax-1;
-					if(y1 <= ymin) y1 = ymin+1;
-					if(y1 >= ymax) y1 = ymax-1;
+            if(msg.message == WM_MOUSEMOVE && msg.wParam == 0) // Track movement
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+           
+             // Check for out of bounds mouse movement			   
+               if(x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+                   SetCursor(outofboundsCursor);
+               else
+                   SetCursor(trackingCursor);
+                           
+               if(x1 <= xmin) x1 = xmin+1; 
+               if(x1 >= xmax) x1 = xmax-1;
+               if(y1 <= ymin) y1 = ymin+1;
+               if(y1 >= ymax) y1 = ymax-1;
 
-					cur1DPlot->pointSelection.xScrn = x1;
-	     	  
-					InvalidateRect(hWnd,0,false);
-					UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
-				}
-	      	         
-				else if(msg.message == WM_LBUTTONDOWN && !button_pressed) // Record final coordinates and amplitude
-				{
-	      		x1 = LOWORD(msg.lParam);
-					y1 = HIWORD(msg.lParam);
-			  
-				 // Check for out of bounds mouse movement			   
-					if(x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
-					{
-						 MessageBeep(MB_OK);
-						 continue;
-					}
+               cur1DPlot->pointSelection.xScrn = x1;
+           
+               InvalidateRect(hWnd,0,false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+            }
+                     
+            else if(msg.message == WM_LBUTTONDOWN && !button_pressed) // Record final coordinates and amplitude
+            {
+               x1 = LOWORD(msg.lParam);
+               y1 = HIWORD(msg.lParam);
+           
+             // Check for out of bounds mouse movement			   
+               if(x1 <= xmin || x1 >= xmax || y1 <= ymin || y1 >= ymax)
+               {
+                   MessageBeep(MB_OK);
+                   continue;
+               }
 
-					cur1DPlot->pointSelection.xScrn = x1;
-			  
-					InvalidateRect(hWnd,0,false);
-					UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
-	             	      
-					button_pressed = true;  
-				}
+               cur1DPlot->pointSelection.xScrn = x1;
+           
+               InvalidateRect(hWnd,0,false);
+               UpdateWindow(hWnd); // Make sure the zoom rectangle is drawn
+                        
+               button_pressed = true;  
+            }
 
-				else if(msg.message == WM_LBUTTONUP && button_pressed) // Record final coordinates and amplitude
-				{
-					break;
-				} 
-			}
-	   }
+            else if(msg.message == WM_LBUTTONUP && button_pressed) // Record final coordinates and amplitude
+            {
+               break;
+            } 
+         }
+      }
    }
    gBlockWaitCursor = false;
 
    SetCursor(LoadCursor(NULL,IDC_WAIT));
    ReleaseCapture();   
 
-	cur1DPlot->pointSelection.xScrn = -1;
+   cur1DPlot->pointSelection.xScrn = -1;
 
    //if (itfc->obj->hWnd)
    //{
@@ -1220,12 +1220,12 @@ int Get1DCoordinate(Interface *itfc, char args[])
    InvalidateRect(hWnd,0,false);
    UpdateWindow(hWnd);
 
-	if(mode == "index")
+   if(mode == "index")
    {               
       itfc->retVar[1].MakeAndSetFloat(cur1DPlot->pointSelection.xIndex); 
       itfc->nrRetValues = 1;
    }
-	else if(mode == "value")
+   else if(mode == "value")
    {
       itfc->retVar[1].MakeAndSetFloat(cur1DPlot->pointSelection.xData); 
       itfc->nrRetValues = 1;
@@ -1651,17 +1651,17 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       {
          if(args)
          {
-		    	MSG msg;
-			//	while(pd->plotParent->isBusy())
-			//		PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
-				printf("In critical section CLASSREF INIT\n");
+            MSG msg;
+         //	while(pd->plotParent->isBusy())
+         //		PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+            printf("In critical section CLASSREF INIT\n");
 
             EnterCriticalSection(&cs1DPlot);
             pd->plotParent->incCriticalSectionLevel();
             short id = static_cast<Plot1D*>(pd)->DrawPlot(itfc,args);
             LeaveCriticalSection(&cs1DPlot);
             pd->plotParent->decCriticalSectionLevel();
-				printf("Leaving critical section CLASSREF INIT\n");
+            printf("Leaving critical section CLASSREF INIT\n");
 
             if(id == ERR)
                return(ERR);
@@ -1702,43 +1702,43 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       // Set or get plot trace x border
       else if(!strcmp(name,"tracexborder"))
-	   {
+      {
          float factor;
 
-	   // Get arguments from user *************
-		   if(ArgScan(itfc,args,1,"trace x border factor","e","f",&factor) < 0)
+      // Get arguments from user *************
+         if(ArgScan(itfc,args,1,"trace x border factor","e","f",&factor) < 0)
          {
             ErrorMessage("Expecting 1 argument (trace s-border factor)");
             return(ERR);
          }
 
          if(factor < 0 || factor >= 1)
-	      {
-	         ErrorMessage("invalid trace border factor value [0->1]");
-	         return(ERR);
-	      }
+         {
+            ErrorMessage("invalid trace border factor value [0->1]");
+            return(ERR);
+         }
          pd->traceXBorderFactor = factor;
          pd->DisplayAll(false);  
          itfc->nrRetValues = 0;
          return(OK);
       }
       // Set or get plot trace y border
-	   else if(!strcmp(name,"traceyborder"))
-	   {
+      else if(!strcmp(name,"traceyborder"))
+      {
          float factor;
 
-	   // Get arguments from user *************
-		   if(ArgScan(itfc,args,1,"trace y border factor","e","f",&factor) < 0)
+      // Get arguments from user *************
+         if(ArgScan(itfc,args,1,"trace y border factor","e","f",&factor) < 0)
          {
             ErrorMessage("Expecting 1 argument (trace y-border factor)");
             return(ERR);
          }
 
          if(factor < 0 || factor >= 1)
-	      {
-	         ErrorMessage("invalid trace border factor value [0->1]");
-	         return(ERR);
-	      }
+         {
+            ErrorMessage("invalid trace border factor value [0->1]");
+            return(ERR);
+         }
          pd->traceYBorderFactor = factor;
          pd->DisplayAll(false);  
          itfc->nrRetValues = 0;
@@ -1762,7 +1762,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       // Clear the plot
       else if(!strcmp(name,"clear"))
       {
-			dynamic_cast<Plot1D*>(pd)->clearData();
+         dynamic_cast<Plot1D*>(pd)->clearData();
          dynamic_cast<Plot1D*>(pd)->setOverRideAutoRange(false);
          MyInvalidateRect(pd->plotParent->hWnd,NULL,false);
          itfc->nrRetValues = 0;
@@ -1796,18 +1796,18 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       {
          Plot1D *p1d = dynamic_cast<Plot1D*>(pd);
          HWND hWnd = p1d->win;
-	      HDC hdc = GetDC(hWnd);
-		   p1d->setOverRideAutoRange(false);
+         HDC hdc = GetDC(hWnd);
+         p1d->setOverRideAutoRange(false);
          p1d->curXAxis()->setAutorange(true);
          p1d->curYAxis()->setAutorange(true); 
-		   if (p1d->syncAxes())
-		   {
-			   p1d->otherYAxis()->setAutorange(true);	
-		   }		
+         if (p1d->syncAxes())
+         {
+            p1d->otherYAxis()->setAutorange(true);	
+         }		
          p1d->resetZoomCount(); 
          p1d->HideSelectionRectangle(hdc);      
          p1d->ResetZoomPoint();
-		   p1d->updateStatusWindowForZoom(hWnd);
+         p1d->updateStatusWindowForZoom(hWnd);
          p1d->Invalidate();	
          ReleaseDC(hWnd,hdc);
          itfc->nrRetValues = 0;
@@ -1831,12 +1831,12 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             }
          }
 
-			itfc->nrRetValues = 0;
-			if (OK != dynamic_cast<Plot1D*>(pd)->removeTrace(id))
-			{
-				ErrorMessage("trace ID '%ld' not found",id);
-				return ERR;
-			}
+         itfc->nrRetValues = 0;
+         if (OK != dynamic_cast<Plot1D*>(pd)->removeTrace(id))
+         {
+            ErrorMessage("trace ID '%ld' not found",id);
+            return ERR;
+         }
          return OK;
       }
       // Don't delete the plot traces when drawing next trace
@@ -1849,16 +1849,16 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             return(ERR);
          } 
 
-			WinData* parent = pd->plotParent->obj->winParent;
+         WinData* parent = pd->plotParent->obj->winParent;
          if(hold == "on")
          {
-				pd->setHold(true);
+            pd->setHold(true);
             parent->setToolBarItemCheck(pd->plotParent->toolbarName(),"hold",true);
             parent->setMenuItemCheck(pd->plotParent->menuName(),"hold",true);
          }
          else if(hold == "off")
          {
-				pd->setHold(false);
+            pd->setHold(false);
             parent->setToolBarItemCheck(pd->plotParent->toolbarName(),"hold",false);
             parent->setMenuItemCheck(pd->plotParent->menuName(),"hold",false);
          }
@@ -1873,71 +1873,71 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       else if (!strcmp(name,"showlines"))
       {
-			Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText showlines;
-			(pr->showLines == true) ? (showlines	= "true") : (showlines	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&showlines);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText showlines;
+         (pr->showLines == true) ? (showlines	= "true") : (showlines	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&showlines);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
 
-			if(showlines == "true")
+         if(showlines == "true")
             pr->showLines = true;
          else
             pr->showLines = false;
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          pd->Invalidate();	
          return OK;
       }
       else if (!strcmp(name,"showtext"))
       {
-		   Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText showtext;
-			(pr->showText == true) ? (showtext	= "true") : (showtext	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&showtext);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
-			if(showtext == "true")
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText showtext;
+         (pr->showText == true) ? (showtext	= "true") : (showtext	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&showtext);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
+         if(showtext == "true")
             pr->showText = true;
          else
             pr->showText = false;
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          pd->Invalidate();	
          return OK;
       }
       else if (!strcmp(name,"showinsets"))
       {
-		   Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText showinsets;
-			(pr->showInsets == true) ? (showinsets	= "true") : (showinsets	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&showinsets);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
-			if(showinsets == "true")
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText showinsets;
+         (pr->showInsets == true) ? (showinsets	= "true") : (showinsets	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&showinsets);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
+         if(showinsets == "true")
             pr->showInsets = true;
          else
             pr->showInsets = false;
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          pd->Invalidate();	
          return OK;
       }
       else if (!strcmp(name,"showimag"))
       {
-		   Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText showimag;
-			(pr->display1DComplex & SHOW_IMAGINARY) ? (showimag	= "true") : (showimag	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&showimag);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText showimag;
+         (pr->display1DComplex & SHOW_IMAGINARY) ? (showimag	= "true") : (showimag	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&showimag);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
 
-			if(showimag == "true")
+         if(showimag == "true")
          {
             pr->display1DComplex |= SHOW_IMAGINARY;
          }
@@ -1946,22 +1946,22 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             USHORT mask = ~(SHOW_IMAGINARY);
             pr->display1DComplex &= mask;
          }
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          pd->Invalidate();	
          return OK;
       }
       else if (!strcmp(name,"showreal"))
       {
-		   Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText showreal;
-			(pr->display1DComplex & SHOW_REAL) ? (showreal	= "true") : (showreal	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&showreal);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText showreal;
+         (pr->display1DComplex & SHOW_REAL) ? (showreal	= "true") : (showreal	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&showreal);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
 
-			if(showreal == "true")
+         if(showreal == "true")
          {
             pr->display1DComplex |= SHOW_REAL;
          }
@@ -1970,66 +1970,66 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             USHORT mask = ~SHOW_REAL;
             pr->display1DComplex &= mask;
          }
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          pd->Invalidate();	
          return OK;
       }
-		else if (!strcmp(name,"limitfunc"))
+      else if (!strcmp(name,"limitfunc"))
       {
-		   Plot1D *pr = dynamic_cast<Plot1D*>(pd);
-			CText limitfunc;
-			(pr->limitfunc == true) ? (limitfunc	= "true") : (limitfunc	= "false");
-			r = ArgScan(itfc,args,1,"true/false","e","t",&limitfunc);
-			if(r == ERR)
-				return(ERR); 
-			else if(r == -2)
-				return(OK);
+         Plot1D *pr = dynamic_cast<Plot1D*>(pd);
+         CText limitfunc;
+         (pr->limitfunc == true) ? (limitfunc	= "true") : (limitfunc	= "false");
+         r = ArgScan(itfc,args,1,"true/false","e","t",&limitfunc);
+         if(r == ERR)
+            return(ERR); 
+         else if(r == -2)
+            return(OK);
 
-			if(limitfunc == "true")
+         if(limitfunc == "true")
             pr->limitfunc = true;
          else
             pr->limitfunc = false;
 
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          return OK;
       }
       // Get or set trace antialiasing status
-		else if (!strcmp(name, "antialiasing1d") || !strcmp(name, "antialiasing"))
-		{
-			CText antialiasing = "undefined";
-			if(ArgScan(itfc,args,0,"true/false","e","t",&antialiasing) < 0)
+      else if (!strcmp(name, "antialiasing1d") || !strcmp(name, "antialiasing"))
+      {
+         CText antialiasing = "undefined";
+         if(ArgScan(itfc,args,0,"true/false","e","t",&antialiasing) < 0)
          {
             ErrorMessage("Expecting 0/1 argument (true/false)");
             return(ERR);
          }
 
-			WinData* parent = pd->plotParent->obj->winParent;
-			if (antialiasing == "true")
-			{
-				pd->setAntiAliasing(true);
+         WinData* parent = pd->plotParent->obj->winParent;
+         if (antialiasing == "true")
+         {
+            pd->setAntiAliasing(true);
             parent->setMenuItemCheck(pd->plotParent->menuName(),"antialiasing",false);
             pd->DisplayAll(false);  
-				itfc->nrRetValues = 0;
-			}
-			else if (antialiasing == "false")
-			{
-				pd->setAntiAliasing(false);
+            itfc->nrRetValues = 0;
+         }
+         else if (antialiasing == "false")
+         {
+            pd->setAntiAliasing(false);
             parent->setMenuItemCheck(pd->plotParent->menuName(),"antialiasing",false);
             pd->DisplayAll(false);  
-				itfc->nrRetValues = 0;
-			}
-			else
-			{
-				if(pd->isAntiAliasing())
-				{
-					itfc->retVar[1].MakeAndSetString("true");
-				}
-				else
-				{
-					itfc->retVar[1].MakeAndSetString("false");
-				}
-				itfc->nrRetValues = 1;
-			}
+            itfc->nrRetValues = 0;
+         }
+         else
+         {
+            if(pd->isAntiAliasing())
+            {
+               itfc->retVar[1].MakeAndSetString("true");
+            }
+            else
+            {
+               itfc->retVar[1].MakeAndSetString("false");
+            }
+            itfc->nrRetValues = 1;
+         }
          return(OK);
       }
       // Get trace by index
@@ -2080,30 +2080,30 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
       }
       // Get inset by index
-		else if (!strcmp(name,"inset") || !strcmp(name,"annotation"))
-		{
-			short n;
-			if (!args)
-			{
-				ErrorMessage("Inset command needs an argument");
-				return (ERR);
-			}
-			if (ArgScan(itfc, args, 1, "","e","d",&n) == 1)
-			{
-				Inset* inset = pd->findInsetByID(n);
-				if (inset)
-				{
-					itfc->retVar[1].MakeClass(INSET_CLASS, (void*)inset);
-					itfc->nrRetValues = 1;
-					return(OK);
-				}
-				else
-				{
-					ErrorMessage("Invalid inset number %s",args);
-					return(ERR);
-				}
-			}
-		}
+      else if (!strcmp(name,"inset") || !strcmp(name,"annotation"))
+      {
+         short n;
+         if (!args)
+         {
+            ErrorMessage("Inset command needs an argument");
+            return (ERR);
+         }
+         if (ArgScan(itfc, args, 1, "","e","d",&n) == 1)
+         {
+            Inset* inset = pd->findInsetByID(n);
+            if (inset)
+            {
+               itfc->retVar[1].MakeClass(INSET_CLASS, (void*)inset);
+               itfc->nrRetValues = 1;
+               return(OK);
+            }
+            else
+            {
+               ErrorMessage("Invalid inset number %s",args);
+               return(ERR);
+            }
+         }
+      }
       // Get or set trace preferences
       else if(!strcmp(name,"tracepref"))
       {
@@ -2133,99 +2133,99 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          return(r);
       }
       // Get the current y-axis (left or right)
-		else if (!strcmp(name,"currentaxis"))
-		{
-			CText currentaxis = "undefined";
-			if(ArgScan(itfc,args,0,"left/right","e","t",&currentaxis) < 0)
+      else if (!strcmp(name,"currentaxis"))
+      {
+         CText currentaxis = "undefined";
+         if(ArgScan(itfc,args,0,"left/right","e","t",&currentaxis) < 0)
          {
             ErrorMessage("Expecting 0/1 arguments (left/right)");
             return(ERR);
          }
-			if ("left" == currentaxis)
-			{
-				pd->setCurYAxis(LEFT_VAXIS_SIDE);
-				itfc->nrRetValues = 0;
-			}
-			else if ("right" == currentaxis)
-			{
-				pd->setCurYAxis(RIGHT_VAXIS_SIDE);
-				itfc->nrRetValues = 0;
-			}
-			else
-			{
-				if (pd->currentVerticalAxis() == LEFT_VAXIS_SIDE)
-					itfc->retVar[1].MakeAndSetString("left");	
-				else
-					itfc->retVar[1].MakeAndSetString("right");	
-				itfc->nrRetValues = 1;
-			}
+         if ("left" == currentaxis)
+         {
+            pd->setCurYAxis(LEFT_VAXIS_SIDE);
+            itfc->nrRetValues = 0;
+         }
+         else if ("right" == currentaxis)
+         {
+            pd->setCurYAxis(RIGHT_VAXIS_SIDE);
+            itfc->nrRetValues = 0;
+         }
+         else
+         {
+            if (pd->currentVerticalAxis() == LEFT_VAXIS_SIDE)
+               itfc->retVar[1].MakeAndSetString("left");	
+            else
+               itfc->retVar[1].MakeAndSetString("right");	
+            itfc->nrRetValues = 1;
+         }
 
-			return OK;
-		}
+         return OK;
+      }
      // Synchronise left and right axis when panning
-		else if (!strcmp(name,"syncaxes"))
-		{
-			CText synch = "undefined";
-			if(ArgScan(itfc,args,0,"true/false","e","t",&synch) < 0)
+      else if (!strcmp(name,"syncaxes"))
+      {
+         CText synch = "undefined";
+         if(ArgScan(itfc,args,0,"true/false","e","t",&synch) < 0)
          {
             ErrorMessage("Expecting 0/1 arguments (true/false)");
             return(ERR);
          }
-			if ("true" == synch)
-			{
-				pd->setSyncAxes(true);
+         if ("true" == synch)
+         {
+            pd->setSyncAxes(true);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"sync_axes",true);
-				itfc->nrRetValues = 0;
-			}
-			else if ("false" == synch)
-			{
-				pd->setSyncAxes(false);
+            itfc->nrRetValues = 0;
+         }
+         else if ("false" == synch)
+         {
+            pd->setSyncAxes(false);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"sync_axes",false);
-				itfc->nrRetValues = 0;
-			}
-			else 
-			{
-				if (pd->syncAxes())
-					itfc->retVar[1].MakeAndSetString("true");
-				else
-					itfc->retVar[1].MakeAndSetString("false");
-				itfc->nrRetValues = 1;
-			}
-			return OK;
-		}
+            itfc->nrRetValues = 0;
+         }
+         else 
+         {
+            if (pd->syncAxes())
+               itfc->retVar[1].MakeAndSetString("true");
+            else
+               itfc->retVar[1].MakeAndSetString("false");
+            itfc->nrRetValues = 1;
+         }
+         return OK;
+      }
       // Lock left and right grids
-		else if (!strcmp(name,"lockgrid"))
-		{
-			CText lock = "undefined";
-			if(ArgScan(itfc,args,0,"true/false","e","t",&lock) < 0)
+      else if (!strcmp(name,"lockgrid"))
+      {
+         CText lock = "undefined";
+         if(ArgScan(itfc,args,0,"true/false","e","t",&lock) < 0)
          {
             ErrorMessage("Expecting 0/1 arguments (true/false)");
             return(ERR);
          }
-			if ("true" == lock)
-			{
-				pd->lockGrid(true);
+         if ("true" == lock)
+         {
+            pd->lockGrid(true);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"lock_grid",true);
-				itfc->nrRetValues = 0;
-			}
-			else if ("false" == lock)
-			{
-				pd->lockGrid(false);
+            itfc->nrRetValues = 0;
+         }
+         else if ("false" == lock)
+         {
+            pd->lockGrid(false);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"lock_grid",false);
-				itfc->nrRetValues = 0;
-			}
-			else
-			{
-				if (pd->gridLocked())
-					itfc->retVar[1].MakeAndSetString("true");
-				else
-					itfc->retVar[1].MakeAndSetString("false");
-				itfc->nrRetValues = 1;
-			}
-			return OK;
-		}
+            itfc->nrRetValues = 0;
+         }
+         else
+         {
+            if (pd->gridLocked())
+               itfc->retVar[1].MakeAndSetString("true");
+            else
+               itfc->retVar[1].MakeAndSetString("false");
+            itfc->nrRetValues = 1;
+         }
+         return OK;
+      }
 
-		else if (!strcmp(name,"load")) // Load a  file into a plot region
+      else if (!strcmp(name,"load")) // Load a  file into a plot region
       {
          extern void GetExtension(char *file, char *extension);
 
@@ -2246,17 +2246,17 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          PlotWindow *pw;
          pw = pd->plotParent;
          pd->makeCurrentPlot();
-			pd->makeCurrentDimensionalPlot();
+         pd->makeCurrentDimensionalPlot();
          short bak = pw->getPlotInsertMode();    
          pw->setPlotInsertMode(ID_REPLACE_PLOTS);   
          pw->LoadPlots(".",fileName.Str());
          pw->setPlotInsertMode(bak);    
-			InvalidateRect(pw->hWnd,NULL,false); 
+         InvalidateRect(pw->hWnd,NULL,false); 
          itfc->nrRetValues = 0;
 
          return(OK);
       }
-		else if (!strcmp(name,"save")) // Save a plot region to a file
+      else if (!strcmp(name,"save")) // Save a plot region to a file
       {
          extern void GetExtension(char *file, char *extension);
 
@@ -2271,10 +2271,10 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          GetExtension(fileName.Str(),ext);
 
          if(!strcmp(ext,"1d"))
-			{
+         {
             Plot1D *pt1d = dynamic_cast<Plot1D*>(pd);
-				return(pt1d->SaveData(".",fileName.Str()));
-			}
+            return(pt1d->SaveData(".",fileName.Str()));
+         }
 
          if(strcmp(ext,"pt1"))
          {
@@ -2282,67 +2282,67 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             return(ERR);
          }
          FILE *fp;
-	      if(!(fp = fopen(fileName.Str(),"wb")))
-	      {
-		      ErrorMessage("Can't save file '%s'",fileName.Str());
-		      return(ERR);
-	      }
+         if(!(fp = fopen(fileName.Str(),"wb")))
+         {
+            ErrorMessage("Can't save file '%s'",fileName.Str());
+            return(ERR);
+         }
 
-	      long ti = 'PROS'; fwrite(&ti,4,1,fp);   // Owner
-	      ti = 'PL1D'; fwrite(&ti,4,1,fp);   // File type
+         long ti = 'PROS'; fwrite(&ti,4,1,fp);   // Owner
+         ti = 'PL1D'; fwrite(&ti,4,1,fp);   // File type
          short rowCols = 1;
-		   fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region rows
-		   fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region cols
+         fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region rows
+         fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region cols
 
-			pd->save(fp);
-			pd->SaveV3_8Info(fp);
-		   fclose(fp);
+         pd->save(fp);
+         pd->SaveV3_8Info(fp);
+         fclose(fp);
 
          pd->setFileName(fileName.Str());
          CText filePath;
          GetCurrentDirectory(filePath);
          pd->setFilePath(filePath.Str());
                
-	
+   
          itfc->nrRetValues = 0;
 
          return(OK);
       }
 
       // Show or hide the plot legend
-		else if (!strcmp(name,"showlegend"))
-		{			
-			CText show = "undefined";
+      else if (!strcmp(name,"showlegend"))
+      {			
+         CText show = "undefined";
 
-			if(ArgScan(itfc,args,0,"true/false","e","t",&show) < 0)
+         if(ArgScan(itfc,args,0,"true/false","e","t",&show) < 0)
          {
             ErrorMessage("Expecting 0/1 arguments (true/false)");
             return(ERR); 
          }
-			if ("true" == show)
-			{
-				pd->showLegend(true);
+         if ("true" == show)
+         {
+            pd->showLegend(true);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"show_legend",true);
 
-				itfc->nrRetValues = 0;
-			}
-			else if ("false" == show)
-			{
-				pd->showLegend(false);
+            itfc->nrRetValues = 0;
+         }
+         else if ("false" == show)
+         {
+            pd->showLegend(false);
             pd->plotParent->obj->winParent->setMenuItemCheck(pd->plotParent->menuName(),"show_legend",false);
 
-				itfc->nrRetValues = 0;
-			}
-			else
-			{
-				if (pd->legendIsVisible())
-					itfc->retVar[1].MakeAndSetString("true");
-				else
-					itfc->retVar[1].MakeAndSetString("false");
-				itfc->nrRetValues = 1;
-			}
-			return OK;
-		}
+            itfc->nrRetValues = 0;
+         }
+         else
+         {
+            if (pd->legendIsVisible())
+               itfc->retVar[1].MakeAndSetString("true");
+            else
+               itfc->retVar[1].MakeAndSetString("false");
+            itfc->nrRetValues = 1;
+         }
+         return OK;
+      }
    }
 
 // --------- 2D plot functions ------------------
@@ -2356,7 +2356,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          {
             short mode = 1;
             CText modeStr = "all";
-			   if(ArgScan(itfc,args,0,"all/current","e","t",&modeStr) < 0)
+            if(ArgScan(itfc,args,0,"all/current","e","t",&modeStr) < 0)
             {
                ErrorMessage("Expecting 0/1 arguments (all/current)");
                return(ERR); 
@@ -2389,17 +2389,17 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          itfc->nrRetValues = 3;
          return(OK);
       }
-		else if (!strcmp(name,"limitfunc"))
+      else if (!strcmp(name,"limitfunc"))
       {
-			CText limitfunc = "false";
-			if(ArgScan(itfc,args,0,"true/false","e","t",&limitfunc) == ERR)
+         CText limitfunc = "false";
+         if(ArgScan(itfc,args,0,"true/false","e","t",&limitfunc) == ERR)
          {
             ErrorMessage("Expecting 0/1 argument (true/false)");
             return(ERR);
          }
 
          Plot2D *pr = dynamic_cast<Plot2D*>(pd);
-			if(limitfunc == "true")
+         if(limitfunc == "true")
          {
             pr->limitfunc = true;
          }
@@ -2407,7 +2407,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          {
             pr->limitfunc = false;
          }
-			itfc->nrRetValues = 0;
+         itfc->nrRetValues = 0;
          return OK;
       }
       // Draw image to plot
@@ -2415,23 +2415,23 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       {
          if(args)
          {
-				MSG msg;
+            MSG msg;
             short r = OK;
 
             while(pd->plotParent->isBusy())
-					PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+               PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
 
             EnterCriticalSection(&cs1DPlot);
 
             if(!pd->plotParent->isBusy())
-	         {
-		         pd->plotParent->setBusy(true);
+            {
+               pd->plotParent->setBusy(true);
                LeaveCriticalSection(&cs1DPlot);     
                r = dynamic_cast<Plot2D*>(pd)->Draw2DImage(itfc,args);
                pd->plotParent->setBusyWithCriticalSection(false);
             }
             else
-		         LeaveCriticalSection(&cs1DPlot);
+               LeaveCriticalSection(&cs1DPlot);
 
 
             itfc->nrRetValues = 0;
@@ -2622,34 +2622,34 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
       }
       // Set data mapping
-		else if(!strcmp(name,"datamapping"))
-		{
+      else if(!strcmp(name,"datamapping"))
+      {
          Plot2D *p2d = dynamic_cast<Plot2D*>(pd);
          if(!args || args[0] == '\0')
-			{
-			   if(p2d->dataMapping == LINEAR_MAPPING)
-		         itfc->retVar[1].MakeAndSetString("linear");
-				else
-					itfc->retVar[1].MakeAndSetString("log");
-				itfc->nrRetValues = 1;
-			}
-			else
-			{		
-				CText mapping;
-				if(ArgScan(itfc,args,1,"mapping","e","t",&mapping) < 0)
+         {
+            if(p2d->dataMapping == LINEAR_MAPPING)
+               itfc->retVar[1].MakeAndSetString("linear");
+            else
+               itfc->retVar[1].MakeAndSetString("log");
+            itfc->nrRetValues = 1;
+         }
+         else
+         {		
+            CText mapping;
+            if(ArgScan(itfc,args,1,"mapping","e","t",&mapping) < 0)
             {
                ErrorMessage("Expecting 1 argument (log/lin)");
                return(ERR); 
             }
-				if(mapping == "linear" || mapping == "lin")
-					p2d->dataMapping = LINEAR_MAPPING;
-				else if(mapping == "logarithmic" || mapping == "log")
-					p2d->dataMapping = LOG_MAPPING;
-				pd->DisplayAll(false);  
+            if(mapping == "linear" || mapping == "lin")
+               p2d->dataMapping = LINEAR_MAPPING;
+            else if(mapping == "logarithmic" || mapping == "log")
+               p2d->dataMapping = LOG_MAPPING;
+            pd->DisplayAll(false);  
             itfc->nrRetValues = 0;
-			}
-			return(OK);
-		}
+         }
+         return(OK);
+      }
       // Get or set image color scale mapping range
       else if(!strcmp(name,"imagerange"))
       {
@@ -2721,7 +2721,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
       }
 
-		else if (!strcmp(name,"load")) // Load a  file into a plot region
+      else if (!strcmp(name,"load")) // Load a  file into a plot region
       {
          extern void GetExtension(char *file, char *extension);
 
@@ -2743,18 +2743,18 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          PlotWindow *pw;
          pw = pd->plotParent;
          pd->makeCurrentPlot();
-			pd->makeCurrentDimensionalPlot();
+         pd->makeCurrentDimensionalPlot();
          short bak = pw->getPlotInsertMode();    
          pw->setPlotInsertMode(ID_REPLACE_PLOTS);    
          pw->LoadPlots(".",fileName.Str());
          pw->setPlotInsertMode(bak);  
-			InvalidateRect(pw->hWnd,NULL,false); 
+         InvalidateRect(pw->hWnd,NULL,false); 
          itfc->nrRetValues = 0;
 
          return(OK);
       }
 
-		else if (!strcmp(name,"save")) // Save a image region to a file
+      else if (!strcmp(name,"save")) // Save a image region to a file
       {
          extern void GetExtension(char *file, char *extension);
 
@@ -2770,10 +2770,10 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
 
          // Save as simple 2D data file
          if(!strcmp(ext,"2d"))
-			{
+         {
             Plot2D *pt2d = dynamic_cast<Plot2D*>(pd);
-				return(pt2d->SaveData(".",fileName.Str()));
-			}
+            return(pt2d->SaveData(".",fileName.Str()));
+         }
          // Save as 2D plot file
          if(strcmp(ext,"pt2"))
          {
@@ -2782,26 +2782,26 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
 
          FILE *fp;
-	      if(!(fp = fopen(fileName.Str(),"wb")))
-	      {
-		      ErrorMessage("Can't save file '%s'",fileName.Str());
-		      return(ERR);
-	      }
+         if(!(fp = fopen(fileName.Str(),"wb")))
+         {
+            ErrorMessage("Can't save file '%s'",fileName.Str());
+            return(ERR);
+         }
 
-	      long ti = 'PROS'; fwrite(&ti,4,1,fp);   // Owner
-	      ti = 'PL2D'; fwrite(&ti,4,1,fp);   // File type
+         long ti = 'PROS'; fwrite(&ti,4,1,fp);   // Owner
+         ti = 'PL2D'; fwrite(&ti,4,1,fp);   // File type
          short rowCols = 1;
-		   fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region rows
-		   fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region cols
+         fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region rows
+         fwrite(&rowCols,sizeof(short),1,fp);   // Number of plot region cols
 
-			pd->save(fp);
-		   fclose(fp);
+         pd->save(fp);
+         fclose(fp);
 
          pd->setFileName(fileName.Str());
          CText pathName;
          GetCurrentDirectory(pathName);
          pd->setFilePath(pathName.Str());
-	
+   
          itfc->nrRetValues = 0;
 
          return(OK);
@@ -2827,10 +2827,10 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          {
             itfc->nrRetValues = 1;
 
-				if(show == "true")
-					itfc->retVar[1].MakeAndSetString("true");
-				else
-					itfc->retVar[1].MakeAndSetString("false");
+            if(show == "true")
+               itfc->retVar[1].MakeAndSetString("true");
+            else
+               itfc->retVar[1].MakeAndSetString("false");
 
             return(OK);
          }
@@ -2859,34 +2859,34 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
 // --------- General functions (1D or 2D) ------------------
 
    // Add an annotation to a plot
-	if (!strcmp(name,"addannotation"))
-	{
-		CText text;
-		int width = 0;
-		int left = 0;
-		int top = 0;
-		if(ArgScan(itfc,args,0,"text, [width, left, top]","eeee","tddd",&text,&width,&left,&top) < 0)
-			return(ERR); 
-		pd->addInset(Inset::makeInset(ANNOTATION, string(text.Str()), width, left, top));
-		pd->DisplayAll(false);
-		itfc->nrRetValues = 0;
-		return(OK);			
-	}
+   if (!strcmp(name,"addannotation"))
+   {
+      CText text;
+      int width = 0;
+      int left = 0;
+      int top = 0;
+      if(ArgScan(itfc,args,0,"text, [width, left, top]","eeee","tddd",&text,&width,&left,&top) < 0)
+         return(ERR); 
+      pd->addInset(Inset::makeInset(ANNOTATION, string(text.Str()), width, left, top));
+      pd->DisplayAll(false);
+      itfc->nrRetValues = 0;
+      return(OK);			
+   }
 
 
    // Add a line to a plot
-	else if (!strcmp(name,"addline"))
-	{
-		CText text;
+   else if (!strcmp(name,"addline"))
+   {
+      CText text;
       Variable colVec;
       COLORREF color = RGB(255,0,0);
       CText styleTxt = "dash";
       LineStyle style = LineStyle::SOLID;
       short thickness = 1;
 
-		float x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+      float x0 = 0, x1 = 0, y0 = 0, y1 = 0;
       short units = 0;
-		int n = ArgScan(itfc,args,4,"x0, y0, x1, y1, color, thickness, style, units","eeeeeeee","ffffvdtd",&x0,&y0,&x1,&y1,&colVec,&thickness,&styleTxt,&units);
+      int n = ArgScan(itfc,args,4,"x0, y0, x1, y1, color, thickness, style, units","eeeeeeee","ffffvdtd",&x0,&y0,&x1,&y1,&colVec,&thickness,&styleTxt,&units);
       if(n < 0)
       {
          ErrorMessage("Expecting 4 arguments");
@@ -2921,14 +2921,14 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
 
       PlotLine* ln = new PlotLine(x0,y0,x1,y1,color,thickness,style,units);
       pd->lines_.push_back(ln);
-		pd->DisplayAll(false);
-		itfc->nrRetValues = 0;
-		return(OK);		
-	}
+      pd->DisplayAll(false);
+      itfc->nrRetValues = 0;
+      return(OK);		
+   }
 
-	else if (!strcmp(name,"addlines"))
-	{
-		CText text;
+   else if (!strcmp(name,"addlines"))
+   {
+      CText text;
       Variable vec;
       Variable colVec;
       COLORREF color = RGB(255,0,0);
@@ -2936,9 +2936,9 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       LineStyle style = LineStyle::SOLID;
       short thickness = 1;
       float **lineVectors;
-		int units=0;
+      int units=0;
 
-		int n = ArgScan(itfc,args,1,"vector, color, width, style","eeeee","vvdtd",&vec,&colVec,&thickness,&styleTxt,&units);
+      int n = ArgScan(itfc,args,1,"vector, color, width, style","eeeee","vvdtd",&vec,&colVec,&thickness,&styleTxt,&units);
       if(n < 0)
       {
          ErrorMessage("Expecting 1-5 arguments");
@@ -3002,7 +3002,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          float x0,y0,x1,y1;
          float *colMat;
          CText styleTxt;
-			short units;
+         short units;
 
 
          for(int i = 0; i < size; i++)
@@ -3061,21 +3061,21 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
 
          }
       }
-	   pd->DisplayAll(false);
+      pd->DisplayAll(false);
 
-	   itfc->nrRetValues = 0;
-	   return(OK);	
-	}
+      itfc->nrRetValues = 0;
+      return(OK);	
+   }
 
    else if (!strcmp(name,"getlines")) // Extract any lines and return in a structure array
-	{
+   {
 
       int nrLines = pd->lines_.size();
       if(nrLines == 0)
       {
          itfc->retVar[1].MakeNullVar();
-	      itfc->nrRetValues = 1;
-	      return(OK);	
+         itfc->nrRetValues = 1;
+         return(OK);	
       }
 
       itfc->retVar[1].MakeStructArray(nrLines);
@@ -3100,12 +3100,12 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          s->AddToStructure("color",ln->color);
          s->AddToStructure("units",(float)ln->units);
       }
-	   itfc->nrRetValues = 1;
-	   return(OK);	
-	}
+      itfc->nrRetValues = 1;
+      return(OK);	
+   }
 
    else if (!strcmp(name,"gettext")) // Extract any text and return in 6 column matrix and a list
-	{
+   {
       float xPos,yPos;
       PlotText *txt;
 
@@ -3119,8 +3119,8 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       if(nrStrings == 0)
       {
          itfc->retVar[1].MakeNullVar();
-	      itfc->nrRetValues = 1;
-	      return(OK);	
+         itfc->nrRetValues = 1;
+         return(OK);	
       }
 
       if(nrArgs == 0)
@@ -3143,15 +3143,15 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             s->AddToStructure("yh",txt->yh);
             s->AddToStructure("angle",txt->angle);
             s->AddToStructure("size",(float)txt->size);
-				char unitsStr[3];
-				unitsStr[0] = (char)(((txt->units & 0xF0)>>4)+48);
-				unitsStr[1] = (char)((txt->units & 0x0F) + 48);
-				unitsStr[2] = '\0';
+            char unitsStr[3];
+            unitsStr[0] = (char)(((txt->units & 0xF0)>>4)+48);
+            unitsStr[1] = (char)((txt->units & 0x0F) + 48);
+            unitsStr[2] = '\0';
             s->AddToStructure("units",unitsStr);
           //  s->AddToStructure("units",(txt->units) ? "pixels" : "user");
          }
-	      itfc->nrRetValues = 1;
-	      return(OK);	
+         itfc->nrRetValues = 1;
+         return(OK);	
       }
 
       if(nrArgs == 1) // Find text closest to xPos
@@ -3211,13 +3211,13 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       s->AddToStructure("units",(txt->units) ? "pixels" : "user");
       
       itfc->nrRetValues = 1;
-	   return(OK);	
-	}
+      return(OK);	
+   }
 
   // Add text to a plot 
-	else if (!strcmp(name,"addtext"))
-	{
-		CText text;
+   else if (!strcmp(name,"addtext"))
+   {
+      CText text;
       Variable posVar;
       Variable shiftVar;
       Variable textVar;
@@ -3235,7 +3235,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       float fontAngle = 0;
       short n;
 
-		if((n = ArgScan(itfc,args,1,"pos/info[, text, textShift, font, fontSize, fontAngle, style, color, [units]]","eeeeeeeee","vvvtdftvt",&posVar,&textVar, &shiftVar,&fontName,&fontSize,&fontAngle,&fontStyle,&fontColorVar,&units)) < 0)
+      if((n = ArgScan(itfc,args,1,"pos/info[, text, textShift, font, fontSize, fontAngle, style, color, [units]]","eeeeeeeee","vvvtdftvt",&posVar,&textVar, &shiftVar,&fontName,&fontSize,&fontAngle,&fontStyle,&fontColorVar,&units)) < 0)
       {
          ErrorMessage("Expecting 1-9 arguments");
          return(ERR);
@@ -3379,17 +3379,17 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
       }
 
-	   pd->DisplayAll(false);
+      pd->DisplayAll(false);
 
-	   itfc->nrRetValues = 0;
-	   return(OK);	
-	}
+      itfc->nrRetValues = 0;
+      return(OK);	
+   }
 
    // Copy from plot to temp storage
    else if(!strcmp(name,"copy"))
    {
-	   if(pd->DataPresent())
-		   pd->plotParent->SetSavedPlot(pd->clone());
+      if(pd->DataPresent())
+         pd->plotParent->SetSavedPlot(pd->clone());
       itfc->nrRetValues = 0;
       return(OK);
    }
@@ -3402,7 +3402,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          ErrorMessage("Expecting 0/1 arguments");
          return(ERR);
       }
-	   if(pd->DataPresent())
+      if(pd->DataPresent())
          pd->plotParent->CopyPlotsToClipboard(modeTxt == "all");
       itfc->nrRetValues = 0;
       return(OK);
@@ -3417,8 +3417,8 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
    }
 
    // Remove all lines from a plot
-	else if (!strcmp(name,"rmlines"))
-	{
+   else if (!strcmp(name,"rmlines"))
+   {
       float xPos,yPos;
 
       if((nrArgs = ArgScan(itfc,args,0,"[x,] y]","ee","ff",&xPos,&yPos)) < 0)
@@ -3429,11 +3429,11 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
 
       if(nrArgs == 0)
       {
-	      std::for_each(pd->lines_.begin(), pd->lines_.end(), delete_object());
+         std::for_each(pd->lines_.begin(), pd->lines_.end(), delete_object());
          pd->lines_.clear();
-		   pd->DisplayAll(false);
-		   itfc->nrRetValues = 0;
-		   return(OK);
+         pd->DisplayAll(false);
+         itfc->nrRetValues = 0;
+         return(OK);
       }
       else if(nrArgs == 1) // Remove line closest to xPos
       {
@@ -3452,9 +3452,9 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
          if(pos >= 0)
             pd->lines_.erase(pd->lines_.begin() + pos);
-		   pd->DisplayAll(false);
-		   itfc->nrRetValues = 0;
-		   return(OK);	
+         pd->DisplayAll(false);
+         itfc->nrRetValues = 0;
+         return(OK);	
       }
       else // Remove line closest to (xPos,yPos)
       {
@@ -3475,15 +3475,15 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
          if(pos >= 0)
             pd->lines_.erase(pd->lines_.begin() + pos);
-		   pd->DisplayAll(false);
-		   itfc->nrRetValues = 0;
-		   return(OK);	
+         pd->DisplayAll(false);
+         itfc->nrRetValues = 0;
+         return(OK);	
       }
    }
 
    // Remove text annotations from a plot [all, by position, by text]
-	else if (!strcmp(name,"rmtext"))
-	{
+   else if (!strcmp(name,"rmtext"))
+   {
       Variable var1,var2;
 
       if((nrArgs = ArgScan(itfc,args,0,"[[x/txt,] y]","ee","vv",&var1,&var2)) < 0)
@@ -3500,89 +3500,89 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             delete txt;
          }
          pd->text_.clear();
-		   pd->DisplayAll(false);
-		   itfc->nrRetValues = 0;
-		   return(OK);	
+         pd->DisplayAll(false);
+         itfc->nrRetValues = 0;
+         return(OK);	
       }
       else if(nrArgs == 1) // Remove text closest to xPos
       {
-			if(var1.GetType() == FLOAT32)
-			{
-				int xPos = nint(var1.GetReal());
-				int pos = -1;
-				float dis = 1e30;
-				for(int i = 0; i < pd->text_.size(); i++)
-				{
-					PlotText *txt = pd->text_[i];
-					float x = txt->x;
-					float r = fabs(x-xPos);
-					if(r < dis)
-					{
-						pos = i;
-						dis = r;
-					}
-				}
-				if(pos >= 0)
-					pd->text_.erase(pd->text_.begin() + pos);
-				pd->DisplayAll(false);
-				itfc->nrRetValues = 0;
-			}
-			else if(var1.GetType() == UNQUOTED_STRING)
-			{
-				CText inputTxt = var1.GetString();
-				int pos = -1;
-				for(int i = 0; i < pd->text_.size(); i++)
-				{
-					PlotText *ptxt = pd->text_[i];
-					if(ptxt->txt == inputTxt)
-					{
-						pos = i;
-						break;
-					}	
-				}
-				if(pos >= 0)
-					pd->text_.erase(pd->text_.begin() + pos);
-				pd->DisplayAll(false);
-			}
-			else
-			{
-				ErrorMessage("Invalid data type for rmtext command");
-				return(ERR);
-			}
-		   return(OK);	
+         if(var1.GetType() == FLOAT32)
+         {
+            int xPos = nint(var1.GetReal());
+            int pos = -1;
+            float dis = 1e30;
+            for(int i = 0; i < pd->text_.size(); i++)
+            {
+               PlotText *txt = pd->text_[i];
+               float x = txt->x;
+               float r = fabs(x-xPos);
+               if(r < dis)
+               {
+                  pos = i;
+                  dis = r;
+               }
+            }
+            if(pos >= 0)
+               pd->text_.erase(pd->text_.begin() + pos);
+            pd->DisplayAll(false);
+            itfc->nrRetValues = 0;
+         }
+         else if(var1.GetType() == UNQUOTED_STRING)
+         {
+            CText inputTxt = var1.GetString();
+            int pos = -1;
+            for(int i = 0; i < pd->text_.size(); i++)
+            {
+               PlotText *ptxt = pd->text_[i];
+               if(ptxt->txt == inputTxt)
+               {
+                  pos = i;
+                  break;
+               }	
+            }
+            if(pos >= 0)
+               pd->text_.erase(pd->text_.begin() + pos);
+            pd->DisplayAll(false);
+         }
+         else
+         {
+            ErrorMessage("Invalid data type for rmtext command");
+            return(ERR);
+         }
+         return(OK);	
       }
       else // Remove text closest to (xPos,yPos)
       {
-			if(var1.GetType() == FLOAT32 && var2.GetType() == FLOAT32)
-			{
-				int xPos = nint(var1.GetReal());
-				int yPos = nint(var2.GetReal());
+         if(var1.GetType() == FLOAT32 && var2.GetType() == FLOAT32)
+         {
+            int xPos = nint(var1.GetReal());
+            int yPos = nint(var2.GetReal());
 
-				int pos = -1;
-				float dis = 1e30;
-				for(int i = 0; i < pd->text_.size(); i++)
-				{
-					PlotText *txt = pd->text_[i];
-					float x = txt->x;
-					float y = txt->y;
-					float r = sqrt((x-xPos)*(x-xPos) + (y-yPos)*(y-yPos));
-					if(r < dis)
-					{
-						pos = i;
-						dis = r;
-					}
-				}
-				if(pos >= 0)
-					pd->text_.erase(pd->text_.begin() + pos);
-				pd->DisplayAll(false);
-				itfc->nrRetValues = 0;
-				return(OK);	
-			}
-			else
-			{
-				ErrorMessage("Invalid data types for rmtext command");
-				return(ERR);
-			}
+            int pos = -1;
+            float dis = 1e30;
+            for(int i = 0; i < pd->text_.size(); i++)
+            {
+               PlotText *txt = pd->text_[i];
+               float x = txt->x;
+               float y = txt->y;
+               float r = sqrt((x-xPos)*(x-xPos) + (y-yPos)*(y-yPos));
+               if(r < dis)
+               {
+                  pos = i;
+                  dis = r;
+               }
+            }
+            if(pos >= 0)
+               pd->text_.erase(pd->text_.begin() + pos);
+            pd->DisplayAll(false);
+            itfc->nrRetValues = 0;
+            return(OK);	
+         }
+         else
+         {
+            ErrorMessage("Invalid data types for rmtext command");
+            return(ERR);
+         }
       }
    }
 
@@ -3607,7 +3607,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
             ErrorMessage("Expecting 4 arguments");
             return(ERR);
          }
-	      Margins m(left,right,top,base);
+         Margins m(left,right,top,base);
          pd->setMargins(m);
          pd->DisplayAll(false);
          itfc->nrRetValues = 0;
@@ -3616,60 +3616,60 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
    }
 
  // Add an image inset to a plot
-	else if (!strcmp(name,"addimageinset") || !strcmp(name,"addimageannoation"))
-	{
-		CText text;
-		int width=0;
-		int left = 0;
-		int top = 0;
-		if(ArgScan(itfc,args,1,"text, [width, left, top]","eeee","tddd",&text,&width,&left,&top) == ERR)
+   else if (!strcmp(name,"addimageinset") || !strcmp(name,"addimageannoation"))
+   {
+      CText text;
+      int width=0;
+      int left = 0;
+      int top = 0;
+      if(ArgScan(itfc,args,1,"text, [width, left, top]","eeee","tddd",&text,&width,&left,&top) == ERR)
       {
          ErrorMessage("Expecting 1 or 4 arguments");
          return(ERR);
       }
-		try
-		{
-			pd->addInset(Inset::makeInset(IMAGE,string(text.Str()),width, left, top));
-		}
-		catch (std::exception& e)
-		{
-			ErrorMessage(e.what());
-			return ERR;
-		}
-		pd->DisplayAll(false);
-		itfc->nrRetValues = 0;
-		return OK;		
-	}
+      try
+      {
+         pd->addInset(Inset::makeInset(IMAGE,string(text.Str()),width, left, top));
+      }
+      catch (std::exception& e)
+      {
+         ErrorMessage(e.what());
+         return ERR;
+      }
+      pd->DisplayAll(false);
+      itfc->nrRetValues = 0;
+      return OK;		
+   }
 
  // List all insets
-	else if(!strcmp(name,"insets") || !strcmp(name,"annotations"))
+   else if(!strcmp(name,"insets") || !strcmp(name,"annotations"))
    {
-		string* insets = pd->describeInsets();
-		itfc->retVar[1].MakeAndSetString(insets->c_str());
+      string* insets = pd->describeInsets();
+      itfc->retVar[1].MakeAndSetString(insets->c_str());
       delete insets;
       itfc->nrRetValues = 1;
       return(OK);
-	}
+   }
 
  // Remove an inset
-	else if(!strcmp(name,"rminset") || !strcmp(name,"rmannotation"))
+   else if(!strcmp(name,"rminset") || !strcmp(name,"rmannotation"))
    {
-		long id;
+      long id;
 
       if((nrArgs = ArgScan(itfc,args,1,"inset ID","e","l",&id)) < 0)
       {
          ErrorMessage("Expecting 1 argument");
          return(ERR);
       }
-		itfc->nrRetValues = 0;
-		if (OK != pd->removeInset(id))
-		{
-			ErrorMessage("Inset/annotation ID '%ld' not found",id);
-			return ERR;
-		}
-		pd->DisplayAll(false);
+      itfc->nrRetValues = 0;
+      if (OK != pd->removeInset(id))
+      {
+         ErrorMessage("Inset/annotation ID '%ld' not found",id);
+         return ERR;
+      }
+      pd->DisplayAll(false);
       return OK;
-	}
+   }
    else if(!strcmp(name,"axes"))
    {
       if(!args || args[0] == '\0') // Return axes class e.g. r->axes()
@@ -3679,17 +3679,17 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       else // Set axes parameter e.g. r->axes("color",[255,0,0])
       {
-	    	 MSG msg;
-		//	 while(pd->plotParent->isBusy())
-		//		PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+          MSG msg;
+      //	 while(pd->plotParent->isBusy())
+      //		PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
        //   pd->plotParent->setBusyWithCriticalSection(true);
-			// printf("In critical section CLASSREF AXES\n");
+         // printf("In critical section CLASSREF AXES\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessAxesParameters(itfc,args);  
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-			// printf("Leaving critical section CLASSREF AXES\n");
+         // printf("Leaving critical section CLASSREF AXES\n");
 
       }
       return(OK);
@@ -3921,7 +3921,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          }
          else if(draw == "false" || draw == "no" || draw == "off")
          {
-				pd->updatingPlots(true);
+            pd->updatingPlots(true);
             pd->updatePlots(false);
          }
          else
@@ -3933,7 +3933,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          pd->DisplayAll(false); 
 
          if(draw == "true" || draw == "yes" || draw == "on")
-				pd->updatingPlots(false);
+            pd->updatingPlots(false);
 
          itfc->nrRetValues = 0;
          return(OK);
@@ -3949,19 +3949,19 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       else // Set grid parameter e.g. r->grid("color",[255,0,0])
       {
-	    	// MSG msg;
-			// while(pd->plotParent->isBusy())
-			//	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+         // MSG msg;
+         // while(pd->plotParent->isBusy())
+         //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
          // pd->plotParent->setBusyWithCriticalSection(true);
          // pd->ProcessGridParameters(itfc,args);  
          // pd->plotParent->setBusyWithCriticalSection(false);
-			// printf("In critical section CLASSREF GRID\n");
+         // printf("In critical section CLASSREF GRID\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessGridParameters(itfc,args);
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-		  //  printf("Leaving critical section CLASSREF GRID\n");
+        //  printf("Leaving critical section CLASSREF GRID\n");
       }
       return(OK);
    }
@@ -4054,19 +4054,19 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       else // Set label parameter e.g. r->xlabel("text","my text")
       {
-	    	// MSG msg;
-			// while(pd->plotParent->isBusy())
-			//	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+         // MSG msg;
+         // while(pd->plotParent->isBusy())
+         //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
         //  pd->plotParent->setBusyWithCriticalSection(true);
         //  pd->ProcessLabelParameters(itfc,"xlabel", args);  
          // pd->plotParent->setBusyWithCriticalSection(false);
-		 //   printf("In critical section CLASSREF XLABEL\n");
+       //   printf("In critical section CLASSREF XLABEL\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessLabelParameters(itfc,"xlabel", args);  
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-			// printf("Leaving critical section CLASSREF XLABE\n");
+         // printf("Leaving critical section CLASSREF XLABE\n");
        }
       return(OK);
    }
@@ -4080,24 +4080,24 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
        else
        {
-	    //	 MSG msg;
-		//	 while(pd->plotParent->isBusy())
-			//	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+       //	 MSG msg;
+      //	 while(pd->plotParent->isBusy())
+         //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
         //  pd->plotParent->setBusyWithCriticalSection(true);
         //  pd->ProcessLabelParameters(itfc,"ylabel", args);  
         //  pd->plotParent->setBusyWithCriticalSection(false);
-		  //  printf("In critical section CLASSREF YLABEL\n");
+        //  printf("In critical section CLASSREF YLABEL\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessLabelParameters(itfc,"ylabel", args);  
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-			// printf("Leaving critical section CLASSREF YLABEL\n");
+         // printf("Leaving critical section CLASSREF YLABEL\n");
        }
       return(OK);
    }
    // Set or get plot left ylabel
-	else if(!strcmp(name,"ylabelleft"))
+   else if(!strcmp(name,"ylabelleft"))
    {
        if(!args || args[0] == '\0')
        {
@@ -4106,25 +4106,25 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
        else
        {
-	    //	 MSG msg;
-		//	 while(pd->plotParent->isBusy())
-			//	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+       //	 MSG msg;
+      //	 while(pd->plotParent->isBusy())
+         //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
         //  pd->plotParent->setBusyWithCriticalSection(true);
         //  pd->ProcessLabelParameters(itfc,"ylabelleft", args);  
         //  pd->plotParent->setBusyWithCriticalSection(false);
-		  //  printf("In critical section CLASSREF YLABEL-LEFT\n");
+        //  printf("In critical section CLASSREF YLABEL-LEFT\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessLabelParameters(itfc,"ylabelleft", args);  
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-			// printf("Leaving critical section CLASSREF YLABEL-LEFT\n");
+         // printf("Leaving critical section CLASSREF YLABEL-LEFT\n");
 
        }
       return(OK);
    }
    // Set or get plot right ylabel
-	else if(!strcmp(name,"ylabelright"))
+   else if(!strcmp(name,"ylabelright"))
    {
        if(!args || args[0] == '\0')
        {
@@ -4133,26 +4133,26 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
        else
        {
-	   // 	 MSG msg;
-			 //while(pd->plotParent->isBusy())
-				//PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+      // 	 MSG msg;
+          //while(pd->plotParent->isBusy())
+            //PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
     //      pd->plotParent->setBusyWithCriticalSection(true);
     //      pd->ProcessLabelParameters(itfc,"ylabelright", args);  
     //      pd->plotParent->setBusyWithCriticalSection(false);
-			 				//	printf("Entering critical section 7\n");
-		 //   printf("In critical section CLASSREF YLABEL-RIGHT\n");
+                     //	printf("Entering critical section 7\n");
+       //   printf("In critical section CLASSREF YLABEL-RIGHT\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           pd->ProcessLabelParameters(itfc,"ylabelright", args);  
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-			// printf("Leaving critical section CLASSREF YLABEL-RIGHT\n");
+         // printf("Leaving critical section CLASSREF YLABEL-RIGHT\n");
 
        }
       return(OK);
    }
    // Set or get vertical status of ylabel
-	else if(!strcmp(name,"ylabelvert"))
+   else if(!strcmp(name,"ylabelvert"))
    {
       if(!args || args[0] == '\0')
       {
@@ -4196,9 +4196,9 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
       }
       else
        {
-	   // 	 MSG msg;
-			 //while(pd->plotParent->isBusy())
-			 //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
+      // 	 MSG msg;
+          //while(pd->plotParent->isBusy())
+          //	PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE);
     //      pd->plotParent->setBusyWithCriticalSection(true);
     //      if(pd->ProcessLabelParameters(itfc,"title", args) == ERR)
     //      {
@@ -4206,7 +4206,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
     //         return(ERR);
     //      }
     //      pd->plotParent->setBusyWithCriticalSection(false);
-		  //  printf("In critical section CLASSREF TITLE\n");
+        //  printf("In critical section CLASSREF TITLE\n");
           EnterCriticalSection(&cs1DPlot);
           pd->plotParent->incCriticalSectionLevel();
           if(pd->ProcessLabelParameters(itfc,"title", args) == ERR)
@@ -4217,7 +4217,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
           }
           LeaveCriticalSection(&cs1DPlot);
           pd->plotParent->decCriticalSectionLevel();
-		  	// printf("Leaving critical section  CLASSREF TITLE\n");
+         // printf("Leaving critical section  CLASSREF TITLE\n");
        }
       return(OK);
    }
@@ -4368,7 +4368,7 @@ short ProcessPlotClassReferences(Interface *itfc, Plot *pd, char* name, char *ar
          return(OK);
       }
    }
-	else
+   else
    {
       ErrorMessage("Unknown or invalid plot function '%s'",name);
       return(ERR);
