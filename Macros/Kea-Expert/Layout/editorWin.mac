@@ -51,6 +51,7 @@ procedure(editorWin, n, m)
    
    menu(m+3,"File",
                 "Open macro\tCtrl+O",funcedit("open macro"),
+                "Open startup macro\tCtrl+Shift+O",editorWin:openStartUpMacro(),
                 "Save macro\tCtrl+S",editorWin:saveMacro(),
                 "Save macro as ...",editorWin:saveMacroAs(),
                 "Separator", ,  
@@ -157,6 +158,7 @@ procedure(hide)
    
    menu(m+3,"File",
                 "Open macro\tCtrl+O",funcedit("open macro"),
+                "Open startup macro\tCtrl+Shift+O",:openStartUpMacro(),
                 "Save macro\tCtrl+S",funcedit("save macro"),
                 "Save macro as ...",funcedit("save macro as"),
                 "Separator", ,  
@@ -287,6 +289,20 @@ procedure(openCurrentEditFolder)
    endif
 
 endproc()
+
+procedure(openStartUpMacro)
+
+   edObj = cureditor()
+   path = "$appdir$\Macros\Kea-Expert"
+   file = "KeaExpertInterface.pex"
+   cd(path)
+   edObj->pathname(path)
+   edObj->filename(file)
+   txt = load(file,"text")
+   edObj->text(txt)
+
+endproc()
+
 
 # When saving text make sure it is cached
 procedure(saveMacroAs)
