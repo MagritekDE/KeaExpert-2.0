@@ -22,50 +22,228 @@ procedure(searchHistory, parentWinNr)
 
 endproc(1)
 
-procedure(windowdefinition)
+#####################################################
+# Do a search for standard experiments which match
+# the folder name criterion:
+#    dateStamp-timeStamp-protocol-comment
+# Ignore all other folders.
+#####################################################
 
-   # Automatically generated window definition procedure.
-   # Any code added manually will be removed if layout modified interactively
-   n = window("Search Experiment History", -1, -1, 689, 455, "resizable")
+procedure(checkForStdExperiment,exptFolder, checkProtocol, checkComment, checkSPANumber, uiProtocol, uiComment, uiSPANr)
 
-      # Define all controls with basic parameters
-      windowvar(lb,titleCtrl,protocolCtrl,commentCtrl,startDayCtrl,startMonthCtrl,startYearCtrl,endDayCtrl,endMonthCtrl,endYearCtrl,checkProtocolCtrl,checkCommentCtrl,checkStartDateCtrl,checkEndDateCtrl,checkSPACtrl,spaCtrl,statusCtrl,parWin,thisWin,wvExportFolder)
-      lb = listbox(1, 10, 143, "ww-19", "wh-173",
-                   :listCallback;)
-      titleCtrl = statictext(2, 270, 10, "center", "Search Critera")
-      searchButton = button(3, "ww-74", 10, 62, 26, "Search",
-         :search();)
-      exportButton = button(4, "ww-74", 43, 62, 26, "Export",
-         :exportFolders();)
-      button(5, "ww-74", 109, 62, 26, "Close",
-         closewindow(0);)
-      statictext(6, 70, 43, "right", "Start date:")
-      checkStartDateCtrl = checkbox(7, 75, 44, "no,yes", "no")
-      startDayCtrl = textmenu(8, 95, 40, 36, 200)
-      startMonthCtrl = textmenu(9, 135, 40, 45, 200)
-      startYearCtrl = textmenu(10, 183, 40, 50, 200)
-      statictext(11, 70, 73, "right", "End date:")
-      checkEndDateCtrl = checkbox(12, 75, 74, "no,yes", "no")
-      endDayCtrl = textmenu(13, 95, 70, 36, 200)
-      endMonthCtrl = textmenu(14, 135, 70, 45, 200)
-      endYearCtrl = textmenu(15, 183, 70, 50, 200)
-      statictext(16, 325, 43, "right", "Protocol:")
-      checkProtocolCtrl = checkbox(17, 330, 44, "no,yes", "no")
-      protocolCtrl = textmenu(18, 350, 40, 150, 100,:protocolSelected())
-      statictext(19, 325, 73, "right", "Comment:")
-      checkCommentCtrl = checkbox(20, 330, 74, "no,yes", "no")
-      commentCtrl = textbox(21, 350, 70, 150)
-      statictext(22, 325, 103, "right", "SPA Number:")
-      checkSPACtrl = checkbox(23, 330, 104, "no,yes", "no")
-      spaCtrl = textbox(24, 350, 100, 150)
-      button(25, "ww-74", 76, 62, 26, "Help",
-         :displayHelp();)
-      stdSWProtocolsCtrl = checkbox(26, 560, 44, "no,yes", "no",:setAvailableProtocols())
-      statictext(27, 530, 37, 50, 50, "center", "Standard protocols")
+   entry = null
 
-      statusCtrl = statusbox(50)
+   try
+      (dateStamp,timeStamp,protocol,comment) = scanstr(exptFolder,"%1-%2-%3-%4")
+      protocol = trimstr(protocol)
 
-endproc(n)
+      if((not(checkProtocol) | caseset(protocol,"lower") == caseset(uiProtocol,"lower")) & (not(checkComment) | issubstr(caseset(comment,"lower"),caseset(uiComment,"lower"))))
+
+         if(ls("data.?d") != null)
+            SPA = :getSPA(2)
+            if(not(checkSPANumber))
+               entry = ["$SPA$|$dateStamp[2:-1]$|$timeStamp$|$protocol$|$comment$"]
+            else
+               if(SPA == uiSPANr)
+                  entry = ["$SPA$|$dateStamp[2:-1]$|$timeStamp$|$protocol$|$comment$"]
+               endif
+            endif
+         endif
+      endif
+
+   catch
+   endtry
+
+endproc(entry)
+
+#####################################################
+# Compare two dates, returning 0 if equal 1 if
+# date2 > date1 and -1 if date2 < date1
+#####################################################
+
+procedure(compareDates, y1, m1, d1, y2, m2, d2)
+
+   mths = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+   m1 = index(mths,m1)+1
+
+   try
+      d2 = eval(d2)
+      d1 = eval(d1)
+      y1 = eval(y1)
+      y2 = eval(y2)
+      m2 = eval(m2)
+   catch
+      return(2)
+   endtry
+
+   if(y1 > y2)
+      return(-1)
+   endif
+   if(y2 > y1)
+      return(1)
+   endif
+   if(m1 > m2)
+      return(-1)
+   endif
+   if(m2 > m1)
+      return(1)
+   endif
+   if(d1 > d2)
+      return(-1)
+   endif
+   if(d2 > d1)
+      return(1)
+   endif   
+
+endproc(0)
+
+#####################################################
+# Copy the contents of src folder to dst folder
+# Only one subfolder level in src folder will be copied
+# Any subfolders in dst will be created as required
+#####################################################
+
+procedure(copyfolder,src,dst)
+
+   bak1 = getcwd()
+   cd(src)
+ # Get a list of all sudirectories including "."
+   dirLst = getdirlist(".",".")
+  # Copy contents of each subdirectory
+   for(d = 0 to size(dirLst)-1)
+      dir = dirLst[d]
+      bak2 = getcwd()
+      cd(dir)
+      fileLst = getfilelist(".")
+      for(f = 0 to size(fileLst)-1)
+        srcFile = src + "\\$fileLst[f]$"
+        mkdir("$dst$\\$dir$")
+        dstFile = "$dst$\\$dir$" + "\\$fileLst[f]$"
+        copyfile(srcFile,dstFile)
+      next(f)
+      cd(bak2)
+   next(d)
+   cd(bak1)
+
+endproc()
+
+#####################################################
+# Convert the datestamp e.g. 200324 to a file path
+# e.g. 2020\03\04
+#####################################################
+
+procedure(dateStampToPath, dateStamp)
+
+   if(gData->getFolderHierarchy() == "date")
+      ds = dateStamp
+      path = "20$ds[0:1]$\\$ds[2:3]$\\$ds[4:5]$"
+   else # Flat
+      path = "."
+   endif
+
+endproc(path)
+
+procedure(displayHelp)
+
+endproc()
+
+#####################################################
+# Make a copy of all folders in the search list and
+# place them in a specified destination directory
+#####################################################
+
+procedure(exportFolders)
+
+   dstDir = getfolder(wvExportFolder,"Select export folder")
+   if(dstDir == "cancel")
+      return
+   endif
+   wvExportFolder = dstDir
+
+   searchList = lb->list()
+   searchList = searchList[1:-1] # Remove the title
+   print("\n")
+   
+   for(k = 0 to size(searchList)-1)
+
+      entry = searchList[k]
+     (spaNr,dateStamp,timeStamp,protocol,comment) = scanstr(entry,"%1|%2|%3|%4|%5")
+
+      filePath = :dateStampToPath(dateStamp)
+      if(comment == "")
+         exptName = "$dateStamp$-$timeStamp$ $protocol$ ()"
+      else
+         exptName = "$dateStamp$-$timeStamp$ $protocol$ ($comment$)"
+      endif
+      srcPath = "$gView->projPathCtrl->text$\\$filePath$\\$exptName$"
+      if(not(isdir(srcPath)))
+         if(comment == "")
+            exptName = "20$dateStamp$-$timeStamp$-$protocol$-"
+         else
+            exptName = "20$dateStamp$-$timeStamp$-$protocol$-$comment$"
+         endif
+         srcPath = "$gView->projPathCtrl->text$\\$filePath$\\$exptName$"
+      endif
+      if(isdir(srcPath))
+         dstPath = "$dstDir$\\$exptName$"
+         mkdir(dstPath)
+         if(isdir(dstPath))
+            :copyfolder(srcPath,dstPath)
+            print("   Copied '$srcPath$' to '$dstPath$'\n")
+         endif
+      else
+         print("   Can't find src directory '$srcPath$'\n")
+      endif
+
+   next(k)
+
+endproc()
+
+#####################################################
+# Get the acquisition parameters and see if this
+# is an expert or a standard software data set
+#####################################################
+
+procedure(getAcqPar)
+
+   no = "no"
+   yes = "yes"
+   try
+      lst = load("acqu.par")
+      lst = fixlist(lst) # Fix unescaped embedded strings
+      par = struct(lst)
+      isStd = isvar("par->Spectrometer")
+      isExpert = isvar("par->specID")
+      if(not(isStd) & not(isExpert))
+         par->specID = "???"
+      endif
+   catch
+      return(null,0)
+   endtry
+
+endproc(par,isStd)
+
+#####################################################
+# Get the SPA number from the acqu.par file
+#####################################################
+
+procedure(getSPA, mode)
+
+   no = "no"
+   yes = "yes"
+   par = struct(load("acqu.par"))
+
+   if(mode == 1)
+      if(isvar("par->specID")) # Expert software
+         return(par->specID)
+      endif
+   else
+      if(isvar("par->Spectrometer")) # Std software
+         return(par->Spectrometer)
+      endif
+   endif
+
+endproc("???")
 
 
  
@@ -136,37 +314,58 @@ procedure(initUI, n)
 
 endproc()
 
-
 #####################################################
-# Choose the desired protocol from a menu list
+# The search list has been clicked on so display the 
+# data set in the main interface
 #####################################################
 
-procedure(setAvailableProtocols)
+procedure(listCallback)
 
-   stdProtocols = stdSWProtocolsCtrl->text
+   if(parentCtrl->zindex == 0)
+      return
+   endif
 
-   if(stdProtocols == "yes")
+   evt = parentCtrl->event
+   if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow")
 
-      expertExpts = gData->convertProtocolName() 
+      if(parentCtrl->text != null)
 
-   else
+         entry = parentCtrl->text
+         idx = parentCtrl->zindex
 
-   # Load all possible protocols into the protocol dropdown menu
-      expertExptsDir = gData->ppLocations
-      expertExpts = list(0)
-      for(k = 0 to size(expertExptsDir)-1)
-         dir = expertExptsDir[k]
-         cd(dir)
-         lst = getdirlist(dir)
-         expertExpts = expertExpts + ["====== $caseset(getbasedir(dir),\"upper\")$ ======"]
-   
-         expertExpts = expertExpts + lst
-         cd("..")
-      next(k)
+         if(idx != 0)
+
+            exptPath = dirList[idx]
+            exptName = getbasedir(exptPath)
+            filePath = getbasepath(exptPath)
+       
+            (spaNr, dateStamp, timeStamp,protocol,comment) = scanstr(entry,"%1|%2|%3|%4|%5")
+    
+            if(comment == "")
+               exptName = "$dateStamp$ $timeStamp$ $protocol$ ()"
+            else
+               exptName = "$dateStamp$ $timeStamp$ $protocol$ ($comment$)"
+            endif
+            filePath = :dateStampToPath(dateStamp)
+  
+            gData->datePath = filePath
+            if(isdir(exptPath))
+               gView->loadHistoryList()
+               gBatch->currentBatchExpt = ""
+               guiwinnr(parWin)
+               if(gData->getFolderHierarchy() == "date")
+                  name = "$timeStamp$|$protocol$|$comment$"
+               else # Flat
+                  name = "$dateStamp$|$timeStamp$|$protocol$|$comment$"
+               endif
+               gView->history->text(name)
+               gExpt->loadExistingDataSet(exptName, exptPath)
+            endif
+         endif
+
+      endif
 
    endif
-   
-   protocolCtrl->menu(expertExpts) 
 
 endproc()
 
@@ -407,280 +606,81 @@ procedure(search)
             
 endproc()
 
-#####################################################
-# Do a search for standard experiments which match
-# the folder name criterion:
-#    dateStamp-timeStamp-protocol-comment
-# Ignore all other folders.
-#####################################################
-
-procedure(checkForStdExperiment,exptFolder, checkProtocol, checkComment, checkSPANumber, uiProtocol, uiComment, uiSPANr)
-
-   entry = null
-
-   try
-      (dateStamp,timeStamp,protocol,comment) = scanstr(exptFolder,"%1-%2-%3-%4")
-      protocol = trimstr(protocol)
-
-      if((not(checkProtocol) | caseset(protocol,"lower") == caseset(uiProtocol,"lower")) & (not(checkComment) | issubstr(caseset(comment,"lower"),caseset(uiComment,"lower"))))
-
-         if(ls("data.?d") != null)
-            SPA = :getSPA(2)
-            if(not(checkSPANumber))
-               entry = ["$SPA$|$dateStamp[2:-1]$|$timeStamp$|$protocol$|$comment$"]
-            else
-               if(SPA == uiSPANr)
-                  entry = ["$SPA$|$dateStamp[2:-1]$|$timeStamp$|$protocol$|$comment$"]
-               endif
-            endif
-         endif
-      endif
-
-   catch
-   endtry
-
-endproc(entry)
 
 #####################################################
-# Get the acquisition parameters and see if this
-# is an expert or a standard software data set
+# Choose the desired protocol from a menu list
 #####################################################
 
-procedure(getAcqPar)
+procedure(setAvailableProtocols)
 
-   no = "no"
-   yes = "yes"
-   try
-      lst = load("acqu.par")
-      lst = fixlist(lst) # Fix unescaped embedded strings
-      par = struct(lst)
-      isStd = isvar("par->Spectrometer")
-      isExpert = isvar("par->specID")
-      if(not(isStd) & not(isExpert))
-         par->specID = "???"
-      endif
-   catch
-      return(null,0)
-   endtry
+   stdProtocols = stdSWProtocolsCtrl->text
 
-endproc(par,isStd)
+   if(stdProtocols == "yes")
 
-#####################################################
-# Get the SPA number from the acqu.par file
-#####################################################
+      expertExpts = gData->convertProtocolName() 
 
-procedure(getSPA, mode)
-
-   no = "no"
-   yes = "yes"
-   par = struct(load("acqu.par"))
-
-   if(mode == 1)
-      if(isvar("par->specID")) # Expert software
-         return(par->specID)
-      endif
    else
-      if(isvar("par->Spectrometer")) # Std software
-         return(par->Spectrometer)
-      endif
-   endif
 
-endproc("???")
-
-#####################################################
-# Compare two dates, returning 0 if equal 1 if
-# date2 > date1 and -1 if date2 < date1
-#####################################################
-
-procedure(compareDates, y1, m1, d1, y2, m2, d2)
-
-   mths = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-   m1 = index(mths,m1)+1
-
-   try
-      d2 = eval(d2)
-      d1 = eval(d1)
-      y1 = eval(y1)
-      y2 = eval(y2)
-      m2 = eval(m2)
-   catch
-      return(2)
-   endtry
-
-   if(y1 > y2)
-      return(-1)
-   endif
-   if(y2 > y1)
-      return(1)
-   endif
-   if(m1 > m2)
-      return(-1)
-   endif
-   if(m2 > m1)
-      return(1)
-   endif
-   if(d1 > d2)
-      return(-1)
-   endif
-   if(d2 > d1)
-      return(1)
-   endif   
-
-endproc(0)
-
-#####################################################
-# The search list has been clicked on so display the 
-# data set in the main interface
-#####################################################
-
-procedure(listCallback)
-
-   if(parentCtrl->zindex == 0)
-      return
-   endif
-
-   evt = parentCtrl->event
-   if(evt == "single_click_down" | evt == "down_arrow" | evt == "up_arrow")
-
-      if(parentCtrl->text != null)
-
-         entry = parentCtrl->text
-         idx = parentCtrl->zindex
-
-         if(idx != 0)
-
-            exptPath = dirList[idx]
-            exptName = getbasedir(exptPath)
-            filePath = getbasepath(exptPath)
-       
-            (spaNr, dateStamp, timeStamp,protocol,comment) = scanstr(entry,"%1|%2|%3|%4|%5")
-    
-            if(comment == "")
-               exptName = "$dateStamp$ $timeStamp$ $protocol$ ()"
-            else
-               exptName = "$dateStamp$ $timeStamp$ $protocol$ ($comment$)"
-            endif
-            filePath = :dateStampToPath(dateStamp)
-  
-            gData->datePath = filePath
-            if(isdir(exptPath))
-               gView->loadHistoryList()
-               gBatch->currentBatchExpt = ""
-               guiwinnr(parWin)
-               if(gData->getFolderHierarchy() == "date")
-                  name = "$timeStamp$|$protocol$|$comment$"
-               else # Flat
-                  name = "$dateStamp$|$timeStamp$|$protocol$|$comment$"
-               endif
-               gView->history->text(name)
-               gExpt->loadExistingDataSet(exptName, exptPath)
-            endif
-         endif
-
-      endif
-
-   endif
-
-endproc()
-
-#####################################################
-# Convert the datestamp e.g. 200324 to a file path
-# e.g. 2020\03\04
-#####################################################
-
-procedure(dateStampToPath, dateStamp)
-
-   if(gData->getFolderHierarchy() == "date")
-      ds = dateStamp
-      path = "20$ds[0:1]$\\$ds[2:3]$\\$ds[4:5]$"
-   else # Flat
-      path = "."
-   endif
-
-endproc(path)
-
-#####################################################
-# Make a copy of all folders in the search list and
-# place them in a specified destination directory
-#####################################################
-
-procedure(exportFolders)
-
-   dstDir = getfolder(wvExportFolder,"Select export folder")
-   if(dstDir == "cancel")
-      return
-   endif
-   wvExportFolder = dstDir
-
-   searchList = lb->list()
-   searchList = searchList[1:-1] # Remove the title
-   print("\n")
+   # Load all possible protocols into the protocol dropdown menu
+      expertExptsDir = gData->ppLocations
+      expertExpts = list(0)
+      for(k = 0 to size(expertExptsDir)-1)
+         dir = expertExptsDir[k]
+         cd(dir)
+         lst = getdirlist(dir)
+         expertExpts = expertExpts + ["====== $caseset(getbasedir(dir),\"upper\")$ ======"]
    
-   for(k = 0 to size(searchList)-1)
+         expertExpts = expertExpts + lst
+         cd("..")
+      next(k)
 
-      entry = searchList[k]
-     (spaNr,dateStamp,timeStamp,protocol,comment) = scanstr(entry,"%1|%2|%3|%4|%5")
-
-      filePath = :dateStampToPath(dateStamp)
-      if(comment == "")
-         exptName = "$dateStamp$-$timeStamp$ $protocol$ ()"
-      else
-         exptName = "$dateStamp$-$timeStamp$ $protocol$ ($comment$)"
-      endif
-      srcPath = "$gView->projPathCtrl->text$\\$filePath$\\$exptName$"
-      if(not(isdir(srcPath)))
-         if(comment == "")
-            exptName = "20$dateStamp$-$timeStamp$-$protocol$-"
-         else
-            exptName = "20$dateStamp$-$timeStamp$-$protocol$-$comment$"
-         endif
-         srcPath = "$gView->projPathCtrl->text$\\$filePath$\\$exptName$"
-      endif
-      if(isdir(srcPath))
-         dstPath = "$dstDir$\\$exptName$"
-         mkdir(dstPath)
-         if(isdir(dstPath))
-            :copyfolder(srcPath,dstPath)
-            print("   Copied '$srcPath$' to '$dstPath$'\n")
-         endif
-      else
-         print("   Can't find src directory '$srcPath$'\n")
-      endif
-
-   next(k)
+   endif
+   
+   protocolCtrl->menu(expertExpts) 
 
 endproc()
 
-#####################################################
-# Copy the contents of src folder to dst folder
-# Only one subfolder level in src folder will be copied
-# Any subfolders in dst will be created as required
-#####################################################
+procedure(windowdefinition)
 
-procedure(copyfolder,src,dst)
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("Search Experiment History", -1, -1, 689, 455, "resizable")
 
-   bak1 = getcwd()
-   cd(src)
- # Get a list of all sudirectories including "."
-   dirLst = getdirlist(".",".")
-  # Copy contents of each subdirectory
-   for(d = 0 to size(dirLst)-1)
-      dir = dirLst[d]
-      bak2 = getcwd()
-      cd(dir)
-      fileLst = getfilelist(".")
-      for(f = 0 to size(fileLst)-1)
-        srcFile = src + "\\$fileLst[f]$"
-        mkdir("$dst$\\$dir$")
-        dstFile = "$dst$\\$dir$" + "\\$fileLst[f]$"
-        copyfile(srcFile,dstFile)
-      next(f)
-      cd(bak2)
-   next(d)
-   cd(bak1)
+      # Define all controls with basic parameters
+      windowvar(lb,titleCtrl,protocolCtrl,commentCtrl,startDayCtrl,startMonthCtrl,startYearCtrl,endDayCtrl,endMonthCtrl,endYearCtrl,checkProtocolCtrl,checkCommentCtrl,checkStartDateCtrl,checkEndDateCtrl,checkSPACtrl,spaCtrl,statusCtrl,parWin,thisWin,wvExportFolder)
+      lb = listbox(1, 10, 143, "ww-19", "wh-173",
+                   :listCallback;)
+      titleCtrl = statictext(2, 270, 10, "center", "Search Critera")
+      searchButton = button(3, "ww-74", 10, 62, 26, "Search",
+         :search();)
+      exportButton = button(4, "ww-74", 43, 62, 26, "Export",
+         :exportFolders();)
+      button(5, "ww-74", 109, 62, 26, "Close",
+         closewindow(0);)
+      statictext(6, 70, 43, "right", "Start date:")
+      checkStartDateCtrl = checkbox(7, 75, 44, "no,yes", "no")
+      startDayCtrl = textmenu(8, 95, 40, 36, 200)
+      startMonthCtrl = textmenu(9, 135, 40, 45, 200)
+      startYearCtrl = textmenu(10, 183, 40, 50, 200)
+      statictext(11, 70, 73, "right", "End date:")
+      checkEndDateCtrl = checkbox(12, 75, 74, "no,yes", "no")
+      endDayCtrl = textmenu(13, 95, 70, 36, 200)
+      endMonthCtrl = textmenu(14, 135, 70, 45, 200)
+      endYearCtrl = textmenu(15, 183, 70, 50, 200)
+      statictext(16, 325, 43, "right", "Protocol:")
+      checkProtocolCtrl = checkbox(17, 330, 44, "no,yes", "no")
+      protocolCtrl = textmenu(18, 350, 40, 150, 100,:protocolSelected())
+      statictext(19, 325, 73, "right", "Comment:")
+      checkCommentCtrl = checkbox(20, 330, 74, "no,yes", "no")
+      commentCtrl = textbox(21, 350, 70, 150)
+      statictext(22, 325, 103, "right", "SPA Number:")
+      checkSPACtrl = checkbox(23, 330, 104, "no,yes", "no")
+      spaCtrl = textbox(24, 350, 100, 150)
+      button(25, "ww-74", 76, 62, 26, "Help",
+         :displayHelp();)
+      stdSWProtocolsCtrl = checkbox(26, 560, 44, "no,yes", "no",:setAvailableProtocols())
+      statictext(27, 530, 37, 50, 50, "center", "Standard protocols")
 
-endproc()
+      statusCtrl = statusbox(50)
 
-procedure(displayHelp)
-
-endproc()
+endproc(n)
