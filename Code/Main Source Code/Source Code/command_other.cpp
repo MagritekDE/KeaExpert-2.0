@@ -83,8 +83,8 @@ using std::vector;
 
 #pragma warning (disable: 4996) // Ignore deprecated library functions
 
-#define VERSION 3.129 // Version number used by getversion() command
-#define VERSION_DATE "10-August-2026"
+#define VERSION 3.130 // Version number used by getversion() command
+#define VERSION_DATE "18-August-2026"
 
 // Define run mode
 
@@ -180,6 +180,7 @@ int SelectEditorLine(Interface *itfc, char *args);
 int SetEditorRenderMode(Interface *itfc, char *args);
 int SearchDLLs(Interface *itfc, char *args);
 int CopyAFolder(Interface* itfc ,char args[]);
+int MakeAListBoxES(Interface* itfc, char args[]);
 int RunRemoteMacro(Interface* itfc, char args[]);
 
 extern int IsPlotIdle(Interface *itfc, char *args);
@@ -229,6 +230,7 @@ extern int DisplayProcInfo(Interface* itfc, char args[]);
 extern int GetArgument(Interface* itfc, char args[]);
 extern int FindProspaWindows(Interface* itfc, char args[]);
 extern int DefinePlotCallback(Interface* itfc, char args[]);
+extern int IsInfiniteNumber(Interface* itfc, char args[]);
 extern int Get1DXRange(Interface* itfc, char args[]);
 extern int Get1DYRange(Interface* itfc, char args[]);
 
@@ -259,55 +261,56 @@ void InitializeProspaCommandList()
 {
    prospaCommandRegistry = new CommandRegistry(COMMAND);
 
+                         
    prospaCommandRegistry->add("aa3d",               AntiAlias3D,             THREED_CMD,                           "aa3d(STR on/off)");
    prospaCommandRegistry->add("abort",              Abort,                   CONTROL_COMMAND | MACRO_CMD,          "abort(STR message)");
-   prospaCommandRegistry->add("abs",                Magnitude,               MATH_CMD,                             "NUM y = abs(NUM x)");
    prospaCommandRegistry->add("abortonerror",       AbortOnError,            CONTROL_COMMAND | MACRO_CMD,          "abortonerror(STR \"true/false\")");
+   prospaCommandRegistry->add("abs",                Magnitude,               MATH_CMD,                             "NUM y = abs(NUM x)");
    prospaCommandRegistry->add("acos",               ArcCosine,               TRIG_CMD | MATH_CMD,                  "NUM y = acos(NUM x)");
    prospaCommandRegistry->add("activatewindow",     ActivateWindow,          GUI_CMD,                              "activatewindow(STR \"true/false\")");
+   prospaCommandRegistry->add("addframe",           AddMovieFrame,           GENERAL_COMMAND,                      "addframe(STR window)");
    prospaCommandRegistry->add("addprefix",          AddPrefix,               LIST_CMD,                             "LIST result = addprefix(VARIABLE list, STR prefix)");
    prospaCommandRegistry->add("adjustctrls",        AdjustObjects,           GUI_CMD,                              "adjustobjs(INT window_nr)");
-   prospaCommandRegistry->add("addframe",           AddMovieFrame,           GENERAL_COMMAND,                      "addframe(STR window)");
    prospaCommandRegistry->add("alias",              MakeVariableAlias,       VAR_CMD,                              "VAR y = alias(VAR x, STR \"eval/noeval\")");
    prospaCommandRegistry->add("alignobj",           AlignObjects,            GUI_CMD,                              "alignobj(STR align_mode)");
    prospaCommandRegistry->add("allowvariables",     AllowNonLocalVariables,  VAR_CMD,                              "AllowNonLocalVariables([STR type1, [STR type2]])");
+   prospaCommandRegistry->add("asciitostr",         AsciiToString,           STRING_CMD,                           "STR result asciitostr(FLOAT/VEC input)");
    prospaCommandRegistry->add("asin",               ArcSine,                 TRIG_CMD | MATH_CMD,                  "NUM y = asin(NUM x)");
    prospaCommandRegistry->add("assign",             AssignSpecialVariable,   VAR_CMD,                              "assign(STR variable, CONST-STR expression, [STR scope])");
-   prospaCommandRegistry->add("assignlock",         AssignWithLock,          VAR_CMD,                              "assignlock(STR variable, CONST-STR expression, [STR scope])");
-   prospaCommandRegistry->add("asciitostr",         AsciiToString,           STRING_CMD,                           "STR result asciitostr(FLOAT/VEC input)");
-   prospaCommandRegistry->add("assignlist",         AssignParameterList,     LIST_CMD,                             "assignlist(LIST/STRUCT/STR variable)");
    prospaCommandRegistry->add("assignctrls",        AssignControlObjects,    GUI_CMD,                              "assignctrls(INT window_nr)");
+   prospaCommandRegistry->add("assignlist",         AssignParameterList,     LIST_CMD,                             "assignlist(LIST/STRUCT/STR variable)");
+   prospaCommandRegistry->add("assignlock",         AssignWithLock,          VAR_CMD,                              "assignlock(STR variable, CONST-STR expression, [STR scope])");
    prospaCommandRegistry->add("assignstruct",       AssignStructure,         STRUCT_CMD,                           "assignstruct(STRUCT variable)");
    prospaCommandRegistry->add("atan",               ArcTangent,              TRIG_CMD | MATH_CMD,                  "NUM y = atan(NUM x)");
    prospaCommandRegistry->add("attachobj",          AttachObjects,           GUI_CMD,                              "attachobj(STR attach_mode)");
    prospaCommandRegistry->add("autophase",          AutoPhase,               MATH_CMD | MATRIX_CMD,                "FLOAT phase = autophase(VEC y, INT left, INT right, [STR method])");
    prospaCommandRegistry->add("autorange",          AutoRange,               TWOD_CMD,                             "autorange(STR \"on/off\")");
    prospaCommandRegistry->add("avg",                MatrixMean,              MATH_CMD,                             "float result = avg(MAT/VEC input)");
+   prospaCommandRegistry->add("axes",               ModifyAxes,              ONED_CMD | TWOD_CMD,                  "axes(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("axes3d",             Draw3DAxes,              THREED_CMD,                           "axes3d(VEC origin, FLOAT length, [RGB colour, [FLOAT label_size]])");
    prospaCommandRegistry->add("axis3d",             Draw3DAxis,              THREED_CMD,                           "axis3d(STR direction, VEC plot-range, FLOAT intercept1, FLOAT intercept VEC label-range, STR label, STR label-position, STR axes-direction)");
    prospaCommandRegistry->add("axispar3d",          Set3DLabelSizes,         THREED_CMD,                           "axispar3d(FLOAT short_tick, FLOAT long_tick, FLOAT number_size, FLOAT label_size)"); 
-   prospaCommandRegistry->add("axes3d",             Draw3DAxes,              THREED_CMD,                           "axes3d(VEC origin, FLOAT length, [RGB colour, [FLOAT label_size]])");
-   prospaCommandRegistry->add("axes",               ModifyAxes,              ONED_CMD | TWOD_CMD,                  "axes(STR parameter, VARIANT value, ...)");
-
+  
    prospaCommandRegistry->add("bell",               SoundBell,               SOUND_CMD,                            "bell()");
-   prospaCommandRegistry->add("bordercolor",        SetBorderColor,          ONED_CMD | TWOD_CMD,                  "bordercolor(VEC rgb)");
    prospaCommandRegistry->add("bkcolor",            SetBkColor,              ONED_CMD | TWOD_CMD,                  "bkcolor(VEC rgb)");
-   prospaCommandRegistry->add("bkgcolor",           SetBkColor,              ONED_CMD | TWOD_CMD,                  "bkcolor(VEC rgb)");
    prospaCommandRegistry->add("bkcolor3d",          Set3DBkColor,            THREED_CMD,                           "bkcolor3d(VEC rgb)");
+   prospaCommandRegistry->add("bkgcolor",           SetBkColor,              ONED_CMD | TWOD_CMD,                  "bkcolor(VEC rgb)");
    prospaCommandRegistry->add("bkgcolor3d",         Set3DBkColor,            THREED_CMD,                           "bkcolor3d(VEC rgb)");
+   prospaCommandRegistry->add("bordercolor",        SetBorderColor,          ONED_CMD | TWOD_CMD,                  "bordercolor(VEC rgb)");
    prospaCommandRegistry->add("box3d",              DrawBox,                 THREED_CMD,                           "box(FLOAT xmin,FLOAT xmax,FLOAT ymin,FLOAT ymax,FLOAT zmin,FLOAT zmax)");
    prospaCommandRegistry->add("button",             MakeButton,              GUI_CMD,                              "OBJ name = button(INT control_nr, INT x, INT y, INT width, INT height, STR caption, [LIST commands])");
-
+   
    prospaCommandRegistry->add("cachemacro",         CacheMacro,              GENERAL_COMMAND,                      "cachemacro(STR macro_name, STR \"window/local\")");
    prospaCommandRegistry->add("cacheproc",          CacheProcedures,         GENERAL_COMMAND,                      "cacheproc(STR \"true\"/\"false\")");
    prospaCommandRegistry->add("callstack",          PrintProcedureStack,     DEBUG_CMD,                            "callstack()");
-   prospaCommandRegistry->add("catch",              CatchError,              CONTROL_COMMAND,                      "catch");
    prospaCommandRegistry->add("caseset",            SetStringCase,           STRING_CMD,                           "STR out = caseset(STR in, STR mode)");
+   prospaCommandRegistry->add("catch",              CatchError,              CONTROL_COMMAND,                      "catch");
    prospaCommandRegistry->add("cd",                 SetCWD,                  FILE_CMD,                             "cd(STR directory)");
    prospaCommandRegistry->add("ceil",               Ceiling,                 MATH_CMD,                             "NUM y = ceil(NUM x)");   
    prospaCommandRegistry->add("checkbox",           MakeCheckBox,            GUI_CMD,                              "OBJ name = checkbox(INT control_nr, INT x, INT y, STR states, STR initial_value, [LIST commands])");
    prospaCommandRegistry->add("checkcontrols",      CheckControlValues,      GUI_CMD | LIST_CMD,                   "STR error = checkcontrols(INT window_nr, [STR method = \"list\"/\"prefix\"/\"all\", VAR variable])");
    prospaCommandRegistry->add("checkctrlvalues",    CheckControlValues,      GUI_CMD | LIST_CMD,                   "STR error = checkctrlvalues(INT window_nr, [STR method = \"list\"/\"prefix\"/\"all\", VAR variable])");
-//   prospaCommandRegistry->add("checkstruct",        CheckStructure,          GENERAL_COMMAND,                      "INT sz = checkstruct(STRUCT variable)");
+// prospaCommandRegistry->add("checkstruct",        CheckStructure,          GENERAL_COMMAND,                      "INT sz = checkstruct(STRUCT variable)");
    prospaCommandRegistry->add("circle",             AddCircleToMatrix,       MATRIX_CMD,                           "MAT mout = circle(MAT min, INT x0, INT y0, INT r, FLOAT a0)");
    prospaCommandRegistry->add("class",              MakeClass,               CLASS_CMD,                            "CLASS obj = class(STR \"class_initialiser\")");
    prospaCommandRegistry->add("classinfo",          SetClassInfo,            CLASS_CMD,                            "classinfo(LIST class_info)");
@@ -319,7 +322,7 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("clip3d",             Set3DClippingPlane,      THREED_CMD,                           "clip3d(INT number, INT position, STR plane, STR side)");
    prospaCommandRegistry->add("clip3dstatus",       Set3DClippingStatus,     THREED_CMD,                           "clip3dstatus(STR \"on/off\")");
    prospaCommandRegistry->add("clonearray",         CloneArray,              MATRIX_CMD,                           "MAT m = clonearray(VEC v, INT w, int h)");
-   prospaCommandRegistry->add("copytoclipboard",    CopyToClipBoard,         GENERAL_COMMAND,                      "copytoclipboard(STR value)");
+// prospaCommandRegistry->add("copyfolder",         CopyAFolder,             FILE_CMD,                             "copyfolder(STR source, STR destination)");
    prospaCommandRegistry->add("closedialog",        CloseDialog,             GUI_CMD,                              "closedialog(var1, var2 ...)");  
    prospaCommandRegistry->add("closeprint",         ClosePrintFile,          FILE_CMD,                             "closeprint()");  
    prospaCommandRegistry->add("closewindow",        DestroyMyWindow,         GUI_CMD,                              "closewindow(INT window_nr)");                           
@@ -332,41 +335,41 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("cone",               DrawCone,                THREED_CMD,                           "cone(VEC base,VEC top,FLOAT radius,RGB colour)"),                           
    prospaCommandRegistry->add("conj",               ComplexConjugate,        MATH_CMD,                             "COMPLEX y = conj(COMPLEX x) or CMAT y = conj(CMAT x)");
    prospaCommandRegistry->add("contour",            ContourPlot,             TWOD_CMD,                             "contour(INT number/VEC levels, [INT mode(0/1/2/3/4) [,VEC fixed_color, INT use_fixed_color(0/1)]])");
+   prospaCommandRegistry->add("convertcolor",       ConvertColor,            COLOR_CMD,                            "VEC colOut = convertcolor(VEC colIn)");
+   prospaCommandRegistry->add("convolve",           Convolve,                MATRIX_CMD,                           "VEC dataIn = convolve(VEC dataIn, VEC kernel [, STR symmetrical = \"true\"/\"false\"])");
    prospaCommandRegistry->add("copydir",            CopyAFolder,             FILE_CMD,                             "copydir(STR source, STR destination)");
    prospaCommandRegistry->add("copyfile",           CopyAFile,               FILE_CMD,                             "copyfile(STR source, STR destination [, STR check])");
-   //prospaCommandRegistry->add("copyfolder",         CopyAFolder,             FILE_CMD,                             "copyfolder(STR source, STR destination)");
    prospaCommandRegistry->add("copyplot",           CopyPlot,                ONED_CMD | TWOD_CMD,                  "copyplot([CLASS plot_region])");
-   prospaCommandRegistry->add("convolve",           Convolve,                MATRIX_CMD,                           "VEC dataIn = convolve(VEC dataIn, VEC kernel [, STR symmetrical = \"true\"/\"false\"])");
-   prospaCommandRegistry->add("convertcolor",       ConvertColor,            COLOR_CMD,                            "VEC colOut = convertcolor(VEC colIn)");
+   prospaCommandRegistry->add("copytoclipboard",    CopyToClipBoard,         GENERAL_COMMAND,                      "copytoclipboard(STR value)");
    prospaCommandRegistry->add("cos",                Cosine,                  MATH_CMD | TRIG_CMD,                  "NUM y = cos(NUM x)");
    prospaCommandRegistry->add("cosh",               HyperbolicCosine,        MATH_CMD | TRIG_CMD,                  "NUM y = cosh(NUM x)");
    prospaCommandRegistry->add("ctor",               ComplexToReal,           MATH_CMD,                             "VEC y = ctor(CVEC x)");
    prospaCommandRegistry->add("cumsum",             CumulativeSum,           MATRIX_CMD,                           "VEC y = cumsum(VEC x [, INT dim])");
-   prospaCommandRegistry->add("curplot",            SetOrGetCurrentPlot,     ONED_CMD | TWOD_CMD,                  "CLASS rg = curplot(), curplot(CLASS rg), curplot(STR 1d/2d[, INT x, INT y])");
-   prospaCommandRegistry->add("currentaxis",        SetOrGetCurrentAxis,     ONED_CMD | TWOD_CMD,                  "STR s = currentaxis(STR \"left\", \"right\")");
    prospaCommandRegistry->add("curaxis",            SetOrGetCurrentAxis,     ONED_CMD | TWOD_CMD,                  "STR s = curaxis(STR \"left\", \"right\")");
    prospaCommandRegistry->add("curcli",             SetOrGetCurrentCLI,      GUI_CMD,                              "OBJ cli = curcli([INT winNr, INT cliNr])");
    prospaCommandRegistry->add("cureditor",          SetOrGetCurrentEditor,   GUI_CMD,                              "OBJ ed = cureditor([INT winNr, INT editNr])");
+   prospaCommandRegistry->add("curplot",            SetOrGetCurrentPlot,     ONED_CMD | TWOD_CMD,                  "CLASS rg = curplot(), curplot(CLASS rg), curplot(STR 1d/2d[, INT x, INT y])");
+   prospaCommandRegistry->add("currentaxis",        SetOrGetCurrentAxis,     ONED_CMD | TWOD_CMD,                  "STR s = currentaxis(STR \"left\", \"right\")");
    prospaCommandRegistry->add("curtrace",           GetOrSetCurrentTrace,    ONED_CMD,                             "CLASS tc = curtrace(), curtrace(CLASS tc), curtrace(INT trace_id)");
    prospaCommandRegistry->add("curwin",             GetOrSetCurrentWindow,   GUI_CMD,                              "CLASS win = curwin(INT win_nr/ CLASS window)");
    prospaCommandRegistry->add("cylinder",           Draw3DCylinder,          THREED_CMD,                           "cylinder(VEC base,VEC top,FLOAT radius,RGB colour)");
-
+   
    prospaCommandRegistry->add("datarange3d",        Set3DDataRange,          THREED_CMD,                           "datarange(FLOAT xmin,FLOAT xmax,FLOAT ymin,FLOAT ymax,FLOAT zmin,FLOAT zmax)");
    prospaCommandRegistry->add("dealias",            DealiasVariable,         GENERAL_COMMAND,                      "dealias()");
    prospaCommandRegistry->add("debug",              DebugInterface,          HIDDEN_COMMAND,                       "debug(STR command)");
    prospaCommandRegistry->add("dec",                ConvertToDecimal,        GENERAL_COMMAND,                      "INT decimal = dec(INT hex_number, INT bits)");
    prospaCommandRegistry->add("decimate",           DecimateVector,          MATRIX_CMD,                           "VEC y = decimate(VEC x, INT offset, INT step)");
-//   prospaCommandRegistry->add("decrypt",            Decrypt,                 GENERAL_COMMAND,                      "STR output = decrypt(STR input)");
+// prospaCommandRegistry->add("decrypt",            Decrypt,                 GENERAL_COMMAND,                      "STR output = decrypt(STR input)");
    prospaCommandRegistry->add("depthcue",           DepthCue,                THREED_CMD,                           "depthcue(STR \"on/off\")");
    prospaCommandRegistry->add("depthcuerange",      SetFogRange,             THREED_CMD,                           "fogrange(FLOAT start, FLOAT end)");
    prospaCommandRegistry->add("diag",               DiagonalMatrix,          THREED_CMD,                           "MAT out = diag(VEC in/MAT in)");
    prospaCommandRegistry->add("diff",               Difference,              THREED_CMD,                           "VEC out = diff(VEC in)");
-   prospaCommandRegistry->add("divider",            MakeDivider,             GUI_CMD,                              "OBJ name = divider(INT control_nr, INT x, INT y, INT width, INT height, STR orientation)");
    prospaCommandRegistry->add("distobj",            DistributeObjects,       GUI_CMD,                              "distobj(STR distribute_mode)");
-   prospaCommandRegistry->add("donothing",          DoNothing,               GENERAL_COMMAND,                      "donothing()");
-   prospaCommandRegistry->add("double",             ConvertToDoublePrec,     VAR_CMD | MATH_CMD | MATRIX_CMD,      "NUM y = double(NUM x)");
+   prospaCommandRegistry->add("divider",            MakeDivider,             GUI_CMD,                              "OBJ name = divider(INT control_nr, INT x, INT y, INT width, INT height, STR orientation)");
    prospaCommandRegistry->add("dmatrix",            NewDMatrix,              MATH_CMD | MATRIX_CMD,                "MAT(2D) m = dmatrix(INT width [,INT height])");
    prospaCommandRegistry->add("dnoise",             NoiseDouble,             MATH_CMD | MATRIX_CMD,                "DMAT y = dnoise(INT width [,INT height [,INT depth [,INT hyperdepth]]])");
+   prospaCommandRegistry->add("donothing",          DoNothing,               GENERAL_COMMAND,                      "donothing()");
+   prospaCommandRegistry->add("double",             ConvertToDoublePrec,     VAR_CMD | MATH_CMD | MATRIX_CMD,      "NUM y = double(NUM x)");
    prospaCommandRegistry->add("draw1d",             DrawPlot,                GUI_CMD | ONED_CMD,                   "draw1d(STR \"true/false\")");
    prospaCommandRegistry->add("draw2d",             DrawImage,               GUI_CMD | TWOD_CMD,                   "draw2d(STR \"true/false\")");
    prospaCommandRegistry->add("draw3d",             Draw3DPlot,              GUI_CMD | THREED_CMD,                 "draw3d(STR \"true/false\")");
@@ -374,18 +377,18 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("drawobj",            DrawObject,              GUI_CMD,                              "drawobj(INT window_nr, INT control_nr)");
    prospaCommandRegistry->add("drawplot",           DrawPlot,                GUI_CMD | ONED_CMD,                   "drawplot(STR \"true/false\")");
    prospaCommandRegistry->add("drawwin",            DrawWindow,              GUI_CMD,                              "drawwin(INT window_nr)");
-
+   
    prospaCommandRegistry->add("ed",                 LoadEditor,              GUI_CMD,                              "ed(STR file_name)");
    prospaCommandRegistry->add("edit",               LoadEditor,              GUI_CMD,                              "edit(STR file_name)");
    prospaCommandRegistry->add("editobj",            EditObject,              GUI_CMD,                              "(INT winNr,VEC objNr(s)) = editobj(INT winNr, INT/VEC objNr(s))");
    prospaCommandRegistry->add("editor",             MakeTextEditor,          GUI_CMD,                              "OBJ name = editor(INT control_nr, INT x, INT y, INT width, INT height)");
    prospaCommandRegistry->add("else",               nProc,                   CONTROL_COMMAND,                      "else");
    prospaCommandRegistry->add("elseif",             ElseIf,                  CONTROL_COMMAND,                      "elseif (boolean_expression)");
-//   prospaCommandRegistry->add("encrypt",            Encrypt,                 GENERAL_COMMAND,                    "STR output = encrypt(STR input)");
+// prospaCommandRegistry->add("encrypt",            Encrypt,                 GENERAL_COMMAND,                      "STR output = encrypt(STR input)");
    prospaCommandRegistry->add("endif",              nProc,                   CONTROL_COMMAND,                      "endif");
    prospaCommandRegistry->add("endmovie",           EndMovie,                GENERAL_COMMAND,                      "endmovie");
-   prospaCommandRegistry->add("endtry",             EndTry,                  CONTROL_COMMAND,                      "endtry");
    prospaCommandRegistry->add("endproc",            ReturnFromProcedure,     CONTROL_COMMAND,                      "endproc(argument_list)");
+   prospaCommandRegistry->add("endtry",             EndTry,                  CONTROL_COMMAND,                      "endtry");
    prospaCommandRegistry->add("endwhile",           EndWhileLoop,            CONTROL_COMMAND,                      "endwhile");
    prospaCommandRegistry->add("errorstr",           MakeErrorString,         STRING_CMD,                           "STR result = errorstr(FLOAT number, FLOAT error, [INT resolution , [INT power [,STR destination]]])");
    prospaCommandRegistry->add("escapechar",         ProcessEscapeCharacters, STRING_CMD,                           "escapechar(STR \"true/false\"))");
@@ -396,33 +399,35 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("exec",               ExecuteFile,             GENERAL_COMMAND,                      "exec(STR file_name, [STR arguments])");
    prospaCommandRegistry->add("execandwait",        ExecuteAndWait,          GENERAL_COMMAND,                      "execandwait(STR file_name, [STR arguments])");
    prospaCommandRegistry->add("exit",               CloseApplication,        CONTROL_COMMAND,                      "exit([INT 0/1])");
-   prospaCommandRegistry->add("exitwhile",          ExitWhileLoop,           CONTROL_COMMAND,                      "exitwhile()");
    prospaCommandRegistry->add("exitfor",            ExitForLoop,             CONTROL_COMMAND,                      "exitfor()");
+   prospaCommandRegistry->add("exitwhile",          ExitWhileLoop,           CONTROL_COMMAND,                      "exitwhile()");
    prospaCommandRegistry->add("exp",                Exponential,             MATH_CMD | MATRIX_CMD,                "NUM y = exp(NUM x)");
    prospaCommandRegistry->add("export1d",           Export1DDataCLI,         FILE_CMD,                             "export1d(VARIABLE vector, STR filename) or export1d(VARIABLE x_vector, VARIABLE y_vector, STR filename)");
-   prospaCommandRegistry->add("export2d",           Export2DDataCLI,         FILE_CMD,                             "export2d(VARIABLE matrix, STR filename)");
-   prospaCommandRegistry->add("export3d",           Export3DDataCLI,         FILE_CMD,                             "export3d(VARIABLE matrix, STR filename)");
    prospaCommandRegistry->add("export1dpar",        Export1DDataParameters,  FILE_CMD,                             "export1dpar(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("export2d",           Export2DDataCLI,         FILE_CMD,                             "export2d(VARIABLE matrix, STR filename)");
    prospaCommandRegistry->add("export2dpar",        Export2DDataParameters,  FILE_CMD,                             "export2dpar(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("export3d",           Export3DDataCLI,         FILE_CMD,                             "export3d(VARIABLE matrix, STR filename)");
    prospaCommandRegistry->add("export3dpar",        Export3DDataParameters,  FILE_CMD,                             "export3dpar(STR parameter, VARIANT value, ...)");
-
+   
    prospaCommandRegistry->add("factorial",          Factorial,               MATH_CMD,                             "INT y = factorial(INT x)");
+   prospaCommandRegistry->add("fileinfo",           FileInfo,                FILE_CMD,                             "VARIANT info = fileinfo(STR filename, STR \"age/date/dateandtime/length/readonly\",[STR \"created/modified/accessed\"])");
+   prospaCommandRegistry->add("fill",               FillVector,              MATRIX_CMD,                           "VEC y = fill(VEC x, INT new_size, STR \"start/sides/end\", CPLX fill_value)");
    prospaCommandRegistry->add("findindex",          FindIndex,               MATH_CMD | MATRIX_CMD,                "(INT index1 ...) = findindex(VARIABLE vector, FLOAT x1, FLOAT x ...)");
    prospaCommandRegistry->add("findindex2",         FindIndex2,              MATH_CMD | MATRIX_CMD,                "(INT index1 ...) = findindex2(VARIABLE vector, INT startIndex, STR \"left/right\", FLOAT x1, FLOAT x2, ...)");
    prospaCommandRegistry->add("findmacro",          FindMacro,               FILE_CMD,                             "(STR path, STR full_name) = findmacro(STR macro_name)");
-   prospaCommandRegistry->add("findstructitem",     GetStructureItemIndex,   STRUCT_CMD,                           "INT index = findstructitem(VARIABLE struct, STR itemName)");
-   prospaCommandRegistry->add("findxvalue",         FindXValue,              MATH_CMD | MATRIX_CMD,                "(FLOAT index1, index2 ...) = findxvalue(VEC xAxis, VEC yAxis, INT startXIndex, STR \"left/right\", FLOAT y1, FLOAT y2, ...)");
-   prospaCommandRegistry->add("fileinfo",           FileInfo,                FILE_CMD,                             "VARIANT info = fileinfo(STR filename, STR \"age/date/dateandtime/length/readonly\",[STR \"created/modified/accessed\"])");
-   prospaCommandRegistry->add("fill",               FillVector,              MATRIX_CMD,                           "VEC y = fill(VEC x, INT new_size, STR \"start/sides/end\", CPLX fill_value)");
    prospaCommandRegistry->add("findobj",            FindObjectCLI,           GUI_CMD,                              "INT control_nr = findobj(INT window_nr, STR method, STR value)");
-   prospaCommandRegistry->add("findwin",            FindWindowCLI,           GUI_CMD,                              "INT window_nr = findwin(STR method, STR value)");
    prospaCommandRegistry->add("findprospawin",      FindProspaWindows,       GUI_CMD,                              "ARRAY window_nrs = findprospawin()");
+   prospaCommandRegistry->add("findstructitem",     GetStructureItemIndex,   STRUCT_CMD,                           "INT index = findstructitem(VARIABLE struct, STR itemName)");
+   prospaCommandRegistry->add("findwin",            FindWindowCLI,           GUI_CMD,                              "INT window_nr = findwin(STR method, STR value)");
+   prospaCommandRegistry->add("findxvalue",         FindXValue,              MATH_CMD | MATRIX_CMD,                "(FLOAT index1, index2 ...) = findxvalue(VEC xAxis, VEC yAxis, INT startXIndex, STR \"left/right\", FLOAT y1, FLOAT y2, ...)");
    prospaCommandRegistry->add("finishwindow",       CompleteWindow,          GUI_CMD,                              "finishwindow(INT window_nr, STR mode)"); 
    prospaCommandRegistry->add("fista",              FISTA2D,                 MATH_CMD | MATRIX_CMD,                "DMAT result = fista(DMAT nmr_data, DMAT kernel_x, DMAT kernel_y, DMAT spectral_guess, DOUBLE smoothing, INT nr_iterations[, INT mode, OBJ plot_region, OBJ progress_ctrl] )"); 
    prospaCommandRegistry->add("fixlist",            FixListFaults,           LIST_CMD,                             "LIST result = fixlist(LIST input, STR mode)"); 
    prospaCommandRegistry->add("floor",              Floor,                   MATH_CMD | MATRIX_CMD,                "NUM y = floor(NUM x)");   
    prospaCommandRegistry->add("for",                ForLoop,                 CONTROL_COMMAND,                      "for(VAR variable = INT start to INT end [step INT size])");
    prospaCommandRegistry->add("frac",               FindFractionalPart,      MATH_CMD | MATRIX_CMD,                "NUM y = frac(NUM x)");
+   prospaCommandRegistry->add("ft",                 FourierTransform,        FOURIER_CMD,                          "CVEC y = ft(CVEC x)");
+   prospaCommandRegistry->add("ftshift",            FFTShift,                FOURIER_CMD,                          "ftshift(CVEC x)");
    prospaCommandRegistry->add("func1d",             Plot1DFunctions,         GUI_CMD,                              "func1d(STR command)");                           
    prospaCommandRegistry->add("func2d",             Plot2DFunctions,         GUI_CMD,                              "func2d(STR command)");                           
    prospaCommandRegistry->add("func3d",             Plot3DFunctions,         GUI_CMD,                              "func3d(STR command)");
@@ -430,68 +435,67 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("funcedit",           EditorFunctions,         GUI_CMD,                              "funcedit(STR command)");
    prospaCommandRegistry->add("funcprospa",         ProspaFunctions,         GUI_CMD,                              "funcprospa(STR command)");
    prospaCommandRegistry->add("functextedit",       TextEditFunctions,       GUI_CMD,                              "functextedit(STR command)");
-   prospaCommandRegistry->add("ft",                 FourierTransform,        FOURIER_CMD,                          "CVEC y = ft(CVEC x)");
-   prospaCommandRegistry->add("ftshift",            FFTShift,                FOURIER_CMD,                          "ftshift(CVEC x)");
-
-   prospaCommandRegistry->add("getargument",        GetArgument,             GENERAL_COMMAND,                      "VAR argument = getargument()");
+   
    prospaCommandRegistry->add("getargnames",        GetArgumentNames,        GENERAL_COMMAND,                      "LIST names = getargnames()");
+   prospaCommandRegistry->add("getargument",        GetArgument,             GENERAL_COMMAND,                      "VAR argument = getargument()");
    prospaCommandRegistry->add("getbasedir",         GetBaseDirectory,        FILE_CMD,                             "STR dir = getbasedir(STR path)");
    prospaCommandRegistry->add("getbasepath",        GetBasePath,             FILE_CMD,                             "STR dir = getbasepath(STR path)");
-   prospaCommandRegistry->add("getparentpath",      GetBasePath,             FILE_CMD,                             "STR dir = getparentpath(STR path)");
    prospaCommandRegistry->add("getcolor",           SelectColour,            COLOR_CMD | GUI_CMD,                   "VEC col = getcolor(VEC default)");
    prospaCommandRegistry->add("getcolormap",        GetColorMap,             COLOR_CMD | GUI_CMD | TWOD_CMD,       "MAT col = getcolormap()");
    prospaCommandRegistry->add("getctrlvalues",      GetControlValues,        GUI_CMD,                              "LIST/STRUCT result = getctrlvalues(INT window_nr [,STR output = \"list\"/\"struct\", [STR method = \"list\"/\"prefix\"/\"all\", STR variable]])");
    prospaCommandRegistry->add("getcurrentline",     GetCurrentMacroLineNr,   GENERAL_COMMAND,                      "INT lineNr = getcurrentline()");
    prospaCommandRegistry->add("getcwd",             GetCWD,                  FILE_CMD,                             "STR directory = getcwd()");
-   prospaCommandRegistry->add("getdate",            GetDate,                 TIME_CMD,                             "STR date = getdate([STR format])");
    prospaCommandRegistry->add("getdatarange",       GetDataRange,            TWOD_CMD,                             "(FLOAT min,max) = getdatarange(STR mode)");
+   prospaCommandRegistry->add("getdate",            GetDate,                 TIME_CMD,                             "STR date = getdate([STR format])");
    prospaCommandRegistry->add("getdirlist",         GetDirectoryList,        FILE_CMD,                             "LIST dirlist = getdirlist(STR directory, STR dot_folders_to_include)");
    prospaCommandRegistry->add("geteditwin",         GetEditedWindow,         GUI_CMD,                              "INT window_nr = geteditwin()");
    prospaCommandRegistry->add("getenvvar",          GetEnvironmentVariable,  GENERAL_COMMAND,                      "STR result = getenvvar(STR name)");
    prospaCommandRegistry->add("getext",             GetFileExtension,        FILE_CMD,                             "STR ext = getext(STR filename)");
    prospaCommandRegistry->add("getfilelist",        GetFileList,             FILE_CMD,                             "LIST filelist = getfilelist(STR directory)");                        
-   prospaCommandRegistry->add("getfilesize",        GetFileDimensions,       FILE_CMD,                             "(INT width, height, depth) = GetFileDimensions(STR file_name)");
    prospaCommandRegistry->add("getfilename",        GetFileName,             FILE_CMD,                             "STR name = getfilename(STR type, STR window_title, STR range_title, STR range,[STR default])");
+   prospaCommandRegistry->add("getfilesize",        GetFileDimensions,       FILE_CMD,                             "(INT width, height, depth) = GetFileDimensions(STR file_name)");
+   prospaCommandRegistry->add("getfocus",           GetCtrlFocus,            GENERAL_COMMAND,                      "(INT winnr, objnr) = getfocus()");
    prospaCommandRegistry->add("getfolder",          SelectFolder,            FILE_CMD,                             "STR name = getfolder([STR start_directory[, STR title[, STR top_directory[, STR allow_relative]]]])");
    prospaCommandRegistry->add("getfoldernobuttons", SelectFolderNoButtons,   FILE_CMD,                             "STR name = getfoldernobuttons([STR start_directory[, STR title[, STR top_directory[, STR allow_relative]]]])");
    prospaCommandRegistry->add("getfontlist",        GetFontList,             GENERAL_COMMAND,                      "LIST names = getfontlist()");
-   prospaCommandRegistry->add("getfocus",           GetCtrlFocus,            GENERAL_COMMAND,                      "(INT winnr, objnr) = getfocus()");
-//   prospaCommandRegistry->add("getkey",             GetKey,                  GUI_CMD,                              "getkey()");
+// prospaCommandRegistry->add("getkey",             GetKey,                  GUI_CMD,                              "getkey()");
    prospaCommandRegistry->add("getline",            GetLineFromText,         STRING_CMD,                           "STR line = getline(STR text, INT lineNr [, INT startCharNr, INT startLineNr])");
-   prospaCommandRegistry->add("getmenuname",        GetMenuName,             GUI_CMD,                              "STR name = getmenuname()");
-   prospaCommandRegistry->add("getmacroname",       GetMacroName,            FILE_CMD,                             "STR name = getmacroname()");
-   prospaCommandRegistry->add("getmacropath",       GetMacroPath,            FILE_CMD,                             "STR path = getmacropath([STR macroName])");
-   prospaCommandRegistry->add("getmainwindow",      GetMainWindow,           GUI_CMD,                              "INT nr = getmainwindow()");
-   prospaCommandRegistry->add("getparentdir",       GetParentDirectory,      FILE_CMD,                             "STR dir = getparentdir(STR path)");
-   prospaCommandRegistry->add("getprocnames",       GetProcedureNames,       FILE_CMD,                             "(LIST names, LIST args) = getprocnames(STR path, STR macro)");  
    prospaCommandRegistry->add("getlistindex",       FindListIndex,           LIST_CMD,                             "INT index = getlistindex(LIST list, STR entry)");
    prospaCommandRegistry->add("getlistnames",       GetListNames,            LIST_CMD,                             "LIST names = getlistnames(LIST parameter_list)");
    prospaCommandRegistry->add("getlistvalue",       GetParameterListValue,   LIST_CMD,                             "STR value = getlistvalue(LIST assignment_list, STR parameter_name)");
+   prospaCommandRegistry->add("getmacroname",       GetMacroName,            FILE_CMD,                             "STR name = getmacroname()");
+   prospaCommandRegistry->add("getmacropath",       GetMacroPath,            FILE_CMD,                             "STR path = getmacropath([STR macroName])");
+   prospaCommandRegistry->add("getmainwindow",      GetMainWindow,           GUI_CMD,                              "INT nr = getmainwindow()");
+   prospaCommandRegistry->add("getmenuname",        GetMenuName,             GUI_CMD,                              "STR name = getmenuname()");
    prospaCommandRegistry->add("getmessage",         MakeGetMessage,          GUI_CMD,                              "getmessage(INT control_nr, LIST command_list)");
    prospaCommandRegistry->add("getobj",             GetObject,                GUI_CMD,                              "CLASS parameter = getobj(INT window_nr, INT control_nr)");
    prospaCommandRegistry->add("getpar",             GetParameter,            GUI_CMD,                              "VARIANT parameter = getpar(INT window_nr, INT/STR control_id, STR parameter)");
+   prospaCommandRegistry->add("getparentdir",       GetParentDirectory,      FILE_CMD,                             "STR dir = getparentdir(STR path)");
+   prospaCommandRegistry->add("getparentpath",      GetBasePath,             FILE_CMD,                             "STR dir = getparentpath(STR path)");
    prospaCommandRegistry->add("getplotdata",        ExtractDataFromPlot,     GUI_CMD | ONED_CMD | TWOD_CMD,        "(VEC x, VEC y) = getplotdata(STR 1d, STR opt) or (MAT m) = getplotdata(STR 2d, STR opt) or (MAT m, VEC x, VEC y = getplotdata(STR 2d, STR opt)");                           
    prospaCommandRegistry->add("getplotstate",       GetPlotState,            GUI_CMD | ONED_CMD | TWOD_CMD,        "STR state = getplotstate()");                           
+   prospaCommandRegistry->add("getprocnames",       GetProcedureNames,       FILE_CMD,                             "(LIST names, LIST args) = getprocnames(STR path, STR macro)");  
    prospaCommandRegistry->add("getrect",            GetSelectRectangle,      GUI_CMD | ONED_CMD | TWOD_CMD,        "(INT minx,miny,maxx,maxy) = getrect()");
    prospaCommandRegistry->add("getregistryinfo",    GetRegistryInfo,         GENERAL_COMMAND,                      "STR info = getregistryinfo(STR hive, STR key[, STR valueName, STR valueType])");
- //  prospaCommandRegistry->add("getsid",             GetSID,                 GENERAL_COMMAND,                     "STR result  = getsid()"); 
+   prospaCommandRegistry->add("getselection",       GetTextSelection,        GUI_CMD,                              "STR text = getselection()");
+// prospaCommandRegistry->add("getsid",             GetSID,                 GENERAL_COMMAND,                     "STR result  = getsid()"); 
    prospaCommandRegistry->add("getstructitem",      GetStructureItem,        STRUCT_CMD,                            "(STR name, VAR value) = getstructitem(STRUCT src, INT index)");
    prospaCommandRegistry->add("getsublist",         GetSubParameterList,     LIST_CMD,                             "LIST result = getsublist(LIST src, LIST keys)");
-   prospaCommandRegistry->add("getselection",       GetTextSelection,        GUI_CMD,                              "STR text = getselection()");
    prospaCommandRegistry->add("gettime",            GetTimeOfDay,            TIME_CMD,                             "STR time = gettime([STR format])");
    prospaCommandRegistry->add("getwindowpar",       GetWindowParameter,      GUI_CMD,                              "VARIANT parameter_value = getwindowpar(INT window_nr, STR parameter_name)");
    prospaCommandRegistry->add("getx",               Get1DCoordinate,         GUI_CMD | ONED_CMD,                   "FLOAT x = getx([\"value\"]) or INT x = getx(\"index\") or (INT idx, FLOAT xpos) = getx(\"both\")");
    prospaCommandRegistry->add("getxrange",          Get1DXRange,             GUI_CMD | ONED_CMD,                   "(FLOAT xv1, xv2) = getxrange([\"value\"]) or (INT xi1, xi2]) = getxrange(\"index\") or (FLOAT xv1, xv2, INT xi1, xi2]) = getxrange(\"both\")");
-   prospaCommandRegistry->add("getyrange",          Get1DYRange,             GUI_CMD | ONED_CMD,                   "(FLOAT y1, FLOAT y2) = getyrange()"); 
    prospaCommandRegistry->add("getxy",              Get2DCoordinate,         GUI_CMD | TWOD_CMD,                   "(INT x, INT y) = getxy(STR \"vert/horiz/cross\", STR \"index/value\")");
+   prospaCommandRegistry->add("getyrange",          Get1DYRange,             GUI_CMD | ONED_CMD,                   "(FLOAT y1, FLOAT y2) = getyrange()"); 
    prospaCommandRegistry->add("grid",               ModifyGrid,              GUI_CMD | TWOD_CMD,                   "grid(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("gridctrl",           MakeGridCtrl,            GUI_CMD,                              "OBJ name = gridctrl(INT control_nr, INT x, INT y, INT width, INT height, INT cols, INT rows)");
    prospaCommandRegistry->add("groupbox",           MakeGroupBox,            GUI_CMD,                              "OBJ name = groupbox(INT control_nr, STR label, INT x, INT y, INT width, INT height)");
    prospaCommandRegistry->add("guiwinnr",           GUIWindowNumber,         GUI_CMD,                              "guiwinnr(INT win_nr)");
-
+   
    prospaCommandRegistry->add("hash",               HashFunction,            STRING_CMD,                           "STR output = hash(VEC/STR input)");
-   prospaCommandRegistry->add("hex",                HexConversion,           MATRIX_CMD | MATH_CMD,                "STR y = hex(INT decimal_number[, number_of_bits[, \"signed/unsigned/s/u\"]])");
    prospaCommandRegistry->add("help",               OpenHelpFile,            HELP_CMD,                             "help([STR documentation_folder, STR html_file])");
+   prospaCommandRegistry->add("hex",                HexConversion,           MATRIX_CMD | MATH_CMD,                "STR y = hex(INT decimal_number[, number_of_bits[, \"signed/unsigned/s/u\"]])");
+   prospaCommandRegistry->add("hextodec",           ConvertToDecimal,        MATH_CMD,                             "DOUBLE decimal = hextodec(INT hex_number, INT bits)");
    prospaCommandRegistry->add("hft",                HilbertTransform,        FOURIER_CMD,                          "CVEC y = hft(RVEC x)");
    prospaCommandRegistry->add("hidewindow",         HideMyWindow,            GUI_CMD,                              "hidewindow(INT window_nr)");
    prospaCommandRegistry->add("histogram",          Histogram,               MATRIX_CMD,                           "(VEC histx, VEC histy) = histogram(VEC data, INT bins, VEC range)");
@@ -499,103 +503,103 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("htmlbox",            MakeHTMLBox,             GUI_CMD,                              "OBJ name = htmlbox(INT control_nr, INT x, INT y, INT width, INT height)");
    prospaCommandRegistry->add("htmlcountsubstr",    HTMLCountSubString,      GUI_CMD,                              "STR result = htmlcountsubstr(STR text, STR substring_to_find [,casesensitivity])");   
    prospaCommandRegistry->add("htmlreplacestr",     HTMLReplaceString,       GUI_CMD,                              "(STR result, INT count) = htmlreplacestr(STR text, STR substring_to_replace, STR replacement_substring [,casesensitivity])");   
-
+  
    prospaCommandRegistry->add("identity",           IdentityMatrix,          MATRIX_CMD,                           "MAT out = identity(INT dimension)");
    prospaCommandRegistry->add("if",                 IfStatement,             CONTROL_COMMAND,                      "if(boolean_expression)");
+   prospaCommandRegistry->add("ift",                InverseTransform,        FOURIER_CMD,                          "CVEC y = ift(CVEC x)");
    prospaCommandRegistry->add("ignoredll",          IgnoreDLL,               DLL_CMD,                              "ignoredll(STR dll_name)");
    prospaCommandRegistry->add("ignoredlls",         IgnoreDLLs,              DLL_CMD,                              "ignoredlls(STR dll_name1, STR dll_name2, ...)");
+   prospaCommandRegistry->add("imag",               ImaginaryPart,           MATH_CMD | MATRIX_CMD,                "MAT y = imag(CMAT x)");
+   prospaCommandRegistry->add("image",              DisplayMatrixAsImage,    MATRIX_CMD | GUI_CMD | TWOD_CMD,      "image(MAT m, [STR colormap]) or image(MAT m, [VEC xscale, VEC yscale, [STR colormap]])");
+   prospaCommandRegistry->add("imagefileversion",   ImageFileSaveVersion,    FILE_CMD | TWOD_CMD,                  "imagefileversion(FLOAT version)");
+   prospaCommandRegistry->add("imagerange",         SetImageRange,           GUI_CMD | TWOD_CMD,                   "imagerange(FLOAT min, FLOAT max)");
+   prospaCommandRegistry->add("import",             ImportMacro,             FILE_CMD,                             "import(macroName[, macroPath[, mode=\"window\"/\"local\"]");
+   prospaCommandRegistry->add("import1d",           Import1DDataCLI,         FILE_CMD,                             "VEC y = import1d(STR filename,[INT length]) or (VEC x,y) = import1d(STR filename,[INT length])");
+   prospaCommandRegistry->add("import1dpar",        Import1DDataParameters,  FILE_CMD,                             "import1dpar(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("import2d",           Import2DDataCLI,         FILE_CMD,                             "MAT m = import2d(STR filename, INT width, INT height)");
+   prospaCommandRegistry->add("import2dpar",        Import2DDataParameters,  FILE_CMD,                             "import2dpar(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("import3d",           Import3DDataCLI,         FILE_CMD,                             "MAT m = import3d(STR filename, INT width, INT height, INT depth)");
+   prospaCommandRegistry->add("import3dpar",        Import3DDataParameters,  FILE_CMD,                             "import3dpar(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("index",              FindExactIndex,          MATH_CMD,                             "INT index  = index(ARRAY/STR input, VAR value)");   
    prospaCommandRegistry->add("info",               DisplayProcInfo,         HELP_CMD,                             "info(STR procedureName)");
-   prospaCommandRegistry->add("ift",                InverseTransform,        FOURIER_CMD,                          "CVEC y = ift(CVEC x)");
    prospaCommandRegistry->add("inheritclass",       AppendToStructure,       STRUCT_CMD,                           "inheritclass(CLASS child, CLASS base)");
-   prospaCommandRegistry->add("insertinlist",       InsertStringIntoListCLI, LIST_CMD,                             "LIST result = insertinlist(VARIABLE list, STR value, INT position)");
    prospaCommandRegistry->add("insert",             InsertIntoMatrix,        MATRIX_CMD,                           "MAT result = insert(MAT mA, MAT mB, INT x0[, INT y0[, INT z0]])");
+   prospaCommandRegistry->add("insertinlist",       InsertStringIntoListCLI, LIST_CMD,                             "LIST result = insertinlist(VARIABLE list, STR value, INT position)");
    prospaCommandRegistry->add("integfunc",          SimpsonsIntegration,     MATH_CMD,                             "FLOAT result = integfunc(CONST-STR func, FLOAT left_limit, FLOAT right_limit)");
    prospaCommandRegistry->add("integvector",        TrapezoidalIntegration,  MATH_CMD,                             "integvector(VARIABLE x,VARIABLE y [, FLOAT left_limit ,FLOAT right_limit])");
    prospaCommandRegistry->add("interp",             InterpolateMatrix,       MATRIX_CMD,                           "MATRIX out = interp(MATRIX in, INT sx[, INT sy[, INT sz]])");
    prospaCommandRegistry->add("inv",                InvOperator,             MATRIX_CMD,                           "VARIANT y = inv(VARIANT x)");
-   prospaCommandRegistry->add("imag",               ImaginaryPart,           MATH_CMD | MATRIX_CMD,                "MAT y = imag(CMAT x)");
-   prospaCommandRegistry->add("image",              DisplayMatrixAsImage,    MATRIX_CMD | GUI_CMD | TWOD_CMD,      "image(MAT m, [STR colormap]) or image(MAT m, [VEC xscale, VEC yscale, [STR colormap]])");
-   prospaCommandRegistry->add("imagerange",         SetImageRange,           GUI_CMD | TWOD_CMD,                   "imagerange(FLOAT min, FLOAT max)");
-   prospaCommandRegistry->add("imagefileversion",   ImageFileSaveVersion,    FILE_CMD | TWOD_CMD,                  "imagefileversion(FLOAT version)");
-
-   prospaCommandRegistry->add("import",             ImportMacro,             FILE_CMD,                             "import(macroName[, macroPath[, mode=\"window\"/\"local\"]");
-   prospaCommandRegistry->add("import1d",           Import1DDataCLI,         FILE_CMD,                             "VEC y = import1d(STR filename,[INT length]) or (VEC x,y) = import1d(STR filename,[INT length])");
-   prospaCommandRegistry->add("import2d",           Import2DDataCLI,         FILE_CMD,                             "MAT m = import2d(STR filename, INT width, INT height)");
-   prospaCommandRegistry->add("import3d",           Import3DDataCLI,         FILE_CMD,                             "MAT m = import3d(STR filename, INT width, INT height, INT depth)");
-   prospaCommandRegistry->add("import1dpar",        Import1DDataParameters,  FILE_CMD,                             "import1dpar(STR parameter, VARIANT value, ...)");
-   prospaCommandRegistry->add("import2dpar",        Import2DDataParameters,  FILE_CMD,                             "import2dpar(STR parameter, VARIANT value, ...)");
-   prospaCommandRegistry->add("import3dpar",        Import3DDataParameters,  FILE_CMD,                             "import3dpar(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("isappopen",          IsApplicationOpen,       FILE_CMD,                             "INT result = isappopen(STR app_name)");
    prospaCommandRegistry->add("iscached",           IsFileCached,            FILE_CMD,                             "(INT result [,STR dir_name]) = iscached(STR file_name, [STR dir_name/\"\"], STR \"window\"/\"global\"])");
    prospaCommandRegistry->add("isdir",              DoesDirectoryExist,      FILE_CMD,                             "INT result = isdir(STR dir_name)");
    prospaCommandRegistry->add("isdouble",           IsDoubleCLI,             MATH_CMD,                             "INT result = isdouble(VAR input)");
    prospaCommandRegistry->add("isfile",             DoesFileExist,           FILE_CMD,                             "INT result = isfile(STR file_name)");
    prospaCommandRegistry->add("isfloat",            IsFloatCLI,              MATH_CMD,                             "INT result = isfloat(VAR input)");   
-   prospaCommandRegistry->add("index",              FindExactIndex,          MATH_CMD,                             "INT index  = index(ARRAY/STR input, VAR value)");   
+   prospaCommandRegistry->add("isinf",              IsInfiniteNumber,        MATH_CMD,                             "INT result = isinf(FLOAT input)");
    prospaCommandRegistry->add("isinteger",          IsIntegerCLI,            MATH_CMD,                             "INT result = isinteger(VAR input)");   
    prospaCommandRegistry->add("iskeypressed",       IsKeyPressed,            GENERAL_COMMAND,                      "INT result = iskeypressed(STR key)");
    prospaCommandRegistry->add("isobj",              IsObject,                GUI_CMD,                              "INT result = isobj(INT window_nr, INT control_nr)");   
+   prospaCommandRegistry->add("isosurf",            Display3dSurface,        THREED_CMD,                           "isosurf(MAT3D matrix, FLOAT level, RGB colour, VEC range)");
+   prospaCommandRegistry->add("ispar",              DoesParameterExist,      LIST_CMD,                             "INT result = ispar(LIST list_name, STR parameter_name)");
    prospaCommandRegistry->add("isplotidle",         IsPlotIdle,              GUI_CMD,                              "INT result = isplotidle([CLASS plot_region])");
    prospaCommandRegistry->add("isproc",             IsProcedureAvailable,    FILE_CMD,                             "INT result = isproc(STR, macroPath, STR macroName, STR procName)");
-
-   prospaCommandRegistry->add("ispar",              DoesParameterExist,      LIST_CMD,                             "INT result = ispar(LIST list_name, STR parameter_name)");
    prospaCommandRegistry->add("issubstr",           IsSubString,             STRING_CMD,                           "INT result = issubstr(STR string/LIST list, STR substring)");
-   prospaCommandRegistry->add("isosurf",            Display3dSurface,        THREED_CMD,                           "isosurf(MAT3D matrix, FLOAT level, RGB colour, VEC range)");
-   prospaCommandRegistry->add("isvar",              IsAVariable,             VAR_CMD,                              "INT result = isvar(variable)");
    prospaCommandRegistry->add("isvalidfilename",    ValidFileName,           FILE_CMD,                             "INT result = isvalidfilename(STR file/folder-name)");
+   prospaCommandRegistry->add("isvar",              IsAVariable,             VAR_CMD,                              "INT result = isvar(variable)");
    
    prospaCommandRegistry->add("j0",                 ZerothOrderBessel,       MATRIX_CMD | MATH_CMD,                "NUM y = j0(NUM x)");
    prospaCommandRegistry->add("j1",                 FirstOrderBessel,        MATRIX_CMD | MATH_CMD,                "NUM y = j1(NUM x)");
    prospaCommandRegistry->add("jn",                 NthOrderBessel,          MATRIX_CMD | MATH_CMD,                "NUM y = jn(INT order, NUM x)");
    prospaCommandRegistry->add("join",               JoinMatrices,            MATRIX_CMD,                           "MAT result = join(MAT m1, MAT m [STR edge])");
    prospaCommandRegistry->add("joinfiles",          JoinFiles,               FILE_CMD,                             "joinfiles(STR file1, STR file STR result)");
-
-   prospaCommandRegistry->add("keepontop",          KeepWindowOnTop,         GUI_CMD,                              "keepontop(INT window_nr)");
+   
    prospaCommandRegistry->add("keepfocus",          KeepFocus,               GUI_CMD,                              "keepfocus(STR \"true\"/\"false\")");
+   prospaCommandRegistry->add("keepontop",          KeepWindowOnTop,         GUI_CMD,                              "keepontop(INT window_nr)");
    prospaCommandRegistry->add("keepsubplot",        KeepSubPlot,             GUI_CMD | TWOD_CMD,                   "keepsubplot(STR 1d/2d, INT x, INT y)");
-
+   
    prospaCommandRegistry->add("lasterror",          GetLastError,            GENERAL_COMMAND,                      "STRUC errorstring = lasterror()");
-//   prospaCommandRegistry->add("line2d",             AddLineToMatrix,         GENERAL_COMMAND,                      "line2d(INT x0, INT y0, INT x1, INT y1, FLOAT value)");
    prospaCommandRegistry->add("lhil2d",             LawsonHansonNNLS2D,      MATRIX_CMD,                           "lhil2d(MAT data, MAT Ex, MAT Ey, VEC specX, VEC specY, FLOAT smoothing, STR callback)");
    prospaCommandRegistry->add("licenseinfo",        GetLicenseInfo,          LICENSE_CMD,                          "licenseinfo()");
+   prospaCommandRegistry->add("light3d",            Set3DLight,              THREED_CMD,                           "light3d(FLOAT xPos, FLOAT yPos, FLOAT zPos)");
+// prospaCommandRegistry->add("line2d",             AddLineToMatrix,         GENERAL_COMMAND,                      "line2d(INT x0, INT y0, INT x1, INT y1, FLOAT value)");
    prospaCommandRegistry->add("lines3d",            Draw3DLines,             THREED_CMD,                           "line3d(MAT lines)");
    prospaCommandRegistry->add("linewidth3d",        LineWidth3d,             THREED_CMD,                           "linewidth3d(FLOAT width)");
    prospaCommandRegistry->add("linspace",           LinearVector,            MATRIX_CMD,                           "VEC result = linspace(FLOAT first, FLOAT last, FLOAT number)");
    prospaCommandRegistry->add("linvec",             LinearVector,            MATRIX_CMD,                           "VEC result = linvec(FLOAT first, FLOAT last, FLOAT number)");
-   prospaCommandRegistry->add("light3d",            Set3DLight,              THREED_CMD,                           "light3d(FLOAT xPos, FLOAT yPos, FLOAT zPos)");
    prospaCommandRegistry->add("list",               NewList,                 LIST_CMD,                             "LIST y = list(INT number_of_entries), LIST2D y = list(INT number_cols, number_rows)");
    prospaCommandRegistry->add("listbox",            MakeListBox,             GUI_CMD,                              "OBJ name = listbox(INT control_nr, INT x, INT y, INT width, INT height, [LIST commands])");
-   prospaCommandRegistry->add("listcom",            ListCommands,            HELP_CMD,                             "LIST com = listcom(CONST-STR start_characters [, STR category_filter])");
-   prospaCommandRegistry->add("listdlls",           ListDLLCommands,         HELP_CMD | DLL_CMD,                   "listdlls([STR \"names\",dll_name])");
-   prospaCommandRegistry->add("listwindows",        ListWindows,             GUI_CMD | HELP_CMD,                   "listwindows()");
+   prospaCommandRegistry->add("listbox_es",         MakeListBoxES,           GUI_CMD,                              "OBJ name = listbox_es(INT control_nr, INT x, INT y, INT width, INT height, [LIST commands])");
    prospaCommandRegistry->add("listcachedprocs",    ListCachedProcedures,    GENERAL_COMMAND,                      "listcachedprocs(STR mode [,STR macro])");
+   prospaCommandRegistry->add("listcom",            ListCommands,            HELP_CMD,                             "LIST com = listcom(CONST-STR start_characters [, STR category_filter])");
    prospaCommandRegistry->add("listcontrols",       ListControls,            GUI_CMD,                              "listcontrols(INT winNr)");
+   prospaCommandRegistry->add("listdlls",           ListDLLCommands,         HELP_CMD | DLL_CMD,                   "listdlls([STR \"names\",dll_name])");
    prospaCommandRegistry->add("listto1d",           Convert2DListTo1D,       LIST_CMD,                             "LIST1D out = listto1d(LIST2D in)");
    prospaCommandRegistry->add("listto2d",           Convert1DListTo2D,       LIST_CMD,                             "LIST2D out = listto2d(LIST1D in)");
+   prospaCommandRegistry->add("listwindows",        ListWindows,             GUI_CMD | HELP_CMD,                   "listwindows()");
    prospaCommandRegistry->add("load",               Load,                    FILE_CMD,                             "load(STR filename, [STR option[, STR display]])");
    prospaCommandRegistry->add("loaddlls",           LoadDLLs,                FILE_CMD,                             "loaddlls()");
-   prospaCommandRegistry->add("loadplotmode",       LoadPlotMode,            ONED_CMD | GUI_CMD,                   "loadplotmode(STR plot, STR mode)");
    prospaCommandRegistry->add("loadpix",            LoadPictureTo3DMatrix,   FILE_CMD | MATRIX_CMD,                "loadpix(STR file)");
+   prospaCommandRegistry->add("loadplotmode",       LoadPlotMode,            ONED_CMD | GUI_CMD,                   "loadplotmode(STR plot, STR mode)");
    prospaCommandRegistry->add("log10",              Log10,                   MATRIX_CMD | MATH_CMD,                "NUM y = log10(NUM x)");
-   prospaCommandRegistry->add("loge",               Loge,                    MATRIX_CMD | MATH_CMD,                "NUM y = loge(NUM x)");
    prospaCommandRegistry->add("log2",               Log2,                    MATRIX_CMD | MATH_CMD,                "NUM y = log2(NUM x)");
    prospaCommandRegistry->add("logbin",             LogBin,                  MATRIX_CMD,                           "(VEC xOut, VEC yOut) = logbin(VEC xIn, VEC yIn, INT bin_size)");
+   prospaCommandRegistry->add("loge",               Loge,                    MATRIX_CMD | MATH_CMD,                "NUM y = loge(NUM x)");
    prospaCommandRegistry->add("logspace",           LogVector,               MATRIX_CMD,                           "VEC result = logspace(FLOAT first, FLOAT last, FLOAT number)");
    prospaCommandRegistry->add("logvec",             LogVector,               MATRIX_CMD,                           "VEC result = logvec(FLOAT first, FLOAT last, FLOAT number)");
    prospaCommandRegistry->add("ls",                 ListFiles,               FILE_CMD,                             "LIST files = ls([STR range [,STR which[, STR print]]])");
-
+   
    prospaCommandRegistry->add("macadrs",            GetMacAdress,            GENERAL_COMMAND,                      "VEC adrs = macadrs()");
-   prospaCommandRegistry->add("makelink",           MakeLink,                FILE_CMD,                              "makelink(STR linkPath, STR executablePath, STR quotedExecuableArguments, STR workingDirectory)");
    prospaCommandRegistry->add("mag",                Magnitude,               MATRIX_CMD | MATH_CMD,                "MAT y = mag(CMAT x )");
+   prospaCommandRegistry->add("makelink",           MakeLink,                FILE_CMD,                              "makelink(STR linkPath, STR executablePath, STR quotedExecuableArguments, STR workingDirectory)");
    prospaCommandRegistry->add("marginspref",        DefaultWindowMargins,    GENERAL_COMMAND,                      "marginspref(INT left, INT right, INT top, INT base)");
    prospaCommandRegistry->add("matrix",             NewMatrix,               MATRIX_CMD,                           "MAT(3D) m = matrix(INT width [,INT height [,INT depth [,INT hyperdepth]]])");
-   prospaCommandRegistry->add("matrixlist",         GetMatrixList,           MATRIX_CMD,                           "LIST result = matrixlist(INT which_type_to_list)");
    prospaCommandRegistry->add("matrixdim",          GetMatrixDimension,      MATRIX_CMD,                           "INT result = matrixdim(MAT m)");
+   prospaCommandRegistry->add("matrixlist",         GetMatrixList,           MATRIX_CMD,                           "LIST result = matrixlist(INT which_type_to_list)");
    prospaCommandRegistry->add("max",                Maximum,                 MATRIX_CMD,                           "[val,x] = max(MAT m) or [val,x,y] = max(MAT m) or [val,x,y,z] = max(MAT3D m)");
    prospaCommandRegistry->add("mean",               MatrixMean,              MATRIX_CMD,                           "float result = mean(MAT/VEC input)");
+   prospaCommandRegistry->add("memory",             MemoryStatus,            GENERAL_COMMAND,                      "INT result = memory()");
    prospaCommandRegistry->add("menu",               MakeMenu,                GENERAL_COMMAND,                      "OBJ name = menu(INT nr, STR name, {STR item, STR command})");
    prospaCommandRegistry->add("menuk",              MakeMenuWithKeys,        GUI_CMD,                              "OBJ name = menuk(INT nr, STR name, {STR item, STR key, STR command})");
-   prospaCommandRegistry->add("memory",             MemoryStatus,            GENERAL_COMMAND,                      "INT result = memory()");
    prospaCommandRegistry->add("mergelists",         MergeParameterLists,     LIST_CMD,                             "LIST newlist = mergelists(LIST list1, LIST list2)");
    prospaCommandRegistry->add("message",            DisplayMessage,          GUI_CMD,                              "message(STR caption, STR text_to_display [, STR icon])");
    prospaCommandRegistry->add("min",                Minimum,                 MATRIX_CMD,                           "[val,x] = min(MAT m) or [val,x,y] = min(MAT m) or [val,x,y,z] = min(MAT3D m)");
@@ -603,27 +607,25 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("mkobj",              MakeObjectInteractively, GUI_CMD,                              "mkobj(CONST-STR object_command)");
    prospaCommandRegistry->add("mkparlist",          MakeParameterList,       LIST_CMD,                             "LIST parList = mkparlist([LIST list_names])");
    prospaCommandRegistry->add("mkparstruct",        MakeParameterStructure,  STRUCT_CMD,                           "STRUCT par = mkparstruct([LIST list_names])");
-
-   
-   prospaCommandRegistry->add("movie",              MakeMovie,               GENERAL_COMMAND,                      "movie(STR codec, STR fileName, STR fps)");
    prospaCommandRegistry->add("movefile",           MoveAFile,               FILE_CMD,                             "movefile(STR source, STR destination)");
    prospaCommandRegistry->add("movewindow",         MoveAppWindow,           GUI_CMD,                              "movewindow(STR name, INT x, INT y, INT width, INT height)");
+   prospaCommandRegistry->add("movie",              MakeMovie,               GENERAL_COMMAND,                      "movie(STR codec, STR fileName, STR fps)");
    prospaCommandRegistry->add("multiplot",          Multiplot,               GUI_CMD | TWOD_CMD,                   "multiplot(STR \"1d/2d\", INT nrx, INT nry)");
-
+   
    prospaCommandRegistry->add("next",               NextLoop,                CONTROL_COMMAND,                      "next(for_loop_variable)");
    prospaCommandRegistry->add("noise",              Noise,                   MATRIX_CMD,                           "MAT y = noise(INT width [,INT height, [INT depth, [INT hyperdepth]]])");
    prospaCommandRegistry->add("not",                NotOperator,             MATH_CMD,                             "FLOAT/STR y = not(FLOAT/STR x)");
-                           
+   
+   prospaCommandRegistry->add("offdiag",            OffDiagonalMatrix,       MATRIX_CMD,                           "MAT out = offdiag(MAT in)");
    prospaCommandRegistry->add("onerror",            OnError,                 GENERAL_COMMAND,                      "onerror(STR commands)");
    prospaCommandRegistry->add("outer",              TensorProduct,           MATRIX_CMD,                           "MAT result = outer(MAT A, MAT B)");
-   prospaCommandRegistry->add("offdiag",            OffDiagonalMatrix,       MATRIX_CMD,                           "MAT out = offdiag(MAT in)");
-
-   prospaCommandRegistry->add("pasteplot",          PastePlot,               ONED_CMD | TWOD_CMD,                  "pasteplot([CLASS plot_region])");
-   prospaCommandRegistry->add("pasteintoplot",      PasteIntoPlot,           ONED_CMD | TWOD_CMD,                  "pasteintoplot([CLASS plot_region])");
-   prospaCommandRegistry->add("pathnames",          SetPathNames,            FILE_CMD,                             "pathnames(STR folder_name, STR path)");
+   
    prospaCommandRegistry->add("panel",              MakePanel,               GUI_CMD,                              "OBJ name = panel(INT control_nr, INT x, INT y, INT width, INT height)");
    prospaCommandRegistry->add("parentctrl",         GetParentObject,         GUI_CMD,                              "CLASS obj = parentobj()");
    prospaCommandRegistry->add("parse",              ParseString,             STRING_CMD,                           "LIST result = parse(STR string, STR delimiter)");                          
+   prospaCommandRegistry->add("pasteintoplot",      PasteIntoPlot,           ONED_CMD | TWOD_CMD,                  "pasteintoplot([CLASS plot_region])");
+   prospaCommandRegistry->add("pasteplot",          PastePlot,               ONED_CMD | TWOD_CMD,                  "pasteplot([CLASS plot_region])");
+   prospaCommandRegistry->add("pathnames",          SetPathNames,            FILE_CMD,                             "pathnames(STR folder_name, STR path)");
    prospaCommandRegistry->add("pause",              Pause,                   TIME_CMD,                             "pause(FLOAT time_in_seconds[, STR sleep/nosleep, STR events/noevents])");                          
    prospaCommandRegistry->add("phase",              Phase,                   MATRIX_CMD | MATH_CMD,                "MAT y = phase(CPLX/CMAT x)");                           
    prospaCommandRegistry->add("picture",            MakePicture,             GUI_CMD,                              "OBJ name = picture(INT control_nr, INT x, INT y, INT width, INT height)");                           
@@ -633,51 +635,50 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("plot2d",             MakeImageWindow,         TWOD_CMD | GUI_CMD,                   "OBJ name = plot2d(INT nr, INT x, INT y, INT w, INT h)");
    prospaCommandRegistry->add("plot3d",             Make3DWindow,            THREED_CMD | GUI_CMD,                 "OBJ name = plot3d(INT nr, INT x, INT y, INT w, INT h)");
    prospaCommandRegistry->add("plotcallback",       DefinePlotCallback,      ONED_CMD,                             "plotcallback(STR function_to_replace, STR callback_macro)");
+   prospaCommandRegistry->add("plotfileversion",    PlotFileSaveVersion,     ONED_CMD | TWOD_CMD,                  "plotfileversion(FLOAT version)");
    prospaCommandRegistry->add("plotpref",           PlotPreferences,         ONED_CMD | TWOD_CMD,                  "plotpref(STR parameter, VARIANT value, ...)");                           
    prospaCommandRegistry->add("plotscale",          SetPlotScaleFactor,      ONED_CMD | TWOD_CMD,                  "plotscale(FLOAT scale_factor)");
-   prospaCommandRegistry->add("plotfileversion",    PlotFileSaveVersion,     ONED_CMD | TWOD_CMD,                  "plotfileversion(FLOAT version)");
    prospaCommandRegistry->add("plotviewversion",    PlotViewVersion,         ONED_CMD | TWOD_CMD,                  "plotviewversion(INT version)");
-   prospaCommandRegistry->add("pref3d",             Set3DControlPrefs,       THREED_CMD,                           "pref3d(FLOAT rotation, FLOAT xyzShift, FLOAT scale, FLOAT distance)");                  
    prospaCommandRegistry->add("pr",                 PrintString,             GENERAL_COMMAND,                      "pr(VARIANT data_to_print)");
+   prospaCommandRegistry->add("pref3d",             Set3DControlPrefs,       THREED_CMD,                           "pref3d(FLOAT rotation, FLOAT xyzShift, FLOAT scale, FLOAT distance)");                  
    prospaCommandRegistry->add("print",              PrintString,             GENERAL_COMMAND,                      "print(VARIANT data_to_print)");
    prospaCommandRegistry->add("printtofile",        PrintToFile,             FILE_CMD,                              "printtofile(STR file_name [, \"overwrite\"/\"append\"])");
    prospaCommandRegistry->add("printtostring",      PrintToString,           STRING_CMD,                           "printtostring(STR string_name)");
    prospaCommandRegistry->add("procedure",          StartProcedure,          CONTROL_COMMAND,                      "procedure(CONST-STR procedure_name, [argument_list])");
+   prospaCommandRegistry->add("procinfo",           DisplayProcInfo,         HELP_CMD,                             "procinfo(STR procedureName)");
    prospaCommandRegistry->add("progressbar",        MakeProgressBar,         GUI_CMD,                              "OBJ name = progressbar(INT control_nr, INT x, INT y, INT width, INT height, STR \"horizontal/vertical\")");
-   prospaCommandRegistry->add("pseudologvec",       PseudoLogVector,         MATRIX_CMD,                           "(VEC xOut, VEC yOut) = pseudologvec(FLOAT start, FLOAT end, INT number_of_points)");
    prospaCommandRegistry->add("pseudologbin",       PseudoLogBin,            MATRIX_CMD,                           "(VEC xOut, VEC yOut) = pseudologbin(VEC xIn, VEC yIn, INT bin_size)");
+   prospaCommandRegistry->add("pseudologvec",       PseudoLogVector,         MATRIX_CMD,                           "(VEC xOut, VEC yOut) = pseudologvec(FLOAT start, FLOAT end, INT number_of_points)");
    prospaCommandRegistry->add("pwd",                GetCWD,                  GENERAL_COMMAND,                      "STR directory = pwd()");
-  
+   
    prospaCommandRegistry->add("query",              YesNoMessage,            GUI_CMD,                              "STR result = query(STR caption, STR message, [STR default, [STR mode]])");
-
-   prospaCommandRegistry->add("rand",               Random,                  MATH_CMD,                             "INT y = rand(INT max_value) or MAT y = rand(INT width, INT height, max_value)");   
+   
    prospaCommandRegistry->add("radiobuttons",       MakeRadioButtons,        GUI_CMD,                              "OBJ name = radiobuttons(INT control_nr, INT x, INT y, INT spacing, STR orientation, STR states, STR initial, [LIST commands])");   
+   prospaCommandRegistry->add("rand",               Random,                  MATH_CMD,                             "INT y = rand(INT max_value) or MAT y = rand(INT width, INT height, max_value)");   
    prospaCommandRegistry->add("real",               RealPart,                MATH_CMD,                             "FLOAT y = real(CPLX x)");   
    prospaCommandRegistry->add("realtostr",          RealToStr,               STRING_CMD,                           "STR y = realtostr(FLOAT x)");
-   prospaCommandRegistry->add("rtoc",               RealToComplex,           MATH_CMD,                             "VEC y = realtocomplex(CVEC x)");
    prospaCommandRegistry->add("rectangle",          AddRectangleToMatrix,    GENERAL_COMMAND,                      "MAT mout = rectangle(MAT min, INT x0, INT y0, INT w/2, INT h/2, FLOAT a)");
-   prospaCommandRegistry->add("relpath",            RelativePath,            FILE_CMD,                             "STR result = relpath(STR path, VARIABLE var)");   
-   prospaCommandRegistry->add("requestlicense",     RequestLicense,          LICENSE_CMD,                          "requestlicense()");   
-   prospaCommandRegistry->add("replacestr",         ReplaceString,           GENERAL_COMMAND,                      "STR result = replacestr(STR text, STR substring_to_replace, STR replacement_substring");   
-   prospaCommandRegistry->add("replacesubexp",      ReplaceSubExpressions,   GENERAL_COMMAND,                      "replacesubexp(STR \"true/false\"))");
-   prospaCommandRegistry->add("resizeobj",          ResizeObjects,           GUI_CMD,                              "resizeobj(STR resize_mode)");
-   prospaCommandRegistry->add("resolvelink",        ResolveLink,             FILE_CMD,                             "STR result = resolvelink(STR link_path)");
-   prospaCommandRegistry->add("reshape",            ReshapeMatrix,           MATRIX_CMD,                           "MAT out = reshape(MAT in, INT new_width [, INT new_height [, INT new_depth [, INT new_hyperdepth]]])");
    prospaCommandRegistry->add("reflect",            ReflectMatrix,           MATRIX_CMD,                           "MAT y = relect(MAT x, [STR \"horiz\"/\"vert\"])");
    prospaCommandRegistry->add("regexp",             RegexMatch,              STRING_CMD,                           "VEC groups = regexp(STR text, STR regex)");
+   prospaCommandRegistry->add("relpath",            RelativePath,            FILE_CMD,                             "STR result = relpath(STR path, VARIABLE var)");   
    prospaCommandRegistry->add("renamelistentry",    RenameListEntry,         LIST_CMD,                             "renamelistentry(LIST lst, STR oldKey, STR newKey)");
-   prospaCommandRegistry->add("runremote",          RunRemoteMacro,          FILE_CMD,                             "STR response = runremote(STR cmd)");
-   prospaCommandRegistry->add("retvar",             GetReturnValue,          MACRO_CMD,                            "VAR result = retvar(COMMAND/PROCEDURE,INT n)");
+   prospaCommandRegistry->add("replacestr",         ReplaceString,           GENERAL_COMMAND,                      "STR result = replacestr(STR text, STR substring_to_replace, STR replacement_substring");   
+   prospaCommandRegistry->add("replacesubexp",      ReplaceSubExpressions,   GENERAL_COMMAND,                      "replacesubexp(STR \"true/false\"))");
+   prospaCommandRegistry->add("requestlicense",     RequestLicense,          LICENSE_CMD,                          "requestlicense()");   
+   prospaCommandRegistry->add("reshape",            ReshapeMatrix,           MATRIX_CMD,                           "MAT out = reshape(MAT in, INT new_width [, INT new_height [, INT new_depth [, INT new_hyperdepth]]])");
+   prospaCommandRegistry->add("resizeobj",          ResizeObjects,           GUI_CMD,                              "resizeobj(STR resize_mode)");
+   prospaCommandRegistry->add("resolvelink",        ResolveLink,             FILE_CMD,                             "STR result = resolvelink(STR link_path)");
    prospaCommandRegistry->add("return",             ReturnFromProcedure,     MACRO_CMD,                            "return([argument_list])");
+   prospaCommandRegistry->add("retvar",             GetReturnValue,          MACRO_CMD,                            "VAR result = retvar(COMMAND/PROCEDURE,INT n)");
    prospaCommandRegistry->add("rft",                RealFourierTransform,    MATRIX_CMD | FOURIER_CMD,             "CVEC y = rft(CVEC x)");   
-   prospaCommandRegistry->add("rmdir",              RemoveDirectory,         FILE_CMD,                             "rmdir(STR directory)");   
    prospaCommandRegistry->add("rmcachedmacro",      RemoveCachedMacro,       MACRO_CMD,                            "rmcachedmacro(STR path, STR macro_name, STR mode, STR verbose)");   
    prospaCommandRegistry->add("rmcachedmacros",     RemoveCachedMacros,      MACRO_CMD,                            "rmcachedmacros(STR mode)");   
+   prospaCommandRegistry->add("rmdir",              RemoveDirectory,         FILE_CMD,                             "rmdir(STR directory)");   
    prospaCommandRegistry->add("rmext",              RemoveFileExtension,     STRING_CMD | FILE_CMD,                "STR/LIST filename = rmext(STR/LIST filename.ext)");   
-   prospaCommandRegistry->add("rmobj",              RemoveObject,            GUI_CMD,                              "rmobj(INT window_nr, INT control_nr)");   
    prospaCommandRegistry->add("rmfile",             RemoveFile,              FILE_CMD,                             "rmfile(STR file_name)");   
    prospaCommandRegistry->add("rmfolder",           RemoveFolder,            FILE_CMD,                             "rmfolder(STR folder_name)");   
    prospaCommandRegistry->add("rmfromlist",         RemoveStringFromList,    LIST_CMD,                             "LIST result = rmfromlist(VARIABLE list, INT position)");   
+   prospaCommandRegistry->add("rmobj",              RemoveObject,            GUI_CMD,                              "rmobj(INT window_nr, INT control_nr)");   
    prospaCommandRegistry->add("rmprefix",           RemovePrefix,            LIST_CMD,                             "LIST result = rmprefix(VARIABLE list, STR prefix)");   
    prospaCommandRegistry->add("rmrect",             RemoveSelectionRect,     GENERAL_COMMAND,                      "rmrect()");   
    prospaCommandRegistry->add("rms",                MatrixRMS,               MATRIX_CMD,                           "float result = rms(MAT/VEC input)");
@@ -686,30 +687,31 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("rotate",             RotateMatrix,            MATRIX_CMD,                           "MAT y = rotate(MAT x, INT x_rot[, INT y_rot[, INT z_rot]])");   
    prospaCommandRegistry->add("rotate3d",           Rotate3DPlot,            THREED_CMD,                           "rotate3d(FLOAT x_angle, FLOAT y_angle, FLOAT z_angle)");   
    prospaCommandRegistry->add("round",              RoundToNearestInteger,   MATH_CMD,                             "NUM y = round(NUM x)");   
+   prospaCommandRegistry->add("rtoc",               RealToComplex,           MATH_CMD,                             "VEC y = realtocomplex(CVEC x)");
    prospaCommandRegistry->add("run",                EvaluateExpression,      MACRO_CMD,                            "run(STR macro_call)");   
-                           
+   prospaCommandRegistry->add("runremote",          RunRemoteMacro,          FILE_CMD,                             "STR response = runremote(STR cmd)");
+   
    prospaCommandRegistry->add("save",               Save,                    FILE_CMD,                             "save(STR file_name [, VARIABLE var])");
-   prospaCommandRegistry->add("savewav",            SaveWaveFile,            FILE_CMD,                             "savewav(STR file_name , VEC var)");
+// prospaCommandRegistry->add("savekey",            SaveKey,                 GENERAL_COMMAND,                      "savekey(STR file_name)");
    prospaCommandRegistry->add("savelayout",         SaveWindowLayout,        FILE_CMD,                             "savelayout(STR file_name [, STR mode1[, STR mode2]])");
-//   prospaCommandRegistry->add("savekey",            SaveKey,                 GENERAL_COMMAND,                      "savekey(STR file_name)");
+   prospaCommandRegistry->add("savewav",            SaveWaveFile,            FILE_CMD,                             "savewav(STR file_name , VEC var)");
    prospaCommandRegistry->add("savewindow",         SaveGUIWindowImage,      GENERAL_COMMAND,                      "savewindow(INT window_nr, STR file_name, [VEC cliprect [, STR mode]])");
    prospaCommandRegistry->add("scale3d",            Scale3DPlot,             GENERAL_COMMAND,                      "scale3d(FLOAT x_scale, FLOAT y_scale, FLOAT z_scale)");
-   prospaCommandRegistry->add("searchdlls",         SearchDLLs,              GENERAL_COMMAND,                      "searchdlls(STR \"true\"/\"false\")");
-   prospaCommandRegistry->add("segments3d",         Draw3DSegments,          GENERAL_COMMAND,                      "segments3d(MAT segments)");
-
    prospaCommandRegistry->add("scanstr",           ScanString,               STRING_CMD,                           "STR result = scanstr(STR text, STR regex)");   
    prospaCommandRegistry->add("sd",                MatrixStandardDeviation,  MATRIX_CMD,                           "float result = sd(MAT/VEC input)");
+   prospaCommandRegistry->add("searchdlls",         SearchDLLs,              GENERAL_COMMAND,                      "searchdlls(STR \"true\"/\"false\")");
+   prospaCommandRegistry->add("segments3d",         Draw3DSegments,          GENERAL_COMMAND,                      "segments3d(MAT segments)");
+   prospaCommandRegistry->add("selecteditline",    SelectEditorLine,         GENERAL_COMMAND,                      "selecteditline(INT line_nr)");
    prospaCommandRegistry->add("selectobj",         SelectObjInteractively,   GENERAL_COMMAND,                      "(INT winNr, INT objNr, OBJ name) = selectobj()");
    prospaCommandRegistry->add("sendmessage",       SendGUIMessage,           GENERAL_COMMAND,                      "sendmessage(STR source, STR message)");
    prospaCommandRegistry->add("sendtoprospa",      SendToExistingProspa,     FILE_CMD,                             "int result = sendtoprospa(STR window_title, STR file_path, STR file_to_open)");
    prospaCommandRegistry->add("setctrlvalues",     SetControlValues,         GENERAL_COMMAND,                      "setctrlvalues(INT window_nr, LIST control_list)");
    prospaCommandRegistry->add("setcwd",            SetCWD,                   FILE_CMD,                             "setcwd(STR directory)");
-   prospaCommandRegistry->add("seteditwin",        SetEditableWindow,        GENERAL_COMMAND,                      "seteditwin(INT window_nr)");
    prospaCommandRegistry->add("seteditrendermode", SetEditorRenderMode,      GENERAL_COMMAND,                      "seteditrendermode(STR \"current/parent\")");
-   prospaCommandRegistry->add("selecteditline",    SelectEditorLine,         GENERAL_COMMAND,                      "selecteditline(INT line_nr)");
+   prospaCommandRegistry->add("seteditwin",        SetEditableWindow,        GENERAL_COMMAND,                      "seteditwin(INT window_nr)");
+   prospaCommandRegistry->add("setfocus",          SetWindowFocus,           GUI_CMD,                              "setfocus(INT window_nr [,INT ctrl_nr])");
    prospaCommandRegistry->add("setfolder",         SetCurrentFolder,         FILE_CMD,                             "setfolder(STR folder)");
    prospaCommandRegistry->add("setfont",           SetFonts,                 GUI_CMD,                              "setfont(STR prospa_font, STR font_name, INT font_size)");
-   prospaCommandRegistry->add("setfocus",          SetWindowFocus,           GUI_CMD,                              "setfocus(INT window_nr [,INT ctrl_nr])");
    prospaCommandRegistry->add("setlistvalue",      SetParameterListValue,    LIST_CMD,                             "setlistvalue(LIST assignment_list, STR name, STR new_value)");
    prospaCommandRegistry->add("setlistvalues",     SetParameterListValues,   LIST_CMD,                             "setlistvalues(LIST main_list, LIST new_values)");
    prospaCommandRegistry->add("setpar",            SetParameter,             GUI_CMD,                              "setpar(INT window_nr, INT/STR control_id, STR parameter, VARIANT value)");
@@ -719,20 +721,19 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("setwindowpar",      SetWindowParameter,       GENERAL_COMMAND,                      "setwindowpar(INT window_nr, STR parameter, CONST-STR value)");
    prospaCommandRegistry->add("shift",             ShiftMatrix,              MATRIX_CMD,                           "MAT y = shift(MAT x, INT x_shift[, INT y_shift[, INT z_shift]])");
    prospaCommandRegistry->add("shift3d",           Shift3DPlot,              GENERAL_COMMAND,                      "shift3d(FLOAT x_offset, FLOAT y_offset, FLOAT z_offset)");
-   prospaCommandRegistry->add("sign",              ReturnSign,               GENERAL_COMMAND,                      "result = sign(VAR input)");
+   prospaCommandRegistry->add("showborder",        ShowPlotBorder,           ONED_CMD  |TWOD_CMD,                  "showborder(STR \"true\"/\"false\")");
    prospaCommandRegistry->add("showcmap",          ShowColorScale,           GENERAL_COMMAND,                      "showcmap(STR \"true/false\")");
    prospaCommandRegistry->add("showcmap3d",        ShowColorScale3D,         GENERAL_COMMAND,                      "showcmap3d(STR \"yes/no\")");
    prospaCommandRegistry->add("showcursor",        TrackCursor,              GENERAL_COMMAND,                      "showcursor(STR \"1D/2D\", STR \"cross/col/row\", CONST-STR procedure)");
    prospaCommandRegistry->add("showdialog",        ShowDialog,               GUI_CMD,                              "showdialog(INT window_nr)");
    prospaCommandRegistry->add("showerrors",        ShowErrors,               DEBUG_CMD,                            "showerrors(INT level (0/1/2)");
-   prospaCommandRegistry->add("showobjects",       ShowObjects,              GUI_CMD,                              "showobject(INT window_nr)");
-   prospaCommandRegistry->add("showborder",        ShowPlotBorder,           ONED_CMD  |TWOD_CMD,                  "showborder(STR \"true\"/\"false\")");
-   //prospaCommandRegistry->add("showprocedures",    ShowMacroProcedures,      MACRO_CMD,                            "showprocedures()");
-   prospaCommandRegistry->add("showwindow",        ShowMyWindow,             GUI_CMD,                              "showwindow(INT window_nr, STR mode)");
-   prospaCommandRegistry->add("shownextwindow",    ShowNextWindow,           GUI_CMD,                              "shownextwindow(INT window_nr)");
    prospaCommandRegistry->add("showlastwindow",    ShowLastWindow,           GUI_CMD,                              "showlastwindow(INT window_nr)");
+   prospaCommandRegistry->add("shownextwindow",    ShowNextWindow,           GUI_CMD,                              "shownextwindow(INT window_nr)");
+   prospaCommandRegistry->add("showobjects",       ShowObjects,              GUI_CMD,                              "showobject(INT window_nr)");
+// prospaCommandRegistry->add("showprocedures",    ShowMacroProcedures,      MACRO_CMD,                            "showprocedures()");
+   prospaCommandRegistry->add("showwindow",        ShowMyWindow,             GUI_CMD,                              "showwindow(INT window_nr, STR mode)");
    prospaCommandRegistry->add("shuffle",           ShuffleItem,              MATRIX_CMD,                           "LIST/MAT result = shuffle(LIST/MAT shuffleMe)");
-
+   prospaCommandRegistry->add("sign",              ReturnSign,               GENERAL_COMMAND,                      "result = sign(VAR input)");
    prospaCommandRegistry->add("simplifydir",       SimplifyDirectory,        FILE_CMD,                             "STR simple_dir = simplifydir(STR complex_dir)");
    prospaCommandRegistry->add("sin",               Sine,                     MATH_CMD |TRIG_CMD,                   "NUM y = sin(NUM x)");
    prospaCommandRegistry->add("single",            ConvertToSinglePrec,      MATH_CMD,                             "NUM y = single(NUM x)");
@@ -752,78 +753,77 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("step",              nProc,                    NOP_CONTROL_CMD,                      "step");
    prospaCommandRegistry->add("strtoascii",        StringToAscii,            STRING_CMD,                           "VEC result = strtoascii(STR input)");
    prospaCommandRegistry->add("struct",            MakeStructure,            STRUCT_CMD,                           "STRUC result = struct(STR \"local\"/\"winvar\")  or STRUC result = struct(LIST parameter_list) or STRUC result = struct(member1=value1,  member2=value2, ... memberN=valueN) or STRUC result = struct(VAR member1, VAR member2, ... VAR memberN)");
-   prospaCommandRegistry->add("structarray",       MakeStructureArray,       STRUCT_CMD,                           "STRUCARRAY result = struct(INT size)");
    prospaCommandRegistry->add("structappend",      AppendToStructure,        STRUCT_CMD,                           "structappend(STRUCT to_modify, STRUCT to_append)");
+   prospaCommandRegistry->add("structarray",       MakeStructureArray,       STRUCT_CMD,                           "STRUCARRAY result = struct(INT size)");
    prospaCommandRegistry->add("submatrix",         ExtractSubMatrix,         MATRIX_CMD,                           "MAT s = submatrix(MAT m, INT x1, INT x [INT y1, INT y [INT z1, INT z [INT q1, INT q2]]]");
    prospaCommandRegistry->add("sum",               Sum,                      MATRIX_CMD,                           "FLOAT s = sum(MAT m, [STR \"x/y/xy\"]) )");
    prospaCommandRegistry->add("surf2d",            Display2DSurface,         THREED_CMD,                           "surf2d(MAT/CMAT matrix, VEC colour-scale, VEC data-range, VEC map-range, STR xDirection, STR yDirection)");
    prospaCommandRegistry->add("swapvar",           SwapVariables,            VAR_CMD,                              "swapvar(CONST-STR variable1, CONST-STR variable2)");
    prospaCommandRegistry->add("syncaxes",          SetOrGetSyncAxes,         ONED_CMD,                             "STR s = syncaxes(STR \"true\", \"false\")");
-
+   
    prospaCommandRegistry->add("tab",               MakeTabCtrl,              GUI_CMD,                              "tab(INT control_nr, INT x, INT y, INT width, INT height, [LIST commands])");
    prospaCommandRegistry->add("tan",               Tangent,                  MATH_CMD |TRIG_CMD,                   "NUM y = tan(NUM x)");
    prospaCommandRegistry->add("tanh",              HyperbolicTangent,        MATH_CMD |TRIG_CMD,                   "NUM y = tanh(NUM x)");
+   prospaCommandRegistry->add("testit",            AssignTest,               GENERAL_COMMAND,                      "testit(dst,src)");
    prospaCommandRegistry->add("textbox",           MakeTextBox,              GUI_CMD,                              "OBJ name = textbox(INT control_nr, INT x, INT y, INT width, [LIST commands])");
    prospaCommandRegistry->add("textmenu",          MakeComboBox,             GUI_CMD,                              "OBJ name = textmenu(INT control_nr, INT x, INT y, INT width, INT height, [LIST commands])");
    prospaCommandRegistry->add("textsize3d",        Set3DTextSize,            THREED_CMD,                           "textsize3d(FLOAT size)");
-   prospaCommandRegistry->add("testit",            AssignTest,               GENERAL_COMMAND,                      "testit(dst,src)");
    prospaCommandRegistry->add("thread",            Thread,                   THREAD_CMD,                           "INT threadID = thread(STR command[, STR args])");
    prospaCommandRegistry->add("threadabort",       AbortThread,              THREAD_CMD,                           "INT status = threadabort(INT threadID)");
    prospaCommandRegistry->add("threadcleanup",     CleanUpThread,            THREAD_CMD,                           "threadcleanup(INT threadID)");
-   prospaCommandRegistry->add("threadwait",        WaitforThread,            THREAD_CMD,                           "threadwait(INT threadID)");
    prospaCommandRegistry->add("threadrunning",     ThreadStatus,             THREAD_CMD,                           "INT status = threadrunning(INT threadID)");
+   prospaCommandRegistry->add("threadwait",        WaitforThread,            THREAD_CMD,                           "threadwait(INT threadID)");
    prospaCommandRegistry->add("throw",             ThrowException,           CONTROL_COMMAND,                      "throw(STR message)");
    prospaCommandRegistry->add("time",              GetorSetElapsedTime,      TIME_CMD,                             "INT t = time() or time(INT initial_time [,float/double])");
    prospaCommandRegistry->add("title",             SetTitleParameters,       ONED_CMD | TWOD_CMD,                  "title(STR caption_text)");
    prospaCommandRegistry->add("to",                nProc,                    NOP_CONTROL_CMD,                      "to");
    prospaCommandRegistry->add("toolbar",           MakeToolBar,              GUI_CMD,                              "OBJ name = toolbar(INT control_nr, STR bitmap_name, {STR label, STR command})");
    prospaCommandRegistry->add("toolbark",          MakeToolBarWithKeys,      GUI_CMD,                              "OBJ name = toolbark(INT control_nr, STR bitmap_name, {STR label, STR key, STR command})");
+   prospaCommandRegistry->add("trac",              MatrixTrace,              MATRIX_CMD,                           "NUM y = trac(MAT x)");
+   prospaCommandRegistry->add("trace",             ModifyTrace,              ONED_CMD,                             "trace(STR parameter, VARIANT value, ...)");
+   prospaCommandRegistry->add("tracepref",         ModifyTraceDefault,       ONED_CMD,                             "tracepref(STR parameter, VARIANT value, ...)");
    prospaCommandRegistry->add("trackcursor",       TrackCursor,              GUI_CMD,                              "trackcursor(STR \"1D/2D\", STR \"cross/col/row\", CONST-STR procedure)");
    prospaCommandRegistry->add("trans",             TransposeMatrix,          MATRIX_CMD,                           "MAT y = trans(MAT x, [STR axes])");
-   prospaCommandRegistry->add("trac",              MatrixTrace,              MATRIX_CMD,                           "NUM y = trac(MAT x)");
    prospaCommandRegistry->add("trimstr",           TrimString,               STRING_CMD,                           "STR output = TrimString(STR input [[, STR \"front/back/both\"], STR char])");
    prospaCommandRegistry->add("trunc",             TruncateToInteger,        GENERAL_COMMAND,                      "NUM y = trunc(NUM x)");
    prospaCommandRegistry->add("try",               TryForAnError,            CONTROL_COMMAND,                      "try");
-   prospaCommandRegistry->add("trace",             ModifyTrace,              ONED_CMD,                             "trace(STR parameter, VARIANT value, ...)");
-   prospaCommandRegistry->add("tracepref",         ModifyTraceDefault,       ONED_CMD,                             "tracepref(STR parameter, VARIANT value, ...)");
-
+   
    prospaCommandRegistry->add("uniquename",        GetUniqueVariableName,    VAR_CMD,                              "STR name = uniquename(STR base)");
    prospaCommandRegistry->add("unloaddlls",        UnloadDLLs,               DLL_CMD,                              "unloaddlls()");
    prospaCommandRegistry->add("updateedittitle",   UpdateEditorParentTitle,  GUI_CMD,                              "updateedittitle()");
-   prospaCommandRegistry->add("updown",            MakeUpDown,               GUI_CMD,                              "updown(INT control_nr, INT x, INT y, INT width, INT height, STR orientation, [LIST commands])");
    prospaCommandRegistry->add("updatemainmenu",    UpdateMainMenu,           GUI_CMD,                              "updatemainmenu()");
+   prospaCommandRegistry->add("updown",            MakeUpDown,               GUI_CMD,                              "updown(INT control_nr, INT x, INT y, INT width, INT height, STR orientation, [LIST commands])");
    prospaCommandRegistry->add("usedll",            UseDLL,                   DLL_CMD,                              "usedll(STR DLL_name)");
    prospaCommandRegistry->add("usequotedstrings",  UseQuotedStrings,         STRING_CMD,                           "unquotedstrings(STR \"true/false\")");
    
-   prospaCommandRegistry->add("vartype",           ReturnVariableType,       VAR_CMD,                              "STR type = vartype(CONST-STR variable)");
    prospaCommandRegistry->add("varlist",           GetVariableList,          LIST_CMD | VAR_CMD,                   "LIST result = varlist([STR/INT type[,STR/INT scope]])");
    prospaCommandRegistry->add("varstatus",         SetVariableStatus,        VAR_CMD,                              "varstatus(STR name, STR visibility, STR readstatus, STR lifetime)");
-   prospaCommandRegistry->add("viewdistance",      SetViewDistance,          THREED_CMD,                           "viewdistance(FLOAT z_distance)");
-   prospaCommandRegistry->add("viewsubplot",       ViewSubPlot,              ONED_CMD | TWOD_CMD,                  "viewsubplot(STR 1d/2d, INT x, INT y)");
-   prospaCommandRegistry->add("viewfullplot",      ViewFullPlot,             ONED_CMD | TWOD_CMD,                  "viewfullplot(STR 1d/2d)");
+   prospaCommandRegistry->add("vartype",           ReturnVariableType,       VAR_CMD,                              "STR type = vartype(CONST-STR variable)");
    prospaCommandRegistry->add("vectorplot",        DrawVectors,              TWOD_CMD,                             "vectorplot(MAT x, MAT y, FLOAT length [, INT xstep, INT ystep])");
    prospaCommandRegistry->add("version",           GetProspaVersion,         GENERAL_COMMAND,                      "INT v = version()");
+   prospaCommandRegistry->add("viewdistance",      SetViewDistance,          THREED_CMD,                           "viewdistance(FLOAT z_distance)");
+   prospaCommandRegistry->add("viewfullplot",      ViewFullPlot,             ONED_CMD | TWOD_CMD,                  "viewfullplot(STR 1d/2d)");
+   prospaCommandRegistry->add("viewsubplot",       ViewSubPlot,              ONED_CMD | TWOD_CMD,                  "viewsubplot(STR 1d/2d, INT x, INT y)");
    
-//   prospaCommandRegistry->add("waterfall2d",       DrawWaterFallPlot,        TWOD_CMD,                             "waterfall2d(MAT/CMAT matrix, VEC colour-scale, VEC data-range, VEC map-range, STR xDirection, STR yDirection)");
    prospaCommandRegistry->add("waterfall",         Waterfall,                THREED_CMD,                           "waterfall(MAT/CMAT matrix, VEC colour-scale, VEC data-range, VEC map-range, STR xDirection, STR yDirection)");
+// prospaCommandRegistry->add("waterfall2d",       DrawWaterFallPlot,        TWOD_CMD,                             "waterfall2d(MAT/CMAT matrix, VEC colour-scale, VEC data-range, VEC map-range, STR xDirection, STR yDirection)");
+   prospaCommandRegistry->add("while",             WhileStatement,           CONTROL_COMMAND,                      "while (boolean_expression)");
    prospaCommandRegistry->add("window",            MakeWindow,               GUI_CMD,                              "(INT number, OBJ name) = window(STR title, INT x, INT y, INT width, INT height[, STR \"resizeable\"])");
+   prospaCommandRegistry->add("windowmargins",     SetWindowMargins,         GUI_CMD,                              "windowmargins(INT left, INT right, INT top, INT base)");
    prospaCommandRegistry->add("windowvar",         DefineWindowVariables,    VAR_CMD,                              "windowvar(CONST-STR var_a, var_b, ...)");
    prospaCommandRegistry->add("winnamespace",      GUIWindowNumber,          GUI_CMD,                              "winnamespace(INT win_nr)");
-   prospaCommandRegistry->add("windowmargins",     SetWindowMargins,         GUI_CMD,                              "windowmargins(INT left, INT right, INT top, INT base)");
-   prospaCommandRegistry->add("while",             WhileStatement,           CONTROL_COMMAND,                      "while (boolean_expression)");
+   
    prospaCommandRegistry->add("xlabel",            SetXLabelParameters,      ONED_CMD | TWOD_CMD,                  "xlabel(STR caption_text)");
    prospaCommandRegistry->add("xor",               ExclusiveOr,              MATH_CMD,                             "FLOAT result = xor(FLOAT arg1, FLOAT arg2)");
-
+   
    prospaCommandRegistry->add("ylabel",            SetYLabelParameters,      ONED_CMD | TWOD_CMD,                  "ylabel(STR caption_text)");
    prospaCommandRegistry->add("ylabelleft",        SetLeftYLabelParameters,  ONED_CMD,                             "ylabelleft(STR caption_text)");
    prospaCommandRegistry->add("ylabelright",       SetRightYLabelParameters, ONED_CMD,                             "ylabelright(STR caption_text)");
-
-
+   
    prospaCommandRegistry->add("zerofill",          FillVector,               MATRIX_CMD,                           "VEC y = zerofill(VEC x, INT new_size, STR \"start/sides/end\", [CPLX fill_value])");
    prospaCommandRegistry->add("zoom1d",            Zoom1D,                   ONED_CMD,                             "zoom1d(FLOAT minx, FLOAT maxx [,FLOAT miny, FLOAT  maxy])");
    prospaCommandRegistry->add("zoom2d",            Zoom2D,                   TWOD_CMD,                             "zoom2d(INT left, INT right, INT bottom, INT top)");
 }
-
 
 
 /**************************************************************************************
@@ -863,19 +863,19 @@ int RunCommand(Interface *itfc, char *nameIn, char *arg, short mode)
 // If its not a procedure so see if it is a command, DLL or a variable **************
    if(name[0] != ':') 
    {   
-		int result = prospaCommandRegistry->call(name, itfc, arg);
+      int result = prospaCommandRegistry->call(name, itfc, arg);
       switch (result)
-	   {
-			case(-2):
-				return 0;
-			case(CMD_NOT_FOUND):
-	         if(mode == 1) return(-4);
-				   break;
-			default:
-				return result;
+      {
+         case(-2):
+            return 0;
+         case(CMD_NOT_FOUND):
+            if(mode == 1) return(-4);
+               break;
+         default:
+            return result;
       }
-	
-	// Can't find command so check DLLs ***************************************	
+   
+   // Can't find command so check DLLs ***************************************	
       if (searchDLLs)
       {
          r = ProcessContinue(itfc, name, arg);
@@ -884,7 +884,7 @@ int RunCommand(Interface *itfc, char *nameIn, char *arg, short mode)
          if (r != RETURN_FROM_DLL)
             return(r);
       }
-	  
+     
   // See if it's a class procedure **********************
       if((r = CheckForClassProcedure(itfc,nameIn,arg)) != CMD_NOT_FOUND)
          return(r);
@@ -892,7 +892,7 @@ int RunCommand(Interface *itfc, char *nameIn, char *arg, short mode)
   // See if it's a variable procedure **********************
       if((r = CheckForVariableProcedure(itfc,nameIn,arg)) != CMD_NOT_FOUND)
          return(r);
-	}
+   }
 
    //   CText expression;
 
@@ -958,19 +958,19 @@ int RunCommand(Interface *itfc, char *nameIn, char *arg, short mode)
 //TODO needs a lot of work
 short CheckForVariableProcedure(Interface *itfc, char *command, char *arg)
 {
-	Variable* var = NULL;
-	short type = UNQUOTED_STRING;
+   Variable* var = NULL;
+   short type = UNQUOTED_STRING;
    Variable result;
 
 
    if(!var)
-	   var = GetVariable(itfc,ALL_VAR,command,type); // Search for the variable
+      var = GetVariable(itfc,ALL_VAR,command,type); // Search for the variable
 
-	if(var)
-	{
-		if(type == UNQUOTED_STRING) // A string has been passed - treat as
-		{                           // a macro command(s)
-			CText argument;
+   if(var)
+   {
+      if(type == UNQUOTED_STRING) // A string has been passed - treat as
+      {                           // a macro command(s)
+         CText argument;
          CArg carg;
 
          if(!strcmp(var->GetString(),command))
@@ -979,33 +979,33 @@ short CheckForVariableProcedure(Interface *itfc, char *command, char *arg)
             return(ERR);
          }
 
-		// First evaluate and store any argument list in global "argVar" variables		
-			RemoveQuotes(var->GetString());
+      // First evaluate and store any argument list in global "argVar" variables		
+         RemoveQuotes(var->GetString());
 
          short nrArgs = carg.Count(arg);
          for(long i = 1; i <= nrArgs; i++)
          {
             argument = carg.Extract(i);
          
-	 			if(Evaluate(itfc,RESPECT_ALIAS,argument.Str(),&result) < 0) 
-					return(ERR);  
+            if(Evaluate(itfc,RESPECT_ALIAS,argument.Str(),&result) < 0) 
+               return(ERR);  
 
-				if(CopyVariable(itfc->argVar[i].var,&result,RESPECT_ALIAS) == ERR)
-					return(ERR);
-			}  
+            if(CopyVariable(itfc->argVar[i].var,&result,RESPECT_ALIAS) == ERR)
+               return(ERR);
+         }  
 
          itfc->nrProcArgs = nrArgs;
          int oldLineNr = itfc->startLine;
          itfc->startLine = 0;
          bool oldInCLI = itfc->inCLI;
-			itfc->inCLI = false;
+         itfc->inCLI = false;
          int oldParentLineNr = itfc->parentLineNr;
          itfc->parentLineNr = itfc->lineNr;
          short r;
 
          if(strchr(var->GetString(),';') || strchr(var->GetString(),'\n'))
          {
-			   r = ProcessMacroStr(itfc,var->GetString()); // Macro procedure as a string
+            r = ProcessMacroStr(itfc,var->GetString()); // Macro procedure as a string
          }
          else
          {
@@ -1016,59 +1016,59 @@ short CheckForVariableProcedure(Interface *itfc, char *command, char *arg)
          itfc->startLine = oldLineNr;
          itfc->parentLineNr = oldParentLineNr;
 
-			return(r);
-		}
+         return(r);
+      }
 
-		else if(type == LIST) // An argument list has been passed. Treat it
-		{                     // as a list of commands and execute them
-			char *cmd;
-			long len = 0;
-			char argument[MAX_STR];
+      else if(type == LIST) // An argument list has been passed. Treat it
+      {                     // as a list of commands and execute them
+         char *cmd;
+         long len = 0;
+         char argument[MAX_STR];
          CArg carg;
          short e;
 
-			if(var->GetData() == NULL)
-				return(CMD_NOT_FOUND);
+         if(var->GetData() == NULL)
+            return(CMD_NOT_FOUND);
 
-		// First simplify and store any argument list in global "arg" variable
-			itfc->nrProcArgs = 0;
+      // First simplify and store any argument list in global "arg" variable
+         itfc->nrProcArgs = 0;
          do
          {
             if((e = carg.GetNext(arg,argument)) == ERR)
                break;
-	 			if(Evaluate(itfc,RESPECT_ALIAS,argument,&result) < 0) 
-					return(ERR);     
-				if(CopyVariable(itfc->argVar[++itfc->nrProcArgs].var,&result,RESPECT_ALIAS) == ERR)
-					return(ERR);
+            if(Evaluate(itfc,RESPECT_ALIAS,argument,&result) < 0) 
+               return(ERR);     
+            if(CopyVariable(itfc->argVar[++itfc->nrProcArgs].var,&result,RESPECT_ALIAS) == ERR)
+               return(ERR);
          }
          while(e != FINISH);
 
-		// Determine the length of the commands by concatenating each string 
-			for(long i = 0; i < var->GetDimX(); i++)
-			{
-				cmd = ((char**)var->GetString())[i];
-				len += strlen(cmd)+2; // Add two for trailing \r\n
-			}
+      // Determine the length of the commands by concatenating each string 
+         for(long i = 0; i < var->GetDimX(); i++)
+         {
+            cmd = ((char**)var->GetString())[i];
+            len += strlen(cmd)+2; // Add two for trailing \r\n
+         }
 
-		// Allocate space for the new macro and copy from list
+      // Allocate space for the new macro and copy from list
          char* macro = new char[len+1]; // Add one for trailing NULL character
-			macro[0] = '\0';
+         macro[0] = '\0';
 
-			for(long i = 0; i < var->GetDimX(); i++)
-			{
-				cmd = ((char**)var->GetString())[i];
-				strcat(macro,cmd);
-				strcat(macro,"\r\n");
-			}
+         for(long i = 0; i < var->GetDimX(); i++)
+         {
+            cmd = ((char**)var->GetString())[i];
+            strcat(macro,cmd);
+            strcat(macro,"\r\n");
+         }
 
          bool oldInCLI = itfc->inCLI;
-		// Run the resultant macro (note: should only have 1 procedure)
-			itfc->inCLI = false;
+      // Run the resultant macro (note: should only have 1 procedure)
+         itfc->inCLI = false;
          ProcessMacroStr(itfc,macro);
          itfc->inCLI = oldInCLI;
          delete [] macro;
-			return(OK);
-		}
+         return(OK);
+      }
       else if(type == CLASS) // If a class function is passed process it
       {
          short RunClassProc(Interface *itfc, Variable *var, char *func, char *args);
@@ -1076,7 +1076,7 @@ short CheckForVariableProcedure(Interface *itfc, char *command, char *arg)
          if(arg[0] != '\0')
             return(RunClassProc(itfc, var, "default", arg));
       }
-	}
+   }
    return(CMD_NOT_FOUND);
 }
 
@@ -1107,12 +1107,12 @@ short CheckForClassProcedure(Interface *itfc, char *command, char *arg)
 
 //	if(arg[0] != '\0')
 //	{
-		sz +=  strlen(arg) + 3;
-		char *expression = new char[sz];
-		strncpy_s(expression,sz,command,_TRUNCATE);
-	   strcat(expression,"(");
-	   strcat(expression,arg);
-	   strcat(expression,")");
+      sz +=  strlen(arg) + 3;
+      char *expression = new char[sz];
+      strncpy_s(expression,sz,command,_TRUNCATE);
+      strcat(expression,"(");
+      strcat(expression,arg);
+      strcat(expression,")");
 
       r = EvaluateComplexExpression(itfc,expression,&result);
       delete [] expression;
@@ -1126,7 +1126,7 @@ short CheckForClassProcedure(Interface *itfc, char *command, char *arg)
          return(ERR);
    }
 
-		//result.NullData();
+      //result.NullData();
 
    return(r);
 }
@@ -1168,8 +1168,8 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
    macroName[0] = '\0';
    procName[0] = '\0';
 
-	if(strlen(command) >= MAX_PATH)
-		return(CMD_NOT_FOUND);
+   if(strlen(command) >= MAX_PATH)
+      return(CMD_NOT_FOUND);
 
 // If the current procedure has been originally called from a window object
 // then it will be cached already. Alternatively it may be cached in the 
@@ -1179,8 +1179,8 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
    // Determine the macroname and the procedurename
       if(command[0] == ':')
       {
-	      strncpy_s(procName,MAX_PATH,command+1,_TRUNCATE);
-	      strncpy_s(macroName,MAX_PATH,itfc->macro->macroName.Str(),_TRUNCATE);
+         strncpy_s(procName,MAX_PATH,command+1,_TRUNCATE);
+         strncpy_s(macroName,MAX_PATH,itfc->macro->macroName.Str(),_TRUNCATE);
          strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE);
       }
       else // macro:proc or macro - path is not known
@@ -1190,54 +1190,54 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
          GetCurrentDirectory(MAX_PATH,macroPath);
       }
 
-		// Check for globally cached procedures
-		if(gCachedProc.next)
-		{
-		//	TextMessage("Checking for global cache of %s %s %s\n",macroPath,macroName,procName);
+      // Check for globally cached procedures
+      if(gCachedProc.next)
+      {
+      //	TextMessage("Checking for global cache of %s %s %s\n",macroPath,macroName,procName);
          procVar = GetProcedure(macroPath,macroName,procName);
-		}
+      }
 
-		// Check for window cached procedures
-		if(!procVar)
-		{
-			if(itfc->cacheProc || (itfc->win && itfc->win->cacheProc))
-			{
-				if(itfc->win)
-				{
-					procVar = itfc->win->GetProcedure(macroPath,macroName,procName);
+      // Check for window cached procedures
+      if(!procVar)
+      {
+         if(itfc->cacheProc || (itfc->win && itfc->win->cacheProc))
+         {
+            if(itfc->win)
+            {
+               procVar = itfc->win->GetProcedure(macroPath,macroName,procName);
 
-					if(procVar)
-					   ;//TextMessage("window cache loaded: %s\n",command);
-					else // Not found so try base macro
-					{
-						if(itfc->baseMacro)
-						{
-							procVar = itfc->baseMacro->GetProcedure(macroPath,macroName,procName);
-							if(procVar)
-							{
-							 ;//  TextMessage("macro cache loaded: %s:%s\n",macroN,procName);
-							}
-							else // Not found so restore path
-								strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE); 
-						}
-					}
+               if(procVar)
+                  ;//TextMessage("window cache loaded: %s\n",command);
+               else // Not found so try base macro
+               {
+                  if(itfc->baseMacro)
+                  {
+                     procVar = itfc->baseMacro->GetProcedure(macroPath,macroName,procName);
+                     if(procVar)
+                     {
+                      ;//  TextMessage("macro cache loaded: %s:%s\n",macroN,procName);
+                     }
+                     else // Not found so restore path
+                        strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE); 
+                  }
+               }
 
-				}
-				else if(itfc->baseMacro) // See if the procedure has already be cached in the current macro
-				{
-					procVar = itfc->baseMacro->GetProcedure(macroPath,macroName,procName);
-					if(procVar)
-					{
-					 ;//  TextMessage("macro cache loaded: %s:%s\n",macroName,procName);
-					}
-					else // Not found so restore path
-						strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE);  
-				}
-			}
-			else
-			  strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE);  
-		}
-	}
+            }
+            else if(itfc->baseMacro) // See if the procedure has already be cached in the current macro
+            {
+               procVar = itfc->baseMacro->GetProcedure(macroPath,macroName,procName);
+               if(procVar)
+               {
+                ;//  TextMessage("macro cache loaded: %s:%s\n",macroName,procName);
+               }
+               else // Not found so restore path
+                  strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE);  
+            }
+         }
+         else
+           strncpy_s(macroPath,MAX_PATH,itfc->macro->macroPath.Str(),_TRUNCATE);  
+      }
+   }
 
    if(procVar) // Yes it has been cached
    {
@@ -1248,46 +1248,46 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
    { 
  //     TextMessage("%s not cached\n",command);
 
-	   if(command[0] == ':') // Command has form ':proc' - so search current macro
-	   {    
-	   // Load parent macro (either from file or text editor)   	         
-	      if(macroPath[0] == '\0' && !strcmp(macroName,"current_text"))
+      if(command[0] == ':') // Command has form ':proc' - so search current macro
+      {    
+      // Load parent macro (either from file or text editor)   	         
+         if(macroPath[0] == '\0' && !strcmp(macroName,"current_text"))
          {
             if(!curEditor)
             {   
                ErrorMessage("No current editor selected");
                return(ERR);
             }
-	         text = GetText(curEditor->edWin);
+            text = GetText(curEditor->edWin);
          }
-	      else     
+         else     
          {
-	         text = LoadTextFileFromFolder(macroPath, macroName,".mac");
+            text = LoadTextFileFromFolder(macroPath, macroName,".mac");
          //   TextMessage("Text allocated for %s:%s\n",macroName,command);
          }
-			if(text && FindProcedure(text,procName,startNr) == ERR)
-			{
-	         delete[] text;		   
-			   return(ERR); 
-			} 
-	   }
-	   else // Command has form 'macro' or 'macro:proc' - search for macro in normal path
-	   {
-	      strncpy_s(macroName,MAX_PATH,command,_TRUNCATE);
-	      ExtractProcedureName(macroName,procName); // Extract macro filename and procedure name (if any)
-	      text = LoadTextFile(itfc,macroPath, macroName, procName,".mac",startNr);
-			if(text && text[0] == '\0')
-			{
-				ErrorMessage("File '%s' in '%s' is empty!",macroName,macroPath);
-				return(ERR);
-			}
+         if(text && FindProcedure(text,procName,startNr) == ERR)
+         {
+            delete[] text;		   
+            return(ERR); 
+         } 
+      }
+      else // Command has form 'macro' or 'macro:proc' - search for macro in normal path
+      {
+         strncpy_s(macroName,MAX_PATH,command,_TRUNCATE);
+         ExtractProcedureName(macroName,procName); // Extract macro filename and procedure name (if any)
+         text = LoadTextFile(itfc,macroPath, macroName, procName,".mac",startNr);
+         if(text && text[0] == '\0')
+         {
+            ErrorMessage("File '%s' in '%s' is empty!",macroName,macroPath);
+            return(ERR);
+         }
       //   TextMessage("Text allocated for %s:%s\n",macroName,procName);
-	   }
+      }
 
    // Save the macro particulars to the procedure run list menu
       if(text)
          AddFilenameToList(procRunList,macroPath, macroName);
-	}
+   }
    
 // Process the macro text ******************************************
    if(text) 
@@ -1334,7 +1334,7 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
          char* value = new char[argument.Size()+1];
 
          // See if the argument includes an equals sign (if not a string
-			if(ParseAssignmentString(argument.Str(),name,value) == ERR)
+         if(ParseAssignmentString(argument.Str(),name,value) == ERR)
          {
             strcpy(value,name);
             name[0] = '\0';
@@ -1343,8 +1343,8 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
          {
             foundNames++;
          }
-			result.FreeName();
- 	      if(Evaluate(itfc,RESPECT_ALIAS,value,&result) < 0) 
+         result.FreeName();
+         if(Evaluate(itfc,RESPECT_ALIAS,value,&result) < 0) 
          {
             if(!procVar)
                delete[] text;
@@ -1352,7 +1352,7 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
             delete [] tempArgNames;
             delete [] name;
             delete [] value;
-	         return(ERR); 
+            return(ERR); 
          }
          if(CopyVariable(&tempArgVar[i],&result,RESPECT_ALIAS) == ERR)
          {
@@ -1373,7 +1373,7 @@ short CheckForMacroProcedure(Interface *itfc, char *command, char *arg)
    // Copy from temporary to final variables
       for(i = 1; i <= nrArgs; i++)
       {
-			itfc->argVar[i].var->Remove();
+         itfc->argVar[i].var->Remove();
          CopyVariable(itfc->argVar[i].var,&tempArgVar[i],RESPECT_ALIAS);
          itfc->argVar[i].name = tempArgNames[i];
       }
@@ -1480,61 +1480,61 @@ int ReturnFromProcedure(Interface* itfc ,char args[])
    nrRet = carg.Count(args);
 
 // Check for a variable argument list
-	if(nrRet == 2)
-	{
-	   expression = carg.Extract(1);
-	   if(expression == "\"...\"")
-		{
-	      expression = carg.Extract(2);
+   if(nrRet == 2)
+   {
+      expression = carg.Extract(1);
+      if(expression == "\"...\"")
+      {
+         expression = carg.Extract(2);
 
-			// Get the structure continaing the returned variables
-			if(Evaluate(itfc,RESPECT_ALIAS,expression.Str(),&result) < 0) 
-			{
-				 return(ERR);
-			}
+         // Get the structure continaing the returned variables
+         if(Evaluate(itfc,RESPECT_ALIAS,expression.Str(),&result) < 0) 
+         {
+             return(ERR);
+         }
 
-			if(result.GetType() == STRUCTURE)
-			{
+         if(result.GetType() == STRUCTURE)
+         {
             Variable *struc, *svar;
 
-				struc = result.GetStruct();
-				svar = struc->next;
-			// Count variables in structure
-			   nrRet = 0;
-				while (svar != NULL)
-				{
-					nrRet++;
-					svar = svar->next;
-				}
-				if(nrRet > MAX_RETURN_VARIABLES)
-				{
-					ErrorMessage("More than %d variables returned by endproc",MAX_RETURN_VARIABLES);
-					return(ERR);
-				}
-			// Copy the structure variables to the return variables
-				svar = struc->next;
-				for(i = 1; i <= nrRet; i++)
-				{
-			      CopyVariable(&itfc->retVar[i],svar,FULL_COPY);
-					svar = svar->next;
-				}
-			// Note number of returned variables
-				itfc->nrRetValues = nrRet;
+            struc = result.GetStruct();
+            svar = struc->next;
+         // Count variables in structure
+            nrRet = 0;
+            while (svar != NULL)
+            {
+               nrRet++;
+               svar = svar->next;
+            }
+            if(nrRet > MAX_RETURN_VARIABLES)
+            {
+               ErrorMessage("More than %d variables returned by endproc",MAX_RETURN_VARIABLES);
+               return(ERR);
+            }
+         // Copy the structure variables to the return variables
+            svar = struc->next;
+            for(i = 1; i <= nrRet; i++)
+            {
+               CopyVariable(&itfc->retVar[i],svar,FULL_COPY);
+               svar = svar->next;
+            }
+         // Note number of returned variables
+            itfc->nrRetValues = nrRet;
 
-				return(RETURN_FROM_MACRO);
-			}
-			//else if(result.GetType() == LIST)
-			//{
+            return(RETURN_FROM_MACRO);
+         }
+         //else if(result.GetType() == LIST)
+         //{
 
 
-			//}
-			else
-			{
-				ErrorMessage("Invalid second argument in 'endproc' argument list - should be structure or list");
-				return(ERR);
-			}
-		}
-	}
+         //}
+         else
+         {
+            ErrorMessage("Invalid second argument in 'endproc' argument list - should be structure or list");
+            return(ERR);
+         }
+      }
+   }
 
 // Make a temporary return variable array
    Variable* retVar = new Variable[nrRet+1];
@@ -1544,13 +1544,13 @@ int ReturnFromProcedure(Interface* itfc ,char args[])
    {
       expression = carg.Extract(i);
 
-	   if(Evaluate(itfc,RESPECT_ALIAS,expression.Str(),&result) < 0) 
+      if(Evaluate(itfc,RESPECT_ALIAS,expression.Str(),&result) < 0) 
       {
           delete [] retVar;
-		    return(ERR);
+          return(ERR);
       }
       CopyVariable(&retVar[i],&result,FULL_COPY);
-	}
+   }
 
 // Copy from temporary to final variables
    for(i = 1; i <= nrRet; i++)
@@ -1570,29 +1570,29 @@ int ReturnFromProcedure(Interface* itfc ,char args[])
 // Get the names of the arguments used in the calling procedure
 int GetArgumentNames(Interface* itfc ,char args[])
 {
-	short nrArgs = itfc->nrProcArgs;
+   short nrArgs = itfc->nrProcArgs;
 
-	if(nrArgs == 0)
-	{
-		itfc->retVar[1].MakeNullVar();
-		itfc->nrRetValues = 1;
-		return(OK);
-	}
+   if(nrArgs == 0)
+   {
+      itfc->retVar[1].MakeNullVar();
+      itfc->nrRetValues = 1;
+      return(OK);
+   }
 
-	
-	itfc->retVar[1].MakeList(0);
+   
+   itfc->retVar[1].MakeList(0);
 
-	for(int i = 1; i <= nrArgs; i++)
-	{
-		char *name = itfc->argVar[i].var->GetName();
-		if(name)
-		   itfc->retVar[1].AddToList(name);
-		else
-		    itfc->retVar[1].AddToList("");
+   for(int i = 1; i <= nrArgs; i++)
+   {
+      char *name = itfc->argVar[i].var->GetName();
+      if(name)
+         itfc->retVar[1].AddToList(name);
+      else
+          itfc->retVar[1].AddToList("");
 
-	}
-	itfc->nrRetValues = 1;
-	return(OK);
+   }
+   itfc->nrRetValues = 1;
+   return(OK);
 }
 
 
@@ -1611,12 +1611,12 @@ int ProcedureStart(char arg[])
    {
       if(arg[i] == '(')
       {
-      	if(ExtractSubExpression(arg,argList,i,'(',')') < 0)
-	         return(ERR);
-	         
-	 //     StartProcedure(argList);
-	   }
-	}
+         if(ExtractSubExpression(arg,argList,i,'(',')') < 0)
+            return(ERR);
+            
+    //     StartProcedure(argList);
+      }
+   }
    return(0);
 }
 
@@ -1628,7 +1628,7 @@ Returns true if a is a prefix of b, otherwise returns false.
 
 bool compStr(char* a, char* b)
 {
-	return (strncmp(a,b,strlen(a)) < 0);
+   return (strncmp(a,b,strlen(a)) < 0);
 }
 
 /**************************************************************************************
@@ -1639,53 +1639,53 @@ int ListCommands(Interface* itfc ,char arg[])
 {
    short r;
 
-	vector<char*> comList = prospaCommandRegistry->allCommands();
-	vector<char*> comListCopy;
-	comListCopy.resize(comList.size());
-	copy(comList.begin(),comList.end(),comListCopy.begin());
-	sort(comListCopy.begin(),comListCopy.end(),compStr);
+   vector<char*> comList = prospaCommandRegistry->allCommands();
+   vector<char*> comListCopy;
+   comListCopy.resize(comList.size());
+   copy(comList.begin(),comList.end(),comListCopy.begin());
+   sort(comListCopy.begin(),comListCopy.end(),compStr);
 
    CArg carg;
    short nrArgs = carg.Count(arg);
 
-	long cnt = 0;
-	char **cList = NULL; 
-	vector<char*>::iterator low, high;
-	if (nrArgs == 0)//  We want all commands that are not hidden.
+   long cnt = 0;
+   char **cList = NULL; 
+   vector<char*>::iterator low, high;
+   if (nrArgs == 0)//  We want all commands that are not hidden.
    {
-		low = comListCopy.begin();
-		high = comListCopy.end();
-	   for (vector<char*>::iterator it = low; it < high; ++it)
+      low = comListCopy.begin();
+      high = comListCopy.end();
+      for (vector<char*>::iterator it = low; it < high; ++it)
       {
-		   if (HIDDEN_COMMAND != prospaCommandRegistry->typeOf(*it))
-		   {
-			   AppendStringToList(*it,&cList,cnt++);
+         if (HIDDEN_COMMAND != prospaCommandRegistry->typeOf(*it))
+         {
+            AppendStringToList(*it,&cList,cnt++);
          }
       }
-	}
-	else if(nrArgs == 1)
+   }
+   else if(nrArgs == 1)
    { // We want a subset of commands.
       CText filter;
       if((r = ArgScan(itfc,arg,1,"filter","e","t",&filter)) < 0)
         return(r);  
       if(filter == "*")
       {
-		   low = comListCopy.begin();
-		   high = comListCopy.end();
+         low = comListCopy.begin();
+         high = comListCopy.end();
       }
       else
       {
-		   low = lower_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
-		   high = upper_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
+         low = lower_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
+         high = upper_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
       }
-	   for (vector<char*>::iterator it = low; it < high; ++it)
+      for (vector<char*>::iterator it = low; it < high; ++it)
       {
-		   if (HIDDEN_COMMAND != prospaCommandRegistry->typeOf(*it))
-		   {
-			   AppendStringToList(*it,&cList,cnt++);
+         if (HIDDEN_COMMAND != prospaCommandRegistry->typeOf(*it))
+         {
+            AppendStringToList(*it,&cList,cnt++);
          }
       }
-	}
+   }
    else if(nrArgs == 2)
    {
       CText filter;
@@ -1746,21 +1746,21 @@ int ListCommands(Interface* itfc ,char arg[])
 
       if(filter == "*")
       {
-		   low = comListCopy.begin();
-		   high = comListCopy.end();
+         low = comListCopy.begin();
+         high = comListCopy.end();
       }
       else
       {
-		   low = lower_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
-		   high = upper_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
+         low = lower_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
+         high = upper_bound(comListCopy.begin(),comListCopy.end(),filter.Str(),compStr);
       }
 
-	   for (vector<char*>::iterator it = low; it < high; ++it)
+      for (vector<char*>::iterator it = low; it < high; ++it)
       {
-		   INT64 type = prospaCommandRegistry->typeOf(*it);
+         INT64 type = prospaCommandRegistry->typeOf(*it);
          if(type & category) 
-		   {
-			   AppendStringToList(*it,&cList,cnt++);
+         {
+            AppendStringToList(*it,&cList,cnt++);
          }
       }
    }
@@ -1778,7 +1778,7 @@ int ListCommands(Interface* itfc ,char arg[])
 
 bool IsACommand(char name[])
 {
-	return (prospaCommandRegistry->has(name));
+   return (prospaCommandRegistry->has(name));
 }
 
 /**************************************************************************************
@@ -1787,7 +1787,7 @@ bool IsACommand(char name[])
 
 LONG64 GetCommandType(char name[])
 {  
-	return (prospaCommandRegistry->typeOf(name));
+   return (prospaCommandRegistry->typeOf(name));
 }
 
 /**************************************************************************************
@@ -1797,46 +1797,46 @@ LONG64 GetCommandType(char name[])
 char* GetCommandSyntax(char name[])
 {
    char *syntax = NULL;
-	const string *st;
+   const string *st;
    
-	if (prospaCommandRegistry->has(name))
+   if (prospaCommandRegistry->has(name))
    {
-		LONG64 t = prospaCommandRegistry->typeOf(name);
+      LONG64 t = prospaCommandRegistry->typeOf(name);
 
-		if(strlen(prospaCommandRegistry->syntaxFor(name)->c_str()) > 500)
-		{
-			TextMessage("Error: syntax string is too long (> 500 characters)\n");
-			return(NULL);
-		}
-		if(!(t & CONTROL_COMMAND))
+      if(strlen(prospaCommandRegistry->syntaxFor(name)->c_str()) > 500)
       {
-			st = prospaCommandRegistry->syntaxFor(name);
-			if(!st)
-			  return(NULL);
-	      syntax = new char[strlen(st->c_str())+50];
-		   sprintf(syntax, "GENERAL COMMAND:  %s", st->c_str());
-		   return(syntax);
+         TextMessage("Error: syntax string is too long (> 500 characters)\n");
+         return(NULL);
+      }
+      if(!(t & CONTROL_COMMAND))
+      {
+         st = prospaCommandRegistry->syntaxFor(name);
+         if(!st)
+           return(NULL);
+         syntax = new char[strlen(st->c_str())+50];
+         sprintf(syntax, "GENERAL COMMAND:  %s", st->c_str());
+         return(syntax);
       }
       else if(t | CONTROL_COMMAND)
       {
-			st = prospaCommandRegistry->syntaxFor(name);
-			if(!st)
-			  return(NULL);
-	      syntax = new char[strlen(st->c_str())+50];
-		   sprintf(syntax, "CONTROL COMMAND:  %s", st->c_str());
-		   return(syntax);
+         st = prospaCommandRegistry->syntaxFor(name);
+         if(!st)
+           return(NULL);
+         syntax = new char[strlen(st->c_str())+50];
+         sprintf(syntax, "CONTROL COMMAND:  %s", st->c_str());
+         return(syntax);
       }
       else
       {
-		   // Command is neither GENERAL nor CONTROL, and hence has no reportable syntax.
-		   return NULL;
-		}
-	}
-	else
-	{
-	// Command does not exist.
-		return NULL;
-	}
+         // Command is neither GENERAL nor CONTROL, and hence has no reportable syntax.
+         return NULL;
+      }
+   }
+   else
+   {
+   // Command does not exist.
+      return NULL;
+   }
 }
 
 
@@ -1875,7 +1875,7 @@ int RemoveFile(Interface* itfc ,char args[])
    {
       DWORD err = GetLastError();
       if(err == ERROR_ACCESS_DENIED)
-		  itfc->retVar[1].MakeAndSetString("file is read-only");
+        itfc->retVar[1].MakeAndSetString("file is read-only");
       else if(err == ERROR_FILE_NOT_FOUND)
          itfc->retVar[1].MakeAndSetString("file not found");     
       else
@@ -1907,14 +1907,14 @@ int CopyAFile(Interface* itfc ,char args[])
       return(nrArgs);
 
    if(check == "false")
-	{
+   {
       r = CopyFile(src.Str(),dst.Str(),false);
-	   SetFileAttributes( dst.Str(),  GetFileAttributes(dst.Str()) & ~FILE_ATTRIBUTE_READONLY);
-	}
+      SetFileAttributes( dst.Str(),  GetFileAttributes(dst.Str()) & ~FILE_ATTRIBUTE_READONLY);
+   }
    else
-	{
+   {
       r = CopyFile(src.Str(),dst.Str(),true);
-	}
+   }
 
 // Check for errors
    if(!r)
@@ -1929,58 +1929,58 @@ int CopyAFile(Interface* itfc ,char args[])
 
 /**************************************************************************************
     Copy the selected folders  (Has problems if you copy twice over existing
-	 folder it puts it inside the existing folder)
+    folder it puts it inside the existing folder)
 **************************************************************************************/
 
 int CopyAFolder(Interface* itfc ,char args[])
 {
    short nrArgs;
    CText src,dst;
-	char *source, *destination;
+   char *source, *destination;
    short r;
-	// Get the directories     
+   // Get the directories     
    if((nrArgs = ArgScan(itfc,args,2,"src, dst","ee","tt",&src,&dst)) < 0)
       return(nrArgs);
 
-	if(src == dst)
-	{
-		ErrorMessage("Destination folder should be different from source");
-		return(ERR);
-	}
+   if(src == dst)
+   {
+      ErrorMessage("Destination folder should be different from source");
+      return(ERR);
+   }
 
-	int srcSz = src.Size();
-	source = new char[srcSz+2];
-	strcpy(source,src.Str());
-	source[srcSz+1] = '\0';
+   int srcSz = src.Size();
+   source = new char[srcSz+2];
+   strcpy(source,src.Str());
+   source[srcSz+1] = '\0';
 
-	int dstSz = dst.Size();
-	destination = new char[dstSz+2];
-	strcpy(destination,dst.Str());
-	destination[dstSz+1] = '\0';
+   int dstSz = dst.Size();
+   destination = new char[dstSz+2];
+   strcpy(destination,dst.Str());
+   destination[dstSz+1] = '\0';
 
-	SHFILEOPSTRUCT s = { 0 };
-	s.hwnd = NULL;
-	s.wFunc = FO_COPY;
-	s.fFlags = FOF_NO_UI;
- 	s.pFrom = source;
-	s.pTo = destination;
+   SHFILEOPSTRUCT s = { 0 };
+   s.hwnd = NULL;
+   s.wFunc = FO_COPY;
+   s.fFlags = FOF_NO_UI;
+   s.pFrom = source;
+   s.pTo = destination;
 
-	int ret = SHFileOperation(&s);
+   int ret = SHFileOperation(&s);
 
-	delete [] source;
-	delete [] destination;
+   delete [] source;
+   delete [] destination;
 
-	itfc->nrRetValues = 0;
+   itfc->nrRetValues = 0;
 
-	if(ret == 0)
-	{
-		return(OK);
-	}
-	else
-	{
-		ErrorMessage("Copy folder/dir failed");
-		return(ERR);
-	}
+   if(ret == 0)
+   {
+      return(OK);
+   }
+   else
+   {
+      ErrorMessage("Copy folder/dir failed");
+      return(ERR);
+   }
 }
 /**************************************************************************************
     Move the specified file src to dst. Return "ok" if completed "error" if failed                     
@@ -2018,7 +2018,7 @@ int JoinFiles(Interface* itfc ,char args[])
    short nrArgs;
    CText src1,src2,dst;
    char *data1 = NULL;
-	char *data2 = NULL;
+   char *data2 = NULL;
    FILE *fp;
 
 // Get the directory      
@@ -2027,92 +2027,92 @@ int JoinFiles(Interface* itfc ,char args[])
 
 // Open file 1
    if(!(fp = fopen(src1.Str(),"rb")))
-	{
-	   ErrorMessage("Can't open file '%s'",src1.Str());
-	   return(ERR);
-	}
-	long size1 = GetFileLength(fp);
+   {
+      ErrorMessage("Can't open file '%s'",src1.Str());
+      return(ERR);
+   }
+   long size1 = GetFileLength(fp);
 
 // Allocate memory for file 1
-	if((data1 = new char[size1]) == (char*)0)
-	{
-	   fclose(fp);
-	   ErrorMessage("JoinFiles -> out of memory");
-	   return(ERR);
-	}
+   if((data1 = new char[size1]) == (char*)0)
+   {
+      fclose(fp);
+      ErrorMessage("JoinFiles -> out of memory");
+      return(ERR);
+   }
 
 // Read in file 1
-	if(fread(data1,1,size1,fp) != size1)
-	{
-	   fclose(fp);
+   if(fread(data1,1,size1,fp) != size1)
+   {
+      fclose(fp);
       delete [] data1;
-	   ErrorMessage("Can't read file '%s'",src1.Str());
-	   return(ERR);
-	}
-	fclose(fp);
+      ErrorMessage("Can't read file '%s'",src1.Str());
+      return(ERR);
+   }
+   fclose(fp);
 
 // Open file 2
    if(!(fp = fopen(src2.Str(),"rb")))
-	{
-		if (data1)
-		{
-			delete[] data1;
-		}
-	   ErrorMessage("Can't open file '%s'",src2.Str());
-	   return(ERR);
-	}
-	long size2 = GetFileLength(fp);
+   {
+      if (data1)
+      {
+         delete[] data1;
+      }
+      ErrorMessage("Can't open file '%s'",src2.Str());
+      return(ERR);
+   }
+   long size2 = GetFileLength(fp);
 
 // Allocate memory for file 1
-	if((data2 = new char[size2]) == (char*)0)
-	{
+   if((data2 = new char[size2]) == (char*)0)
+   {
       delete [] data1;
-	   fclose(fp);
-	   ErrorMessage("JoinFiles -> out of memory");
-	   return(ERR);
-	}
+      fclose(fp);
+      ErrorMessage("JoinFiles -> out of memory");
+      return(ERR);
+   }
 
 // Read in file 2
-	if(fread(data2,1,size2,fp) != size2)
-	{
-	   fclose(fp);
+   if(fread(data2,1,size2,fp) != size2)
+   {
+      fclose(fp);
       delete [] data1;
       delete [] data2;
-	   ErrorMessage("Can't read file '%s'",src2.Str());
-	   return(ERR);
-	}
-	fclose(fp);
+      ErrorMessage("Can't read file '%s'",src2.Str());
+      return(ERR);
+   }
+   fclose(fp);
 
 // Write out the total file
    if(!(fp = fopen(dst.Str(),"wb")))
-	{
+   {
       delete [] data1;
       delete [] data2;
-	   ErrorMessage("Can't write file '%s'",dst.Str());
-	   return(ERR);
-	}
+      ErrorMessage("Can't write file '%s'",dst.Str());
+      return(ERR);
+   }
 
    if(fwrite(data1,1,size1,fp)!= size1)
    {
-	   fclose(fp);
+      fclose(fp);
       delete [] data1;
       delete [] data2;
-	   ErrorMessage("Can't write file '%s'",dst.Str());
-	   return(ERR);
-	}
+      ErrorMessage("Can't write file '%s'",dst.Str());
+      return(ERR);
+   }
 
    if(fwrite(data2,1,size2,fp)!= size2)
    {
-	   fclose(fp);
+      fclose(fp);
       delete [] data1;
       delete [] data2;
-	   ErrorMessage("Can't write file '%s'",dst.Str());
-	   return(ERR);
-	}
+      ErrorMessage("Can't write file '%s'",dst.Str());
+      return(ERR);
+   }
 
    delete [] data1;
    delete [] data2;
-	fclose(fp);
+   fclose(fp);
 
    return(OK);  
 }
@@ -2142,7 +2142,7 @@ int MakeDirectory(Interface* itfc ,char args[])
 // Record current directory
    GetDirectory(curDir);
 
-	err = MakeDirectoryCore(newDir);
+   err = MakeDirectoryCore(newDir);
 //
 //// Loop over each sub-directory, making it if necessay
 //   len = strlen(newDir);
@@ -2194,9 +2194,9 @@ int MakeDirectory(Interface* itfc ,char args[])
       return(ERR);
    }   
    else
-	{
+   {
      itfc->retVar[1].MakeAndSetString("ok");
-	}
+   }
 
    itfc->nrRetValues = 1;
    
@@ -2218,7 +2218,7 @@ int MakeDirectoryCore(char *newDir)
    int err = 0;
    CText curDir;
    char subDir[MAX_PATH];
-	errno = 0;
+   errno = 0;
 
 // Record current directory
    GetDirectory(curDir);
@@ -2261,7 +2261,7 @@ int MakeDirectoryCore(char *newDir)
          subDir[j++] = newDir[i];
    }
 
-	if(errno != 0 || err == -1)
+   if(errno != 0 || err == -1)
    {
       if(errno == EEXIST)
       {
@@ -2271,8 +2271,8 @@ int MakeDirectoryCore(char *newDir)
       {
          return(0); // Can't make
       } 
-	}
-	return(1); // Ok
+   }
+   return(1); // Ok
 
 }
 
@@ -2330,7 +2330,7 @@ int RemoveDirectory(Interface* itfc ,char args[])
       }
    }
 
-	itfc->nrRetValues = 0;
+   itfc->nrRetValues = 0;
    return(OK);
 }
 
@@ -2376,21 +2376,21 @@ int SetCWD(Interface *itfc, char args[])
    
    if(itfc->inCLI && verbose == "true")
    { 
-	   TextMessage("\n\n  dir = %s\n",currentwd);
-	}
-	
-	strncpy_s(gCurrentDir,MAX_PATH,currentwd.Str(),_TRUNCATE); // Make sure CLI current directory is updated
+      TextMessage("\n\n  dir = %s\n",currentwd);
+   }
+   
+   strncpy_s(gCurrentDir,MAX_PATH,currentwd.Str(),_TRUNCATE); // Make sure CLI current directory is updated
  //  TextMessage("\n\n  (cd) dir = %s\n",gCurrentDir);
 
-	if(!itfc->inCLI)
-	{
-		 itfc->retVar[1].MakeAndSetFloat(1);
-		 itfc->nrRetValues = 1;
-	}
-	else
-	{
-		 itfc->nrRetValues = 0;
-	}
+   if(!itfc->inCLI)
+   {
+       itfc->retVar[1].MakeAndSetFloat(1);
+       itfc->nrRetValues = 1;
+   }
+   else
+   {
+       itfc->nrRetValues = 0;
+   }
 
    return(OK);
 }
@@ -2406,7 +2406,7 @@ int GetCWD(Interface *itfc, char args[])
 
 /*   if(itfc->inCLI)
    {
-	   TextMessage("\n\n  dir = %s\n",currentwd.Str());
+      TextMessage("\n\n  dir = %s\n",currentwd.Str());
    }  */ 
 
    itfc->retVar[1].MakeAndSetString(currentwd.Str());
@@ -2432,7 +2432,7 @@ int ListFiles(Interface* itfc ,char argIn[])
 {
    WIN32_FIND_DATA findData;
    HANDLE h;
- 	char **fileList; 
+   char **fileList; 
    long cnt = 0;
    char arg[MAX_STR];
    char range[MAX_STR] = "*";
@@ -2440,7 +2440,7 @@ int ListFiles(Interface* itfc ,char argIn[])
    CText print = "yes";
    bool pr = false;
    short nrArgs;
-	CArg carg;
+   CArg carg;
 
 // Make a local copy of the argument since it shouldn't be modified
    strncpy_s(arg,MAX_STR,argIn,_TRUNCATE);
@@ -2476,7 +2476,7 @@ int ListFiles(Interface* itfc ,char argIn[])
    pr = false;
 
 // Intialise the file list 
-	fileList = NULL;
+   fileList = NULL;
 
 // List files *************************
    h = FindFirstFile(range,&findData);
@@ -2485,7 +2485,7 @@ int ListFiles(Interface* itfc ,char argIn[])
    {
       itfc->retVar[1].MakeNullVar();
       itfc->nrRetValues = 1;
-	//   FreeList(fileList,1);
+   //   FreeList(fileList,1);
       if(itfc->inCLI)
          ErrorMessage("no files found");
       return(OK);
@@ -2498,15 +2498,15 @@ int ListFiles(Interface* itfc ,char argIn[])
       if(!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
       {
          if(pr) TextMessage("\n   FILE    %-25s\t%-8ld",findData.cFileName,findData.nFileSizeLow);
-	      AppendStringToList(findData.cFileName,&fileList,cnt++);
+         AppendStringToList(findData.cFileName,&fileList,cnt++);
       }
       while(1)
       {
          if(!FindNextFile(h,&findData)) break;
-	      if(!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+         if(!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
          {
             if(pr) TextMessage("\n   FILE    %-25s\t%-8ld",findData.cFileName,findData.nFileSizeLow);
-	         AppendStringToList(findData.cFileName,&fileList,cnt++);
+            AppendStringToList(findData.cFileName,&fileList,cnt++);
          }
       }
       FindClose(h);
@@ -2527,7 +2527,7 @@ int ListFiles(Interface* itfc ,char argIn[])
       while(1)
       {
          if(!FindNextFile(h,&findData)) break;
-	      if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+         if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
          {
             if(pr) TextMessage("\n   DIR     %-25s",findData.cFileName);
             AppendStringToList(findData.cFileName,&fileList,cnt++);
@@ -2547,9 +2547,9 @@ int ListFiles(Interface* itfc ,char argIn[])
    }
    else
    {
-	   itfc->retVar[1].MakeNullVar();
-	   itfc->nrRetValues = 1;
-	//   FreeList(fileList,1);
+      itfc->retVar[1].MakeNullVar();
+      itfc->nrRetValues = 1;
+   //   FreeList(fileList,1);
    }
 
    return(OK);
@@ -2590,58 +2590,58 @@ short RecursiveSearch(char *file, char extension[], CText &path)
 // Look at each file in turn
    do
    {
-	   if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-	   {
-	      if(!(!wcscmp(findData.cFileName,L".") || !wcscmp(findData.cFileName,L"..")))
-	      {
-	         GetCurrentDirectoryW(MAX_PATH,tempDir); // Save current
-	         SetCurrentDirectoryW(findData.cFileName); // Drop down
+      if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+      {
+         if(!(!wcscmp(findData.cFileName,L".") || !wcscmp(findData.cFileName,L"..")))
+         {
+            GetCurrentDirectoryW(MAX_PATH,tempDir); // Save current
+            SetCurrentDirectoryW(findData.cFileName); // Drop down
 
             // Check for too many nested searches
             if(++cnt == 500)
             {	 
                FindClose(h);
                ErrorMessage("too many directories to search for file/command '%s'",file);
-	            return(ERR);
+               return(ERR);
             }
-		      r = RecursiveSearch(file,extension,path);
+            r = RecursiveSearch(file,extension,path);
             cnt--;
 
-		      if(r == FOUND)
-		      {
-	            FindClose(h);
-	            return(FOUND);
-	         }
-	         else if(r == ERR)
-	         {
-	            FindClose(h);
-	            return(ERR);
-	         }
-	         SetCurrentDirectoryW(tempDir); // Not found so go up
+            if(r == FOUND)
+            {
+               FindClose(h);
+               return(FOUND);
+            }
+            else if(r == ERR)
+            {
+               FindClose(h);
+               return(ERR);
+            }
+            SetCurrentDirectoryW(tempDir); // Not found so go up
          }
-	   }
-	   else
-	   {
-	      if(wideNarrowStringEqual(1,findData.cFileName,file)) // Compare with raw filename
-	      {
+      }
+      else
+      {
+         if(wideNarrowStringEqual(1,findData.cFileName,file)) // Compare with raw filename
+         {
             GetDirectory(path); // Save path
             FindClose(h);
             wcstombs(file,findData.cFileName, MAX_PATH);
-	         return(FOUND);
-	      }
-	      else // Compare with name and extension
-	      {
-	         fileTemp.Assign(file);
-	         fileTemp.Concat(extension);
-	         if(wideNarrowStringEqual(1,findData.cFileName,fileTemp.Str()))
-	         {
+            return(FOUND);
+         }
+         else // Compare with name and extension
+         {
+            fileTemp.Assign(file);
+            fileTemp.Concat(extension);
+            if(wideNarrowStringEqual(1,findData.cFileName,fileTemp.Str()))
+            {
                GetDirectory(path); // Save path
                wcstombs(file,findData.cFileName, MAX_PATH);  // Make sure the case is correct
                FindClose(h);
-	            return(FOUND);
-	         }	  
-	      }       
-	   }
+               return(FOUND);
+            }	  
+         }       
+      }
    }
    while(FindNextFileW(h,&findData));
 
@@ -3048,7 +3048,7 @@ int GetProspaVersion(Interface* itfc ,char args[])
       itfc->retVar[1].MakeAndSetString(VERSION_DATE); 
       itfc->nrRetValues = 1;
    }
-	else if(type == "special")
+   else if(type == "special")
    {
       itfc->retVar[1].MakeAndSetString(VERSION_SPECIAL); 
       itfc->nrRetValues = 1;
@@ -3116,11 +3116,11 @@ int OpenHelpFile(Interface* itfc ,char args[])
    CText command;
    void GetClassAsString(short type, CText &name);
    void GetObjectTypeAsString(short type, CText &name);
-	CArg carg;
+   CArg carg;
 
 
-	WinData *win1 = rootWin->FindWinByTitle("Command and Macro Help");
-	WinData *win2 = rootWin->FindWinByTitle("Prospa Help Viewer");
+   WinData *win1 = rootWin->FindWinByTitle("Command and Macro Help");
+   WinData *win2 = rootWin->FindWinByTitle("Prospa Help Viewer");
 
    nrArgs = carg.Count(args);
 
@@ -3255,7 +3255,7 @@ int OpenHelpFile(Interface* itfc ,char args[])
 
          command.Format("ProspaHelpViewer(\"%s\",\"%s\")",group.Str(),fileName.Str());
 
-			if(win1 || win2)
+         if(win1 || win2)
         {
             CText msg;
             msg.Format("HelpViewer,%s:%s",group.Str(),fileName.Str());
@@ -3331,19 +3331,19 @@ int OpenHelpFile(Interface* itfc ,char args[])
       return(OK);
    }
 
-	else if (0 == strlen(fileName.Str()))
-	{
-		if(win1 || win2)
-		{
-			ShowWindow((win1 ? win1->hWnd : win2->hWnd),SW_SHOW);
-		}
-		else
-		{
-			command.Format("ProspaHelpViewer(\"General Information\\Introduction\",\"Introduction.htm\")");
-			ProcessMacroStr(0,NULL,NULL,command.Str(),"","","ProspaHelpViewer.mac","");
-		}
-		itfc->nrRetValues = 0;
-	}
+   else if (0 == strlen(fileName.Str()))
+   {
+      if(win1 || win2)
+      {
+         ShowWindow((win1 ? win1->hWnd : win2->hWnd),SW_SHOW);
+      }
+      else
+      {
+         command.Format("ProspaHelpViewer(\"General Information\\Introduction\",\"Introduction.htm\")");
+         ProcessMacroStr(0,NULL,NULL,command.Str(),"","","ProspaHelpViewer.mac","");
+      }
+      itfc->nrRetValues = 0;
+   }
 
    else
    {
@@ -3430,27 +3430,27 @@ void GetClassAsString(short type, CText &name)
    switch(type)
    {
       case(OBJECT_CLASS):
-	      name = "object"; break;
+         name = "object"; break;
       case(WINDOW_CLASS):
-	      name = "window"; break;
+         name = "window"; break;
       case(PLOT_CLASS):
-	      name = "plotRegion"; break;
+         name = "plotRegion"; break;
       case(XLABEL_CLASS):
-	      name = "xlabel"; break;
+         name = "xlabel"; break;
       case(YLABEL_CLASS):
-	      name = "ylabel"; break;
+         name = "ylabel"; break;
       case(AXES_CLASS):
-	      name = "axes"; break;
+         name = "axes"; break;
       case(GRID_CLASS):
-	      name = "grid"; break;
+         name = "grid"; break;
       case(TITLE_CLASS):
-	      name = "title"; break;
+         name = "title"; break;
       case(TRACE_CLASS):
-	      name = "trace"; break;
-		case(INSET_CLASS):
-			name = "inset"; break;
+         name = "trace"; break;
+      case(INSET_CLASS):
+         name = "inset"; break;
       default:
-	      name = "unknown"; break;
+         name = "unknown"; break;
    }
 }
 
@@ -3460,51 +3460,51 @@ void GetObjectTypeAsString(short type, CText &name)
    switch(type)
    {
       case(RADIO_BUTTON):
-	      name = "radioButton"; break;
+         name = "radioButton"; break;
       case(CHECKBOX):
-	      name = "checkBox"; break;
+         name = "checkBox"; break;
       case(STATICTEXT):
-	      name = "staticText"; break;
+         name = "staticText"; break;
       case(TEXTBOX):
-	      name = "textBox"; break;
+         name = "textBox"; break;
       case(TEXTMENU):
-	      name = "textMenu"; break;
+         name = "textMenu"; break;
       case(LISTBOX):
-	      name = "listBox"; break;
+         name = "listBox"; break;
       case(SLIDER):
-	      name = "slider"; break;
+         name = "slider"; break;
       case(GETMESSAGE):
-	      name = "getMessage"; break;
+         name = "getMessage"; break;
       case(PROGRESSBAR):
-	      name = "progressBar"; break;
+         name = "progressBar"; break;
       case(STATUSBOX):
-	      name = "statusBox"; break;	         	         	         
+         name = "statusBox"; break;	         	         	         
       case(COLORSCALE):
-	      name = "colorScale"; break;
+         name = "colorScale"; break;
       case(GROUP_BOX):
-	      name = "groupBox"; break;
+         name = "groupBox"; break;
       case(BUTTON):
-	      name = "button"; break;	  
+         name = "button"; break;	  
       case(COLORBOX):
-	      name = "colorBox"; break;
+         name = "colorBox"; break;
       case(UPDOWN):
-	      name = "updownControl"; break;	
+         name = "updownControl"; break;	
       case(DIVIDER):
-	      name = "divider"; break;	
+         name = "divider"; break;	
       case(TEXTEDITOR):
-	      name = "textEditor"; break;	
+         name = "textEditor"; break;	
       case(CLIWINDOW):
-	      name = "cli"; break;	
+         name = "cli"; break;	
       case(PLOTWINDOW):
-	      name = "plot1d"; break;	
+         name = "plot1d"; break;	
       case(IMAGEWINDOW):
-	      name = "plot2d"; break;
+         name = "plot2d"; break;
       case(OPENGLWINDOW):
-	      name = "plot3d"; break;
-		case(GRIDCTRL):
-			name = "gridControl"; break;
+         name = "plot3d"; break;
+      case(GRIDCTRL):
+         name = "gridControl"; break;
       default:
-	      name = "unknown"; break;
+         name = "unknown"; break;
    }
 }
 
@@ -3521,7 +3521,7 @@ int GetCurrentMacroLineNr(Interface *itfc, char *args)
    short nrArgs;
 
    if((nrArgs = ArgScan(itfc,args,0,"mode","e","t",&mode)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
    if(mode == "current") 
       itfc->retVar[1].MakeAndSetFloat(itfc->lineNr);
@@ -3544,9 +3544,9 @@ int SelectEditorLine(Interface *itfc, char *args)
    long lineNr;
 
    if((nrArgs = ArgScan(itfc,args,0,"lineNr","e","l",&lineNr)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
-	if(curEditor)
+   if(curEditor)
       curEditor->SelectEditorLine(lineNr);
    itfc->nrRetValues = 0;
 
@@ -3569,7 +3569,7 @@ int SetEditorRenderMode(Interface *itfc, char *args)
       mode = "parent";
 
    if((nrArgs = ArgScan(itfc,args,1,"mode","e","t",&mode)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
    if(mode == "current")
       gFocusForRendering = CURRENTEDITOR;
@@ -3631,7 +3631,7 @@ int GetFontList(Interface* itfc ,char args[])
    short nrArgs;
 
    if((nrArgs = ArgScan(itfc,args,0,"script","e","t",&script)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
    fontInfo.list = NULL;
    fontInfo.cnt = 0;
@@ -3665,122 +3665,122 @@ int GetFontList(Interface* itfc ,char args[])
 
 int GetRegistryInfo(Interface* itfc ,char arg[])
 {
-	int nrArgs;
-	CText key;
-	CText valueName = "";
-	CText valueType = "REG_SZ";
-	CText hiveStr = "HKCR";
-	HKEY hSubKey;
-	HKEY hive;
+   int nrArgs;
+   CText key;
+   CText valueName = "";
+   CText valueType = "REG_SZ";
+   CText hiveStr = "HKCR";
+   HKEY hSubKey;
+   HKEY hive;
 
-	if((nrArgs = ArgScan(itfc,arg,2,"hive, key, [value, type]","eeee","tttt",&hiveStr,&key,&valueName,&valueType)) < 0)
-	   return(nrArgs);
+   if((nrArgs = ArgScan(itfc,arg,2,"hive, key, [value, type]","eeee","tttt",&hiveStr,&key,&valueName,&valueType)) < 0)
+      return(nrArgs);
 
-	if(nrArgs == 1 || nrArgs == 3)
-	{
-		ErrorMessage("invalid number of arguments (2 or 4)");
-		return(ERR);
-	}
+   if(nrArgs == 1 || nrArgs == 3)
+   {
+      ErrorMessage("invalid number of arguments (2 or 4)");
+      return(ERR);
+   }
 
-	if(hiveStr == "HKEY_CLASSES_ROOT")
-		hive = HKEY_CLASSES_ROOT;
-	else if(hiveStr == "HKEY_CURRENT_USER")
-		hive = HKEY_CURRENT_USER;
-	else if(hiveStr == "HKEY_LOCAL_MACHINE")
-		hive = HKEY_LOCAL_MACHINE;
-	else if(hiveStr == "HKEY_USERS")
-		hive = HKEY_USERS;
-	else if(hiveStr == "HKEY_CURRENT_CONFIG")
-		hive = HKEY_CURRENT_CONFIG;
-	else
-	{
-		ErrorMessage("invalid or unsupported registry hive name");
-		return(ERR);
-	}
+   if(hiveStr == "HKEY_CLASSES_ROOT")
+      hive = HKEY_CLASSES_ROOT;
+   else if(hiveStr == "HKEY_CURRENT_USER")
+      hive = HKEY_CURRENT_USER;
+   else if(hiveStr == "HKEY_LOCAL_MACHINE")
+      hive = HKEY_LOCAL_MACHINE;
+   else if(hiveStr == "HKEY_USERS")
+      hive = HKEY_USERS;
+   else if(hiveStr == "HKEY_CURRENT_CONFIG")
+      hive = HKEY_CURRENT_CONFIG;
+   else
+   {
+      ErrorMessage("invalid or unsupported registry hive name");
+      return(ERR);
+   }
 
-	long result = RegOpenKey(hive, key.Str(), &hSubKey);
+   long result = RegOpenKey(hive, key.Str(), &hSubKey);
 
-	if(result == ERROR_SUCCESS)
-	{
+   if(result == ERROR_SUCCESS)
+   {
      DWORD bufferSize = MAX_PATH;
-	  DWORD type;
+     DWORD type;
 
-		if(valueType == "REG_SZ")
-		{
-			if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,NULL,&bufferSize) == ERROR_SUCCESS)
-			{
-				char *value = new char[bufferSize+1];
-				if(!value)
-				{
-					ErrorMessage("Can't allocate memory for registry value");
-					itfc->nrRetValues = 1;
-					RegCloseKey(hSubKey);
-					return(ERR);
-				}
-			   if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,(LPBYTE)value,&bufferSize) == ERROR_SUCCESS)
-				{
-					if(type == REG_SZ)
-					{
-						itfc->retVar[1].MakeAndSetString(value);
-					}
-					else
-					{
-						itfc->retVar[1].MakeNullVar();			 
-					}
-					delete [] value;
-					itfc->nrRetValues = 1;
-					RegCloseKey(hSubKey);
-					return(OK);
-				}
-			}
-		}
-		
-		else if(valueType == "REG_EXPAND_SZ")
-		{
-			if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,NULL,&bufferSize) == ERROR_SUCCESS)
-			{
-				char *value = new char[bufferSize+1]; 
-				if(!value)
-				{
-					ErrorMessage("Can't allocate memory for registry value");
-					itfc->nrRetValues = 1;
-					RegCloseKey(hSubKey);
-					return(ERR);
-				}
-				if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,(LPBYTE)value,&bufferSize) == ERROR_SUCCESS)
-				{
-					if(type == REG_EXPAND_SZ)
-					{
-						bufferSize = ExpandEnvironmentStrings(value, 0, 0);
-						char *valueOut = new char[bufferSize+2]; 
-						if(!valueOut)
-						{
-							ErrorMessage("Can't allocate memory for registry value");
-							itfc->nrRetValues = 1;
-							delete [] value;
-							RegCloseKey(hSubKey);
-							return(ERR);
-						}
-						bufferSize = ExpandEnvironmentStrings(value, valueOut, MAX_PATH);
-						itfc->retVar[1].MakeAndSetString(valueOut);
-						delete [] valueOut;
-					}
-					else
-					{
-						itfc->retVar[1].MakeNullVar();			 
-					}
-					delete [] value;
-					itfc->nrRetValues = 1;
-					RegCloseKey(hSubKey);
-					return(OK);
-				}
-			}
-		}
-	}
+      if(valueType == "REG_SZ")
+      {
+         if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,NULL,&bufferSize) == ERROR_SUCCESS)
+         {
+            char *value = new char[bufferSize+1];
+            if(!value)
+            {
+               ErrorMessage("Can't allocate memory for registry value");
+               itfc->nrRetValues = 1;
+               RegCloseKey(hSubKey);
+               return(ERR);
+            }
+            if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,(LPBYTE)value,&bufferSize) == ERROR_SUCCESS)
+            {
+               if(type == REG_SZ)
+               {
+                  itfc->retVar[1].MakeAndSetString(value);
+               }
+               else
+               {
+                  itfc->retVar[1].MakeNullVar();			 
+               }
+               delete [] value;
+               itfc->nrRetValues = 1;
+               RegCloseKey(hSubKey);
+               return(OK);
+            }
+         }
+      }
+      
+      else if(valueType == "REG_EXPAND_SZ")
+      {
+         if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,NULL,&bufferSize) == ERROR_SUCCESS)
+         {
+            char *value = new char[bufferSize+1]; 
+            if(!value)
+            {
+               ErrorMessage("Can't allocate memory for registry value");
+               itfc->nrRetValues = 1;
+               RegCloseKey(hSubKey);
+               return(ERR);
+            }
+            if(RegQueryValueEx(hSubKey,valueName.Str(),NULL,&type,(LPBYTE)value,&bufferSize) == ERROR_SUCCESS)
+            {
+               if(type == REG_EXPAND_SZ)
+               {
+                  bufferSize = ExpandEnvironmentStrings(value, 0, 0);
+                  char *valueOut = new char[bufferSize+2]; 
+                  if(!valueOut)
+                  {
+                     ErrorMessage("Can't allocate memory for registry value");
+                     itfc->nrRetValues = 1;
+                     delete [] value;
+                     RegCloseKey(hSubKey);
+                     return(ERR);
+                  }
+                  bufferSize = ExpandEnvironmentStrings(value, valueOut, MAX_PATH);
+                  itfc->retVar[1].MakeAndSetString(valueOut);
+                  delete [] valueOut;
+               }
+               else
+               {
+                  itfc->retVar[1].MakeNullVar();			 
+               }
+               delete [] value;
+               itfc->nrRetValues = 1;
+               RegCloseKey(hSubKey);
+               return(OK);
+            }
+         }
+      }
+   }
    RegCloseKey(hSubKey);
-	itfc->retVar[1].MakeNullVar();
-	itfc->nrRetValues = 1;
-	return(OK);
+   itfc->retVar[1].MakeNullVar();
+   itfc->nrRetValues = 1;
+   return(OK);
 }
 
 // Print the current macro call stack
@@ -3848,9 +3848,9 @@ int testFunc(Interface *itfc, char *args)
    }
 
    pd->text_.clear();
-	//pd->DisplayAll(false);
-	//itfc->nrRetValues = 0;
-	return(OK);	
+   //pd->DisplayAll(false);
+   //itfc->nrRetValues = 0;
+   return(OK);	
 
   // int  r = ProcessPlotClassReferences2(itfc, pd, "rmtext", "");
 
@@ -4035,8 +4035,8 @@ short GetStructArrayVariable(Interface *itfc, char *expression, short &start, ch
 // A fill command - does nothing
 int DoNothing(Interface *itfc, char args[])
 {
-	itfc->nrRetValues = 0;
-	return(OK);
+   itfc->nrRetValues = 0;
+   return(OK);
 }
 
 /********************************************************************************
@@ -4049,13 +4049,13 @@ int AssignTest(Interface *itfc, char args[])
 {
 
  //  CText macroName,procName;
-	short nrArgs;
+   short nrArgs;
    long value;
 
  // // extern  short LoadAndSelectProcedure(char *macroName, char *procName, bool showErrors);
 
    if((nrArgs = ArgScan(itfc,args,1,"value","e","l",&value)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
    DWORD_PTR  processAffinityMask = value;
 
@@ -4114,7 +4114,7 @@ int SendToExistingProspa(Interface* itfc, char args[])
    CText fileToOpen;
 
    if((nrArgs = ArgScan(itfc,args,3,"window_title, path_to_file, file_name","eee","ttt",&windowTitle,&pathToFile, &fileToOpen)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
    HWND win = FindWindow(NULL,windowTitle.Str());
 
@@ -4218,6 +4218,11 @@ BOOL CALLBACK RemoteCom::EnumWindowsCallBack2(HWND hWnd, LPARAM info)
 
    return(true);
 }
+
+/********************************************************************************
+* Search for windows of class name MAIN_PROSPAWIN
+********************************************************************************/
+
 int FindProspaWindows(Interface* itfc, char args[])
 {
    RemoteInfo remoteInfo;
@@ -4240,8 +4245,6 @@ int FindProspaWindows(Interface* itfc, char args[])
 /********************************************************************************
 * Run a macro in other instances of Prospa
 ********************************************************************************/
-
-
 
 int RunRemoteMacro(Interface* itfc, char args[])
 {
@@ -4309,9 +4312,12 @@ int RunRemoteMacro(Interface* itfc, char args[])
 }
 
 
-
-// Allow the user to change some of the user interface design. At present this only affects buttons which can be displayed in windows 7 style.
-// Hopefully with time this will also apply to other controls like checkboxes, scrollbars, textboxes etc.
+/********************************************************************************
+ Allow the user to change some of the user interface design. At present this
+ only affects buttons which can be displayed in windows 7 style.
+ Hopefully with time this will also apply to other controls like 
+ checkboxes, scrollbars, textboxes etc.
+********************************************************************************/
 
 int SetUISkin(Interface *itfc, char arg[])
 {
@@ -4323,7 +4329,7 @@ int SetUISkin(Interface *itfc, char arg[])
       mode = "win7";
 
   if((nrArgs = ArgScan(itfc,arg,1,"mode","e","t",&mode)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
   if(mode == "win7")
      win7Mode = true;
@@ -4333,31 +4339,35 @@ int SetUISkin(Interface *itfc, char arg[])
    return(OK);
 }
 
+/*******************************************************************************
+ Copy the passed string to the global clipboard
+*******************************************************************************/
+
 int CopyToClipBoard(Interface *itfc, char args[])
 {
-	short nrArgs;
-	CText value;
-	LPTSTR  lptstrCopy; 
+   short nrArgs;
+   CText value;
+   LPTSTR  lptstrCopy; 
    HGLOBAL hglbCopy;
 
    if((nrArgs = ArgScan(itfc,args,1,"string","e","t",&value)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
-	itfc->nrRetValues = 0;
-	int sz = value.Size();
-	if(sz == 0)
-		return(OK);
+   itfc->nrRetValues = 0;
+   int sz = value.Size();
+   if(sz == 0)
+      return(OK);
 
 // Prepare the global clipboard
-	if (!OpenClipboard(prospaWin)) 
-		return(OK); 
-	EmptyClipboard(); 
+   if (!OpenClipboard(prospaWin)) 
+      return(OK); 
+   EmptyClipboard(); 
 // Allocate a global memory buffer for the text. 
    hglbCopy = GlobalAlloc(GHND | GMEM_SHARE, sz+1); 
 // Lock the handle and copy the selected text to the buffer.  
    lptstrCopy = (LPSTR)GlobalLock(hglbCopy); 
    memcpy(lptstrCopy, value.Str(), sz); 
-	lptstrCopy[sz] = '\0';
+   lptstrCopy[sz] = '\0';
    GlobalUnlock(hglbCopy); 
 
 // Place the handle on the clipboard. 
@@ -4365,68 +4375,68 @@ int CopyToClipBoard(Interface *itfc, char args[])
    CloseClipboard(); 
 
 
-	return(OK);
+   return(OK);
 
 }
 
 int EvaluateHexString(Interface *itfc, char args[])
 {
-	CText mode = "signed";
-	CText data;
-	short nrArgs;
-	char temp1[100];
-	char temp2[100];
-	int result;
-	bool isNeg = false;
-	int off = 0;
-	int bits = 16;
+   CText mode = "signed";
+   CText data;
+   short nrArgs;
+   char temp1[100];
+   char temp2[100];
+   int result;
+   bool isNeg = false;
+   int off = 0;
+   int bits = 16;
 
    if((nrArgs = ArgScan(itfc,args,1,"string, bits, mode","eee","tdt",&data, &bits, &mode)) < 0)
-	   return(nrArgs);
+      return(nrArgs);
 
-	strcpy(temp1,data.Str());
+   strcpy(temp1,data.Str());
 
-	if(temp1[0] == '0' && temp1[1] == 'x')
-	{
-		off = 2;
-		strcpy(temp2,"0x");
-	}
+   if(temp1[0] == '0' && temp1[1] == 'x')
+   {
+      off = 2;
+      strcpy(temp2,"0x");
+   }
 
-	char c = temp1[off];
-	if(c == '8' || c == '9' || c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F' ||
-   	c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f')
-		 isNeg = true;
+   char c = temp1[off];
+   if(c == '8' || c == '9' || c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F' ||
+      c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f')
+       isNeg = true;
 
-	int sz = strlen(temp1);
+   int sz = strlen(temp1);
 
-	if(isNeg && sz <= 8+off)
-	{
-		int i,j;
+   if(isNeg && sz <= 8+off)
+   {
+      int i,j;
 
-		for(i = off; i < 8-sz+off+off; i++)
-		{
-			temp2[i] = 'F';
-		}
-		for(j = 0; j < sz; j++)
-		{
-			temp2[j+i] = temp1[j+off];
-		}
-		temp2[j+i ] = '\0';
-	}
-	else
-	{
-		strcpy(temp2,temp1);
-	}
+      for(i = off; i < 8-sz+off+off; i++)
+      {
+         temp2[i] = 'F';
+      }
+      for(j = 0; j < sz; j++)
+      {
+         temp2[j+i] = temp1[j+off];
+      }
+      temp2[j+i ] = '\0';
+   }
+   else
+   {
+      strcpy(temp2,temp1);
+   }
 
-	if(off == 0)
-	{
-		strcpy(temp1,"0x");
-		strcat(temp1,temp2);
-	}
-	else
-		strcpy(temp1,temp2);
+   if(off == 0)
+   {
+      strcpy(temp1,"0x");
+      strcat(temp1,temp2);
+   }
+   else
+      strcpy(temp1,temp2);
 
-	 sscanf(temp1,"%x",&result);
+    sscanf(temp1,"%x",&result);
 
    itfc->retVar[1].MakeAndSetFloat((float)result);
    itfc->nrRetValues = 1;
