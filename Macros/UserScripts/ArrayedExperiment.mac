@@ -13,7 +13,7 @@ procedure(ArrayedExperiment, parameters=null)
  
    macroLocation = getmacropath()
 
-   defaultProtocol = "Proton"
+   defaultProtocol = "1Pulse"
 
    if(iskeypressed("shift"))
       EditorWin()
@@ -288,8 +288,11 @@ procedure(onLoad, layout, newFileName=null, newDispMode=null)
    sz = size(yAxis)
 
 # 1D or 2D?
-   names = parse(nucleus,"-")
-   dim = size(names)
+   if(getext(dataToLoad) == "pt1")
+      dim  = 1
+   else
+      dim = 2
+   endif
 
 # Check for invalid display-mode
    if(dim == 2 & displayMode == "Stacked Plot")
@@ -304,7 +307,6 @@ procedure(onLoad, layout, newFileName=null, newDispMode=null)
 # Load 1D experiments into a stacked plot   
    if(dim == 1)
 
-     # if(isvar("nrSteps") & displayMode == "Multi-Plots")
       if(displayMode == "Multi-Plots")
 
          h = ceil(sqrt(sz))
