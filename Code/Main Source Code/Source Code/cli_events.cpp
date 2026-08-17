@@ -85,570 +85,569 @@ LRESULT CALLBACK CLIEditEventsProc(HWND hWnd, UINT messg, WPARAM wParam, LPARAM 
    switch (messg)
    {
 
-   case(WM_DROPFILES): // User has dropped a folder onto the CLI - just print out the foldername
-   {
-      CText path, file, ext;
-      if (GetDropFileInfo((HDROP)wParam, path, file, ext, 0) == OK)
+      case(WM_DROPFILES): // User has dropped a folder onto the CLI - just print out the foldername
       {
-         DragFinish((HDROP)wParam);
-         // Is it a folder?
-         if (file == "")
+         CText path, file, ext;
+         if (GetDropFileInfo((HDROP)wParam, path, file, ext, 0) == OK)
          {
-            if (SetCurrentDirectory(path.Str()))
-               strncpy_s(gCurrentDir, MAX_PATH, path.Str(), _TRUNCATE);
-            TextMessage("\n\n  getcwd() = %s\n\n> ", path.Str());
+            DragFinish((HDROP)wParam);
+            // Is it a folder?
+            if (file == "")
+            {
+               if (SetCurrentDirectory(path.Str()))
+                  strncpy_s(gCurrentDir, MAX_PATH, path.Str(), _TRUNCATE);
+               TextMessage("\n\n  getcwd() = %s\n\n> ", path.Str());
+            }
          }
+         return(0);
       }
-      return(0);
-   }
 
-   case(WM_PAINT):
-   {
-      CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
-
-      if (obj && obj->selected_)
+      case(WM_PAINT):
       {
-         HDC hdc = GetDC(obj->hwndParent);
-         obj->DrawSelectRect(hdc);
-         ReleaseDC(obj->hwndParent, hdc);
-      }
-      if (win->displayObjCtrlNrs)
-      {
-         HDC hdc = GetDC(obj->hwndParent);
-         obj->DrawControlNumber(hdc);
-         ReleaseDC(obj->hwndParent, hdc);
-      }
-      if (win->displayObjTabNrs)
-      {
-         HDC hdc = GetDC(obj->hwndParent);
-         obj->DrawTabNumber(hdc);
-         ReleaseDC(obj->hwndParent, hdc);
-      }
-      return(0);
-   }
+         CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
 
-   case(WM_MOUSEACTIVATE): // User has clicked on window - update title, menu and toolbar
-   {
-      if (gDebug.mode != "off") // Change current GUI window if we are not debugging
-         break;
-      cliWin = parWin;
-      cliEditWin = hWnd;
-      if (!obj) return(1);
-      SelectFixedControls(win, obj);
-      CText txt;
-      if (win->titleUpdate)
-      {
-         txt.Format("CLI (%hd)", win->nr);
-         SetWindowText(win->hWnd, txt.Str());
-      }
-      //else
-      //   txt.Format("CLI");
-
-      if (win && !win->keepInFront)
-         ChangeGUIParent(parWin);
-      SetFocus(hWnd);
-      break;
-   }
-
-   // Modify paste command to only paste single lines into the CLI
-   // But not reliable the first part works but I can't undo. The second
-   // only works sometimes - don't know why. Close/Open and empty in middle make no difference.
-   case(WM_PASTE):
-   {
-      //	            LPSTR txt;
-
-    //     if(OpenClipboard(hWnd)) //Paste text from the clipboard
-    //     { 
-  //       // Get paste buffer and replace with first line of data   	   
-    //        HGLOBAL hglb,hglb2;
-
-    //        if((hglb = GetClipboardData(CF_TEXT)) != NULL) 
-    //        {
-    //           LPSTR inTxt = (LPSTR)GlobalLock(hglb); 
-  //             txt = new char[strlen(inTxt)+1];
-  //             strcpy(txt,inTxt);
-    //           ReplaceSpecialCharacters(txt,"\r\n","\n",-1);
-    //           ReplaceSpecialCharacters(txt,"\n",";",-1);
-    //           GlobalUnlock(hglb);  
-      //			//TextMessage("%s",txt); // Print modified text
-      //		 //  messageSent = 0; // Ensures return and > not printed
-      //			//delete [] txt;
-  //    	   }
-    //     }
-      ////	CloseClipboard(); 
-
-  // //      return(0);
-    //       HGLOBAL hglbCopy;
-      //	  LPSTR lptstrCopy;
-      ////	if (!OpenClipboard(hWnd)) 
-      ////		 return(0); 
-      //	 //EmptyClipboard(); 
-      //// Allocate a global memory buffer for the text.
-      //	 int sz = strlen(txt);
-      //	hglbCopy = GlobalAlloc(GHND | GMEM_SHARE, sz+1); 
-      //// Lock the handle and copy the selected text to the buffer.  
-      //	lptstrCopy = (LPSTR)GlobalLock(hglbCopy); 
-      //	memcpy(lptstrCopy, txt, sz); 
-      //	lptstrCopy[sz] = '\0';
-      //	GlobalUnlock(hglbCopy); 
-
-    // // Place the handle on the clipboard. 
-      //	SetClipboardData(CF_TEXT, hglbCopy); 
-      //	CloseClipboard(); 
-      //	delete [] txt;
-      break;
-   }
-
-   case(WM_LBUTTONDOWN):
-   {
-      if (gDebug.enabled == true) // Change current GUI window if we are not debugging
-         break;
-      int r;
-      if (gUsingWine) // In Wine the double call messes up selections
-      {
-         r = CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
-      }
-      else
-      {
-         r = CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);  // Call twice to ensure insertion point
-         CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);      // is correct after changing windows
-      }
-      GetEditSelection(hWnd, pos, pos);
-      UpDateCLISyntax(win, hWnd, pos, pos);
-      return(r);
-   }
-
-   case(WM_CHAR):
-   {
-      // Get number of lines in CLI
-      long line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
-      // Get character index for start of this line
-      long lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
-      long start, end;
-      // Get position of insertion point
-      GetEditSelection(hWnd, start, end);
-      // Get length of this line
-      length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
-      // Ignore copy commands (since we don't want the selection to be modified)
-      if (key == (char)COPY)
-      {
-         break;
-      }
-      // Check for invalid start or end position for selection
-      if ((start < lineStart + 2) || (end < lineStart + 2))
-      {
-
-         // Cutting when the edit selection is outside the current line is not allowed
-         if (key == (char)CUT)
+         if (obj && obj->selected_)
          {
+            HDC hdc = GetDC(obj->hwndParent);
+            obj->DrawSelectRect(hdc);
+            ReleaseDC(obj->hwndParent, hdc);
+         }
+         if (win->displayObjCtrlNrs)
+         {
+            HDC hdc = GetDC(obj->hwndParent);
+            obj->DrawControlNumber(hdc);
+            ReleaseDC(obj->hwndParent, hdc);
+         }
+         if (win->displayObjTabNrs)
+         {
+            HDC hdc = GetDC(obj->hwndParent);
+            obj->DrawTabNumber(hdc);
+            ReleaseDC(obj->hwndParent, hdc);
+         }
+         return(0);
+      }
+
+      case(WM_MOUSEACTIVATE): // User has clicked on window - update title, menu and toolbar
+      {
+         if (gDebug.mode != "off") // Change current GUI window if we are not debugging
+            break;
+         cliWin = parWin;
+         cliEditWin = hWnd;
+         if (!obj) return(1);
+         SelectFixedControls(win, obj);
+         CText txt;
+         if (win->titleUpdate)
+         {
+            txt.Format("CLI (%hd)", win->nr);
+            SetWindowText(win->hWnd, txt.Str());
+         }
+         //else
+         //   txt.Format("CLI");
+
+         if (win && !win->keepInFront)
+            ChangeGUIParent(parWin);
+         SetFocus(hWnd);
+         break;
+      }
+
+      // Modify paste command to only paste single lines into the CLI
+      // But not reliable the first part works but I can't undo. The second
+      // only works sometimes - don't know why. Close/Open and empty in middle make no difference.
+      case(WM_PASTE):
+      {
+         //	            LPSTR txt;
+
+       //     if(OpenClipboard(hWnd)) //Paste text from the clipboard
+       //     { 
+     //       // Get paste buffer and replace with first line of data   	   
+       //        HGLOBAL hglb,hglb2;
+
+       //        if((hglb = GetClipboardData(CF_TEXT)) != NULL) 
+       //        {
+       //           LPSTR inTxt = (LPSTR)GlobalLock(hglb); 
+     //             txt = new char[strlen(inTxt)+1];
+     //             strcpy(txt,inTxt);
+       //           ReplaceSpecialCharacters(txt,"\r\n","\n",-1);
+       //           ReplaceSpecialCharacters(txt,"\n",";",-1);
+       //           GlobalUnlock(hglb);  
+         //			//TextMessage("%s",txt); // Print modified text
+         //		 //  messageSent = 0; // Ensures return and > not printed
+         //			//delete [] txt;
+     //    	   }
+       //     }
+         ////	CloseClipboard(); 
+
+     // //      return(0);
+       //       HGLOBAL hglbCopy;
+         //	  LPSTR lptstrCopy;
+         ////	if (!OpenClipboard(hWnd)) 
+         ////		 return(0); 
+         //	 //EmptyClipboard(); 
+         //// Allocate a global memory buffer for the text.
+         //	 int sz = strlen(txt);
+         //	hglbCopy = GlobalAlloc(GHND | GMEM_SHARE, sz+1); 
+         //// Lock the handle and copy the selected text to the buffer.  
+         //	lptstrCopy = (LPSTR)GlobalLock(hglbCopy); 
+         //	memcpy(lptstrCopy, txt, sz); 
+         //	lptstrCopy[sz] = '\0';
+         //	GlobalUnlock(hglbCopy); 
+
+       // // Place the handle on the clipboard. 
+         //	SetClipboardData(CF_TEXT, hglbCopy); 
+         //	CloseClipboard(); 
+         //	delete [] txt;
+         break;
+      }
+
+      case(WM_LBUTTONDOWN):
+      {
+         if (gDebug.enabled == true) // Change current GUI window if we are not debugging
+            break;
+         int r;
+         if (gUsingWine) // In Wine the double call messes up selections
+         {
+            r = CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
+         }
+         else
+         {
+            r = CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);  // Call twice to ensure insertion point
+            CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);      // is correct after changing windows
+         }
+         GetEditSelection(hWnd, pos, pos);
+         UpDateCLISyntax(win, hWnd, pos, pos);
+         return(r);
+      }
+
+      case(WM_CHAR):
+      {
+         // Get number of lines in CLI
+         long line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
+         // Get character index for start of this line
+         long lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
+         long start, end;
+         // Get position of insertion point
+         GetEditSelection(hWnd, start, end);
+         // Get length of this line
+         length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
+         // Ignore copy commands (since we don't want the selection to be modified)
+         if (key == (char)COPY)
+         {
+            break;
+         }
+         // Check for invalid start or end position for selection
+         if ((start < lineStart + 2) || (end < lineStart + 2))
+         {
+
+            // Cutting when the edit selection is outside the current line is not allowed
+            if (key == (char)CUT)
+            {
+               cliHistory = 0;
+               return(0);
+            }
+
+            pos = lineStart + length;
+
+
+            // Make sure the selection region doesn't include text from previous lines
+            if (end > lineStart + 2)
+               SetEditSelection(hWnd, lineStart + 2, end);
+            else
+               SetEditSelection(hWnd, pos, pos);
+
+            // Changing the edit selection breaks the paste call - so do it again
+            if (key == (char)PASTE)
+            {
+               SendMessage(hWnd, WM_PASTE, (WPARAM)0, (LPARAM)0);
+               cliHistory = 0;
+               break;
+            }
+         }
+
+         // Escape detected, so abort command 		 
+         if (key == (char)VK_ESCAPE)
+         {
+            ReplaceEditText(hWnd, lineStart + 2, lineStart + length, "");
             cliHistory = 0;
             return(0);
          }
 
-         pos = lineStart + length;
-
-
-         // Make sure the selection region doesn't include text from previous lines
-         if (end > lineStart + 2)
-            SetEditSelection(hWnd, lineStart + 2, end);
-         else
-            SetEditSelection(hWnd, pos, pos);
-
-         // Changing the edit selection breaks the paste call - so do it again
          if (key == (char)PASTE)
          {
             SendMessage(hWnd, WM_PASTE, (WPARAM)0, (LPARAM)0);
-            cliHistory = 0;
-            break;
+            return(0);
          }
-      }
 
-      // Escape detected, so abort command 		 
-      if (key == (char)VK_ESCAPE)
-      {
-         ReplaceEditText(hWnd, lineStart + 2, lineStart + length, "");
-         cliHistory = 0;
+         // Display character and then apply syntax colouring to line
+         CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
+         //     UpdateLineColor(hWnd,GetCurrentLineNumber(hWnd)); 
+           // Update syntax reporting in the status window
+         GetEditSelection(hWnd, start, end);
+         UpDateCLISyntax(win, hWnd, start, end);
          return(0);
       }
 
-      if (key == (char)PASTE)
+      case(WM_KEYDOWN):
       {
-         SendMessage(hWnd, WM_PASTE, (WPARAM)0, (LPARAM)0);
-         return(0);
-      }
+         long line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
+         long lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
+         long selStart, selEnd;
+         GetEditSelection(hWnd, selStart, selEnd);
+         length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
 
-      // Display character and then apply syntax colouring to line
-      CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam);
-      //     UpdateLineColor(hWnd,GetCurrentLineNumber(hWnd)); 
-        // Update syntax reporting in the status window
-      GetEditSelection(hWnd, start, end);
-      UpDateCLISyntax(win, hWnd, start, end);
-      return(0);
-   }
+         switch (wParam)
+         {
+            case('V'):
+            {
+               if (IsKeyDown(VK_CONTROL))
+               {
+                  return(0); // Don't let the system paste - we've just done it
+               }
+               break;
+            }
 
-   case(WM_KEYDOWN):
-   {
-      long line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
-      long lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
-      long selStart, selEnd;
-      GetEditSelection(hWnd, selStart, selEnd);
-      length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
+            // Ensure that Home and Shift-Home don't include prompt
+            case(VK_HOME):
+            {
+               if (!IsKeyDown(VK_SHIFT))
+               {
+                  SetEditSelection(hWnd, lineStart + 2, lineStart + 2);
+                  return(0);
+               }
+            }
 
-      switch (wParam)
-      {
-      case('V'):
-      {
+            // Show or hide gui windows
+            case(VK_F2):
+            {
+               if (AnyGUIWindowVisible())
+                  HideGUIWindows();
+               else
+                  ShowGUIWindows(SW_SHOWNOACTIVATE);
+               break;
+            }
+
+            // Restrict deletes to the current line ******
+            case(VK_BACK):
+            {
+               if (selStart < lineStart + 2 && selEnd <= lineStart)
+               { // Selection is before insertion point so move to end
+                  pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+                  cliHistory = 0;
+                  return(0);
+               }
+               if (selStart <= lineStart + 2 && (selEnd == lineStart + 1 || selEnd == lineStart + 2))
+               { // Selection is before and ends at the prompt so set to start
+                  SetEditSelection(hWnd, lineStart + 2, lineStart + 2);
+                  cliHistory = 0;
+                  return(0);
+               }
+               if (selStart < lineStart + 2 && selEnd > lineStart + 2)
+               { // Selection is before and ends after the prompt so remove bit before prompt
+                  SetEditSelection(hWnd, lineStart + 2, selEnd);
+               }
+               cliHistory = 0;
+               break;
+            }
+            case(VK_DELETE):
+            {
+               if (selStart < lineStart + 2 && selEnd < lineStart + 2)
+               {
+                  pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+               }
+               if (selStart < lineStart + 2 && selEnd > lineStart + 2)
+               {
+                  SetEditSelection(hWnd, lineStart + 2, selEnd);
+               }
+               if (selStart == lineStart + 1 && selEnd > lineStart + 2)
+               {
+                  SetEditSelection(hWnd, lineStart + 2, selEnd);
+               }
+               cliHistory = 0;
+               break;
+            }
+
+            // Process entered text (i.e. text ending in <enter>) ****************
+            case(VK_RETURN):
+            {
+               char* command, * buf;
+               cliHistory = 0; // Reset previous command counter
+               buf = new char[length + 5]; // Allow for null character and initial 4 byte length
+               *(int*)buf = length; // buffer size
+               // Extract last line (i.e. the active one) ignoring line-feed
+               length = SendMessage(hWnd, EM_GETLINE, line - 1, (LPARAM)buf);
+               long nChar = SendMessage(hWnd, WM_GETTEXTLENGTH, 0, 0);
+               SetEditSelection(hWnd, nChar, nChar);
+               ColorSelectedText(hWnd, RGB(0, 0, 0));
+               buf[length] = '\0';
+               // Ignore prompt '> '
+               command = buf + 2;
+               // Place insertion point at the end of the line
+               line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
+               lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
+               long end = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0) + lineStart;
+               SetEditSelection(hWnd, end, end);
+
+               // Process the command string extracted from the CLI
+                //  if(macroDepth == 0 && !dialogDisplayed)
+
+               if (obj && obj->debug)
+               {
+                  gDebug.cmd = command;
+                  gDebug.step = true;
+                  gDebug.mode = "printExpression";
+               }
+               else
+               {
+                  Interface* itfc = new Interface;
+                  itfc->varScope = GLOBAL;
+                  itfc->name = "CLI";
+                  itfc->inCLI = true;
+                  itfc->win = win;
+                  /*    if(itfc->win) // Make sure caching is turned off
+                         itfc->win->cacheProc = false; */
+                  ProcessMacroStr(itfc, 1, command);
+                  delete itfc;
+               }
+               //{ // Code to test for memory leaks
+               //   VLDEnable();
+               //   Interface *itfc = new Interface;
+               //   itfc->varScope = GLOBAL;
+               //   itfc->name = "CLI";
+               //   itfc->inCLI = true;
+               //   itfc->win = win;
+                  //ProcessMacroStr(itfc,1,command);
+               //   delete itfc;
+               //   procRunList.RemoveAll();
+               //   procLoadList.RemoveAll();
+               //   VLDDisable();
+               //   exit(0);
+               //}
+               delete[] buf;
+               return(0);
+            }
+
+            // Check for left arrow pressed	   
+            case(VK_LEFT):
+            {
+               if (selEnd == lineStart + 2) // Ignore if at start of line
+                  return(0);
+               if (selEnd < lineStart + 2) // Reset if out-of-bounds
+               {
+                  long pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+
+                  return(0);
+               }
+               GetEditSelection(hWnd, pos, pos);
+               UpDateCLISyntax(win, hWnd, pos, pos);
+               break;
+            }
+
+            // Check for right arrow pressed				   		   	
+            case(VK_RIGHT):
+            {
+               if (selEnd < lineStart + 2) // Reset if out-of-bounds
+               {
+                  pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+                  return(0);
+               }
+               GetEditSelection(hWnd, pos, pos);
+               UpDateCLISyntax(win, hWnd, pos, pos);
+               break;
+            }
+
+            // Up arrow, so display previous command				   			
+            case(VK_UP):
+            {
+               char* backLine = NULL;
+               // Reset if cursor is out-of-bounds
+               if (selEnd < lineStart + 2)
+               {
+                  pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+                  return(0);
+               }
+               // Extract the current line as a reference
+               if (cliHistory == 0 || !curLine)
+               {
+                  if (curLine) delete[] curLine;
+                  curLine = GetLineByNumber(hWnd, line - 1);
+               }
+               // Go back one line
+               long cnt = 0;
+               while (true)
+               {
+                  cliHistory++;
+                  cnt++;
+
+                  // Prevent going beyond start of CLI by looping to line above current line
+                  if (line - cliHistory <= 0)
+                     cliHistory = 1;
+
+                  // Check we don't just have one line
+                  if (line - cliHistory - 1 < 0)
+                  {
+                     if (backLine) delete[] backLine;
+                     return(0);
+                  }
+
+                  // Get the line specified by cliHistory
+                  if (backLine) delete[] backLine;
+                  assert(line - cliHistory - 1 >= 0);
+                  backLine = GetLineByNumber(hWnd, line - cliHistory - 1);
+
+                  // Matching line not found
+                  if (cnt > line)
+                  {
+                     MessageBeep(MB_ICONASTERISK);
+                     if (backLine) delete[] backLine;
+                     return(0);
+                  }
+
+                  // Not a command line so ignore
+                  if (backLine[0] != '>' && cliHistory <= line)
+                     continue;
+
+                  // No command on this line just a prompt so ignore
+                  if (!strcmp(backLine, "> ") && cliHistory <= line)
+                     continue;
+
+                  // Compare backline with current line if current line includes part of a command
+                  if (strlen(curLine) > 2)
+                  {
+                     if (strncmp(backLine, curLine, strlen(curLine)))
+                        continue; // No match so ignore
+                  }
+
+                  break;
+               }
+
+               // Replace current line with backline
+               length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
+               ReplaceEditText(hWnd, lineStart, lineStart + length, backLine);
+               // Tidy up
+               if (backLine) delete[] backLine;
+               return(0);
+            }
+
+            // Down arrow so display previous command			   			
+            case(VK_DOWN):
+            {
+               char* backLine = NULL;
+               // Reset if cursor is out-of-bounds
+               if (selEnd < lineStart + 2)
+               {
+                  pos = lineStart + length;
+                  SetEditSelection(hWnd, pos, pos);
+                  return(0);
+               }
+               // Extract the current line as a reference
+               if (cliHistory == 0 || !curLine)
+               {
+                  if (curLine) delete[] curLine;
+                  curLine = GetLineByNumber(hWnd, line - 1);
+               }
+               // Go back one line
+               long cnt = 0;
+               while (true)
+               {
+                  cliHistory--;
+                  cnt++;
+
+                  // Prevent going beyond end of CLI by looping to top line
+                  if (cliHistory < 1)
+                     cliHistory = line - 1;
+
+                  // Check we don't just have one line
+                  if (line - cliHistory - 1 < 0)
+                  {
+                     if (backLine) delete[] backLine;
+                     return(0);
+                  }
+
+                  // Get the line specified by cliHistory
+                  if (backLine) delete[] backLine;
+                  assert(line - cliHistory - 1 >= 0);
+                  backLine = GetLineByNumber(hWnd, line - cliHistory - 1);
+
+                  // Matching line not found
+                  if (cnt > line)
+                  {
+                     MessageBeep(MB_ICONASTERISK);
+                     if (backLine) delete[] backLine;
+                     return(0);
+                  }
+                  // Not a command line so ignore
+                  if (backLine[0] != '>' && cliHistory > 0)
+                     continue;
+
+                  // No command on this line just a prompt so ignore
+                  if (!strcmp(backLine, "> ") && cliHistory > 0)
+                     continue;
+
+                  // Compare backline with current line if current line includes part of a command
+                  if (strlen(curLine) > 2)
+                  {
+                     if (strncmp(backLine, curLine, strlen(curLine)))
+                        continue; // No match so ignore
+                  }
+                  break;
+               }
+               // Replace current line with backline
+               length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
+               ReplaceEditText(hWnd, lineStart, lineStart + length, backLine);
+               // Tidy up
+               if (backLine) delete[] backLine;
+               return(0);
+            }
+
+            // User has asked for help  
+            case(VK_F1):
+            {
+               Interface itfc;
+               GetCommandHelp(&itfc, hWnd);
+               break;
+            }
+
+            default:
+            {
+               cliHistory = 0;
+               break;
+            }
+         }
+
+            // Ignore all control keys except copy/cut/paste/undo/redo  
          if (IsKeyDown(VK_CONTROL))
          {
-            return(0); // Don't let the system paste - we've just done it
-         }
-         break;
-      }
-
-      // Ensure that Home and Shift-Home don't include prompt
-      case(VK_HOME):
-      {
-         if (!IsKeyDown(VK_SHIFT))
-         {
-            SetEditSelection(hWnd, lineStart + 2, lineStart + 2);
-            return(0);
-         }
-      }
-
-      // Show or hide gui windows
-      case(VK_F2):
-      {
-         if (AnyGUIWindowVisible())
-            HideGUIWindows();
-         else
-            ShowGUIWindows(SW_SHOWNOACTIVATE);
-         break;
-      }
-
-      // Restrict deletes to the current line ******
-      case(VK_BACK):
-      {
-         if (selStart < lineStart + 2 && selEnd <= lineStart)
-         { // Selection is before insertion point so move to end
-            pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-            cliHistory = 0;
-            return(0);
-         }
-         if (selStart <= lineStart + 2 && (selEnd == lineStart + 1 || selEnd == lineStart + 2))
-         { // Selection is before and ends at the prompt so set to start
-            SetEditSelection(hWnd, lineStart + 2, lineStart + 2);
-            cliHistory = 0;
-            return(0);
-         }
-         if (selStart < lineStart + 2 && selEnd > lineStart + 2)
-         { // Selection is before and ends after the prompt so remove bit before prompt
-            SetEditSelection(hWnd, lineStart + 2, selEnd);
-         }
-         cliHistory = 0;
-         break;
-      }
-      case(VK_DELETE):
-      {
-         if (selStart < lineStart + 2 && selEnd < lineStart + 2)
-         {
-            pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-         }
-         if (selStart < lineStart + 2 && selEnd > lineStart + 2)
-         {
-            SetEditSelection(hWnd, lineStart + 2, selEnd);
-         }
-         if (selStart == lineStart + 1 && selEnd > lineStart + 2)
-         {
-            SetEditSelection(hWnd, lineStart + 2, selEnd);
-         }
-         cliHistory = 0;
-         break;
-      }
-
-      // Process entered text (i.e. text ending in <enter>) ****************
-      case(VK_RETURN):
-      {
-         char* command, * buf;
-         cliHistory = 0; // Reset previous command counter
-         buf = new char[length + 5]; // Allow for null character and initial 4 byte length
-         *(int*)buf = length; // buffer size
-         // Extract last line (i.e. the active one) ignoring line-feed
-         length = SendMessage(hWnd, EM_GETLINE, line - 1, (LPARAM)buf);
-         long nChar = SendMessage(hWnd, WM_GETTEXTLENGTH, 0, 0);
-         SetEditSelection(hWnd, nChar, nChar);
-         ColorSelectedText(hWnd, RGB(0, 0, 0));
-         buf[length] = '\0';
-         // Ignore prompt '> '
-         command = buf + 2;
-         // Place insertion point at the end of the line
-         line = SendMessage(hWnd, EM_GETLINECOUNT, 0, 0);
-         lineStart = SendMessage(hWnd, EM_LINEINDEX, line - 1, 0);
-         long end = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0) + lineStart;
-         SetEditSelection(hWnd, end, end);
-
-         // Process the command string extracted from the CLI
-          //  if(macroDepth == 0 && !dialogDisplayed)
-
-         if (obj && obj->debug)
-         {
-            gDebug.cmd = command;
-            gDebug.step = true;
-            gDebug.mode = "printExpression";
-         }
-         else
-         {
-            Interface* itfc = new Interface;
-            itfc->varScope = GLOBAL;
-            itfc->name = "CLI";
-            itfc->inCLI = true;
-            itfc->win = win;
-            /*    if(itfc->win) // Make sure caching is turned off
-                   itfc->win->cacheProc = false; */
-            ProcessMacroStr(itfc, 1, command);
-            delete itfc;
-         }
-         //{ // Code to test for memory leaks
-         //   VLDEnable();
-         //   Interface *itfc = new Interface;
-         //   itfc->varScope = GLOBAL;
-         //   itfc->name = "CLI";
-         //   itfc->inCLI = true;
-         //   itfc->win = win;
-            //ProcessMacroStr(itfc,1,command);
-         //   delete itfc;
-         //   procRunList.RemoveAll();
-         //   procLoadList.RemoveAll();
-         //   VLDDisable();
-         //   exit(0);
-         //}
-         delete[] buf;
-         return(0);
-      }
-
-      // Check for left arrow pressed	   
-      case(VK_LEFT):
-      {
-         if (selEnd == lineStart + 2) // Ignore if at start of line
-            return(0);
-         if (selEnd < lineStart + 2) // Reset if out-of-bounds
-         {
-            long pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-
-            return(0);
-         }
-         GetEditSelection(hWnd, pos, pos);
-         UpDateCLISyntax(win, hWnd, pos, pos);
-         break;
-      }
-
-      // Check for right arrow pressed				   		   	
-      case(VK_RIGHT):
-      {
-         if (selEnd < lineStart + 2) // Reset if out-of-bounds
-         {
-            pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-            return(0);
-         }
-         GetEditSelection(hWnd, pos, pos);
-         UpDateCLISyntax(win, hWnd, pos, pos);
-         break;
-      }
-
-      // Up arrow, so display previous command				   			
-      case(VK_UP):
-      {
-         char* backLine = NULL;
-         // Reset if cursor is out-of-bounds
-         if (selEnd < lineStart + 2)
-         {
-            pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-            return(0);
-         }
-         // Extract the current line as a reference
-         if (cliHistory == 0 || !curLine)
-         {
-            if (curLine) delete[] curLine;
-            curLine = GetLineByNumber(hWnd, line - 1);
-         }
-         // Go back one line
-         long cnt = 0;
-         while (true)
-         {
-            cliHistory++;
-            cnt++;
-
-            // Prevent going beyond start of CLI by looping to line above current line
-            if (line - cliHistory <= 0)
-               cliHistory = 1;
-
-            // Check we don't just have one line
-            if (line - cliHistory - 1 < 0)
+            if (wParam == 'X' && ((selStart < lineStart + 2) && (selEnd < lineStart + 2)))
             {
-               if (backLine) delete[] backLine;
+               return(0); // Invalid selection range for cut
+            }
+
+            if (wParam == 'X' && ((selStart < lineStart + 2) && (selEnd > lineStart + 2)))
+            {
+               SetEditSelection(hWnd, lineStart + 2, selEnd);
+               break;
+            }
+
+            if (wParam != 'C' && wParam != 'X' && wParam != 'V' && wParam != 'Z' && wParam != 'Y')
                return(0);
-            }
 
-            // Get the line specified by cliHistory
-            if (backLine) delete[] backLine;
-            assert(line - cliHistory - 1 >= 0);
-            backLine = GetLineByNumber(hWnd, line - cliHistory - 1);
-
-            // Matching line not found
-            if (cnt > line)
+            if (wParam == 'V' && ((selStart < lineStart + 2) && (selEnd < lineStart + 2)))
             {
-               MessageBeep(MB_ICONASTERISK);
-               if (backLine) delete[] backLine;
-               return(0);
+               return(0); // Invalid selection range for paste
             }
 
-            // Not a command line so ignore
-            if (backLine[0] != '>' && cliHistory <= line)
-               continue;
-
-            // No command on this line just a prompt so ignore
-            if (!strcmp(backLine, "> ") && cliHistory <= line)
-               continue;
-
-            // Compare backline with current line if current line includes part of a command
-            if (strlen(curLine) > 2)
+            if (wParam == 'V' && ((selStart < lineStart + 2) && (selEnd > lineStart + 2)))
             {
-               if (strncmp(backLine, curLine, strlen(curLine)))
-                  continue; // No match so ignore
+               SetEditSelection(hWnd, lineStart + 2, selEnd);
+               break;
             }
-
-            break;
          }
-
-         // Replace current line with backline
-         length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
-         ReplaceEditText(hWnd, lineStart, lineStart + length, backLine);
-         // Tidy up
-         if (backLine) delete[] backLine;
-         return(0);
-      }
-
-      // Down arrow so display previous command			   			
-      case(VK_DOWN):
-      {
-         char* backLine = NULL;
-         // Reset if cursor is out-of-bounds
-         if (selEnd < lineStart + 2)
-         {
-            pos = lineStart + length;
-            SetEditSelection(hWnd, pos, pos);
-            return(0);
-         }
-         // Extract the current line as a reference
-         if (cliHistory == 0 || !curLine)
-         {
-            if (curLine) delete[] curLine;
-            curLine = GetLineByNumber(hWnd, line - 1);
-         }
-         // Go back one line
-         long cnt = 0;
-         while (true)
-         {
-            cliHistory--;
-            cnt++;
-
-            // Prevent going beyond end of CLI by looping to top line
-            if (cliHistory < 1)
-               cliHistory = line - 1;
-
-            // Check we don't just have one line
-            if (line - cliHistory - 1 < 0)
-            {
-               if (backLine) delete[] backLine;
-               return(0);
-            }
-
-            // Get the line specified by cliHistory
-            if (backLine) delete[] backLine;
-            assert(line - cliHistory - 1 >= 0);
-            backLine = GetLineByNumber(hWnd, line - cliHistory - 1);
-
-            // Matching line not found
-            if (cnt > line)
-            {
-               MessageBeep(MB_ICONASTERISK);
-               if (backLine) delete[] backLine;
-               return(0);
-            }
-            // Not a command line so ignore
-            if (backLine[0] != '>' && cliHistory > 0)
-               continue;
-
-            // No command on this line just a prompt so ignore
-            if (!strcmp(backLine, "> ") && cliHistory > 0)
-               continue;
-
-            // Compare backline with current line if current line includes part of a command
-            if (strlen(curLine) > 2)
-            {
-               if (strncmp(backLine, curLine, strlen(curLine)))
-                  continue; // No match so ignore
-            }
-            break;
-         }
-         // Replace current line with backline
-         length = SendMessage(hWnd, EM_LINELENGTH, lineStart, 0);
-         ReplaceEditText(hWnd, lineStart, lineStart + length, backLine);
-         // Tidy up
-         if (backLine) delete[] backLine;
-         return(0);
-      }
-
-      // User has asked for help  
-      case(VK_F1):
-      {
-         Interface itfc;
-         GetCommandHelp(&itfc, hWnd);
          break;
       }
-
-      default:
-      {
-         cliHistory = 0;
-         break;
-      }
-      }
-
-      // Ignore all control keys except copy/cut/paste/undo/redo  
-      if (IsKeyDown(VK_CONTROL))
-      {
-         if (wParam == 'X' && ((selStart < lineStart + 2) && (selEnd < lineStart + 2)))
-         {
-            return(0); // Invalid selection range for cut
-         }
-
-         if (wParam == 'X' && ((selStart < lineStart + 2) && (selEnd > lineStart + 2)))
-         {
-            SetEditSelection(hWnd, lineStart + 2, selEnd);
-            break;
-         }
-
-         if (wParam != 'C' && wParam != 'X' && wParam != 'V' && wParam != 'Z' && wParam != 'Y')
-            return(0);
-
-         if (wParam == 'V' && ((selStart < lineStart + 2) && (selEnd < lineStart + 2)))
-         {
-            return(0); // Invalid selection range for paste
-         }
-
-         if (wParam == 'V' && ((selStart < lineStart + 2) && (selEnd > lineStart + 2)))
-         {
-            SetEditSelection(hWnd, lineStart + 2, selEnd);
-            break;
-         }
-      }
-      break;
-   }
-
    }
 
    return(CallWindowProc(OldCLIProc, hWnd, messg, wParam, lParam));
