@@ -384,7 +384,8 @@ int GetListNames(Interface* itfc ,char args[])
 }
 
 /******************************************************************************
-*  Insert a new string into an existing list and return the result in ansVar
+*  Insert a new string or list  into an existing list and return the result
+*  in ansVar:
 * 
 * Syntax: a = insertinlist(b,"string",p) ... insert string to list 'b' at position 'p'
 *                                            returning the result in new list 'a'
@@ -393,23 +394,41 @@ int GetListNames(Interface* itfc ,char args[])
 int InsertStringIntoListCLI(Interface* itfc ,char arg[])
 { 
    short r;               // Function return flag
-   Variable var;          // Variable containing copy of list
-   CText string;  // New string
+   Variable listVar;          // Variable containing copy of list
+   Variable toInsert;
    static long position;  // Position of new string
 
 // Get list name, string to insert and position to insert it in   
-   if((r = ArgScan(itfc,arg,1,"list, string, position","eee","vtl",&var,&string,&position)) < 0)
+   if((r = ArgScan(itfc,arg,1,"list, string, position","eee","vvl",&listVar,&toInsert,&position)) < 0)
       return(r); 
 
 // Check for errors 
-   if(VarType(&var) != LIST)
+   if(VarType(&listVar) != LIST)
    {
       ErrorMessage("argument 1 is not a list");
       return(ERR);
    }
 
-// Insert string into list, returning modified list
-   r = InsertStringIntoList(string.Str(), (char***)var.GetDataAdrs(), VarWidth(&var), position);
+   // Insert string into list, returning modified list
+   if (VarType(&toInsert) == UNQUOTED_STRING)
+   {
+      char* insertStr = toInsert.GetString();
+      r = InsertStringIntoList(insertStr, (char***)listVar.GetDataAdrs(), VarWidth(&listVar), position);
+   }
+   else if (VarType(&toInsert) == LIST)
+   {
+      char** insertStrings = toInsert.GetList();
+      int pos = position;
+      for (int i = 0; i < toInsert.GetDimX(); i++)
+      {
+         r = InsertStringIntoList(insertStrings[i], (char***)listVar.GetDataAdrs(), VarWidth(&listVar), pos++);
+      }
+   }
+   else
+   {
+      ErrorMessage("unsupported data type for list insertion (string/list)");
+      return(ERR);
+   }
 
 // Check for errors
    if(r == -1)
@@ -423,9 +442,9 @@ int InsertStringIntoListCLI(Interface* itfc ,char arg[])
       return(ERR);
    }
 // Return modified list
-   var.SetDim1(var.GetDimX()+1);
+   listVar.SetDim1(listVar.GetDimX()+1);
 //   VarWidth(&var)++;
-   itfc->retVar[1].MakeAndSetList(var.GetList(),var.GetDimX());
+   itfc->retVar[1].MakeAndSetList(listVar.GetList(), listVar.GetDimX());
    return(OK);
 }
 
