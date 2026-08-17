@@ -21,11 +21,22 @@ procedure(dspread,memBank,address,dataSize,port)
 
 # y memory
    elseif(memBank == "y")
-      if(address == 0x10000) # read NMR data - this is generated in the simulation procedure
-         name = gData->curExpt->protocol  
-         if(isproc(gData->curExpt->ppPath,"$name$_pp","simulateNMR"))
+
+      if(address == 0x10000) # read NMR data - this is replaced by a simulation procedure
+
+         # Find the protocol name and it's path
+         type = gData->curExpt->type  
+         if(type == "script") # Script
+            name = gData->curExpt->subProtocol 
+            path = gData->findPP(name)
+         else
+            name = gData->curExpt->protocol
+            path = gData->curExpt->ppPath    
+         endif
+
+         # See if there is a simulation procedure - if so call it
+         if(isproc(path,"$name$_pp","simulateNMR"))
             bak = getcwd()
-            cd(gData->curExpt->ppPath)
             proc = "$name$_pp:simulateNMR"
             data = proc(dataSize)
             cd(bak)
@@ -35,6 +46,7 @@ procedure(dspread,memBank,address,dataSize,port)
          endif
 
       endif
+
    endif
 
 
