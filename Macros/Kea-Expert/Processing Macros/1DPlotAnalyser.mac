@@ -1,19 +1,31 @@
-###########################################################
+#################################################################
 # Display a 1D plot viewer.
 #
 # This is a modification of the normal Prospa 1D window
 # with functions specifc for comparing 1D spectra.
 #
 # Author: C Eccles
-# Copyright Magritek 2022-25
+# Last modified 26 June 2026
 #
 # Other files used here (see .\1D\CoreMacros)
 #    integrateClass - includes callbacks for integration
 #                     buttons and  functions for fitting
+#    toggleIntegrateMode - defines the integrate display
+#                          mode and generates wvInt the 
+#                          integrate class instance
 #
-###########################################################
+# V1.0 Initial version
+# V1.1 Addition of an export button in the integrate interface
+#      and the ability to click on the integral curves and
+#      update the raw data list.
+# V1.2 Files are now imported from the history list using the 
+#      new selection option. This allows only some items to 
+#      be selected using the shift and control keys.
+# V1.3 Fitting functions are now user definable and editable
+#
+#################################################################
 
-procedure(1DPlotAnalyser, multiTraceLoad="false")
+procedure(1DPlotAnalyser, multiTraceLoad="false", multiTraceInfo=null)
 
 # Allow editing
    if(iskeypressed("shift"))
@@ -38,7 +50,7 @@ procedure(1DPlotAnalyser, multiTraceLoad="false")
    endif
 
 # See if the plot viewer is already opened
-   nr = findwin("title","1D Data Analyser V1.0")
+   nr = findwin("title","1D Data Analyser V1.3")
 
    if(nr >= 0)
       if(multiTraceLoad == "false")
@@ -91,7 +103,7 @@ procedure(1DPlotAnalyser, multiTraceLoad="false")
       setwindowpar(n,"dragndropproc","1DPlotAnalyser:dragNDrop")
       setwindowpar(n,"focus",m)
       setwindowpar(n,"exit_procedure",":exitWindow()")
-    #  setwindowpar(n,"show_menu","false")
+      setwindowpar(n,"show_menu","false")
    else
       n = nr
    endif
@@ -101,39 +113,38 @@ procedure(1DPlotAnalyser, multiTraceLoad="false")
          setpar(n,1,"menubar",[12,13,14,15,16,17,18])
          setwindowpar(n,"menubar",[12,13,14,15,16,17,18])
       else
-         setpar(n,1,"menubar",[12,13,14,15,16,34,18])
-         setwindowpar(n,"menubar",[12,13,14,15,16,34,18])
+         setpar(n,1,"menubar",[12,13,14,15,16,38,39,18])
+         setwindowpar(n,"menubar",[12,13,14,15,16,38,39,18])
       endif
    else
-      setpar(n,1,"menubar",[12,13,14,15,16,34,18])
-      setwindowpar(n,"menubar",[12,13,14,15,16,34,18])
+      setpar(n,1,"menubar",[12,13,14,15,16,38,18])
+      setwindowpar(n,"menubar",[12,13,14,15,16,38,18])
    endif
 
    if(multiTraceLoad == "false")
       :initPlot(plt)
-   else # Load multiple data sets from the 
+   else # Load multiple data sets from the history list
+
       selection = gView->history->selection
-      if(selection[1] > selection[0])
-         s = 1
-      else
-         s = -1
-      endif
+      selection = reflect(selection) # Reverse the selection order (top/youndgest first => bottom/oldest first)
       entries = gView->history->list
       curIdx = gView->history->index()
       plt = locPlot->subplot(1,1)
       trcList = plt->tracelist()
       xdir = plt->axes->xdirection
-      for(idx = selection[0] to selection[1] step s)
+      (wRB,szRB) = size(spectrum)
+      sz = size(selection)
+      scol = [0,128,0]
+      ecol = [255,0,0]
+      for(k = 0 to sz-1)
+         idx = selection[k]
          if(idx > 0) # Ignore title
             entry = entries[idx]
             path = gView->dirList[idx]
             exptDir = getbasedir(path)
             (stamp,protocol,label) = scanstr(exptDir,"%1 %2 (%3)")
             cd(path)
-            if(idx == selection[0]) # Select which file to load
-               files = ls("*.pt1")
-               plotFileName = gettext("Select plot to load",files[-1],20,files)
-            endif
+            plotFileName = multiTraceInfo->plotFile 
             curplot(hiddenPlot->subplot(1,1))
             if(isfile(plotFileName))   
                load(plotFileName)
@@ -147,9 +158,20 @@ procedure(1DPlotAnalyser, multiTraceLoad="false")
                   func1d("paste into plot")
                endif
                tl = curplot()->tracelist()
-               if(selection[1] != selection[0])
-                  curtrace()->realcolor(wvColors[~,wvTraceCnt])
-                  curtrace()->name(label)
+               if(size(selection) > 0)
+                  if(sz > 1)
+                     colIdx = trunc(k/(sz-1)*(szRB-2))
+                     col = k/(sz-1)*(scol-ecol)+ecol
+                  else
+                     col = scol
+                  endif
+                  curtrace()->realcolor(col)
+                  curtrace()->imagcolor(col)
+                  if(multiTraceInfo == null)
+                     curtrace()->name(label)
+                  else
+                     curtrace()->name("$multiTraceInfo->labels[k]$")
+                  endif
                   wvTraceCnt = wvTraceCnt + 1
                   if(wvTraceCnt == 9)
                      wvTraceCnt = 0
@@ -161,12 +183,17 @@ procedure(1DPlotAnalyser, multiTraceLoad="false")
       plt = locPlot->subplot(1,1)
       plt->showimag("false")
       plt->axes->xdirection(xdir)
+      if(multiTraceInfo->showStack == "yes" & sz > 1)        
+         stackedPlotSwitch()
+      endif
    endif
 
    func1d("copy plot")
 
 # Display the window allowing for the toolbar
    showwindow(n,"recalc") 
+
+
 
 endproc()
 
@@ -267,7 +294,8 @@ endproc()
 
 ####################################################
 # User has double clicked on fit function
-# Note: wvInt is defined in integrateClass.mac
+# Note: wvInt is defined in toggleIntegrateMode.mac
+# and is the instance of the integrateClass.
 ####################################################
 
 procedure(fitCallback)
@@ -276,27 +304,120 @@ procedure(fitCallback)
       return
    endif
 
+   name = curtrace()->name
+   (type, nr, range) = scanstr(name,"%1 %2 %3")
+   idx = eval(nr)
+
    evt = parentCtrl->event
    if(evt == "double_click_down" | evt == "enter_pressed") 
       result = wvInt->fitToData()
-      m = 1
-      for(k = m+29 to m+31)
-        setpar(0,k,"visible","false")
-      next(k)
-      if(result->n == 0)
-        setpar(0,31,"text","Fitting error!","visible","true")
-      else
-         for(k = 1 to result->n)
-            num = eval("result->p$k$")
-            err = eval("result->p$k$err")
-            txt = "p$k$ = $errorstr(num,err,2)$   ($abs(100*err/num),1.2g$%)"
-            setpar(0,k+29,"text",txt,"visible","true")
+      if(result == null)
+         return
+      endif
+      pr("\n---- Fitting function '$result->fitName$' ----\n\n")
+      pr("   $result->func$\n\n")
+         ppm = wvInt->regions->loc[~,idx]
+         print("   ($ppm[0],1.2f$ to $ppm[1],1.2f$) ppm\n")
+
+      if(result->n > 0)
+         for(k = 0 to result->n-1)
+            num = single(eval("result->par->p$k$"))
+            err = single(eval("result->par->p$k$err"))
+            if(err == 0 | isinf(err))
+               txt = "p$k$ = $num,g$"
+               pr("      $txt$\n")
+               poorFit = 1
+            else
+               txt = "p$k$ = $errorstr(num,err,2)$   ($abs(100*err/num),1.2g$%)"
+               pr("      $txt$\n")
+               poorFit = 0
+            endif
          next(k)
       endif
-
+      pr("      Chisq = $result->chisq$\n")
+      if(poorFit)
+         pr("   (Poor fit - uncertainties unavailable)\n")
+      endif
    endif
 
 endproc()
+
+#################################################
+# Display a UI which allows the trace labels to
+# to be selected and whether a stacked plot 
+# should be displayed
+#################################################
+
+procedure(getMultiPlotParameters)
+
+# Define the UI
+    n = window("Multi-trace display parameters", -1, -1, 340, 166, "resizable")
+
+      setwindowpar(n,"type","dialog")
+      setwindowpar(n,"sizelimits",[340,1000,170,170])
+
+      windowvar(n,szSel)
+
+      # Define all controls with basic parameters
+      button(1, 148, 22, 20, 20,"",
+            setpar(0,3,"text","[1:1:$szSel$]"))
+      statictext(2, 140, 24, "right", "Change trace labels:")
+      textbox(3, 30, 49, "ww-120")
+      checkbox(4, 148, 124, "no,yes", "no")
+      statictext(5, 140, 124, "right", "Display as stacked plot:")
+      button(6, "ww-65", 120, 50, 30, "Cancel",
+         closedialog(null);)
+      button(7, "ww-65", 14, 50, 30, "Apply",
+         labels = eval(getpar(0,3,"text"));
+         showStack = getpar(0,4,"text");
+         plotFile = getpar(0,8,"text");
+         result = struct(labels=labels, showStack=showStack, plotFile=plotFile);
+         closedialog(result);)
+      textmenu(8, 125, 85, 106, 200)
+      statictext(9, 100, 90, "right", "Data to display:")
+      groupbox(10, "", 11, 4, "ww-90", 147)
+      button(11, "ww-65", 66, 50, 30, "Help",:multiPlotHelp())
+
+     # Set other control parameters
+      setpar(n,7,"mode","default")
+      setpar(n,8,"menu",["fid.pt1","spectrum.pt1"])
+
+# Intialise the UI
+   selection = reflect(gView->history->selection)
+   szSel = size(selection)
+   entries = gView->history->list
+   txt = "["
+   for(k = 0 to szSel-1)
+      entry = entries[selection[k]]
+     (tm,protocol,comment) = scanstr(entry,"%1|%2|%3")
+      if(isfloat(comment))
+         txt = txt + comment 
+      else
+         txt = txt + "\"" + comment +   "\""
+      endif
+      if(k < szSel-1)
+         txt = txt + ","
+      endif
+   next(k)
+   txt = txt + "]"
+
+   setpar(0,3,"text",txt)
+   setpar(0,3,"enable","true")
+   setpar(0,4,"text","yes")
+
+   bak = getcwd()
+   path = gView->dirList[selection[0]]
+   cd(path)
+   files = ls("*.pt1")
+   setpar(0,8,"menu",files)
+   setpar(0,8,"text",files[-1])
+   cd(bak)
+
+# Display the UI
+
+   multiTraceInfo = showdialog(n)
+
+endproc(multiTraceInfo)
 
 ####################################################
 # Initialise the plot with the current 1D plot from
@@ -367,6 +488,23 @@ procedure(loadIcons)
 endproc()
 
 #################################################
+# Load several plots from the history list
+# allow the user to define numerical tags first
+#################################################
+
+procedure(loadMultiPlot)
+
+   selection = gView->history->selection
+   if(selection != null)
+      multiTraceInfo = :getMultiPlotParameters()
+      if(multiTraceInfo != null)
+         :1DPlotAnalyser(multiTraceLoad="true",multiTraceInfo)
+      endif
+   endif
+
+endproc()
+
+#################################################
 # Load the last window position
 #################################################
 
@@ -398,17 +536,85 @@ procedure(makeLocalPlotCurrent)
 
 endproc(plt)
 
+#################################################
+# Some CLI help
+#################################################
+
+procedure(multiPlotHelp)
+
+   pr("\n --- Help for multi-trace display tool ---\n")
+   pr("\n   Multiple selections in the history list will be\n")
+   pr("   displayed in the 1D Plot Analyser. Options are:\n")
+   pr("   Change trace labels: Each trace has a lable or name\n")
+   pr("   if this is a number it can be used as a y-axis in the\n")
+   pr("   stacked plot. In this case enter an array with the correct\n")
+   pr("   number of elements and spacing.\n")
+   pr("   Data to display: choose the plot to display for each expt.\n")
+   pr("   Display as stacked plot: choose to display the traces.\n")
+   pr("   as a stacked plot or overlaid.\n")
+
+endproc()
+
 ###########################################################
-# Update current 1D view if 2D plot is modified
+# Process messages from the 1D plot (e.g. selecting 
+# different plots or traces.)
 ###########################################################
 
 procedure(processMessage)
 
-   (src,cmd) = getpar(0,100,"text")
-   callingwin = getpar(0,100,"source")
+   (src,cmd) = getpar(0,0,"text")
+   callingwin = getpar(0,0,"source")
    parentwin = guiwinnr()
+
+# Only process messages from the current window plots
+# Update the integral list when selecting a different trace
+   if(src == "1D Plot" & cmd == "SelectTrace" & callingwin == parentwin)
+
+      try
+         trc = curtrace()
+         plt = trc->parent
+         name = trc->name()
+         (type,nr,range) = scanstr(name,"%1 %2 %3")
+         found = 0
+         if(type == "raw")
+            found = 1
+         else # Clicked on fit so find corresponding raw
+            trclst =  plt->tracelist()
+            for(k = 0 to size(trclst)-1)
+               trc = plt->trace(trclst[k])
+               name = trc->name()
+               (newType,newNr,range) = scanstr(name,"%1 %2 %3")
+               if(newNr == nr & newType == "raw")
+                  found = 1
+                  exitfor
+               endif
+            next(k)
+         endif
    
-   if(src == "2D Plot" & cmd != "SelectImage" & callingwin == parentwin)
+        # Raw data found so list it
+         if(found)
+            (x,y) = trc->getdata()
+            sz = size(x)
+            dataInfo = list(sz)
+            dataInfo[0] = "x|y"
+            for(k = 1 to size(x)-1)
+               dataInfo[k] = "$x[k-1]$|$y[k-1]$"
+            next(k)
+            dataList->list(dataInfo)
+            dataList->color([0,0,128,0])
+            curtrace(trc) # Ensures the current trace/legend is correct
+            rawDataGB->label("Raw Data ($range$ ppm)")
+         endif
+      catch
+      endtry
+
+   elseif(src == "1D Plot" & cmd == "ViewOnePlot" & callingwin == parentwin)
+
+      wvInt->updatePlotReferences(1)
+
+   elseif(src == "1D Plot" & cmd == "ShowAllPlots" & callingwin == parentwin)
+
+      wvInt->updatePlotReferences(2)
 
    endif
 
@@ -482,6 +688,17 @@ procedure(toggleLegend)
 
 endproc()
 
+procedure(viewOnePlot)
+
+   lines = curplot()->getlines()
+   func1d("view one plot")
+   if(lines != null)
+      curplot()->addlines(lines)
+   endif
+
+endproc()
+
+
 ###########################################################
 # Define a window
 ###########################################################
@@ -490,7 +707,9 @@ procedure(windowdefinition, m)
 
    # Automatically generated window definition procedure.
    # Any code added manually will be removed if layout modified interactively
-   n = window("1D Data Analyser V1.0", -1,-1,300,200,"resizable")
+   n = window("1D Data Analyser V1.3", -1,-1,300,200,"resizable")
+
+   getmessage(0,:processMessage())
 
    locPlot = plot1d(m,10,0,"rw-10","rh")
 
@@ -528,7 +747,6 @@ procedure(windowdefinition, m)
               "Manual phase all traces",  "", manualPhaseStackedPlot(),
               "Separator",  "", "",
               "Undo operation",  "", undoLastMenuOperation())
-
 
     menu(m+3, "traceMenu", "Modify trace and symbols ...\tCtrl+T", modifyTraceParameters(),
               "Copy trace data to vector ...\tShift+V", copy1DtoMatrix(),
@@ -597,7 +815,7 @@ procedure(windowdefinition, m)
               "Lock grid", "lock_grid", :toggleGridLock(),
               "Separator", , ,
               "Pull_right", "", m+10,
-              "&View one plot\tv", "", func1d("view one plot"),
+              "&View one plot\tv", "", :viewOnePlot(),
               "&Full view\tf", "", func1d("show all plots"),
               "Overlapping plots\to", "hold" ,func1d("overlapping plots"),
               "Separator", , ,
@@ -629,7 +847,7 @@ procedure(windowdefinition, m)
 
     menu(m+15, "&Display mode","Toggle integrate mode ...\tShift+I",toggleIntegrate())
 
-    menu(m+16, "&Processing", "Macro Help", help("Macros\\SpinsolveExpert\\Processing Macros\\Stacked",""),
+    menu(m+16, "&Processing", "Macro Help", help("Macros\\Kea-Expert\\Processing Macros\\Stacked",""),
               "Separator", ,
               "Manual Phase ...\tCtrl+Shift+P",manualPhaseStackedPlot(),
               "1D Stats ...\tCtrl+Shift+1",stats1d(),
@@ -641,7 +859,8 @@ procedure(windowdefinition, m)
               "Baseline correct stacked plot ...", baseLineCorrectStackedPlot(),
               "Manual phase stacked plot ...", manualPhaseStackedPlot(),
               "Collapse/Expand stacked plot", stackedPlotSwitch(),
-              "Toggle ppm/Hz", togglePPM_Hz_StackedPlot())
+              "Toggle ppm/Hz", togglePPM_Hz_StackedPlot(),
+              "Calibrate stacked plot",calibrateXAxisStackedPlot())
 
 
     menu(m+17, "&Help", "Window &help", help("User Interface\1D Plot","Introduction.htm"))
@@ -674,25 +893,26 @@ procedure(windowdefinition, m)
    addButton = button(m+19, 10, 20, 50, 25, "Add Integral",wvInt->integratePeak())
    rmButton = button(m+20, 70, 20, 50, 25, "Remove Integral",wvInt->removeIntegral())
    clearButton = button(m+21, 130, 20, 50, 25, "Clear",wvInt->clearIntegrals())
+   exportButton = button(m+22, 190, 20, 50, 25, "Export",wvInt->exportIntegrals())
 
-   rawDataGB = groupbox(m+22, "Raw Data", 10, 60, "rw-20", "wh/2-50")
-   dataList = listbox(m+23, 20, 80, "rw-40", "wh/2-80",:dataListCallBack())
+   rawDataGB = groupbox(m+23, "Raw Data", 10, 60, "rw-20", "wh/2-50")
+   dataList = listbox(m+24, 20, 80, "rw-40", "wh/2-80",:dataListCallBack())
 
-   groupbox(m+24, "Fit function", 10, "wh/2+60", "rw-20", "wh/2-150")
-   fitList = listbox(m+25, 20, "wh/2+80", "rw-40", "wh/2-180",:fitCallback())
+   groupbox(m+25, "Fit function", 10, "wh/2+60", "rw-20", "wh/2-80")
+   fitList = listbox(m+26, 20, "wh/2+80", "rw-40", "wh/2-110",:fitCallback())
+   button(m+27, 10, "wh/2+23", 50, 25, "Fit all",wvInt->fitAll())
+   autoFit = checkbox(m+28, 260, "wh/2+34", "false,true","false")
+   statictext(m+29, 264, "wh/2+20", "center", "Auto-fit")
 
-   button(m+26, 10, "wh/2+23", 50, 25, "Fit all",wvInt->fitAll())
-   autoFit = checkbox(m+27, 115, "wh/2+30", "false,true","false")
-   statictext(m+28, 110, "wh/2+30", "right", "Auto-fit")
+   button(m+30, 70, "wh/2+23", 50, 25, "Edit fit",wvInt->editFit())
+   button(m+31, 130, "wh/2+23", 50, 25, "Add fit",wvInt->addFit())
+   button(m+32, 190, "wh/2+23", 50, 25, "Refresh",wvInt->refreshList())
 
-   p1Text = statictext(m+29, 20, "wh-80", "left", "p1:")
-   p2Text = statictext(m+30, 20, "wh-60", "left", "p2:")
-   p3Text = statictext(m+31, 20, "wh-40", "left", "p3:")
+   divider(m+34, "ww/5", 5, 6, "wh-15", "vert")
+   setpar(n,m+34,"limits",[300,400])
 
-   divider(m+32, "ww/5", 5, 6, "wh-15", "vert")
-   setpar(n,m+32,"limits",[200,300])
 
-   menu(m+33, "&Processing", "Macro Help", help("Macros\\Kea-Expert\\Processing Macros\\1D",""),
+   menu(m+37, "&Processing", "Macro Help", help("Macros\\Kea-Expert\\Processing Macros\\1D",""),
               "Separator", ,
               "Manual Phase ...\tCtrl+Shift+P",manualPhaseStackedPlot(),
               "1D Stats ...\tCtrl+Shift+1",stats1d(),
@@ -700,15 +920,28 @@ procedure(windowdefinition, m)
               "Separator", ,
               "user menu", "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1D")
 
+    menu(m+38, "&1DMacros", "Macro Help", help("Macros\\1D","addErrorBars.htm"),
+              "Separator", ,
+              "Manual Phase ...\tCtrl+Shift+P",manualPhase1d(),
+              "1D Stats ...\tCtrl+Shift+1",stats1d(),
+              "Separator", ,
+              "user menu", "$appdir$\\Macros\\1D_Macros")
+
+    menu(m+39, "menu", "Edit entry", wvInt->editFit(),
+                       "Delete entry", wvInt->deleteFit())
+                       
+
+   setpar(n,m+26,"menu",m+39)
+
 # Add controls to region (note don't add static texts as they will be shifted)
-   for(k = m+19 to m+28)
+   for(k = m+19 to m+31)
      if(isobj(n,k))
-         setpar(n,k,"region",[-1,m+32,-3,-4])
+         setpar(n,k,"region",[-1,m+34,-3,-4])
      endif
    next(k)
 
 # Hide all these controls
-   for(k = m+19 to m+32)
+   for(k = m+19 to m+34)
       if(isobj(n,k))
          setpar(n,k,"visible","false")
       endif
@@ -717,12 +950,12 @@ procedure(windowdefinition, m)
 
 # Set the button icons
    bak = getcwd()
-   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\Bitmaps")
-
+   cd("$appdir$\Macros\Kea-Expert\Other Macros\Bitmaps")
    setpar(n,m+19,"icon","AddIntegral.png","tooltip","Select left and then right side of peak to integrate")
    setpar(n,m+20,"icon","RemoveIntegral.png","tooltip","Select peak to remove integral")
    setpar(n,m+21,"tooltip","Remove all integrals")
-   setpar(n,m+26,"tooltip","Apply and print the current fit to all integrated data")
+   setpar(n,m+22,"tooltip","Export integrals")
+   setpar(n,m+27,"tooltip","Apply and print the current fit to all integrated data")
    cd(bak)
    
 endproc(n)

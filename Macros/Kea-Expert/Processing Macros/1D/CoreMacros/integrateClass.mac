@@ -3,7 +3,7 @@
 # in a stacked plot. Works with 1DPlotAnalyser
 #
 # Author: C Eccles
-# Copyright Magritek 2023
+# Copyright Magritek 2023-2026
 #
 ###########################################################
 
@@ -13,10 +13,16 @@ procedure(init, self)
    self->integratePeak         = "integrateClass:integratePeak"
    self->removeIntegral        = "integrateClass:removeIntegral"
    self->clearIntegrals        = "integrateClass:clearIntegrals"
+   self->exportIntegrals       = "integrateClass:exportIntegrals"
+   self->addFit                = "integrateClass:addFit"
+   self->deleteFit             = "integrateClass:deleteFit"
+   self->editFit               = "integrateClass:editFit"
    self->fitToData             = "integrateClass:fitToData"
    self->fitAll                = "integrateClass:fitAll"
+   self->refreshList           = "integrateClass:refreshList"
    self->readData              = "integrateClass:readData"
    self->drawIntegratedData    = "integrateClass:drawIntegratedData"
+   self->updatePlotReferences  = "integrateClass:updatePlotReferences"
 
    self->variableList = "============================================="
    self->pt1 = null
@@ -46,9 +52,62 @@ procedure(init, self)
    self->nrRegions = 0
    self->xLabel = null
 
+   self->fitPath = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1DPlotAnalyser\\Fitting Functions"
+
+
 endproc()
 
+
+#######################################################
+# Export the current integral list to a file
+#######################################################
+
+procedure(exportIntegrals, self)
+
+   fileName = getfilename("save", "Save a to file", "Text files", "txt")
+
+   if(fileName != "cancel")
+
+      lst = dataList->list()
+      sz = size(lst)
+      x = matrix(sz-1)
+      y = matrix(sz-1)
+      for(k = 1 to sz-1)
+         (xStr,yStr) = scanstr(lst[k],"%1|%2")
+         x[k-1]= eval(xStr)
+         y[k-1]= eval(yStr)
+      next(k)
+
+      export1dpar("ab","ascii",
+                  "xyrc", "xydata",
+                  "delimiter","comma")
+      export1d(x,y,fileName)
+
+   endif
+
+
+endproc()
+
+#######################################################
 # Remove an integral and redraw the plot
+#######################################################
+
+procedure(updatePlotReferences, self, n)
+
+   n = curwin()->winNr
+   pp = getobj(n,1)
+   if(n == 1)
+      self->pt2 = pp->subplot(1,1)
+   elseif(n == 2)
+      self->pt1 = pp->subplot(1,1)
+      self->pt2 = pp->subplot(1,2)
+   endif
+
+endproc()
+
+#######################################################
+# Remove an integral and redraw the plot
+#######################################################
 
 procedure(removeIntegral, self)
 
@@ -109,8 +168,6 @@ endproc()
 
 procedure(integratePeak, self)
 
-  # plotcallback("plot1DDblClick","integrateRegion:dblClick")
-
 # Organise the plot if it is new and get plot references
    n = curwin()->winNr
 
@@ -147,6 +204,7 @@ procedure(integratePeak, self)
    if(pos1 > pos2)
       swapvar(pos1,pos2)
    endif
+
    avgPPM = (pos1+pos2)/2
    getobj(n,2)->text("")
 
@@ -164,6 +222,7 @@ procedure(integratePeak, self)
       self->regions->dataZ = null
       self->regions->dataInt = null
       self->regions->fitInt = null
+      self->regions->xAxis = null
       self->regions->colors = color
       self->regions->symbols = [symbol]
    else
@@ -176,6 +235,9 @@ procedure(integratePeak, self)
       self->regions->symbols = join(self->regions->symbols, [symbol])
    endif
    self->nrRegions = self->nrRegions + 1
+
+   self->xLabel = null
+   self->yLabel = null
 
 # Get the z axis data from the trace names
    tracelst = self->pt1->tracelist()
@@ -204,8 +266,16 @@ procedure(integratePeak, self)
    ints = matrix(sz)
    for(k = 0 to sz-1)
       (x,y) = self->pt1->trace(k)->getdata
+     # off = (avg(y[0:100]) + avg(y[-100:-1]))/2
+     # y = y - off
       ints[k] = integvector(x,real(y),pos1,pos2)
    next(k)
+
+# Allow for white wash mode
+   if(z[0] > z[-1])
+      z = reflect(z)
+      ints = reflect(ints)
+   endif
 
 # Copy the z and integral data pairs into the dataInfo list 
    dataInfo = list(sz+1)
@@ -224,7 +294,8 @@ procedure(integratePeak, self)
 # Record the z and integral data into the regions structure
    self->regions->dataZ = z
    self->regions->dataInt = join(self->regions->dataInt,ints,"horiz")
-   self->regions->fitInt = join(self->regions->fitInt,matrix(sz)+nan,"horiz")
+   self->regions->fitInt = join(self->regions->fitInt,matrix(sz*10)+nan,"horiz")
+   self->regions->xAxis = join(self->regions->xAxis,z,"horiz")
 
 # Plot the integral data
    self->drawIntegratedData()
@@ -248,7 +319,7 @@ endproc()
 # Update the integrated data in plot pt2
 #######################################################
 
-procedure(drawIntegratedData, self)
+procedure(drawIntegratedData, self, mode="linear")
 
 # Update the color and symbol for each region
    sz = self->nrRegions
@@ -259,7 +330,6 @@ procedure(drawIntegratedData, self)
    catch
       trcNr = -1
    endtry
-   x = self->regions->dataZ
 
    self->pt2->draw("false")
    self->pt2->hold("off")
@@ -267,41 +337,66 @@ procedure(drawIntegratedData, self)
    for(k = 0 to self->nrRegions-1)
 
       if(self->regions->symbols[k] >= 0)
-         symbol = self->symbols[self->regions->symbols[k]]
 
+         symbol = self->symbols[self->regions->symbols[k]]
+         x = self->regions->xAxis[~,k]
          y = self->regions->dataInt[~,k]
          fit = self->regions->fitInt[~,k]
          color = self->regions->colors[~,k]
-   
+      
+       # Strip out negative values from raw data
+         if(mode == "log")
+            y1 = [y[0]]
+            x1 = [x[0]]
+            w = 0
+            for(q = 0 to size(x)-1)
+               if(y[q] > 0)
+                  y1 = join(y1,[y[q]])
+                  x1 = join(x1,[x[q]])
+                  w = w + 1
+               endif
+           next(q)
+         else
+            x1 = x
+            y1 = y
+         endif
+
       # Draw all raw and fitted data
-         n = self->pt2->plot(x,y,"symbolshape",symbol,
+         n = self->pt2->plot(x1,y1,"symbolshape",symbol,
                              "symbolcolor",color,
                              "tracecolor",color,
                              "tracetype","none")
    
          self->pt2->hold("on")
+
+         ppmLoc = self->regions->loc[~,k]
    
-         self->pt2->trace(n)->name("$k$")
-         
+         self->pt2->trace(n)->name("raw $k$ $ppmLoc[0],1.1f$ to $ppmLoc[1],1.1f$")
+
          if(fit[0] != nan)
-            m = self->pt2->plot(x,fit,"symbolshape","none",
+            xLarge = interp(x,size(x)*10)
+            m = self->pt2->plot(xLarge,fit,"symbolshape","none",
                                 "symbolcolor",color,
                                 "tracecolor",color,
                                 "tracetype","lines")
    
-            self->pt2->trace(m)->name("$k$")
+            self->pt2->trace(m)->name("fit $k$ $ppmLoc[0],1.1f$ to $ppmLoc[1],1.1f$")
    
          endif
       endif
 
    next(k)
-
+   self->pt2->axes->ymapping(mode)
    self->pt2->grid->xgrid("on")
    self->pt2->grid->ygrid("on")
    self->pt2->grid->finexgrid("on")
    self->pt2->grid->fineygrid("on")
    self->pt2->title("Integrated data")
-   self->pt2->ylabel("Integral")
+   if(self->yLabel != null)
+      self->pt2->ylabel(self->yLabel)
+   else
+      self->pt2->ylabel("Integral")
+   endif
    if(self->xLabel != null)
       self->pt2->xlabel(self->xLabel)
    else
@@ -309,9 +404,9 @@ procedure(drawIntegratedData, self)
    endif
    self->pt2->hold("off")
    self->pt2->draw("true")
-   if(trcNr != -1)
-      curtrace(trcNr) # Restore current trace
-   endif
+#   if(trcNr != -1)
+#      curtrace(trcNr) # Restore current trace
+#   endif
    curplot(self->pt2)
 
 endproc()
@@ -324,11 +419,69 @@ procedure(clearIntegrals, self)
    self->nrRegions = 0
    self->regions->dataInt = null
    self->regions->fitInt = null
+   self->regions->xAxis = null
    self->regions->loc = null
    self->regions->symbols = null
    self->regions->colors = null
    self->pt1->rmlines()
    self->pt2->clear()
+
+endproc()
+
+#######################################################
+# Open the fit editor to allow a new fit to be designed
+#######################################################
+procedure(addFit, self)
+
+   fittingUI("Add Fit")
+
+endproc()
+
+#######################################################
+# Remove the selected fit file
+#######################################################
+procedure(deleteFit, self)
+
+   txt = fitList->text()
+   if(txt == null)
+      return
+   endif
+
+# Get the fit to delete
+   (name,func) = scanstr(txt,"%1|%2")
+   if(query("Warning","Do you really want to delete the file: $name$") == "no")
+      return
+   endif
+
+# Delete it
+   cd(self->fitPath)
+   if(isfile("$name$.mac"))
+      rmfile("$name$.mac")
+      toggleIntegrate:generateFitList()
+   endif
+
+endproc()
+
+
+#######################################################
+# Open the fit editor to allow a fit to be edited
+#######################################################
+procedure(editFit, self)
+
+   txt = fitList->text()
+   if(txt != null)
+      (name,func) = scanstr(txt,"%1|%2")
+      fittingUI(name)
+   endif
+
+endproc()
+
+#######################################################
+# Refresh the fit list
+#######################################################
+procedure(refreshList, self)
+
+  toggleIntegrate:generateFitList()
 
 endproc()
 
@@ -348,16 +501,28 @@ procedure(fitAll, self)
    for(k = 0 to self->nrRegions-1)
       if(self->regions->symbols[k] != -1)
          result = self->fitToData(k)
+         if(result == null)
+            return
+         endif
          if(k == 0)
             print("   Fit function '$result->fitName$': $result->func$ \n\n")
          endif
          ppm = self->regions->loc[~,k]
          print("   ($ppm[0],1.2f$ to $ppm[1],1.2f$) ppm\n")
-         for(k = 1 to result->n)
-            num = eval("result->p$k$")
-            err = eval("result->p$k$err")
-            print("      p$k$ = $errorstr(num,err,2)$   ($abs(100*err/num),1.2g$%)\n")
+         for(k = 0 to result->n-1)
+            num = single(eval("result->par->p$k$"))
+            err = single(eval("result->par->p$k$err"))
+            if(err == 0 | isinf(err))
+               print("      p$k$ = $num,g$\n")
+               poorFit = 1
+            else
+               print("      p$k$ = $errorstr(num,err,2)$   ($abs(100*err/num),1.2g$%)\n")
+               poorFit = 0
+            endif
          next(k)
+         if(poorFit)
+            pr("   (Poor fit - uncertainties unavailable)\n")
+         endif
          print("\n")
       endif
    next(k)
@@ -373,85 +538,91 @@ endproc()
 #######################################################
 procedure(fitToData, self, idx=null)
  
+# Get the trace labels - they become the default x axis for fitting
    x = self->regions->dataZ
    if(idx == null)
-      idx = eval(curtrace()->name)
+      name = curtrace()->name
+      (type, nr, range) = scanstr(name,"%1 %2 %3")
+      idx = eval(nr)
    endif
    y = self->regions->dataInt[~,idx]
    sz = size(x)
    txt = fitList->text()
 
-# Perform the requested fit
-   p1 = 0; p2 = 0; p3 = 0;
-   p1err = 0; p2err = 0; p3err = 0;
-   chisq = 0
-   n = 0
-
    self->xLabel = null
+   self->yLabel = null
 
-   try
-      (name,func) = scanstr(txt,"%1|%2")
-      if(name == "Linear")
-         init = [(y[-1]-y[0])/(x[-1]-x[0]),y[0]]
-         (p1,p2,p1err,p2err,chisq) = nlinfit(x,y,":linFunc",init,0,"no",50)
-         f = p1*x+p2
-         n = 2
-      elseif(name == "Exponential")
-         idx2 = findindex2(y,0,"right",y[0]*0.37)
-         init = [y[0],idx2]
-         (p1,p2,p1err,p2err,chisq) = nlinfit(x,y,":expFunc",init,0,"no",50)
-         f = p1*exp(-x/p2)
-         n = 2
-      elseif(name == "Sine")
-         init = [min(y),1/180,0]
-         (p1,p2,p3,p1err,p2err,p3err,chisq) = nlinfit(x,y,":sineFunc",init,0,"no",50)
-         f = p1*sin(x*p2+p3)
-         n = 3
-      elseif(name == "Cosine")
-         init = [max(y),1/180,0]
-         (p1,p2,p3,p1err,p2err,p3err,chisq) = nlinfit(x,y,":cosineFunc",init,0,"no",50)
-         f = p1*cos(x*p2+p3)
-         n = 3
-      elseif(name == "T1IR")
-         idx2 = findindex2(y,0,"right",0)
-         if(idx2 >= 0 & idx2 < sz)
-            init = [(y[-1]-y[0])/2,x[idx2]/0.693]
-            (p1,p2,p1err,p2err,chisq) = nlinfit(x,y,":t1IRFunc",init,0,"no",50)
-            f = p1*(1-2*exp(-x/p2))
-            n = 2
-         else
-            pr ("Can't find zero crossing - invalid model for fit\n")
-            return(null)
-         endif
-      elseif(name == "PGSE")
+# Get the fit function name and form
+   (name,func) = scanstr(txt,"%1|%2")
 
-        # Need to get this information from main interface
-         proc = gData->curExpt->protocol+":getExptInfo"
-         s = proc()
-         smdel = s->smDelta
-         lgdel = s->bgDelta
-         gradAmp = s->gradAmp
-         nrSteps = s->nSteps
-         gammaX = s->gammaX
-         x = s->xAxis
-         self->xLabel = "Gradient (T/m)"
-         midIdx = round(sz/2) 
-         Dpred = -loge(y[midIdx]/y[0])/(gammaX^2*x[midIdx]*smdel^2*(lgdel-smdel/3))
-         init = [max(y),Dpred*1e9]
-         xMod = (smdel*gammaX*x)^2*(lgdel-smdel/3.0)/1e9
-         (p1,p2,p1err,p2err,chisq) = nlinfit(xMod,y,":PGSEFunc",init,0,"no",50)
-         f = :PGSEFunc(xMod,p1,p2)
-         n = 2
+   bak = getcwd()
+
+   # 'info' might contain addition data from the main experiment macro
+   proc = gData->curExpt->protocol+":getExptInfo"
+   protocol = gData->curExpt->protocol
+   path = gData->findPP(protocol)
+   if(path == null)
+      info = null
+   else
+      if(isproc(path,protocol,"getExptInfo"))
+         info = proc()
+      else
+         info = null
       endif
+   endif
+
+   # The fitting macros are stored here
+   path = self->fitPath
+   cd(path)
+
+   # Import the current one for efficiency
+   import(name,path,"local")
+
+   # We may need to preprocess the data - at least return initial search
+   # values an x-axis label and y-axis mapping more
+   if(isproc(path,name,"preprocess"))
+       proc = "$name$:preprocess"
+      (init, x, self->xLabel, self->yLabel, yMapping) = proc(x, y, info)
+   else
+      pr("Aborting fit: missing procedure $name$:preprocess\n")
+   endif
+
+   # Perform the non-linear fit returning the parameters in a structure
+   try
+      (par,chisq) = nlinfitd(x,y,name,"gj",init,0,"no",100,"struct0")
    catch
-      pr lasterror()
-      pr("\n   *** Fit failed - check data or initial conditions ***\n")
+      pr ("\n  Non-linear fit failed. Try changing initial conditions, model or fit method\n")
+      return(null)
    endtry
 
-   self->regions->fitInt[~,idx] = f
+   # Generate the fit function but at 10x closer x-axis sampling
+   f = name(interp(x,sz*10),par)
 
-# Plot the data
-   self->drawIntegratedData()
+   # Might need to perform some post processing on the parameters
+   if(isproc(path,name,"postprocess"))
+      proc = "$name$:postprocess"
+      par = proc(par)
+      assignstruct(par)
+   endif
+
+   # The number of parameters
+   n = size(init)
+
+   for(k = 0 to n-1)
+      if(eval("par->p$k$err") == inf)
+         assign("par->p$k$err",0,"local")
+         print("\n   Uncertainty in p$k$ is undefined")
+      endif
+   next(k)
+
+  cd(bak)
+
+# Record the fit axes
+   self->regions->fitInt[~,idx] = f
+   self->regions->xAxis[~,idx] = x
+
+# Plot the data and fit
+   self->drawIntegratedData(yMapping)
 
 # Update the data list
    dataInfo = list(sz+1)
@@ -467,15 +638,12 @@ procedure(fitToData, self, idx=null)
    dataList->colwidth([0.3,0.7])
    pos1 = self->regions->loc[0,idx]
    pos2 = self->regions->loc[1,idx]
-   rawDataGB->label("Raw Data ($pos1,1.1f$ to $pos2,1.1f$ ppm)")
-   
-   getobj(0,20)->label("Raw data: $self->regions->loc[0,idx],1.2f$ to $self->regions->loc[1,idx],1.2f$ ppm")
+   rawDataGB->label("Plotted Data ($pos1,1.1f$ to $pos2,1.1f$ ppm)")
 
-   result = struct(n = n, func=func, fitName=name, p1 = p1, p2 = p2, p3 = p3,
-                   p1err = p1err, p2err = p2err, p3err = p3err, chisq = chisq)  
+# Pack the results in a structure
+   result = struct(n = n, func=func, fitName=name, par=par, chisq=chisq)  
 
 endproc(result)
-
 
 
 procedure(readData, self)
@@ -518,67 +686,23 @@ procedure(dblClick, x, y)
 
 endproc()
 
-#######################################################
-# Fit functions and partial derivatives for the NL fit
-#######################################################
-procedure(linFunc, x, p1, p2)
+# Exp coefficients must be positive
+procedure(PGSEBiExpFunc2, x, p1, p2, p3, p4)
 
-   y = p1*x + p2
-   dydp1 = x
-   dydp2 = 1
-
-endproc(y,dydp1,dydp2)
-      
-
-procedure(expFunc, x, p1, p2)
-
-   e = exp(-x/p2)
-   y = p1*e
-   dydp1 = e
-   dydp2 = p1*x*e/(p2^2) 
-
-endproc(y,dydp1,dydp2)
-
-procedure(sineFunc, x, p1, p2, p3)
-
-   e = sin(x*p2+p3)
-   y = p1*e
-   dydp1 = e
-   dydp2 = p1*x*cos(x*p2+p3) 
-   dydp3 = p1*cos(x*p2+p3) 
-
-endproc(y,dydp1,dydp2,dydp3)
-
-procedure(cosineFunc, x, p1, p2, p3)
-
-   e = cos(x*p2+p3)
-   y = p1*e
-   dydp1 = e
-   dydp2 = -p1*x*sin(x*p2+p3) 
-   dydp3 = -p1*sin(x*p2+p3) 
-
-endproc(y,dydp1,dydp2,dydp3)
-
-procedure(t1IRFunc, x, p1, p2)
-
-   e = exp(-x/p2)
-   f = (1-2*e)
-   y = p1*f
-   dydp1 = f
-   dydp2 = -p1*x*2*e/(p2^2)
-
-endproc(y,dydp1,dydp2)
-
-procedure(PGSEFunc, x, p1, p2)
-
-   e = exp(-x*p2)
-   y = p1*e
-   dydp1 = e
+   e2 = exp(-x*p2^2)
+   e4 = exp(-x*p4^2)
+   y = p1*e2 + p3*e4
+   dydp1 = e2
+   dydp3 = e4
    if(vartype(x) == "float")
-      dydp2 = -x*p1*e
+      dydp2 = -2*x*p1*p2*e2
+      dydp4 = -2*x*p3*p4*e4
    else
-      dydp2 = -p1*x.*e
-   endif
+      dydp2 = -2*p1*p2*x.*e2
+      dydp4 = -2*p3*p4*x.*e4
+    endif
 
-endproc(y,dydp1,dydp2)
+endproc(y,dydp1,dydp2,dydp3,dydp4)
+
+
 

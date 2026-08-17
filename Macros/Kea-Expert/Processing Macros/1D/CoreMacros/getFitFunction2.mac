@@ -1,0 +1,171 @@
+################################################################################
+# Interface to collect fitting function information: functional form 
+# and parameter initial value and limits. Designed to work with the nlfit 
+# command.
+#
+# Returns (func,init,lower,upper). func as a string and the other 
+# values as real arrays.
+# 
+# Last modified 10/6/2026 by Craig Eccles, Magritek Ltd
+#
+################################################################################
+
+procedure(getFitFunction, xData=null, yData=null)
+
+   n = :windowdefinition()
+   windowvar(x,y)
+   x = xData
+   y = yData
+   setwindowpar(n,"type","dialog")
+   :init(n)
+   (func,init,lower,upper) = showdialog(n)
+
+endproc(func,init,lower,upper)
+
+# The fit button has been selected   
+procedure(fitSelected)
+
+   try
+      func = getpar(0,1,"text")
+      init = eval(getpar(0,4,"text"))
+      lower = eval(getpar(0,6,"text"))
+      upper = eval(getpar(0,8,"text"))
+   catch
+      message("Error","Check value syntax!","error")
+      return
+   endtry
+
+   :savePar()
+
+   closedialog(func,init,lower,upper)
+
+endproc()
+
+# Print out some help to the CLI
+procedure(helpProc)
+
+   txt = "\n  Function: the model to fit to your data.\n" + @
+         "  Should use x and y as variable data to fit\n" + @
+         "  and the array p for the various parameters.\n" + @
+         "  The array index should start from 0 i.e. p[0]\n" + @
+         "  p[1] etc. So for example:\n" + @
+         "     y = p[0]*exp(-x/p[1])\n"
+
+   pr "$txt$"
+
+   txt = "\n  Init parameters: the initial values.\n" + @
+         "  To limit the search space you should enter\n" + @
+         "  sensible initial values for the parameters p.\n" + @
+         "  These should be entered in array format i.e.\n" + @
+         "  [10,20] for p[0] and p[1]. To make the fit more\n" + @
+         "  general you chould use the x and y axis information.\n" + @
+         "  For example x[-1] is the last point on the x axis\n" + @
+         "  x[size(x)/2] is the central point on the x axis\n"
+
+   pr "$txt$"
+
+   txt = "\n  Lower bounds: the lower limits for the parameters.\n" + @
+         "  To limit the search space you should enter\n" + @
+         "  lower limits for the parameters p.\n" + @
+         "  Again enter these in array format\n"
+
+   pr "$txt$"
+
+   txt = "\n  Upper bounds: the uppers limits for the parameters.\n" + @
+         "  To limit the search space you should enter\n" + @
+         "  upper limits for the parameters p.\n" + @
+         "  Again enter these in array format\n"
+
+   pr "$txt$"
+
+   txt = "\n  Example: generalised parameter limits for an\n" + @
+         "  exponential fit:\n" + @
+         "     Init:  [y[0], x[size(x)/2]]\n" + @
+         "     Lower: [0,x[1]]\n" + @
+         "     Upper: [[y[0]*5,x[-1]*10]]\n"
+
+   pr "$txt$"
+
+endproc()
+
+# Intialise the interface with the last expression or preference values
+procedure(init, n)
+
+   cd("$prefdir$\Core Macros")
+   if(isfile("fitfunction.par"))
+      par = load("fitfunction.par")
+      setctrlvalues(0,par)
+   else
+      setpar(n,1,"text","y = p[0]*exp(-x/p[1]) + p[2]")
+      setpar(n,4,"text","[y[0], x[size(x)/2], 0]")
+      setpar(n,6,"text","[0,x[1],0]")
+      setpar(n,8,"text","[[y[0]*5,x[-1]*10],100]")
+   endif
+
+endproc()
+
+# Load parameter values from a file
+procedure(loadFromFile)
+
+   fileName = getfilename("open","Select fitting parameter file","Parameter files","par")
+   if(fileName == "cancel")
+      return
+   endif
+
+   par = load(fileName)
+   setctrlvalues(0,par)
+
+endproc()
+
+# Save the last current parameter values to a preference file
+procedure(savePar)
+
+   cd("$prefdir$\Core Macros")
+   par = getctrlvalues(0)
+   save("fitfunction.par",par)
+
+endproc()
+
+# Save current parameter values to a file
+procedure(saveToFile)
+
+   fileName = getfilename("save","Select name for fitting parameter file","Parameter files","par")
+   if(fileName == "cancel")
+      return
+   endif
+
+   par = getctrlvalues(0)
+   save(fileName,par)
+
+endproc()
+
+# Define the UI
+procedure(windowdefinition)
+
+   # Automatically generated window definition procedure.
+   # Any code added manually will be removed if layout modified interactively
+   n = window("User defined fit function", -1, -1, 409, 185) #, "resizable")
+
+      # Define all controls with basic parameters
+      textbox(1, 100, 21, 270)
+      statictext(2, 92, 26, "right", "Function:")
+      statictext(3, 90, 63, "right", "Initial parameters:")
+      textbox(4, 100, 60, 149)
+      statictext(5, 90, 103, "right", "Lower bounds:")
+      textbox(6, 100, 100, 149)
+      statictext(7, 90, 143, "right", "Upper bounds:")
+      textbox(8, 100, 140, 149)
+      button(9, 330, 70, 50, 33, "Fit",:fitSelected())
+      button(10, 330, 120, 50, 33, "Cancel",closedialog(null,null,null,null))
+      button(11, 270, 70, 50, 33, "Load",:loadFromFile())
+      button(12, 270, 120, 50, 33, "Save",:saveToFile())
+      button(13, "ww-20", 5, 18, 18, "?",:helpProc())
+
+     # Set other control parameters
+      setpar(n,1,"name","function")
+      setpar(n,4,"name","init")
+      setpar(n,6,"name","lower")
+      setpar(n,8,"name","upper")
+      setpar(n,9,"mode","default")
+
+endproc(n)

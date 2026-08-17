@@ -13,17 +13,17 @@ procedure(toggleIntegrateMode)
    n = win->winnr 
    m = 1
 
-   if(getpar(n,m+31,"visible") == "false")
+   if(getpar(n,m+19,"visible") == "false")
 
       win->draw("false")  
    
-      for(k = m+19 to m+32)
+      for(k = m+19 to m+36)
          if(isobj(n,k))
             setpar(n,k,"visible","true")
          endif
       next(k)
    
-      setpar(n,m,"region",[m+32,-2,-3,-4])
+      setpar(n,m,"region",[m+34,-2,-3,-4])
    
       adjustctrls(n)
 
@@ -38,18 +38,7 @@ procedure(toggleIntegrateMode)
  
       win->draw("true") 
 
-   # Add the fit functions
-      funcList = ["Name|Function",
-                  "Linear|y = p1*x + p2",
-                  "Exponential|y = p1*exp(-x/p2)",
-                  "T1IR|y = p1*(1-2*exp(-x/p2))",
-                  "Sine|y = p1*sin(x*p2+p3)",
-                  "Cosine|y = p1*cos(x*p2+p3)",
-                  "PGSE|y = p1*exp(-(del*gamma*x)^2*p2*(DEL-del/3))"]
-      fitList->nrcolumns(2)
-      fitList->list(funcList)
-      fitList->color([0,255,128,0])
-      fitList->colwidth([0.5,0.5])
+      :generateFitList()
 
       import("integrateClass.mac",getmacropath(),"window")
       assign("wvInt", class("integrateClass:init"), "window")
@@ -65,7 +54,7 @@ procedure(toggleIntegrateMode)
 
       win->draw("false")  
       
-      for(k = m+19 to m+32)
+      for(k = m+19 to m+37)
          if(isobj(n,k))
             setpar(n,k,"visible","false")
          endif
@@ -84,14 +73,40 @@ procedure(toggleIntegrateMode)
          setpar(0,1,"menubar",[12,13,14,15,16,17,18])
          setwindowpar(0,"menubar",[12,13,14,15,16,17,18])
       else
-         setpar(0,1,"menubar",[12,13,14,15,16,34,18])
-         setwindowpar(0,"menubar",[12,13,14,15,16,34,18])
+         setpar(0,1,"menubar",[12,13,14,15,16,38,18])
+         setwindowpar(0,"menubar",[12,13,14,15,16,38,18])
       endif
 
       win->draw("true")
 
    endif
 
+
+endproc()
+
+procedure(generateFitList)
+
+   bak = getcwd()
+
+   # The fitting macros are stored here
+   path = "$appdir$\\Macros\\Kea-Expert\\Processing Macros\\1DPlotAnalyser\\Fitting Functions"
+   cd(path)
+   lst = sortlist(ls("*.mac"))
+
+
+   funcList = ["Name|Function"]
+   for(k = 0 to size(lst)-1)
+      name = rmext(lst[k])
+      proc = "$name$:uiParameters"
+      par = struct(proc())
+      funcList = funcList + ["$name$|$par->function$"]
+   next(k)
+   cd(bak)
+
+   fitList->nrcolumns(2)
+   fitList->list(funcList)
+   fitList->color([0,255,128,0])
+   fitList->colwidth([0.3,0.7])
 
 endproc()
 
