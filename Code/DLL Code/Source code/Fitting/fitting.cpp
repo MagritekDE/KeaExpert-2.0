@@ -11,7 +11,8 @@ EXPORT bool  GetCommandSyntax(char* cmd, char* syntax);
 // Locally defined functions
 short PolyFit(DLLParameters*,char*);
 extern short T1Fit(DLLParameters*,char*);
-extern short T2Fit(DLLParameters*,char*);
+extern short T2Fit(DLLParameters*, char*);
+extern short T2FitD(DLLParameters*, char*);
 extern short DiffFit(DLLParameters*,char*);
 extern short CapillaryFit(DLLParameters*,char*);
 extern short FindLinearRegion(DLLParameters*,char*);
@@ -20,8 +21,11 @@ extern short GaussFit(DLLParameters*,char *parameters);
 extern short LorentzianFit(DLLParameters*,char *parameters);
 extern short LorentziansFit(DLLParameters*,char *parameters);
 extern short BiExpFit(DLLParameters*,char *parameters);
+extern short BiExpFitD(DLLParameters* par, char* parameters);
+
 extern short ExpFitWithOffset(DLLParameters*,char*);
 extern short NonLinearFit(DLLParameters*, char*);
+extern short NonLinearFitD(DLLParameters*, char*);
 extern short PhaseCorrection(DLLParameters*, char*);
 
 int HelpFolder(DLLParameters*,char*);
@@ -43,19 +47,22 @@ EXPORT short AddCommands(char *command, char *parameters, DLLParameters *dpar)
    else if(!strcmp(command,"invert"))            r = InverseGJ(dpar,parameters);      
    else if(!strcmp(command,"invertd"))           r = InverseGJ2(dpar,parameters);      
    else if(!strcmp(command,"expfit"))            r = T2Fit(dpar,parameters);      
-   else if(!strcmp(command,"t2fit"))             r = T2Fit(dpar,parameters);      
-   else if(!strcmp(command,"t1fit"))             r = T1Fit(dpar,parameters);      
+   else if (!strcmp(command, "t2fit"))           r = T2Fit(dpar, parameters);
+   else if (!strcmp(command, "t2fitd"))          r = T2FitD(dpar, parameters);
+   else if(!strcmp(command,"t1fit"))             r = T1Fit(dpar,parameters);
    else if(!strcmp(command,"expofffit"))         r = ExpFitWithOffset(dpar,parameters);      
    else if(!strcmp(command,"diffit"))            r = DiffFit(dpar,parameters);         
    else if(!strcmp(command,"capfit"))            r = CapillaryFit(dpar,parameters);         
    else if(!strcmp(command,"svd"))               r = SVD(dpar,parameters);  
    else if(!strcmp(command,"lognormalfit"))      r = LogNormalFit(dpar,parameters);  
-   else if(!strcmp(command,"biexpfit"))          r = BiExpFit(dpar,parameters);  
-   else if(!strcmp(command,"triexpfit"))         r = TriExpFit(dpar,parameters);  
+   else if (!strcmp(command, "biexpfit"))          r = BiExpFit(dpar, parameters);
+   else if (!strcmp(command, "biexpfitd"))          r = BiExpFitD(dpar, parameters);
+   else if(!strcmp(command,"triexpfit"))         r = TriExpFit(dpar,parameters);
    else if(!strcmp(command,"gaussfit"))          r = GaussFit(dpar,parameters);  
    else if(!strcmp(command,"lorentzianfit"))     r = LorentzianFit(dpar,parameters);  
    else if(!strcmp(command,"peakfit"))           r = LorentziansFit(dpar,parameters);  
-   else if(!strcmp(command,"nlinfit"))           r = NonLinearFit(dpar, parameters);
+   else if (!strcmp(command, "nlinfit"))         r = NonLinearFit(dpar, parameters);
+   else if (!strcmp(command, "nlinfitd"))        r = NonLinearFitD(dpar, parameters);
    else if(!strcmp(command,"phasecorrection"))   r = PhaseCorrection(dpar, parameters);
    else if(!strcmp(command,"helpfolder"))        r = HelpFolder(dpar,parameters);
            
@@ -81,11 +88,13 @@ EXPORT void ListCommands(void)
    TextMessage("   expfit ............ single exponential fit for T2\n");
    TextMessage("   expofffit ......... single exponential fit with offset\n");
    TextMessage("   biexpfit .......... double exponential fit\n");
+   TextMessage("   biexpfitd .......... double exponential fit\n");
    TextMessage("   triexpfit ......... triple exponential fit\n");
    TextMessage("   gaussfit .......... gaussian fit\n");
    TextMessage("   lorentzianfit ..... lorentzian fit\n");
    TextMessage("   lognormalfit ...... log-normal fit\n");
    TextMessage("   nlinfit ........... general nonlinear fit\n");
+   TextMessage("   nlinfitd .......... general nonlinear fit (SVD)\n");
    TextMessage("   phasecorrection  .. corrects the phase of the input spectrum\n");
 
 }
@@ -109,12 +118,14 @@ EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
    else if(!strcmp(cmd,"expofffit"))       strcpy(syntax,"(VEC fit, FLOAT e0, FLOAT tau, FLOAT offset, FLOAT e0err, FLOAT t2err, FLOAT offseterr) = expofffit(VEC x, VEC y, [[FLOAT noise], [STR report]])");
    else if(!strcmp(cmd,"invert"))          strcpy(syntax,"MAT mout = invert(MAT min)");
    else if(!strcmp(cmd,"invertd"))         strcpy(syntax,"DMAT mout = invertd(DMAT min)");
-   else if(!strcmp(cmd,"biexpfit"))        strcpy(syntax,"(VEC fit, FLOAT ea, FLOAT ta, FLOAT eb, FLOAT tb, FLOAT ea_err, FLOAT ta_err, FLOAT eb_err, FLOAT tb_err) = biexpfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations]])");
+   else if (!strcmp(cmd, "biexpfit"))        strcpy(syntax, "(VEC fit, FLOAT ea, FLOAT ta, FLOAT eb, FLOAT tb, FLOAT ea_err, FLOAT ta_err, FLOAT eb_err, FLOAT tb_err) = biexpfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations]])");
+   else if (!strcmp(cmd, "biexpfitd"))        strcpy(syntax, "(VEC fit, FLOAT ea, FLOAT ta, FLOAT eb, FLOAT tb, FLOAT ea_err, FLOAT ta_err, FLOAT eb_err, FLOAT tb_err) = biexpfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations]])");
    else if(!strcmp(cmd,"triexpfit"))       strcpy(syntax,"(VEC fit, FLOAT ea, FLOAT ta, FLOAT eb, FLOAT tb, FLOAT ec, FLOAT tc, FLOAT ea_err, FLOAT ta_err, FLOAT eb_err, FLOAT tb_err, FLOAT ec_err, FLOAT tc_err) = triexpfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations])");
    else if(!strcmp(cmd,"lognormalfit"))    strcpy(syntax,"(VEC fit, FLOAT e0, FLOAT t2, FLOAT sigma, FLOAT e0_err, FLOAT t2_err, FLOAT sigma_err) = lognormalfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations])");
    else if(!strcmp(cmd,"gaussfit"))        strcpy(syntax,"(VEC fit, FLOAT a0, FLOAT a1, FLOAT a2, FLOAT a0_err, FLOAT a1_err, FLOAT a2_err) = gaussfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations], [FLOAT a1_init, FLOAT a2_init, FLOAT a3_init])");
    else if(!strcmp(cmd,"lorentzianfit"))   strcpy(syntax,"(VEC fit, FLOAT a0, FLOAT a1, FLOAT a2, FLOAT a0_err, FLOAT a1_err, FLOAT a2_err) = lorentzianfit(VEC x, VEC y, [[FLOAT noise], [STR report], [INT maxIterations], [FLOAT a1_init, FLOAT a2_init, FLOAT a3_init])");
-   else if(!strcmp(cmd,"nlinfit"))         strcpy(syntax,"(VEC fit, FLOATS results, FLOATS errors) = nlinfit(VEC x, VEC y, STR function, VEC init_values, [[FLOAT noise], [STR report], [INT maxIterations]])");
+   else if (!strcmp(cmd, "nlinfit"))       strcpy(syntax, "(VEC fit, FLOATS results, FLOATS errors) = nlinfit(VEC x, VEC y, STR function, VEC init_values, [[FLOAT noise], [STR report], [INT maxIterations]])");
+   else if (!strcmp(cmd, "nlinfitd"))      strcpy(syntax, "(VEC fit, FLOATS results, FLOATS errors) = nlinfitd(VEC x, VEC y, STR function, VEC init_values, [[FLOAT noise], [STR report], [INT maxIterations]])");
    else if(!strcmp(cmd,"phasecorrection")) strcpy(syntax, "(FLOAT ph0, FLOAT ph1, DOUBLE target) = phasecorrection(VEC spectrum, INT order (0/1), [p0Init, p1Init])");
 
    if(syntax[0] == '\0')
@@ -586,7 +597,7 @@ short InverseGJ2(DLLParameters* par,char *args)
    long r,c;
    long m,n;
    short nrArgs;
-   extern short  dgaussj(double **a, long n, double **b, long m);
+   extern short  gaussj_dbl(double **a, long n, double **b, long m);
 
    // Get user parameters 
    if((nrArgs = ArgScan(par->itfc,args,1,"matrix to invert","ee","vv",&vA,&vB)) < 0)
@@ -641,7 +652,7 @@ short InverseGJ2(DLLParameters* par,char *args)
          B[1][c] = VarDoubleMatrix(&vB)[0][c-1];
    }
 
-   if(dgaussj(A,n,B,1))
+   if(gaussj_dbl(A,n,B,1))
    {
       FreeDMatrix2DNR(A,1L,n,1L,n);
       FreeDMatrix2DNR(B,1L,n,1L,1L);

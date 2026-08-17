@@ -29,6 +29,7 @@ short SingValueDecompFit(float[],float[],long,long,float*,float*,float*,float**,
 short svdcmp(float**,long,long,float*,float**,long);
 short svdfit(float[],float[],float[],long,float[],long,float**,float**,float[],float*,void(*)(float,float[],long) );
 void  svbksb(float**,float[],float**,long,long,float[],float[]);
+void  svbksb_dbl(double** u, double w[], double** v, long m, long n, double b[], double x[]);
 void  svdvar(float**, int, float[], float**);
 void  fpoly(float,float[],long);
 void  ftrig(float,float[],long);
@@ -132,7 +133,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 
    if(mode == 1)
    {
-      TextMessage("\r  Reduction to bidiagonal form ...");
+      TextMessage("\n  Reduction to bidiagonal form ...");
    }
 
    for(i = 1; i <= n; i++)
@@ -216,7 +217,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 
    if(mode == 1)
    {
-       TextMessage("\r  Accumulation of rh transforms  ...");
+       TextMessage("\n  Accumulation of rh transforms  ...");
    }
 
    for(i = n; i >= 1; i--)
@@ -253,7 +254,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 
    if(mode == 1)
    {
-       TextMessage("\r  Accumulation of lh transforms  ...");
+       TextMessage("\n  Accumulation of lh transforms  ...");
    }
 
    for(i = min(n,m); i >= 1; i--)
@@ -300,7 +301,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 
    if(mode == 1)
    {
-       TextMessage("\r  Diagonalization ... ");
+       TextMessage("\n  Diagonalization ... ");
    }
 
    for(k = n; k >= 1; k--)
@@ -323,6 +324,12 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
                break;
             }
             if(fabs(w[nm]) + anorm == anorm) break;
+         }
+         if (l == 0)
+         {
+            ErrorMessage("Overflow in svdcmp");
+            FreeVectorNR(rv1, 1L, n);
+            return(-1);
          }
          if(flag)
          {
@@ -362,7 +369,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 	      }
 	      if(its == 1000)
 	      {
-	        if(mode == 1)
+	       // if(mode == 1)
 	           ErrorMessage("No convergence in 1000 SVD iterations");
 	        FreeVectorNR(rv1,1L,n);
 	        return(-1);
@@ -421,6 +428,7 @@ short svdcmp(float **a,long m,long n,float *w,float **v,long mode)
 	      w[k] = x;
       }
    }
+  // TextMessage("SVD iterations: %ld", its);
    FreeVectorNR(rv1,1L,n);
    return(0);
 }
@@ -504,8 +512,7 @@ svdfit(float x[],float y[],float sig[],long ndata,
 }
    
 
-void
-svbksb(float **u,float w[],float **v,long m,long n,float b[],float x[])
+void svbksb(float **u,float w[],float **v,long m,long n,float b[],float x[])
 {
    long jj,j,i;
    float s,*tmp;
@@ -531,6 +538,34 @@ svbksb(float **u,float w[],float **v,long m,long n,float b[],float x[])
       x[j] = s;
    }
    FreeVectorNR(tmp,1L,n);
+}
+
+void svbksb_dbl(double** u, double w[], double** v, long m, long n, double b[], double x[])
+{
+   long jj, j, i;
+   double s, * tmp;
+
+   if (n == 0) return;
+   tmp = MakeDVectorNR(1L, n);
+   for (j = 1; j <= n; j++)
+   {
+      s = 0.0;
+      if (w[j])
+      {
+         for (i = 1; i <= m; i++)
+            s += u[i][j] * b[i];
+         s /= w[j];
+      }
+      tmp[j] = s;
+   }
+   for (j = 1; j <= n; j++)
+   {
+      s = 0.0;
+      for (jj = 1; jj <= n; jj++)
+         s += v[j][jj] * tmp[jj];
+      x[j] = s;
+   }
+   FreeDVectorNR(tmp, 1L, n);
 }
 
 
@@ -636,7 +671,7 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
             g = -SIGN(sqrt(s),f);
             h = f*g - s;
             a[i][i] = f - g;
-            if(i != n)
+         //   if(i != n)
             {
                for(j = l; j <= n; j++)
                {
@@ -670,7 +705,7 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
             a[i][l] = f - g;
             for(k = l; k <= n; k++)
                rv1[k] = a[i][k]/h;
-            if(i != m)
+          //  if(i != m)
             {
                for(j = l; j <= m; j++)
                {
@@ -741,7 +776,7 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
 
       l = i+1;
       g = w[i];
-      if(i < n)
+     // if(i < n)
       {
          for(j = l; j <= n; j++)
             a[i][j] = 0.0;
@@ -749,7 +784,7 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
       if(g)
       {
          g = 1.0/g;
-         if(i != n)
+       //  if(i != n)
          {
             for(j = l; j <= n; j++)
             {
@@ -786,7 +821,7 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
          TextMessage(str);
       }
 
-      for(its = 1;;its++) /* Loop until convergence condition satisfied */
+      for (its = 1; its <= 30;  its++) 
       {
          flag = 1;
          for(l = k; l >= 1; l--)
@@ -799,6 +834,12 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
             }
             if(fabs(w[nm]) + anorm == anorm) break;
          }
+         if (l == 0)
+         {
+            ErrorMessage("Overflow in svdcmp");
+            FreeDVectorNR(rv1, 1L, n);
+            return(-1);
+         }
          if(flag)
          {
             c = 0.0;
@@ -806,21 +847,22 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
             for(i = l; i <=k ;i++)
             {
                f = s*rv1[i];
-               if(fabs(f)+anorm != anorm)
+               rv1[i] = c * rv1[i];
+               if ((float)(fabs(f) + anorm) == anorm)
+                  break;
+
+               g = w[i];
+               h = PYTHAG(f,g);
+               w[i] = h;
+               h = 1.0/h;
+               c = g*h;
+               s = (-f*h);
+               for(j = 1; j <= m;j++)
                {
-                  g = w[i];
-                  h = PYTHAG(f,g);
-                  w[i] = h;
-                  h = 1.0/h;
-                  c = g*h;
-                  s = (-f*h);
-                  for(j = 1; j <= m;j++)
-                  {
-                     y = a[j][nm];
-                     z = a[j][i];
-                     a[j][nm] = y*c+z*s;
-                     a[j][i] = z*c-y*s;
-                  }
+                  y = a[j][nm];
+                  z = a[j][i];
+                  a[j][nm] = y*c+z*s;
+                  a[j][i] = z*c-y*s;
                }
 	         }
          }
@@ -835,10 +877,9 @@ short svdcmp_dbl(double **a, long m, long n, double *w, double **v, long mode)
 	         }
 	         break;
 	      }
-	      if(its == 100)
+	      if(its == 30)
 	      {
-	        if(mode == 1)
-	           ErrorMessage("No convergence in 100 SVD iterations");
+	        ErrorMessage("No convergence in 30 SVD iterations");
 	        FreeDVectorNR(rv1,1L,n);
 	        return(-1);
 	      }
