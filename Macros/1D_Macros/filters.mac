@@ -481,10 +481,17 @@ procedure(get_filter,name,type,N)
          lineWidth = parameters[1]
          if(newName == "exp")
             if(vartype(N) == "matrix1d")
-               t = N
-               lw = eval(lineWidth)
-               y = exp(-pi*t*lw)
-               return(y)
+               if(type == "FTFid")
+                  t = N
+                  lw = eval(lineWidth)
+                  y = exp(-pi*t*lw)
+                  return(y)
+               else # Centered echo
+                  t = N-N[size(N)/2]
+                  lw = eval(lineWidth)
+                  y = exp(-pi*abs(t)*lw)
+                  return(y)
+               endif
             else
                message("Warning","Invalid time axis passed to get_filter for filter $name$")
                return(matrix(N)+1)
