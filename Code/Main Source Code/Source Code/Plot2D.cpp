@@ -1998,7 +1998,7 @@ void Plot2D::ContourPlot(HWND hWnd, HDC hdc)
 		   }
       } 
    }
-   else // Contour levels are define
+   else // Contour levels are defined
    {
       if(ColorScaleType() == PLUS_MINUS_CMAP)
       {      
@@ -2107,6 +2107,11 @@ void Plot2D::ContourPlot(HWND hWnd, HDC hdc)
    long ym0,ym1,ym2;
 
    (yFwd) ? (ystart = y_base) : (ystart = y_top-1);
+
+   if (ystart < 0)
+   {
+      goto abort;
+   }
 
    if(flip == 1)
    {
@@ -2287,17 +2292,17 @@ void Plot2D::ContourPlot(HWND hWnd, HDC hdc)
       }
    }
 
-	FreeVector(rowE);
-	FreeVector(rowO);
-	FreeVector(xgrid);
-	FreeVector(ygrid);
-   RestoreDC(hdc,-1); 	
-   for(int i = 0; i < nrLev; i++)
-      delete contPen[i];
-     // ::delete contPen[i];
-   delete [] contPen;
-   if(!contourLevels)
-      delete [] levels;
+abort:	FreeVector(rowE);
+	      FreeVector(rowO);
+	      FreeVector(xgrid);
+	      FreeVector(ygrid);
+         RestoreDC(hdc,-1); 	
+         for(int i = 0; i < nrLev; i++)
+            delete contPen[i];
+           // ::delete contPen[i];
+         delete [] contPen;
+         if(!contourLevels)
+            delete [] levels;
  //  TextMessage("Number of lines = %ld\n",tot);
 
 }
