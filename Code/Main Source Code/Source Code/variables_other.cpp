@@ -362,21 +362,26 @@ bool IsAVariableCore(Interface *itfc, char name[])
 				while(SplitStructStr(memberName, leftStr, rightStr))
 				{
                var = var->Get(leftStr);
-					result = false;
+               if (var)
+               {
+                  result = false;
 
-					if(var->GetType() == STRUCTURE)
-					{
-						var = var->GetStruct();
-						if(var)
-						{
-							result = true;
-							strcpy(memberName,rightStr);
-						}
-					}
-					else
-						break;
+                  if (var->GetType() == STRUCTURE)
+                  {
+                     var = var->GetStruct();
+                     if (var)
+                     {
+                        result = true;
+                        strcpy(memberName, rightStr);
+                     }
+                  }
+                  else
+                     break;
+               }
+               else
+                  break;
 				}
-			   if(!var->Get(memberName))
+			   if(!var || !var->Get(memberName))
 					result = false;
          }
 			delete [] structName;
