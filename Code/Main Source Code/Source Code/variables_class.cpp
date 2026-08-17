@@ -1852,6 +1852,86 @@ void Variable::MakeMatrix2DFromVector(float *array, long xsize, long ysize)
 }
 
 
+
+/*************************************************************************************
+  Pack a real 1D vector into a real 2D matrix dim xsize*ysize
+**************************************************************************************/
+
+void Variable::MakeMatrix2DFromIVector(int* array, long xsize, long ysize)
+{
+   float** temp;
+   FreeData();
+
+   data = (char*)MakeMatrix2D(xsize, ysize);
+   if (!data)
+   {
+      ErrorMessage("unable to allocate 2D matrix memory");
+      type = NULL_VARIABLE;
+      dim1 = dim2 = dim3 = dim4 = 0;
+      return;
+   }
+   temp = (float**)data;
+   dim1 = xsize;
+   dim2 = ysize;
+   dim3 = 1;
+   dim4 = 1;
+   aliasVar = NULL;
+
+   if (array != NULL)
+   {
+      long j = 0;
+      for (long y = 0; y < ysize; y++)
+      {
+         for (long x = 0; x < xsize; x++, j++)
+         {
+            temp[y][x] = (float)array[j];
+         }
+      }
+   }
+   type = MATRIX2D;
+}
+
+
+
+/*************************************************************************************
+  Pack a double 1D vector into a real 2D matrix dim xsize*ysize
+**************************************************************************************/
+
+void Variable::MakeMatrix2DFromDVector(double* array, long xsize, long ysize)
+{
+   float** temp;
+   FreeData();
+
+   data = (char*)MakeMatrix2D(xsize, ysize);
+   if (!data)
+   {
+      ErrorMessage("unable to allocate 2D matrix memory");
+      type = NULL_VARIABLE;
+      dim1 = dim2 = dim3 = dim4 = 0;
+      return;
+   }
+   temp = (float**)data;
+   dim1 = xsize;
+   dim2 = ysize;
+   dim3 = 1;
+   dim4 = 1;
+   aliasVar = NULL;
+
+   if (array != NULL)
+   {
+      long j = 0;
+      for (long y = 0; y < ysize; y++)
+      {
+         for (long x = 0; x < xsize; x++, j++)
+         {
+            temp[y][x] = (float)array[j];
+         }
+      }
+   }
+   type = MATRIX2D;
+}
+
+
 /*************************************************************************************
   Pack a real 1D vector into a real 3D matrix dim xsize*ysize*zsize
 **************************************************************************************/
@@ -1976,6 +2056,7 @@ void Variable::MakeDMatrix2DFromVector(double* array, long xsize, long ysize)
    }
    type = DMATRIX2D;
 }
+
 
 /*************************************************************************************
   Pack a real 1D vector into a real 4D matrix dim xsize*ysize*zsize*qsize

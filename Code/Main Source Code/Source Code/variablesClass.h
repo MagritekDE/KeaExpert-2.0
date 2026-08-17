@@ -46,7 +46,9 @@ extern "C" class  __declspec(dllexport)  Variable
       void MakeAndLoadCMatrix3D(complex***,long,long,long);         // Allocate and set 3D complex float array
       void MakeAndLoadCMatrix4D(complex ****,long,long,long,long);  // Allocate and set 4D complex float array
 
-      void MakeMatrix2DFromVector(float*, long,long);               // Convert a vector to a 2D real data set
+      void MakeMatrix2DFromVector(float*, long, long);              // Convert a floatvector to a 2D real data set
+      void MakeMatrix2DFromIVector(int*, long, long);               // Convert an integer vector to a 2D real data set
+      void MakeMatrix2DFromDVector(double*, long, long);            // Convert a double vector to a 2D real data set
       void MakeMatrix3DFromVector(float*, long,long,long);          // Convert a vector to a 3D real data set
       void MakeMatrix4DFromVector(float*, long,long,long,long);     // Convert a vector to a 4D real data set
       void MakeCMatrix2DFromCVector(complex*, long,long);           // Convert a vector to a 2D complex data set
