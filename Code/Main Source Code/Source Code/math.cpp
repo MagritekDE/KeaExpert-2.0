@@ -126,6 +126,34 @@ int IsDoubleCLI(Interface* itfc ,char args[])
    return(OK);
 }
 
+int IsInfiniteNumber(Interface* itfc, char args[])
+{
+   int r;
+   Variable inputVar;
+
+   if ((r = ArgScan(itfc, args, 1, "input", "e", "v", &inputVar)) < 0)
+      return(r);
+
+   if (inputVar.GetType() == FLOAT32)
+   {
+      float num = inputVar.GetReal();
+      if (_isnan(num) || isinf(num))
+         itfc->retVar[1].MakeAndSetFloat(1);
+      else
+         itfc->retVar[1].MakeAndSetFloat(0);
+   }
+   else if (inputVar.GetType() == FLOAT64)
+   {
+      double num = inputVar.GetDouble();
+      if (_isnan(num) || isinf(num))
+         itfc->retVar[1].MakeAndSetFloat(1);
+      else
+         itfc->retVar[1].MakeAndSetFloat(0);
+   }
+   return(OK);
+}
+
+
 /*****************************************************************************
    Check to see if a number or a string is an integer (32 bit)
 *****************************************************************************/
@@ -5999,6 +6027,18 @@ short HexToNumber(char *s, short bits, signed __int64 &out)
    short exponentDigits = 0;
    unsigned __int64 p16,p1,result;  
 
+   if(bits > 64)
+   {
+      ErrorMessage("Maximum number of bits is 64");
+      return(ERR);
+   }
+
+   if (bits <= 0)
+   {
+      ErrorMessage("Minimum number of bits is 1");
+      return(ERR);
+   }
+
 // Check to see if its a hexadecimal number 
    if(s[0] == '0' && len > 1 && (s[1] == 'x' || s[1] == 'X'))
    {
@@ -6029,7 +6069,7 @@ short HexToNumber(char *s, short bits, signed __int64 &out)
          mantissaDigits++;
       }
 
-		if(result > p1<<bits)
+		if(result > (p1<<bits)-1)
 		{
 			ErrorMessage("Number is larger than 2^%d",bits);
 		   return(ERR);
@@ -7634,7 +7674,7 @@ int MatrixRMS(Interface* itfc ,char args[])
    }
    else
    {
-      ErrorMessage("SD command not defined for this data type");
+      ErrorMessage("RMS command not defined for this data type");
       return(ERR);
    }
 
