@@ -73,7 +73,7 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
 
 # Make the main user interface
    gPlot->loadPlotPref()
-   n = gView->makeUI()
+   n = gView->makeUI(uiMode)
 
 # Check if we are running from the pex file rather than Prospa
 # If so make new window 'n' the main window
@@ -141,8 +141,13 @@ procedure(KeaExpertInterface, uiMode="normal", startMacroFullPath=null)
       proc()
    endif
 
-#pr "In pex\n"
-#pr gData->connected
+# Check for no conection
+   if(gData->connected == 0)
+      print("\n -----------------------------------------------------------")
+      print("\n   No connection? A simulator can be selected from the")
+      print("\n   'Select Kea' dialog accessible from the File menu.")
+      print("\n -----------------------------------------------------------\n")
+   endif
 
 endproc()
 
