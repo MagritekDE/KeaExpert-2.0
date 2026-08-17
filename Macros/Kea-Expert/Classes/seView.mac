@@ -9,7 +9,7 @@
 # In addition a number of miscellaneous 
 # procedures handle other user interactions.
 #
-# V2.00.xx
+# V2.0x.xx
 ###########################################################
 
 ###########################################################
@@ -44,6 +44,7 @@ procedure(init, self)
    self->savePar                    = "seView:savePar"
    self->toggleBatchMode            = "seView:toggleBatchMode"
    self->toggleProgressGroup        = "seView:toggleProgressGroup"
+   self->togglePlotGrid             = "seView:togglePlotGrid"
    self->toggle1DLegend             = "seView:toggle1DLegend"
    self->selectInterface            = "seView:selectInterface"
 
@@ -654,12 +655,11 @@ procedure(defineBatchPanel, self)
    xoff = 0
    self->batchRange[0] = self->cn
    self->batchLabel = groupbox(self->cn, "Experiment batch", xoff+10,10,self->historyWidth,"rh-20")
-   self->batch = listbox(self->cn+1, xoff+20,30,self->historyWidth-61,"rh-50",gBatch->batchCallback())
+   self->batch = listbox_es(self->cn+1, xoff+20,30,self->historyWidth-61,"rh-50",gBatch->batchCallback())
    nld = self->batchDiv->objnr
    setpar(0,self->cn,"region",[-1,-2,-3,nld])
    setpar(0,self->cn+1,"region",[-1,-2,-3,nld],"tag","enabled",
                        "menu",self->batchMenuNr,
-                       "multilineselection","true",
                        "nrcolumns",2,"colwidth",[0.50,0.50])
 
    self->cn = self->cn + 2
@@ -676,29 +676,30 @@ procedure(defineBatchPanel, self)
    button(self->cn+3, xoff, yoff+90,  36, 25, "Down",
       gBatch->moveProtocolDown())
    button(self->cn+4, xoff, yoff+120, 36, 25, "Copy",
-      gBatch->copyProtocol())
-#   button(self->cn+5, xoff, yoff+150, 36, 25, "Copy Several",
-#      gBatch->copySeveralProtocols())
-   button(self->cn+5, xoff, yoff+150, 36, 25, "Rename",
+      gBatch->copyProtocols())
+   button(self->cn+5, xoff, yoff+150, 36, 25, "Paste",
+      gBatch->pasteProtocols())
+   button(self->cn+6, xoff, yoff+180, 36, 25, "Rename",
       gBatch->renameProtocol())
-   button(self->cn+6, xoff, yoff+180, 36, 25, "Remove",
+   button(self->cn+7, xoff, yoff+210, 36, 25, "Remove",
       gBatch->removeProtocol())
-   self->batchRange[1] = self->cn+6
+   self->batchRange[1] = self->cn+7
 
 # Update the button icons
    bak = getcwd()
    cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\BitMaps")
-   setpar(0,self->cn+0,"icon","add.png","tooltip","Add a protocol from the parameter list.")
+   setpar(0,self->cn+0,"icon","add.png","tooltip","Add a protocol from the parameter list after the current selection.")
    setpar(0,self->cn+1,"icon","check.png","tooltip","Update the modified parameter list.")
-   setpar(0,self->cn+2,"icon","uparrow.png","tooltip","Move a protocol up in the list.")
-   setpar(0,self->cn+3,"icon","downarrow.png","tooltip","Move a protocol down in the list.")
-   setpar(0,self->cn+4,"icon","duplicate.png","tooltip","Duplicate protocol(s).")
-   setpar(0,self->cn+5,"icon","rename.png","tooltip","Change the protocol comment(s).")
-   setpar(0,self->cn+6,"icon","cross.png","tooltip","Remove the selected protocol(s).")
+   setpar(0,self->cn+2,"icon","uparrow.png","tooltip","Move protocol(s) up in the list.")
+   setpar(0,self->cn+3,"icon","downarrow.png","tooltip","Move protocol(s) down in the list.")
+   setpar(0,self->cn+4,"icon","copy.png","tooltip","Copy protocol(s).")
+   setpar(0,self->cn+5,"icon","paste.png","tooltip","Paste protocol(s).")
+   setpar(0,self->cn+6,"icon","rename.png","tooltip","Change the protocol comment(s).")
+   setpar(0,self->cn+7,"icon","cross.png","tooltip","Remove the selected protocol(s).")
 
    cd(bak)
      
-   self->cn = self->cn + 7
+   self->cn = self->cn + 8
 
    gDebug->pr("Batch panel created")
 
@@ -759,56 +760,6 @@ endproc()
 # This group of controls is moved by the CLI 
 # divider.
 ###########################################################
-#
-#procedure(defineExperimentControl, self)
-#
-#   width = self->parameterWidth
-#   self->fileControlHeight = 100
-#   height = self->fileControlHeight 
-#   xOff = 10 + self->historyWidth + 10
-#   yOff = 10
-#   ncd = self->cliDiv->objnr
-#
-#   groupbox(self->cn,"Experiment control",xOff,10,width,135)
-#   setpar(0,self->cn,"color",[0,0,255])
-#
-#   statictext(self->cn+1,xOff+50,31,70,31,"center","Experiment\rbase-path:")
-#
-#   self->projPathCtrl = textbox(self->cn+2,xOff+85,35,width-125,20)
-#   setpar(0,self->cn+2,"name","projectPath")
-#
-#   button(self->cn+3, xOff+width-35, 35, 21, 21, "...",gView->updateProjectPath())
-#   setpar(0,self->cn+3,"tooltip","Select experiment folders to view or base-path")
-#
-#   statictext(self->cn+4,xOff+50,63,65,30,"center","Current\rfile comment:")
-#
-#   self->sampleNameCtrl = textmenu(self->cn+5,xOff+85,67,width-175,100)
-#   setpar(0,self->cn+5,"name","sampleName")
-#
-#   self->exptModeCtrl = checkbox(self->cn+6, xOff+width-32, 70, "history,batch", "history",
-#                        gView->toggleBatchMode())
-#   statictext(self->cn+7,xOff+width-55,63,35,30,"center","Batch\rmode:")
-#
-#   self->runButton = button(self->cn+8, xOff+20, 108, 70, 23, "Run",gExpt->runExperiment())
-#   self->completeButton = button(self->cn+9, xOff+width/2-35, 108, 70, 23, "Complete",
-#                                 assignlock("wvExpStatus","finish","window");
-#                                 gView->graphLabel->label("Please wait - phase cycle completing ..."))
-#   self->abortButton = button(self->cn+10, xOff+width-90, 108, 70, 23, "Abort",
-#                              assignlock("wvExpStatus","stop","window");
-#                              gView->graphLabel->label("Please wait - experiment aborting ..."))
-#   setpar(0,self->cn+9,"tag","toggle","active","true")
-#
-#   setpar(0,self->cn+10,"tag","toggle","active","true")
-#
-#   for(k = 0 to 10)
-#      setpar(0,self->cn+k,"region",[-1,-2,-3,ncd])
-#   next(k)
-#
-#   self->cn = self->cn + 11
-#
-#   gDebug->pr("Experiment controls (Run/Complete/Abort) created")
-#
-#endproc()
 
 procedure(defineExperimentControl, self)
 
@@ -959,7 +910,7 @@ procedure(defineHistoryPanel, self)
    xoff = 0
 
    self->historyLabel = groupbox(self->cn, "Experiment history", xoff+10,10,self->historyWidth,"rh-20")
-   self->history = listbox(self->cn+1, xoff+20,30,self->historyWidth-20,"rh-70",gView->historyCallback())
+   self->history = listbox_es(self->cn+1, xoff+20,30,self->historyWidth-20,"rh-70",gView->historyCallback())
 
    self->stepHistory = button(self->cn+2, xoff+20, "rh-36", 40, 21, "Day-",gView->changeViewDate("day-"))
    button(self->cn+3, xoff+64,  "rh-36", 40, 21, "Day+",gView->changeViewDate("day+"))
@@ -978,12 +929,9 @@ procedure(defineHistoryPanel, self)
                        # "tooltip","Lists the experiments in the history folder")
  
    if(gData->getFolderHierarchy() == "date") # Date not shown as in group box label
-      setpar(0,self->cn+1,"nrcolumns",3,"colwidth",[0.20,0.40,0.40],
-                       "multilineselection","true")
-
+      setpar(0,self->cn+1,"nrcolumns",3,"colwidth",[0.20,0.40,0.40])
    else # Flat mode - need to show date
-      setpar(0,self->cn+1,"nrcolumns",4,"colwidth",[0.16,0.16,0.34,0.34],
-                       "multilineselection","true")
+      setpar(0,self->cn+1,"nrcolumns",4,"colwidth",[0.16,0.16,0.34,0.34])
    endif
 
    setpar(0,self->cn+2,"region",[-1,-2,nbd,ncd])
@@ -1062,6 +1010,9 @@ procedure(defineMenus, self)
                             "Open application folder", exec("explorer",appdir),
                             "Open user preferences folder", exec("explorer",prefdir),
                             "Open user working directory", exec("explorer",evalsubexp(workdir)),
+                            "Separator", ,
+                            "Save current parameters to pulse-program defaults file ...",gParam->saveToDefaults(),
+                            "Copy 'user' parameter-visibility to 'minimum' ...",gParam->saveMinimumVisibility(),
                             "Separator", ,
                             "Open KeaExpert preferences ...\tCtrl+Shift+K",KeaPreferences(),
                             "Open Kea firmware dialog ...\tCtrl+Shift+F",gView->openFirmwareUpdater(),
@@ -1240,6 +1191,7 @@ procedure(defineMenus, self)
               "Separator", ,
               "Toggle lines and text visibility", gView->toggleLinesAndText(), 
               "Remove lines and text from plot", gView->removeLinesAndText(), 
+              "Toggle grid", gView->togglePlotGrid(),
               "Separator", "",
               "Remove data set", func1d("remove current data"))
 
@@ -1259,7 +1211,11 @@ procedure(defineMenus, self)
    self->bkg1DMenuNr = self->label2DMenuNr + 1
    menu(self->bkg1DMenuNr, "bkgMenu1D", "Display vector ...", displayVectors(),
               "Keep this region, remove others", func1d("remove other subplots"),
-              "Remove all data from region", func1d("remove all data"))
+              "Remove all data from region", func1d("remove all data"),
+              "Separator", "",
+              "Toggle lines and text visibility", gView->toggleLinesAndText(), 
+              "Remove lines and text from plot", gView->removeLinesAndText(),
+              "Toggle grid", gView->togglePlotGrid())
 
    self->bkg2DMenuNr = self->bkg1DMenuNr + 1
    menu(self->bkg2DMenuNr, "bkgMenu2D", "Copy plot data to matrix ...\tCtrl+K", Copy2DToMatrix(),
@@ -1267,7 +1223,8 @@ procedure(defineMenus, self)
               "Copy image new 2D window ...\tCtrl+Shift+C", copy2DtoNewWin(),
               "Separator", "",
               "Keep this region, remove others", func2d("remove other subplots"),
-              "Remove all data from region", func2d("remove current data"))
+              "Remove all data from region", func2d("remove current data"),
+              "Toggle grid", gView->togglePlotGrid())
 
    self->batchMenuNr = self->bkg2DMenuNr + 1
    menu(self->batchMenuNr, "menu", "Edit comment(s) ...",  gBatch->batchMenuCallback("edit comment"),
@@ -1282,7 +1239,8 @@ procedure(defineMenus, self)
                                         "View acquisition parameters ...",    gView->historyMenuCallback("view parameters"),
                                         "Open data folder ...",               gView->historyMenuCallback("open data folder"),
                                         "Move incomplete entry to trash ...", gView->historyMenuCallback("delete entry"),
-                                        "Analyse data set(s) ...",            1DPlotAnalyser(multiTraceLoad="true"))
+                                        "Analyse data set(s) ...",            1DPlotAnalyser:loadMultiPlot(),
+                                        "View subfolders ...",                ViewSubFolders())
    else
       menu(self->historyMenuNr, "menu", "Edit comment(s) ...",                gView->historyMenuCallback("edit comment"),
                                         "Edit current pulse program ...",     gView->historyMenuCallback("edit pulse-program"),
@@ -1290,7 +1248,8 @@ procedure(defineMenus, self)
                                         "View acquisition parameters ...",    gView->historyMenuCallback("view parameters"),
                                         "Open data folder ...",               gView->historyMenuCallback("open data folder"),
                                         "Move data to trash ...",             gView->historyMenuCallback("delete entry"),
-                                        "Analyse data set(s) ...",            1DPlotAnalyser(multiTraceLoad="true"))
+                                        "Analyse data set(s) ...",            1DPlotAnalyser:loadMultiPlot(),
+                                        "View subfolders ...",                ViewSubFolders())
 
    endif
 
@@ -1408,6 +1367,8 @@ procedure(defineMenus, self)
    batchNr = divider2Nr + 1
    menu(batchNr, "Batch",
              "Menu Help",     help("Macros\\Kea-Expert","BatchMenu.htm"),
+             "Separator",,
+             "Toggle batch mode ...",   gView->toggleBatchMode(toggleMode = "menu"),
              "Separator",,
              "Clear batch ...",   gBatch->clearBatchList(),
              "New batch ...",     gBatch->newBatchList(),
@@ -1543,8 +1504,6 @@ procedure(defineStatusAndViewPanel, self)
 
    statictext(self->cn+1, xoff+55, yoff+25, "right", "Scan:")
    curScanCtrl = statictext(self->cn+2, xoff+60, yoff+25, "left", "0")
-  # statictext(self->cn+3, xoff+85, yoff+50, "right", "Current SNR:")
-  # statictext(self->cn+4, xoff+90, yoff+50, "left", "-")
    timeLabel = statictext(self->cn+5, xoff+124, yoff+25, "left", "Estimated remaining experiment time:")
    remTimeCtrl = statictext(self->cn+6, xoff+312, yoff+25, "left", "00:00:00")
    expTimeCtrl = statictext(self->cn+7, xoff+312, yoff+50, "left", "00:00:00")
@@ -1575,14 +1534,6 @@ procedure(defineStatusAndViewPanel, self)
    setpar(0,self->cn+2,"tooltip","Receiver Overflow Indicator\rRed: overflow")
    statictext(self->cn+3, xoff+40, yoff+28, "left", "Experiment")
    statictext(self->cn+4, xoff+40, yoff+50, "left", "Rx overflow")
- #  lockStatus = colorbox(self->cn+5, xoff+110, yoff+26, 16, 16, [255,255,255,255])
- #  self->lockStatus = lockStatus
- #  setpar(0,self->cn+5,"tooltip","Lock status\rGreen: locked\rYellow: checking\rRed: not locked")
- #  tempStatus = colorbox(self->cn+6, xoff+110, yoff+48, 16, 16, [255,255,255,255])
- #  self->tempStatus = tempStatus
- #  setpar(0,self->cn+6,"tooltip","Green: within spec\rYellow: checking\rRed: out of spec")
- #  statictext(self->cn+7, xoff+130, yoff+28, "left", "Lock")
-  # statictext(self->cn+8, xoff+130, yoff+50, "left", "Temperature")
    self->cn = self->cn + 5
 
 # View controls #####################################
@@ -1590,7 +1541,6 @@ procedure(defineStatusAndViewPanel, self)
    yoff = 10
    self->viewHeight = 84
    groupbox(self->cn, "View", xoff, yoff, "ww-1125", self->viewHeight)
-#   groupbox(self->cn, "View", xoff, yoff, "ww-1204", self->viewHeight)
    self->enlargePlotCtrl = button(self->cn+1, xoff+49, yoff+20, 37, 25, "Enlarge",
       gPlot->togglePlotSizes();)
    self->plotCycleCtrl = button(self->cn+2, xoff+10, yoff+48, 37, 25, "View",
@@ -2197,7 +2147,9 @@ procedure(loadHistoryList, self)
                   endif
                next(k)
             endif 
-            if((f1+f2) > 0 & (f3+f4) == 0)
+            if(d1 > 0)
+               newIcon = "full_ucs5"
+            elseif((f1+f2) > 0 & (f3+f4) == 0)
                newIcon = "full_ucs2"
             elseif((f1+f2) > 0 & (f3+f4) > 0)
                newIcon = "full_ucs4"
@@ -2523,9 +2475,12 @@ endproc(n)
 # Parameter controls start at 1000
 ###########################################################
 
-procedure(makeUI, self)
+procedure(makeUI, self, uiMode)
 
    (n,cn) = self->defineMainWindow(width=1347, height=750,self->staticMaxRng[0])
+   if(uiMode == "viewer")
+      setwindowpar(gView->wn,"bgcolor",[240,250,250]) # change the background color to distinguish Viewer
+   endif
    self->cn = self->menuMaxRng[0] 
    self->defineMenus()
    self->userMenusRange = [self->cn,-1]
@@ -2891,36 +2846,31 @@ endproc()
 
 procedure(removeFoldersFromHistory, self)
 
-# See if this is a single or multiple selection
-   selection = gView->history->selection
-   if(selection[0] < 0)
-      selection[0] = gView->history->zindex
-      selection[1] = gView->history->zindex
-   endif
-
-# Check for selection reversal (bottom to top)
-   if(selection[0] > selection[1])
-      temp = selection[0]
-      selection[0] = selection[1]
-      selection[1] = temp
-      reverse = 1
-   else
-      reverse = 0
-   endif
-
-# Loop over the selected experiments deleting empty folders and prompting for others
-   bak = getcwd()
-   entries = gView->history->list
-   curIdx = gView->history->index()
-   removed = 0
-
-   if(gData->permissions->canOverTrashData == "yes") 
+# Check we have permission to delete data sets
+  if(gData->permissions->canOverTrashData == "yes") 
       if(query("Warning","You are about to move data set(s) to trash\r\rContinue?") == "no")    
          return
       endif
    endif
 
-   for(idx = selection[0] to selection[1])
+# See if entries are selected or not
+   selection = gView->history->selection
+   if(selection == null)
+      return
+   endif
+
+# Get the list of all entries and note current selection
+   bak = getcwd()
+   entries = gView->history->list
+   curIdx = gView->history->index()
+   removed = 0
+
+# Loop over selected entries
+   for(k = 0 to size(selection)-1)
+
+     # Zero based index of selections
+      idx = selection[k]
+
      # Text from list for this index
       entry = entries[idx]
 
@@ -2963,7 +2913,6 @@ procedure(removeFoldersFromHistory, self)
    idx = selection[0] - 1  
 
 # Reset multiple selections and reload the history list
-   self->history->selection([-1,-1])
    if(removed == 0)
       gView->history->index(curIdx)
    else
@@ -2978,7 +2927,6 @@ procedure(removeFoldersFromHistory, self)
       endif
    endif
  
-
 endproc()
 
 ###########################################################
@@ -3002,28 +2950,17 @@ endproc()
 
 procedure(renameExperiments, self)
 
-# See if this is a single or multiple selection
+# See if ay items are selected
    selection = gView->history->selection
-   if(selection[0] < 0)
-      selection[0] = gView->history->zindex
-      selection[1] = gView->history->zindex
-   endif
-
-# Check for selection reversal (bottom to top)
-   if(selection[0] > selection[1])
-      temp = selection[0]
-      selection[0] = selection[1]
-      selection[1] = temp
-      reverse = 1
-   else
-      reverse = 0
+   if(selection == null)
+      return
    endif
 
 # Get the new comment for this experiment
 # Single selection take comment from folder
 # while multiple selection take UI comment
    commentList =  gView->sampleNameCtrl->menu()
-   if(selection[1] > selection[0])
+   if(size(selection) > 1)
       defaultComment = gView->sampleNameCtrl->text
       newComment = gettext("New comments for selected experiments",defaultComment,50,commentList)
       if(newComment == "cancel")
@@ -3046,7 +2983,9 @@ procedure(renameExperiments, self)
 # Loop over the selected experiments changing their folder comment
    bak = getcwd()
    entries = gView->history->list
-   for(idx = selection[0] to selection[1])
+   for(k = 0 to size(selection)-1)
+
+      idx = selection[k]
 
      # Text from list for this index
       entry = entries[idx]
@@ -3082,11 +3021,7 @@ procedure(renameExperiments, self)
    self->loadHistoryList()
 
 # Reselect the first selection
-   if(reverse)
-      self->history->zindex(selection[1])
-   else
-      self->history->zindex(selection[0])
-   endif
+   self->history->zindex(selection[0])
 
 # Update the comment in the parameter list groupbox label
    label = gView->exptParameterLabel->label() 
@@ -3097,9 +3032,6 @@ procedure(renameExperiments, self)
    endtry
    gView->exptParameterLabel->label("$protocol$ ($newComment$) $rest$")
 
-# Remove the multi-select view
-   gView->history->selection([-1,-1])
- 
    cd(bak)
 
 endproc()
@@ -3279,11 +3211,10 @@ endproc()
 procedure(selectCurrentHistoryEntry, self)
 
 # Remove multiple selection in history list
-   selection = gView->history->selection
-   if(selection[0] != -1)
-      idx = selection[0]
-      gView->history->selection([-1,-1])
-      gView->history->zindex(idx)
+   sel = gView->history->selection()
+   if(sel != null)
+      gView->history->selection(null)
+      gView->history->zindex(sel[0])
    endif
 
 endproc()
@@ -3469,9 +3400,17 @@ endproc()
 # Toggle between history and batch mode
 ###########################################################
 
-procedure(toggleBatchMode, self)
+procedure(toggleBatchMode, self, toggleMode = "exptCtrl")
 
    mode = self->exptModeCtrl->text
+
+   if((toggleMode == "menu")&(mode=="history"))
+      mode="batch"
+      self->exptModeCtrl->text("batch")
+   elseif((toggleMode == "menu")&(mode=="batch"))
+      mode="history"
+      self->exptModeCtrl->text("history")
+   endif
 
    if(mode == "history") # Hide all batch controls
 
@@ -3540,6 +3479,35 @@ procedure(toggleLinesAndText, self)
      curplot("1d")->showtext("true")
    endif
    curplot("1d")->draw("true")
+
+endproc()
+
+###########################################################
+# Enable or disable a grid on the current plot
+###########################################################
+
+procedure(togglePlotGrid,self)
+
+   plt = curplot()
+   if(plt->grid->xgrid() == "off")
+      state = "on"
+   else
+      state = "off"
+   endif
+
+   plt->draw("false")
+      if(plt->bkcolor == [255,255,255,0])
+         plt->grid->color([160,160,160])
+         plt->grid->finecolor([220,220,220])
+      else
+         plt->grid->color([100,100,100])
+         plt->grid->finecolor([50,50,50])
+      endif
+      plt->grid->xgrid(state)
+      plt->grid->ygrid(state)
+      plt->grid->finexgrid(state)
+      plt->grid->fineygrid(state)
+   plt->draw("true")
 
 endproc()
 
@@ -3614,7 +3582,7 @@ procedure(updateProjectPath, self, suppliedPath=null)
    
       selectedDir = dir
 
-   # Check if we are in a data folder - need to be one up then
+   # Check if we are in a data folder - if so need to be move up
       cd(dir)
       if(isfile("acqu.par") | isfile("spectrum.1d")) # Some std experiments don't have acqu.par
          cd("..")
@@ -3680,6 +3648,8 @@ procedure(updateProjectPath, self, suppliedPath=null)
 
    try
       gView->loadHistoryList()
+   # Save the window parameters
+      self->savePar()
       pr "\n   Info: '$baseDir$' is the new experiment base-path\n"
    catch
       dirList = getdirlist(baseDir)
@@ -3839,8 +3809,18 @@ procedure(viewHelp, self, whichHelp)
          bak = getcwd()
          cd(gData->curExpt->ppPath)
          txt = load("$gData->curExpt->protocol$.mac","text")
-         txt =  scanstr(txt,"%1procedure*")
+         txt =  scanstr(txt,"%1 U.I. V5*")
+         # Add enough # to match first line
+         for(k = 0 to size(txt)-1)
+            if(txt[k] != "#")
+               exitfor
+            endif
+         next(k)
          pr("\n\n$txt$")
+         for(l = 0 to k-2)
+            pr("#")
+         next(l)
+         pr("\n")
          cd(bak)
       endif
 
