@@ -11,12 +11,20 @@ Kea spectrometer.
 #include <shellapi.h>
 
 
-#define VERSION 2.28 // 27.1.22
+#define VERSION 2.29 // 18/8/2026
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version history
 //
 //
+// 2.29 ------------------------------
+// 1. Added DualShapedRFPulse1/2 commands (1 is a dummy command for now)
+// 2. Added abort options in MakeAnRFPulse.
+// 3. Added no - blanking('nb') options to RF pulse commands.
+// 4. Fixed sscanf bug in Increment / DecrementTableIndex
+// 5. Modified SelectGradient to allow for a string variable
+// 6. Added table option to SelectDuration
+// 
 // 2.28 -----------------------------
 // 1. Added dual channel shaped RF pulse shapedrf2
 // 
@@ -112,7 +120,7 @@ Kea spectrometer.
 // 1. Simplified TTL code for switching RF pulses.
 // 2. Allowed shaped pulses for channel 2.
 // 3. Removed shaped pulse option which uses 5 arguments.
-//
+// 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -167,7 +175,9 @@ short SetTTL(DLLParameters*,char *args);
 short SetTxFreq(DLLParameters*,char *args);
 short SetTxFreqs(DLLParameters* par, char *args);
 short ShapedGradientPulse(DLLParameters*,char *args);
-short ShapedRF(DLLParameters*,char *args);
+short ShapedRF(DLLParameters*, char* args);
+short ShapedRFPulse1(DLLParameters*, char* args);
+short ShapedRFPulse2(DLLParameters*, char* args);
 short SwitchOffGradient(DLLParameters*,char*);
 short SwitchOffShim(DLLParameters*,char*);
 short SwitchOffTx(DLLParameters*,char *args);
@@ -193,6 +203,8 @@ short AcquireDataOff(DLLParameters* par, char *args);
 short ShapedRFDualChannel(DLLParameters* par, char* args);
 short SkipOnZero(DLLParameters*,char*);
 short SkipEnd(DLLParameters*,char*);
+short DualShapedRFPulse1(DLLParameters* par, char* args);
+short DualShapedRFPulse2(DLLParameters* par, char* args);
 
 char **parList; // Parameter list - built up by pp commands
 long szList;    // Number of entries in parameter list
@@ -212,6 +224,8 @@ EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
    else if (!strcmp(command, "cleardata"))       r = ClearData(dpar, parameters);
    else if (!strcmp(command, "delay"))           r = MakeADelay(dpar, parameters);
    else if (!strcmp(command, "decindex"))        r = DecrementTableIndex(dpar, parameters);
+   else if (!strcmp(command, "dualshapedrf1"))   r = DualShapedRFPulse1(dpar, parameters);
+   else if (!strcmp(command, "dualshapedrf2"))   r = DualShapedRFPulse2(dpar, parameters);
    else if (!strcmp(command, "endloop"))         r = LoopEnd(dpar, parameters);
    else if (!strcmp(command, "endiftrue"))       r = SkipEnd(dpar, parameters);
    else if (!strcmp(command, "endskip"))         r = SkipEnd(dpar, parameters);
@@ -241,7 +255,8 @@ EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
    else if (!strcmp(command, "settxfreqs"))      r = SetTxFreqs(dpar, parameters);
    else if (!strcmp(command, "shapedgrad"))      r = ShapedGradientPulse(dpar, parameters);
    else if (!strcmp(command, "shapedrf"))        r = ShapedRF(dpar, parameters);
-   else if (!strcmp(command, "shapedrf2"))       r = ShapedRFDualChannel(dpar, parameters);
+   else if (!strcmp(command, "shapedrf1"))       r = ShapedRFPulse1(dpar, parameters);
+   else if (!strcmp(command, "shapedrf2"))       r = ShapedRFPulse2(dpar, parameters);
    else if (!strcmp(command, "skiponzero"))      r = SkipOnZero(dpar, parameters);
    else if (!strcmp(command, "skiponfalse"))     r = SkipOnZero(dpar, parameters);
    else if (!strcmp(command, "ttl"))             r = TTLOn(dpar, parameters);
@@ -265,51 +280,53 @@ EXPORT short  AddCommands(char *command, char *parameters, DLLParameters *dpar)
 EXPORT void  ListCommands(void)
 {
    TextMessage("\n\n   Kea-2 Pulse Programmer DLL module (V%1.2f)\n\n",VERSION);
-   TextMessage("   acqlong ..... acquire some data with extra long dwell-times\n");
-   TextMessage("   acquire ..... acquire some data\n");
-   TextMessage("   acquireon ... start acquiring some data\n");
-   TextMessage("   acquireoff .. complete acquiring the data\n");
-   TextMessage("   chirprf ..... make a frequency and amplitude moduated RF pulse\n");
-   TextMessage("   cleardata ... clear data memory\n");
-   TextMessage("   decindex .... decrement a table index\n");
-   TextMessage("   delay ....... generate a short delay\n");
-   TextMessage("   endloop ..... end a loop\n");
-   TextMessage("   endpp ....... finish the pulse program\n");
-   TextMessage("   endiftrue ... end a iftrue block\n");
-   TextMessage("   endskip ..... end a skip\n");
-   TextMessage("   execwait .... execute a program and wait for it to exit\n");
-   TextMessage("   gradon ...... set a gradient\n");
-   TextMessage("   gradoff ..... zero a gradient\n");
-   TextMessage("   gradramp .... change one or more gradients using a linear ramp (4 channel)\n");
-   TextMessage("   incrxfreq ... increment the rx frequency\n");
-   TextMessage("   inctxfreq ... increment the tx frequency\n");
-   TextMessage("   initpp ...... initialise pulse program\n");
-   TextMessage("   incindex .... increment a table index\n");
-   TextMessage("   inctxamp .... increment tx amplitude\n");
-   TextMessage("   loop ........ start a loop\n");
-   TextMessage("   memreset .... reset memory pointer\n");
-   TextMessage("   ppversion ... returns the version number of this DLL\n");
-   TextMessage("   pulse ....... generate an RF pulse\n");
-   TextMessage("   setindex .... set a table index\n");
-   TextMessage("   setrxfreq ... set the receive frequency\n");
-   TextMessage("   setlfrxgain . set the low frequency receive amplifier gain\n");
-   TextMessage("   setlfrxoffset set the low frequency receive amplifier offset\n");
-   TextMessage("   setrxgain ... set the receive amplifier gain\n");
-   TextMessage("   settxfreq ... set the pulse frequency\n");
-   TextMessage("   settxfreqs .. set the pulse frequencies for both channels\n");
-   TextMessage("   shapedrf .... make a phase and amplitude moduated RF pulse\n");
-   TextMessage("   shapedrf2 ... make a dual channel phase and amplitude moduated RF pulse\n");
-   TextMessage("   shapedgrad .. make an amplitude modulated gradient pulse (4 channel controller)\n");
-   TextMessage("   ttlon ....... switch on a TTL level\n");
-   TextMessage("   ttloff ...... switch off a TTL level\n");
-   TextMessage("   ttldupon .... switch the TTL level for the LF duplexer\n");
-   TextMessage("   ttldupoff ... switch off the TTL level for the LF duplexer\n");
-   TextMessage("   ttlpulse .... generate TTL pulse\n");
-   TextMessage("   ttltranslate  translate TTL pin number to byte code\n");
-   TextMessage("   trigger ..... wait for trigger input\n");
-   TextMessage("   txoff ....... turn off the transmitter output\n");
-   TextMessage("   txon ........ turn on the transmitter output\n");
-   TextMessage("   wait ........ generate a long delay\n");
+   TextMessage("   acqlong ........ acquire some data with extra long dwell-times\n");
+   TextMessage("   acquire ........ acquire some data\n");
+   TextMessage("   acquireon ...... start acquiring some data\n");
+   TextMessage("   acquireoff ..... complete acquiring the data\n");
+   TextMessage("   chirprf ........ make a frequency and amplitude moduated RF pulse\n");
+   TextMessage("   cleardata ...... clear data memory\n");
+   TextMessage("   decindex ....... decrement a table index\n");
+   TextMessage("   delay .......... generate a short delay\n");
+   TextMessage("   dualshapedrf1 .. make an amplitude moduated RF pulse on channel 1 and 2\n");
+   TextMessage("   dualshapedrf2 .. make a phase and amplitude moduated RF pulse on channel 1 and 2\n");
+   TextMessage("   endloop ........ end a loop\n");
+   TextMessage("   endpp .......... finish the pulse program\n");
+   TextMessage("   endiftrue ...... end a iftrue block\n");
+   TextMessage("   endskip ........ end a skip\n");
+   TextMessage("   execwait ....... execute a program and wait for it to exit\n");
+   TextMessage("   gradon ......... set a gradient\n");
+   TextMessage("   gradoff ........ zero a gradient\n");
+   TextMessage("   gradramp ....... change one or more gradients using a linear ramp (4 channel)\n");
+   TextMessage("   incrxfreq ...... increment the rx frequency\n");
+   TextMessage("   inctxfreq ...... increment the tx frequency\n");
+   TextMessage("   initpp ......... initialise pulse program\n");
+   TextMessage("   incindex ....... increment a table index\n");
+   TextMessage("   inctxamp ....... increment tx amplitude\n");
+   TextMessage("   loop ........... start a loop\n");
+   TextMessage("   memreset ....... reset memory pointer\n");
+   TextMessage("   ppversion ...... returns the version number of this DLL\n");
+   TextMessage("   pulse .......... generate an RF pulse\n");
+   TextMessage("   setindex ....... set a table index\n");
+   TextMessage("   setrxfreq ...... set the receive frequency\n");
+   TextMessage("   setlfrxgain .... set the low frequency receive amplifier gain\n");
+   TextMessage("   setlfrxoffset... set the low frequency receive amplifier offset\n");
+   TextMessage("   setrxgain ...... set the receive amplifier gain\n");
+   TextMessage("   settxfreq ...... set the pulse frequency\n");
+   TextMessage("   settxfreqs ..... set the pulse frequencies for both channels\n");
+   TextMessage("   shapedrf ....... make a phase and amplitude moduated RF pulse\n");
+   TextMessage("   shapedrf2 ...... make a dual channel phase and amplitude moduated RF pulse\n");
+   TextMessage("   shapedgrad ..... make an amplitude modulated gradient pulse (4 channel controller)\n");
+   TextMessage("   ttlon .......... switch on a TTL level\n");
+   TextMessage("   ttloff ......... switch off a TTL level\n");
+   TextMessage("   ttldupon ....... switch the TTL level for the LF duplexer\n");
+   TextMessage("   ttldupoff ...... switch off the TTL level for the LF duplexer\n");
+   TextMessage("   ttlpulse ....... generate TTL pulse\n");
+   TextMessage("   ttltranslate ... translate TTL pin number to byte code\n");
+   TextMessage("   trigger ........ wait for trigger input\n");
+   TextMessage("   txoff .......... turn off the transmitter output\n");
+   TextMessage("   txon ........... turn on the transmitter output\n");
+   TextMessage("   wait ........... generate a long delay\n");
 }
 
 /*******************************************************************************
@@ -320,54 +337,56 @@ EXPORT bool GetCommandSyntax(char* cmd, char* syntax)
 {
    syntax[0] = '\0';
 
-   if(!strcmp(cmd,"acqulong"))           strcpy(syntax,"acqulong(mode, number points:n, points to average:n, scale factor:n)");
-   else if(!strcmp(cmd,"acquire"))       strcpy(syntax,"acquire(mode, number points:n, [duration:d])");
-   else if(!strcmp(cmd,"acquireon"))     strcpy(syntax,"acquireon(number points:n)");
-   else if(!strcmp(cmd,"acquireoff"))    strcpy(syntax,"acquireoff(number points:n)");
-   else if(!strcmp(cmd,"chirprf"))       strcpy(syntax,"chirprf(mode, atable:t, ftable:f, phase:p, table_size:n, table_step_duration:d)");
-   else if(!strcmp(cmd,"cleardata"))     strcpy(syntax,"cleardata(number:n)");
-   else if(!strcmp(cmd,"decindex"))      strcpy(syntax,"decindex(table:t)");
-   else if(!strcmp(cmd,"delay"))         strcpy(syntax,"delay(duration:d)");
-   else if(!strcmp(cmd,"endloop"))       strcpy(syntax,"endloop(name)");
-   else if(!strcmp(cmd,"endpp"))         strcpy(syntax,"endpp()");
-   else if(!strcmp(cmd,"endskip"))       strcpy(syntax,"endskip(name)");
-   else if(!strcmp(cmd,"endiftrue"))     strcpy(syntax,"endiftrue(name)");
-   else if(!strcmp(cmd,"execwait"))      strcpy(syntax,"execwait(program,arguments)");
-   else if(!strcmp(cmd,"gradon"))        strcpy(syntax,"gradon(address:n,level:n/t)");
-   else if(!strcmp(cmd,"shimon"))        strcpy(syntax,"shimon(address:n,level:n/t)");
-   else if(!strcmp(cmd,"gradoff"))       strcpy(syntax,"gradoff(address:n)");
-   else if(!strcmp(cmd,"gradramp"))      strcpy(syntax,"gradramp([address(1-4):n, start(1-4):n/t, end(1-4):n/t], steps:n, delay:d)]]");
-   else if(!strcmp(cmd,"incindex"))      strcpy(syntax,"incindex(table:t)");
-   else if(!strcmp(cmd,"incrxfreq"))     strcpy(syntax,"incrxfreq(increment:f)");
-   else if(!strcmp(cmd,"inctxfreq"))     strcpy(syntax,"inctxfreq(increment:f)");
-   else if(!strcmp(cmd,"inctxamp"))      strcpy(syntax,"inctxamp(amp:a, increment:a)");
-   else if(!strcmp(cmd,"initpp"))        strcpy(syntax,"initpp(filename)");
-   else if(!strcmp(cmd,"loop"))          strcpy(syntax,"loop(name,n)");
-   else if(!strcmp(cmd,"memreset"))      strcpy(syntax,"memreset([address:n])");
-   else if(!strcmp(cmd,"nop"))           strcpy(syntax,"nop()");     
-   else if(!strcmp(cmd,"ppversion"))     strcpy(syntax,"(INT v) = ppversion()");
-	else if(!strcmp(cmd,"pulse"))         strcpy(syntax,"pulse(mode, amp:a, phase:p, duration:d [,freq:f] OR pulse(ch1 ,a1, p1, f1, ch2 ,a2, p2, f2, d])");
-   else if(!strcmp(cmd,"setindex"))      strcpy(syntax,"setindex(table:t,index:n)");
-   else if(!strcmp(cmd,"setrxfreq"))     strcpy(syntax,"setrxfreq(freq:f)");
-   else if(!strcmp(cmd,"settxfreq"))     strcpy(syntax,"settxfreq(freq:f) OR settxfreq(channel:1/2 freq:f) ");
-   else if(!strcmp(cmd,"settxfreqs"))    strcpy(syntax,"settxfreqs(freq1:f, freq2:f)");
-   else if(!strcmp(cmd,"setrxgain"))     strcpy(syntax,"setrxgain(gain:g)");
-   else if(!strcmp(cmd,"setlfrxgain"))   strcpy(syntax,"setlfrxgain(gain:g)");
-   else if(!strcmp(cmd,"setlfrxoffset")) strcpy(syntax,"setlfrxoffset(offset:n)");
-   else if (!strcmp(cmd,"shapedrf"))    strcpy(syntax, "shapedrf(mode, atable:t, stable:t, phase:p, table_size:n, table_step_duration:d)");
-   else if (!strcmp(cmd,"shapedrf2"))   strcpy(syntax, "shapedrf2(mode, atable:t, stable:t, phase1:p, phase2:p, freq1:f, freq2:f, table_size:n, table_step_duration:d)");
-   else if(!strcmp(cmd,"shapedgrad"))    strcpy(syntax,"shapedgrad(address:n, atable:t, table_size:n, table_step_duration:d)");
-   else if(!strcmp(cmd,"trigger"))       strcpy(syntax,"trigger(mode, ignore:n)");
-   else if(!strcmp(cmd,"ttltranslate"))  strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
-   else if(!strcmp(cmd,"ttl"))           strcpy(syntax,"ttl(byte:b)");
-   else if(!strcmp(cmd,"ttlon"))         strcpy(syntax,"ttlon(byte:b)");
-   else if(!strcmp(cmd,"ttldupon"))      strcpy(syntax,"ttldupon()");
-   else if(!strcmp(cmd,"ttloff"))        strcpy(syntax,"ttloff(byte:b)");
-   else if(!strcmp(cmd,"ttldupoff"))     strcpy(syntax,"ttldupoff()");
-   else if(!strcmp(cmd,"ttlpulse"))      strcpy(syntax,"ttlpulse(byte:b, duration:d)");
-   else if(!strcmp(cmd,"txoff"))         strcpy(syntax,"txoff(mode)");
-	else if(!strcmp(cmd,"txon"))          strcpy(syntax,"txon(mode, amp:a, phase:p [,freq:f]) OR txon(ch1, a1, p1, f1, ch2, a2, p2, f2)");
-   else if(!strcmp(cmd,"wait"))          strcpy(syntax,"wait(duration:w)");
+   if(!strcmp(cmd,"acqulong"))              strcpy(syntax,"acqulong(mode, number points:n, points to average:n, scale factor:n)");
+   else if(!strcmp(cmd,"acquire"))          strcpy(syntax,"acquire(mode, number points:n, [duration:d])");
+   else if(!strcmp(cmd,"acquireon"))        strcpy(syntax,"acquireon(number points:n)");
+   else if(!strcmp(cmd,"acquireoff"))       strcpy(syntax,"acquireoff(number points:n)");
+   else if(!strcmp(cmd,"chirprf"))          strcpy(syntax,"chirprf(mode, atable:t, ftable:f, phase:p, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"cleardata"))        strcpy(syntax,"cleardata(number:n)");
+   else if(!strcmp(cmd,"decindex"))         strcpy(syntax,"decindex(table:t)");
+   else if(!strcmp(cmd,"delay"))            strcpy(syntax,"delay(duration:d)");
+   else if(!strcmp(cmd,"dualshapedrf1"))    strcpy(syntax,"dualshapedrf1(blanking:yes/no, ptable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d)");
+   else if(!strcmp(cmd,"dualshapedrf2"))    strcpy(syntax,"dualshapedrf1(blanking:yes/no, aptable:t, phase1 : p, phase2 : p,  table_size : n, table_step_duration : d)");
+   else if(!strcmp(cmd,"endloop"))          strcpy(syntax,"endloop(name)");
+   else if(!strcmp(cmd,"endpp"))            strcpy(syntax,"endpp()");
+   else if(!strcmp(cmd,"endskip"))          strcpy(syntax,"endskip(name)");
+   else if(!strcmp(cmd,"endiftrue"))        strcpy(syntax,"endiftrue(name)");
+   else if(!strcmp(cmd,"execwait"))         strcpy(syntax,"execwait(program,arguments)");
+   else if(!strcmp(cmd,"gradon"))           strcpy(syntax,"gradon(address:n,level:n/t)");
+   else if(!strcmp(cmd,"shimon"))           strcpy(syntax,"shimon(address:n,level:n/t)");
+   else if(!strcmp(cmd,"gradoff"))          strcpy(syntax,"gradoff(address:n)");
+   else if(!strcmp(cmd,"gradramp"))         strcpy(syntax,"gradramp([address(1-4):n, start(1-4):n/t, end(1-4):n/t], steps:n, delay:d)]]");
+   else if(!strcmp(cmd,"incindex"))         strcpy(syntax,"incindex(table:t)");
+   else if(!strcmp(cmd,"incrxfreq"))        strcpy(syntax,"incrxfreq(increment:f)");
+   else if(!strcmp(cmd,"inctxfreq"))        strcpy(syntax,"inctxfreq(increment:f)");
+   else if(!strcmp(cmd,"inctxamp"))         strcpy(syntax,"inctxamp(amp:a, increment:a)");
+   else if(!strcmp(cmd,"initpp"))           strcpy(syntax,"initpp(filename)");
+   else if(!strcmp(cmd,"loop"))             strcpy(syntax,"loop(name,n)");
+   else if(!strcmp(cmd,"memreset"))         strcpy(syntax,"memreset([address:n])");
+   else if(!strcmp(cmd,"nop"))              strcpy(syntax,"nop()");
+   else if(!strcmp(cmd,"ppversion"))        strcpy(syntax,"(INT v) = ppversion()");
+	else if(!strcmp(cmd,"pulse"))            strcpy(syntax,"pulse(mode, amp:a, phase:p, duration:d [,freq:f] OR pulse(ch1 ,a1, p1, f1, ch2 ,a2, p2, f2, d])");
+   else if(!strcmp(cmd,"setindex"))         strcpy(syntax,"setindex(table:t,index:n)");
+   else if(!strcmp(cmd,"setrxfreq"))        strcpy(syntax,"setrxfreq(freq:f)");
+   else if(!strcmp(cmd,"settxfreq"))        strcpy(syntax,"settxfreq(freq:f) OR settxfreq(channel:1/2 freq:f) ");
+   else if(!strcmp(cmd,"settxfreqs"))       strcpy(syntax,"settxfreqs(freq1:f, freq2:f)");
+   else if(!strcmp(cmd,"setrxgain"))        strcpy(syntax,"setrxgain(gain:g)");
+   else if(!strcmp(cmd,"setlfrxgain"))      strcpy(syntax,"setlfrxgain(gain:g)");
+   else if(!strcmp(cmd,"setlfrxoffset"))    strcpy(syntax,"setlfrxoffset(offset:n)");
+   else if (!strcmp(cmd,"shapedrf"))        strcpy(syntax, "shapedrf(mode, atable:t, stable:t, phase:p, table_size:n, table_step_duration:d)");
+   else if (!strcmp(cmd,"shapedrf2"))       strcpy(syntax, "shapedrf2(mode, atable:t, stable:t, phase1:p, phase2:p, freq1:f, freq2:f, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"shapedgrad"))       strcpy(syntax,"shapedgrad(address:n, atable:t, table_size:n, table_step_duration:d)");
+   else if(!strcmp(cmd,"trigger"))          strcpy(syntax,"trigger(mode, ignore:n)");
+   else if(!strcmp(cmd,"ttltranslate"))     strcpy(syntax,"(INT byte) = ttltranslate(pin number)");
+   else if(!strcmp(cmd,"ttl"))              strcpy(syntax,"ttl(byte:b)");
+   else if(!strcmp(cmd,"ttlon"))            strcpy(syntax,"ttlon(byte:b)");
+   else if(!strcmp(cmd,"ttldupon"))         strcpy(syntax,"ttldupon()");
+   else if(!strcmp(cmd,"ttloff"))           strcpy(syntax,"ttloff(byte:b)");
+   else if(!strcmp(cmd,"ttldupoff"))        strcpy(syntax,"ttldupoff()");
+   else if(!strcmp(cmd,"ttlpulse"))         strcpy(syntax,"ttlpulse(byte:b, duration:d)");
+   else if(!strcmp(cmd,"txoff"))            strcpy(syntax,"txoff(mode)");
+	else if(!strcmp(cmd,"txon"))             strcpy(syntax,"txon(mode, amp:a, phase:p [,freq:f]) OR txon(ch1, a1, p1, f1, ch2, a2, p2, f2)");
+   else if(!strcmp(cmd,"wait"))             strcpy(syntax,"wait(duration:w)");
 
 
    if(syntax[0] == '\0')
@@ -1312,14 +1331,15 @@ short SetTxFreqs(DLLParameters* par, char *args)
 short MakeAnRFPulse(DLLParameters* par, char *args)
 {
    CArg carg;
+   short r = OK;
 
    short nrArgs = carg.Count(args);
 
    if(nrArgs <= 5)
-      EitherChannelRFPulse(par,args);
+      r = EitherChannelRFPulse(par,args);
 
    else if(nrArgs == 9)
-      BothChannelsRFPulse(par,args);
+      r = BothChannelsRFPulse(par,args);
 
    else
    {
@@ -1327,7 +1347,7 @@ short MakeAnRFPulse(DLLParameters* par, char *args)
       return(ERR);
    }
 
-   return(OK);
+   return(r);
 }
 
 
@@ -1418,9 +1438,9 @@ short BothChannelsRFPulse(DLLParameters* par, char *args)
       fprintf(fp,"\n        or      #$50000,a               ; TTL 0x01 (pin 5) & TTL 0x04 (pin 4)");
    else if(ch1 == "i" && ch2 == "2")
       fprintf(fp,"\n        or      #$44000,a               ; Internal HPA & TTL 0x04 (pin 4)");
-   else
+   else if(ch1 != "1nb" && ch2 != "2nb")
    {
-      Error(par->itfc,"invalid channel values ch1 = {i,e,1} ch2 = {2}");
+      Error(par->itfc,"invalid channel values ch1 = {i,e,1,1nb} ch2 = {2,2nb}");
       return(ERR);
    }
 
@@ -1558,7 +1578,7 @@ short EitherChannelRFPulse(DLLParameters* par,char *args)
       return(ERR);
    }
 
-   if(channel == "i" || channel == "e" || channel == "1" || channel == "2")
+   if(channel == "i" || channel == "e" || channel == "1" || channel == "2" || channel == "1nb" || channel == "2nb")
 	{
 		fprintf(fp,"\n\n;");
 		fprintf(fp,"\n;***************************************************************************");
@@ -1585,7 +1605,7 @@ short EitherChannelRFPulse(DLLParameters* par,char *args)
 		   fprintf(fp,"\n        or      #$004000,a              ; Internal HPA");
 	   else if(channel == "1" || channel == "e") // External channel 1 Kea pulse
 			fprintf(fp,"\n        or      #$010000,a              ; TTL 0x01 (pin 5)");
-      else
+      else if(channel == "2")
          fprintf(fp,"\n        or      #$040000,a               ; TTL 0x04 (pin 4)");
 
 		fprintf(fp,"\n        move    a1,y:TTL                ; Save new TTL word");
@@ -1655,7 +1675,7 @@ short EitherChannelRFPulse(DLLParameters* par,char *args)
 
       fprintf(fp,"\n        move    #$000000,a1"); 
 
-		if(channel == "2")
+      if (channel[0] == '2')
 		{
 			fprintf(fp,"\n        move    a1,x:FPGA_DDS2_Pro0      ;Zero amplitude");
 		}
@@ -2659,6 +2679,429 @@ short ShapedRF(DLLParameters* par, char *args)
    return(OK);
 }
 
+/*
+* Dummy code for FX3 support (single channel amplitude modulated pulse)
+*/
+
+short ShapedRFPulse1(DLLParameters* par, char* args)
+{
+   short nrArgs;
+   CText channel, dur, atable, size, phase, duration;
+
+   if ((nrArgs = ArgScan(par->itfc, args, 5, "channel, atable, phase, table_size, table_step [,frequency]", "eeeee", "qqqqq", &channel, &atable, &phase, &size, &duration)) < 0)
+      return(nrArgs);
+   if (!parList)
+   {
+      ErrorMessage("Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(atable.Str(), &parList, szList);
+   if (phase[0] == 'p' || phase[0] == 'n')
+      InsertUniqueStringIntoList(phase.Str(), &parList, szList);
+   if (size[0] == 'n')
+      InsertUniqueStringIntoList(size.Str(), &parList, szList);
+   if (duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(), &parList, szList);
+
+   ErrorMessage("ShapedRFPulse1 not implemented yet on DSP\n");
+
+   return(ERR);
+}
+
+/*
+* Single channel amplitude and phase modulated pulse - added for compatibility with FX3
+* The 2 tables should be interleaved as amp[0], ph[0], amp1[1], ph1[1],  ...
+* Minimum table step is 2 us.
+*/
+
+short ShapedRFPulse2(DLLParameters* par, char* args)
+{
+   short nrArgs;
+   CText channel, dur, aptable, size, phase, duration;
+   long Duration, Phase, Size;
+   float fDuration;
+   const int pgoOffset = 5;
+   const int firstDelay = 198;
+   const int midDelay = 149;
+   const int endDelay = 98;
+
+   if ((nrArgs = ArgScan(par->itfc, args, 5, "channel, aptables, phase, table_size, table_step", "eeeee", "qqqqq", &channel, &aptable, &phase, &size, &duration)) < 0)
+      return(nrArgs);
+   if (!parList)
+   {
+      ErrorMessage("Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(aptable.Str(), &parList, szList);
+   if (phase[0] == 'p' || phase[0] == 'n')
+      InsertUniqueStringIntoList(phase.Str(), &parList, szList);
+   if (size[0] == 'n')
+      InsertUniqueStringIntoList(size.Str(), &parList, szList);
+   if (duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(), &parList, szList);
+
+   FILE* fp = fopen("midCode.asm", "a");
+   if (!fp)
+   {
+      ErrorMessage("Can't open output file");
+      return(ERR);
+   }
+
+   if (channel[0] == '1') // Channel 1
+   {
+      fprintf(fp, "\n\n;");
+      fprintf(fp, "\n;***************************************************************************");
+      fprintf(fp, "\n; Generate a modulated internal pulse (ch 1)");
+      fprintf(fp, "\n;");
+
+      fprintf(fp, "\n        clr a                           ; Clear the accumulator");
+      fprintf(fp, "\n        move    y:TTL,x1                ; Load the current TTL level");
+      if (channel == '1') // Channel 1
+         fprintf(fp, "\n        move    #$04000,a1              ; Switch on rf bias (internal ch1)");
+      else
+         fprintf(fp, "\n        move    #$00000,a1              ; Switch off rf bias (internal ch1)");
+
+      fprintf(fp, "\n        or      x1,a1                   ; Combine with ttl output");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+      fprintf(fp, "\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp, "\n        move    x:PGO,a1                ; All delays add to 1us before pulse comes on");
+      fprintf(fp, "\n        add     #%d,a", pgoOffset);
+      fprintf(fp, "\n        movep   a1,x:A_TCPR2");
+      fprintf(fp, "\n        nop");
+      fprintf(fp, "\n        movep   #$200A01,x:A_TCSR2");
+
+      // Get the table addresse
+      fprintf(fp, "\n; Get the amplitude and phase table pointers");
+      fprintf(fp, "\n        move    x:TABLE%s,r5", aptable.Str() + 1);
+
+      // Get the size of the tables
+      if (size[0] == 'n')
+      {
+         fprintf(fp, "\n        move    x:NR%s,r2", size.Str() + 1);
+      }
+      else if (sscanf(size.Str(), "%ld", &Size) == 1)
+      {
+         if (Size < 4)
+         {
+            ErrorMessage("invalid table size '%s' [>= 4]", size);
+            fclose(fp);
+            return(ERR);
+         }
+         fprintf(fp, "\n        move    #%ld,r2", Size);
+      }
+      fprintf(fp, "\n        move    r2,a0");
+      fprintf(fp, "\n        dec     a                        ; Decrement because first value already used");
+      fprintf(fp, "\n        move    a0,r2");
+
+      fprintf(fp, "\n; Set the rf output to its initial value");
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+      // Add phase shift for phase cycling
+      if (phase[0] == 'p')
+         fprintf(fp, "\n        move    x:TXP%s,y1", phase.Str() + 1);
+      else if (phase[0] == 'n')
+         fprintf(fp, "\n        move    x:NR%s,y1", phase.Str() + 1);
+      else if (sscanf(phase.Str(), "%ld", &Phase) == 1)
+         fprintf(fp, "\n        move    #%ld,y1", Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'", phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+
+      fprintf(fp, "\n        add     y1,a                    ; Add phase to table");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+
+
+      fprintf(fp, "\n; Wait for pgo delay to end");
+      fprintf(fp, "\n        jclr    #21,x:A_TCSR2,*");
+      fprintf(fp, "\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+      // Load step length
+      fprintf(fp, "\n; Load step length");
+      if (duration[0] == 'd')
+      {
+         fprintf(fp, "\n        move    x:DELAY%s,a1", duration.Str() + 1);
+      }
+      else if (sscanf(duration.Str(), "%f", &fDuration) == 1)
+      {
+         if (fDuration < 2 || fDuration > 327670)
+         {
+            ErrorMessage("invalid duration '%g' [2...327670]", fDuration);
+            fclose(fp);
+            return(ERR);
+         }
+         Duration = (long)(fDuration * 50 - 1 + 0.5);
+         fprintf(fp, "\n        move   #%ld,a1", Duration);
+      }
+      else
+      {
+         ErrorMessage("Invalid duration reference '%s'", duration.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      // Delay to get length of first pulse step correct
+      fprintf(fp, "\n        lsl     #1,a");
+      fprintf(fp, "\n        sub     #%d,a", firstDelay);
+      fprintf(fp, "\n        move    a,b");
+
+      fprintf(fp, "\n; Start modulated pulse");
+      fprintf(fp, "\n        move    #$04008,a1              ; Switch on rf (internal ch1)");
+      fprintf(fp, "\n        or      x1,a1                   ; and combine with internal ttl bias line");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+      fprintf(fp, "\n; Delay for correct first step length");
+      fprintf(fp, "\n        move    b,a");
+      fprintf(fp, "\n        move    a1,a0");
+      fprintf(fp, "\n        rep     a0");
+      fprintf(fp, "\n        nop");
+
+      fprintf(fp, "\n        rep     #59"); // Adjust delay if the frequency has not been set
+      fprintf(fp, "\n        nop");
+
+      // Calculate delay for subsequent steps
+      fprintf(fp, "\n; Calculate subsequent step length delay");
+      fprintf(fp, "\n        add     #%d,a", midDelay);
+      fprintf(fp, "\n        move    a1,a0");
+
+      // Loop over the tables
+      fprintf(fp, "\n        do      r2,LBL%ld               ; Step the amplitude r2 times", label);
+
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0      ; Set amplitude");
+
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+
+      // Add phase shift for phase cycling
+      if (phase[0] == 'p')
+         fprintf(fp, "\n        move    x:TXP%s,y1", phase.Str() + 1);
+      else if (phase[0] == 'n')
+         fprintf(fp, "\n        move    x:NR%s,y1", phase.Str() + 1);
+      else if (sscanf(phase.Str(), "%ld", &Phase) == 1)
+         fprintf(fp, "\n        move    #%ld,y1", Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'", phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp, "\n        add     y1,a                    ; Add phase to table");
+
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0      ; Set phase");
+
+      fprintf(fp, "\n        rep     #17"); // Adjust delay 
+      fprintf(fp, "\n        nop");
+
+
+      fprintf(fp, "\n; Adjust for correct step length");
+      fprintf(fp, "\n        rep     a0");
+      fprintf(fp, "\n        nop");
+
+      fprintf(fp, "\nLBL%ld  nop", label++);
+
+      fprintf(fp, "\n; End Delay (correct for last pulse)");
+      fprintf(fp, "\n        rep     #%d", endDelay);
+      fprintf(fp, "\n        nop");
+
+
+      fprintf(fp, "\n; End pulse");
+      fprintf(fp, "\n        move    #$000000,a1");
+      fprintf(fp, "\n        or      x1,a1                   ; Combine with TTL output");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+      fprintf(fp, "\n        move    #$000000,a1             ; Zero amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+      fprintf(fp, "\n        move    #$000000,a1             ; Zero phase");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+
+      fclose(fp);
+   }
+
+
+   else if (channel[0] == '2') // Channel 2 pulse
+   {
+      fprintf(fp, "\n\n;");
+      fprintf(fp, "\n;***************************************************************************");
+
+      fprintf(fp, "\n; Generate a modulated external pulse (ch 2)");
+      fprintf(fp, "\n;");
+
+      fprintf(fp, "\n        clr a                           ; Clear the accumulator");
+      fprintf(fp, "\n        move    y:TTL,x1                ; Load the current TTL level");
+      if (channel == '2') // Channel 2
+         fprintf(fp, "\n        move    #$00300,a1              ; Switch on rf bias (ch2)");
+      else
+         fprintf(fp, "\n        move    #$00000,a1              ; Switch off rf bias (ch2)");
+      fprintf(fp, "\n        or      x1,a1                   ; Combine with ttl output");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+      fprintf(fp, "\n; Start a timer to give pgo delay before RF comes on");
+      fprintf(fp, "\n        move    x:PGO,a1                ; All delays add to 1us before pulse comes on");
+      fprintf(fp, "\n        add     #%d,a", pgoOffset);
+      fprintf(fp, "\n        movep   a1,x:A_TCPR2");
+      fprintf(fp, "\n        nop");
+      fprintf(fp, "\n        movep   #$200A01,x:A_TCSR2");
+
+      // Get the table addresses
+      fprintf(fp, "\n; Get the amplitude and phase table pointers");
+      fprintf(fp, "\n        move    x:TABLE%s,r5", aptable.Str() + 1);
+
+      // Get the size of the tables
+      if (size[0] == 'n')
+      {
+         fprintf(fp, "\n        move    x:NR%s,r2", size.Str() + 1);
+      }
+      else if (sscanf(size.Str(), "%ld", &Size) == 1)
+      {
+         if (Size < 2)
+         {
+            ErrorMessage("invalid table size '%s' [>= 2]", size);
+            fclose(fp);
+            return(ERR);
+         }
+         fprintf(fp, "\n        move    #%ld,r2", Size);
+      }
+      fprintf(fp, "\n        move    r2,a0");
+      fprintf(fp, "\n        dec     a                        ; Decrement because first value already used");
+      fprintf(fp, "\n        move    a0,r2");
+
+      fprintf(fp, "\n; Set the rf output to its initial value");
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+      // Add phase shift for phase cycling
+      if (phase[0] == 'p')
+         fprintf(fp, "\n        move    x:TXP%s,y1", phase.Str() + 1);
+      else if (phase[0] == 'n')
+         fprintf(fp, "\n        move    x:NR%s,y1", phase.Str() + 1);
+      else if (sscanf(phase.Str(), "%ld", &Phase) == 1)
+         fprintf(fp, "\n        move    #%ld,y1", Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'", phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp, "\n        add     y1,a                    ; Add phase to table");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+
+      fprintf(fp, "\n; Wait for pgo delay to end");
+      fprintf(fp, "\n        jclr    #21,x:A_TCSR2,*");
+      fprintf(fp, "\n        movep   #$200A00,x:A_TCSR2      ; Turn off timer");
+
+      fprintf(fp, "\n; Start modulated pulse");
+      fprintf(fp, "\n        move    #$00302,a1              ; Switch on rf (external ch2)");
+      fprintf(fp, "\n        or      x1,a1                   ; and combine with internal ttl bias line");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+      fprintf(fp, "\n        move    a,b");
+
+
+      // Load step length
+      fprintf(fp, "\n; Load step length");
+      if (duration[0] == 'd')
+      {
+         fprintf(fp, "\n        move    x:DELAY%s,a1", duration.Str() + 1);
+      }
+      else if (sscanf(duration.Str(), "%f", &fDuration) == 1)
+      {
+         if (fDuration < 2 || fDuration > 327670)
+         {
+            ErrorMessage("invalid duration '%g' [2...327670]", fDuration);
+            fclose(fp);
+            return(ERR);
+         }
+         Duration = (long)(fDuration * 50 - 1 + 0.5);
+         fprintf(fp, "\n        move   #%ld,a1", Duration);
+      }
+      else
+      {
+         ErrorMessage("Invalid duration reference '%s'", duration.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      // Delay to get length of first pulse step correct
+      fprintf(fp, "\n        lsl     #1,a");
+      fprintf(fp, "\n        sub     #%d,a", firstDelay);
+      fprintf(fp, "\n        move    a1,a0");
+
+      fprintf(fp, "\n; Delay for correct first step length");
+      fprintf(fp, "\n        rep     a0");
+      fprintf(fp, "\n        nop");
+
+      if (nrArgs == 6)
+      {
+         fprintf(fp, "\n        rep     #60"); // Adjust delay if the frequency has not been set
+         fprintf(fp, "\n        nop");
+      }
+
+      // Calculate delay for subsequent steps
+      fprintf(fp, "\n; Calculate subsequent step length delay");
+      fprintf(fp, "\n        add     #%d,a", midDelay);
+      fprintf(fp, "\n        move    a1,a0");
+
+      // Loop over the tables
+      fprintf(fp, "\n        do      r2,LBL%ld               ; Step the amplitude r2 times", label);
+
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0      ; Set amplitude");
+
+      fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+
+      // Add phase shift for phase cycling
+      if (phase[0] == 'p')
+         fprintf(fp, "\n        move    x:TXP%s,y1", phase.Str() + 1);
+      else if (phase[0] == 'n')
+         fprintf(fp, "\n        move    x:NR%s,y1", phase.Str() + 1);
+      else if (sscanf(phase.Str(), "%ld", &Phase) == 1)
+         fprintf(fp, "\n        move    #%ld,y1", Phase);
+      else
+      {
+         ErrorMessage("invalid phase value '%s'", phase.Str());
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp, "\n        add     y1,a                    ; Add phase to table");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0      ; Set phase");
+
+
+      fprintf(fp, "\n        rep     #17");
+      fprintf(fp, "\n        nop");
+
+
+      fprintf(fp, "\n; Adjust for correct step length");
+      fprintf(fp, "\n        rep     a0");
+      fprintf(fp, "\n        nop");
+
+      fprintf(fp, "\nLBL%ld  nop", label++);
+
+      fprintf(fp, "\n; End Delay (correct for last pulse)");
+      fprintf(fp, "\n        rep     #%d", endDelay);
+      fprintf(fp, "\n        nop");
+
+      fprintf(fp, "\n; End pulse");
+      fprintf(fp, "\n        move    #$000000,a1");
+      fprintf(fp, "\n        or      x1,a1                   ; Combine with TTL output");
+      fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+      fprintf(fp, "\n        move    #$000000,a1             ; Zero amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+      fprintf(fp, "\n        move    #$000000,a1             ; Zero amplitude");
+      fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0      ; Zero phase");
+
+      fclose(fp);
+   }
+   else
+   {
+      fclose(fp);
+      ErrorMessage("unknown RF pulse mode");
+      return(ERR);
+   }
+
+   return(OK);
+}
 
 /**********************************************************************
      Generate a dual channel shaped RF pulse (27 Jan 2022)
@@ -3808,7 +4251,7 @@ short IncrementTableIndex(DLLParameters* par, char *args)
    CText table, incrementStr = "1";
 
 // Get the table name and desired index value
-   if((nrArgs = ArgScan(par->itfc,args,1,"table, increment","ee","qq",&table, &incrementStr)) < 0)
+   if((nrArgs = ArgScan(par->itfc,args,1,"table, increment","ee","qq", &table, &incrementStr)) < 0)
       return(nrArgs);
 
 // Add names to parameter list
@@ -3820,7 +4263,7 @@ short IncrementTableIndex(DLLParameters* par, char *args)
    InsertUniqueStringIntoList(table.Str(),&parList,szList);
 
    short increment;
-   if(sscanf(incrementStr.Str(),"%d",&increment) != 1)
+   if(sscanf(incrementStr.Str(),"%hd",&increment) != 1)
    {
       Error(par->itfc,"Invalid increment");
       return(ERR);
@@ -3885,7 +4328,7 @@ short DecrementTableIndex(DLLParameters* par, char *args)
    InsertUniqueStringIntoList(table.Str(),&parList,szList);
 
    short decrement;
-   if(sscanf(decrementStr.Str(),"%d",&decrement) != 1)
+   if(sscanf(decrementStr.Str(),"%hd",&decrement) != 1)
    {
       Error(par->itfc,"Invalid decrement");
       return(ERR);
@@ -3952,7 +4395,7 @@ short SwitchOnGradient(DLLParameters* par, char *args)
    }
 
 // Add to parameter list if not a constant
-   if(address[0] == 'n')
+   if(address[0] == 'n' || address[0] == 's')
       InsertUniqueStringIntoList(address.Str(),&parList,szList);
    if(amplitude[0] == 'n' || amplitude[0] == 't')
       InsertUniqueStringIntoList(amplitude.Str(),&parList,szList);
@@ -6712,6 +7155,19 @@ short SelectGradient(Interface *itfc ,FILE* fp, CText grad)
       fprintf(fp,"\n        move    x:NR%s,a1",grad.Str()+1);
       fprintf(fp,"\n        movep   a1,x:A_PDRE");
    }
+   else if (grad[0] == 's')
+   {
+      if(!strcmp(grad.Str() + 1,"x"))
+         fprintf(fp, "\n        move    #3,a1");
+      else if(!strcmp(grad.Str() + 1, "y"))
+         fprintf(fp, "\n        move    #2,a1");
+      else if (!strcmp(grad.Str() + 1, "z"))
+         fprintf(fp, "\n        move    #1,a1");
+      else if (!strcmp(grad.Str() + 1, "o"))
+         fprintf(fp, "\n        move    #0,a1");
+
+      fprintf(fp, "\n        movep   a1,x:A_PDRE");
+   }
    else if(grad == "x")
    {
       fprintf(fp,"\n        move    #3,a1");
@@ -7144,6 +7600,21 @@ short SelectDuration(Interface *itfc ,FILE* fp, char *reg, CText duration)
    {
 	   fprintf(fp,"\n        move   x:DELAY%s,%s",duration.Str()+1,reg);
    }
+   else if (duration[0] == 't') // Note that the table duration uses registers a, b, r5 as well as reg
+   {
+      fprintf(fp, "\n        clr a");
+      fprintf(fp, "\n        clr b");
+      fprintf(fp, "\n        move    x:TABLE%s,a0", duration.Str() + 1);
+      fprintf(fp, "\n        dec a"); // a0 points to table index
+      fprintf(fp, "\n        move    a0,r5"); // Read current table index
+      fprintf(fp, "\n        move    y:(r5),a0");
+
+      fprintf(fp, "\n        move    x:TABLE%s,b0", duration.Str() + 1);
+
+      fprintf(fp, "\n        add     b,a");  // Add the index to table start to find current value
+      fprintf(fp, "\n        move    a0,r5"); // 
+      fprintf(fp, "\n        move    y:(r5),%s", reg); // Read the table value
+   }
    else if(sscanf(duration.Str(),"%f",&fDuration) == 1) // Fixed delay
    {
       if(fDuration < 0.25 || fDuration > 327670)
@@ -7553,6 +8024,337 @@ short ChirpedRF(DLLParameters* par, char *args)
 
 	fclose(fp);
   
+
+   return(OK);
+}
+
+
+/*
+* Dummy code for FX3 support (dual channel amplitude modulated pulse)
+*/
+
+short DualShapedRFPulse1(DLLParameters* par, char* args)
+{
+   short nrArgs;
+   CText blanking, aptables, size, phase1, phase2, duration, freq;
+
+   if ((nrArgs = ArgScan(par->itfc, args, 5, "atables, phase1, phase2, table_size, table_step, blanking", "eeeeee", "qqqqqq", &blanking ,&aptables, &phase1, &phase2, &size, &duration, &blanking)) < 0)
+      return(nrArgs);
+   if (!parList)
+   {
+      ErrorMessage("Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(aptables.Str(), &parList, szList);
+   if (phase1[0] == 'p' || phase1[0] == 'n')
+      InsertUniqueStringIntoList(phase1.Str(), &parList, szList);
+   if (phase2[0] == 'p' || phase2[0] == 'n')
+      InsertUniqueStringIntoList(phase2.Str(), &parList, szList);
+   if (size[0] == 'n')
+      InsertUniqueStringIntoList(size.Str(), &parList, szList);
+   if (duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(), &parList, szList);
+
+   TextMessage("\nDualShapedRFPulse1 not implemented yet on DSP\n");
+
+   return(OK);
+}
+
+/*
+* Dual channel amplitude and phase modulated pulse - added for compatibility with FX3
+* The 4 tables should be interleaved as amp1[0], ph1[0], amp2[0], ph2[0], amp1[1], ph1[1] ...
+* Minimum table step is 4 us.
+*/
+
+short DualShapedRFPulse2(DLLParameters* par, char* args)
+{
+   short nrArgs;
+   CText dur, size, duration;
+   CText aptable, phase1, phase2;
+   long Duration, Phase, Size;
+   float fDuration;
+   const int pgoOffset = 5;
+   CText blanking = "no";
+
+   if ((nrArgs = ArgScan(par->itfc, args, 5, "aptable, phase1, phase2, table_size, table_step, blanking", "eeeeee", "qqqqqq", &aptable, &phase1, &phase2, &size, &duration, &blanking)) < 0)
+      return(nrArgs);
+   if (!parList)
+   {
+      ErrorMessage("Pulse sequence not initialised");
+      return(ERR);
+   }
+   InsertUniqueStringIntoList(aptable.Str(), &parList, szList);
+   if (phase1[0] == 'p' || phase1[0] == 'n')
+      InsertUniqueStringIntoList(phase1.Str(), &parList, szList);
+   if (phase2[0] == 'p' || phase2[0] == 'n')
+      InsertUniqueStringIntoList(phase2.Str(), &parList, szList);
+   if (size[0] == 'n')
+      InsertUniqueStringIntoList(size.Str(), &parList, szList);
+   if (duration[0] == 'd')
+      InsertUniqueStringIntoList(duration.Str(), &parList, szList);
+
+   FILE* fp = fopen("midCode.asm", "a");
+   if (!fp)
+   {
+      ErrorMessage("Can't open output file");
+      return(ERR);
+   }
+
+
+   fprintf(fp, "\n\n;");
+   fprintf(fp, "\n;***************************************************************************");
+   fprintf(fp, "\n; Generate modulated  pulses on channel 1 and 2");
+   fprintf(fp, "\n;");
+
+   fprintf(fp, "\n        clr a                            ; Clear the accumulator");
+   fprintf(fp, "\n        move    y:TTL,x1                 ; Load the current TTL level");
+   if (blanking == 'yes') // Apply blanking
+      fprintf(fp, "\n        move    #$04300,a1               ; Switch on rf bias (ch1 & ch2)");
+   else
+      fprintf(fp, "\n        move    #$00000,a1               ; Switch off rf bias (ch1 & ch2)");
+
+   fprintf(fp, "\n        or      x1,a1                    ; Combine with ttl output");
+   fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+   fprintf(fp, "\n; Start a timer to give pgo delay before RF comes on");
+   fprintf(fp, "\n        move    x:PGO,a1                 ; All delays add to 1us before pulse comes on");
+   fprintf(fp, "\n        add     #%d,a", pgoOffset);      // Tweak the delay
+   fprintf(fp, "\n        movep   a1,x:A_TCPR2");
+   fprintf(fp, "\n        nop");
+   fprintf(fp, "\n        movep   #$200A01,x:A_TCSR2");
+
+   // Get the table address and store in r5
+   fprintf(fp, "\n; Get the table address pointer");
+   fprintf(fp, "\n        move    x:TABLE%s,r5", aptable.Str() + 1);
+
+   // Get the size of the table stored in r2
+   if (size[0] == 'n')
+   {
+      fprintf(fp, "\n        move    x:NR%s,r2", size.Str() + 1);
+   }
+   else if (sscanf(size.Str(), "%ld", &Size) == 1)
+   {
+      if (Size < 2)
+      {
+         ErrorMessage("invalid table size '%s' [>= 2]", size);
+         fclose(fp);
+         return(ERR);
+      }
+      fprintf(fp, "\n        move    #%ld,r2", Size);
+   }
+   fprintf(fp, "\n        move    r2,a0");
+   fprintf(fp, "\n        dec     a                        ; Decrement because first value already used before loop");
+   fprintf(fp, "\n        move    a0,r2");
+
+   // Channel 1 info
+   fprintf(fp, "\n; Set the rf output to its initial value");
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load ch-1 amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load ch-1 phase");
+
+
+   // Add phase shift for phase cycling
+   if (phase1[0] == 'p')
+      fprintf(fp, "\n        move    x:TXP%s,y1", phase1.Str() + 1);
+   else if (phase1[0] == 'n')
+      fprintf(fp, "\n        move    x:NR%s,y1", phase1.Str() + 1);
+   else if (sscanf(phase1.Str(), "%ld", &Phase) == 1)
+      fprintf(fp, "\n        move    #%ld,y1", Phase);
+   else
+   {
+      ErrorMessage("invalid phase value '%s'", phase1.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fprintf(fp, "\n        add     y1,a                     ; Add ch-1 phase to table");
+
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+
+   fprintf(fp, "\n        move    #20,r7"); // Maybe adjust time here
+   fprintf(fp, "\n        bsr     svwait");
+
+   // Channel 2 info
+   fprintf(fp, "\n; Set the rf output to its initial value");
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load  ch-2 amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load  ch-2 phase");
+
+
+   // Add phase shift for phase cycling
+   if (phase1[0] == 'p')
+      fprintf(fp, "\n        move    x:TXP%s,y1", phase2.Str() + 1);
+   else if (phase1[0] == 'n')
+      fprintf(fp, "\n        move    x:NR%s,y1", phase2.Str() + 1);
+   else if (sscanf(phase2.Str(), "%ld", &Phase) == 1)
+      fprintf(fp, "\n        move    #%ld,y1", Phase);
+   else
+   {
+      ErrorMessage("invalid phase value '%s'", phase2.Str());
+      fclose(fp);
+      return(ERR);
+   }
+
+   fprintf(fp, "\n        add     y1,a                     ; Add ch-2 phase to table");
+
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+
+
+   fprintf(fp, "\n        move    #20,r7"); // Maybe adjust delay here
+   fprintf(fp, "\n        bsr     svwait");
+
+   fprintf(fp, "\n; Wait for pgo delay to end");
+   fprintf(fp, "\n        jclr    #21,x:A_TCSR2,*");
+   fprintf(fp, "\n        movep   #$200A00,x:A_TCSR2       ; Turn off timer");
+
+   fprintf(fp, "\n; Start modulated pulse");
+   if (blanking == 'yes') // Apply blanking
+      fprintf(fp, "\n        move    #$04308,a1               ; Switch on ch-1");
+   else
+      fprintf(fp, "\n        move    #$00008,a1               ; Switch on ch-1 no blanking");
+   fprintf(fp, "\n        or      x1,a1                    ; and combine with internal ttl bias line");
+   fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+   fprintf(fp, "\n        move    a,b");
+
+   fprintf(fp, "\n        move    #185,a0                  ; Wait 2 us before switching second pulse (matches delay in loop)");
+   fprintf(fp, "\n        rep     a0");
+   fprintf(fp, "\n        nop");
+
+   if (blanking == 'yes') // Apply blanking
+      fprintf(fp, "\n        move    #$0430A,b1               ; Switch on ch-2");
+   else
+      fprintf(fp, "\n        move    #$0000A,b1               ; Switch on ch-2 no blanking");
+
+   fprintf(fp, "\n        or      x1,b1                    ; and combine with internal ttl bias line");
+   fprintf(fp, "\n        move    b1,x:FPGA_TTL");
+
+   // Load step length
+   fprintf(fp, "\n; Load step length");
+   if (duration[0] == 'd')
+   {
+      fprintf(fp, "\n        move    x:DELAY%s,a1", duration.Str() + 1);
+   }
+   else if (sscanf(duration.Str(), "%f", &fDuration) == 1)
+   {
+      if (fDuration < 4 || fDuration > 327670)
+      {
+         ErrorMessage("invalid duration '%g' [4...327670]", fDuration);
+         fclose(fp);
+         return(ERR);
+      }
+      Duration = (long)(fDuration * 50 - 1 + 0.5);
+      fprintf(fp, "\n        move   #%ld,a1", Duration);
+   }
+   else
+   {
+      ErrorMessage("Invalid duration reference '%s'", duration.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   // Delay to get length of first pulse step correct
+
+   fprintf(fp, "\n        lsl     #1,a                     ; Multiply step delay by two as we use a 10 ns delay step");
+   fprintf(fp, "\n        sub     #345,a                   ; Adjust the step length allowing for other delays"); // Was 405 9.356/9.646
+   fprintf(fp, "\n        move    a1,a0");
+   fprintf(fp, "\n        rep     a0                       ; Wait until the correct step length is reached");
+   fprintf(fp, "\n        nop");
+
+   // Calculate delay for subsequent steps
+   fprintf(fp, "\n        add     #85,a                   ; Modify delay value to correct subsequent steps"); // Was 150
+   fprintf(fp, "\n        move    a1,a0");
+
+   // Loop over the tables
+   fprintf(fp, "\n; Loop over table entries updating amplitudes and phases - note that ch1 and ch2 values are interleaved");
+
+   fprintf(fp, "\n        do      r2,LBL%ld                  ; Step the amplitude r2 times", label);
+
+   // Channel 1
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0      ; Set amplitude");
+
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+
+   // Add phase shift for phase cycling
+   if (phase1[0] == 'p')
+      fprintf(fp, "\n        move    x:TXP%s,y1", phase1.Str() + 1);
+   else if (phase1[0] == 'n')
+      fprintf(fp, "\n        move    x:NR%s,y1", phase1.Str() + 1);
+   else if (sscanf(phase1.Str(), "%ld", &Phase) == 1)
+      fprintf(fp, "\n        move    #%ld,y1", Phase);
+   else
+   {
+      ErrorMessage("invalid phase value '%s'", phase1.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   fprintf(fp, "\n        add     y1,a                     ; Add phase to table");
+
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0      ; Set phase");
+
+   fprintf(fp, "\n        move    #20,r7                   ; Wait 1 us to allow channel 1 to update"); // Maybe adjust here
+   fprintf(fp, "\n        bsr     svwait");
+
+   // Channel 2
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0      ; Set amplitude");
+
+   fprintf(fp, "\n        move    y:(r5)+,a1               ; Load phase");
+
+   // Add phase shift for phase cycling
+   if (phase2[0] == 'p')
+      fprintf(fp, "\n        move    x:TXP%s,y1", phase2.Str() + 1);
+   else if (phase2[0] == 'n')
+      fprintf(fp, "\n        move    x:NR%s,y1", phase2.Str() + 1);
+   else if (sscanf(phase2.Str(), "%ld", &Phase) == 1)
+      fprintf(fp, "\n        move    #%ld,y1", Phase);
+   else
+   {
+      ErrorMessage("invalid phase value '%s'", phase2.Str());
+      fclose(fp);
+      return(ERR);
+   }
+   fprintf(fp, "\n        add     y1,a                     ; Add phase to table");
+
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0      ; Set phase");
+
+   fprintf(fp, "\n        rep     a0                       ; Adjust for correct step length and allow channel 2 to update"); // Adjust here
+   fprintf(fp, "\n        nop");
+
+   fprintf(fp, "\nLBL%ld    nop", label++);
+
+   fprintf(fp, "\n; End Delay (correct for last pulses)");
+   fprintf(fp, "\n        rep     #160");
+   fprintf(fp, "\n        nop");
+
+   fprintf(fp, "\n; End channel 1 pulse");
+   if (blanking == 'yes') // Apply blanking
+      fprintf(fp, "\n        move    #$000302,a1");
+   else
+      fprintf(fp, "\n        move    #$000002,a1");
+
+   fprintf(fp, "\n        or      x1,a1                    ; Combine with TTL output");
+   fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+   fprintf(fp, "\n        move    #$000000,a1              ; Zero amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+   fprintf(fp, "\n        move    #$000000,a1              ; Zero phase");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS1_Pro0");
+
+   fprintf(fp, "\n        rep     #170                     ; Tweak channel 2 pulse length");
+   fprintf(fp, "\n        nop");
+
+   fprintf(fp, "\n; End channel 2 pulse");
+   fprintf(fp, "\n        move    #$000000,a1");
+   fprintf(fp, "\n        or      x1,a1                    ; Combine with TTL output");
+   fprintf(fp, "\n        move    a1,x:FPGA_TTL");
+
+   fprintf(fp, "\n        move    #$000000,a1              ; Zero amplitude");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+   fprintf(fp, "\n        move    #$000000,a1              ; Zero phase");
+   fprintf(fp, "\n        move    a1,x:FPGA_DDS2_Pro0");
+
+   fclose(fp);
+
 
    return(OK);
 }
