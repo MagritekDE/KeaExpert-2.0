@@ -31,7 +31,6 @@ procedure(pulse_program,dir,mode,pars)
 
 # Relationships to determine remaining variable values
    relationships = ["nDataPnts     = nrPnts",
-                    "b1Freq1H      = b1Freq",
                     "tAmp          = linspace(ampMin,ampMax,ampSteps)",
                     "nTabSz        = size(tAmp)",
                     "a1            = 0",
@@ -46,7 +45,7 @@ procedure(pulse_program,dir,mode,pars)
    initpp(dir)      
    pulse(1,a1,p1,2)                          # Generate a pulse for scope triggering with constant phase            
    delay(5)
-   shapedrf1(1,tAmp,p2,nTabSz,dTabStep)      # Shaped amplitude pulse
+   shapedrf1(2,tAmp,p2,nTabSz,dTabStep)      # Shaped amplitude pulse
    delay(5)                              
    acquire("overwrite",nDataPnts)            # Acquire FID
 

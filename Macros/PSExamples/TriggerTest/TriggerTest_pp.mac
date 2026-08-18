@@ -3,7 +3,7 @@
 # Checks the functionality of the TTL trigger input
 # and the TTL out pulse.
 #
-# Note: only for Spinsolves with this hardware upgrade.
+# Note: will only work with Keas having this hardware upgrade.
 #
 ############################################################
 
@@ -19,7 +19,6 @@ procedure(pulse_program,dir,mode,pars)
                "90AmplitudeCh1",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
                "pulseLengthCh1",   "Pulse length (us)",         "tb",  "pulselength";
                "trigMode",         "Trigger mode",              "tm",  "string,[\"low\",\"high\",\"rising\",\"falling\"]";
-            #   "trigMode",         "Trigger mode",              "tb",  "string";
                "ttlLength",       "TTL pulse length (us)",     "tb",  "sdelay";
                "repTime",         "Repetition time (ms)",      "tb",  "reptime"]
 
@@ -45,9 +44,9 @@ procedure(pulse_program,dir,mode,pars)
    initpp(dir)                      # Define compile directory and clear parameter list
 
       trigger(smode)                # Wait for rising input pulse
-    #  ttlon(0x2)
+    #  ttlon(0x1)
       wait(wTTL)                       # Generate an output TTL pulse
-   #   ttloff(0x2)
+   #   ttloff(0x1)
       pulse(1,a90Amp,p1,d90Dur)        # RF pulse on channel 1 with phase p1
       delay(dAcqDelay)
       acquire("overwrite",nDataPnts)   # Acquire FID

@@ -14,12 +14,11 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrl, vartype)
-  interface = ["nucleus",         "Nucleus",                   "tb",  "readonly_string";
-               "b1Freq",          "1H frequency (MHz)",        "tb",  "freq";
-               "90Amplitude1H",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
-               "pulseLength1H",   "Pulse length (us)",         "tb",  "pulselength";
-               "longDelay",       "Interpulse delay (s)",      "tb",  "double,[6.4e-6,1000]";
-               "repTime",         "Repetition time (ms)",      "tb",  "reptime"]
+  interface = ["b1FreqCh1",        "1H frequency (MHz)",        "tb",  "freq";
+               "90AmplitudeCh1",   "Pulse amplitude (dB)",      "tb",  "pulseamp";
+               "pulseLengthCh1",   "Pulse length (us)",         "tb",  "pulselength";
+               "longDelay",        "Interpulse delay (s)",      "tb",  "double,[6.4e-6,1000]";
+               "repTime",          "Repetition time (ms)",      "tb",  "reptime"]
 
 
 # Define the tab groups and their order
@@ -27,10 +26,9 @@ procedure(pulse_program,dir,mode,pars)
              "Processing_Std","Display_Std","File_Settings"]
 
 # Relationships to determine remaining variable values
-   relationships = ["b1Freq1H     = b1Freq",
-                    "nDataPnts    = nrPnts",
-                    "a90Amp       = 90Amplitude1H",
-                    "d90Dur       = pulseLength1H",
+   relationships = ["nDataPnts    = nrPnts",
+                    "a90Amp       = 90AmplitudeCh1",
+                    "d90Dur       = pulseLengthCh1",
                     "w1           = (longDelay*1e6d-pgo-1d)",
                     "totPnts      = nrPnts",
                     "totTime      = acqTime"]
@@ -66,19 +64,16 @@ endproc(lst,groups,interface,relationships,variables,null,phaseList)
 
 procedure(getFactoryBasedParameters, par)
 
-   specPar = gData->getXChannelParameters("1H")
+   specPar = gData->specParameters
    if(specPar == null)
       return(null)
    endif
    assignlist(specPar)
 
-   modelPar = ucsUtilities:getModelBasedParameters("1H",specPar)
-
-   par = ["rxGain        = $modelPar->rxGain$",
-          "pulseLength1H = $PulseLength_1H$",
-          "90Amplitude1H = $PowerLevel_1H$",
-          "b1Freq1H      = $Frequency_1H$",
-          "b1Freq13C     = $Frequency_X$"]
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
 
 endproc(par)
 

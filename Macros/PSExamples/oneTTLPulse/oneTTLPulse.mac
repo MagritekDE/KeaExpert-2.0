@@ -70,10 +70,11 @@ endproc(r)
 
 procedure(getseqpar)
 
-   rel = ["freqCh1   = 2",
-          "d1 = d1"]
+   rel = ["freqCh1 = b1FreqCh1",
+          "w1      = onTime*1000",
+          "b1      = ttltranslate(pinNr)"]
    var = [""]
-   pp_list = ["d1"]
+   pp_list = ["b1","w1"]
    pp_name = "oneTTLPulse.p"
    phase_list = [0]
 
@@ -98,30 +99,33 @@ endproc(seqInfo)
 
 procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
-# Make all gui parameters available
+  # Make all gui parameters available
    assignlist(guipar)
 
+   tEndPS = time()
 
-
-  (ppList,pAcq) = ucsRun:setPPPhase(ppList,0,pcList,pcIndex)
-
-   ucsRun:updatePPParameters(ppList,guipar)
-
+  # Loop over number of scans
+   for(scan = 0 to nrScans-1)
 
     # Wait for the repetition time to complete
-      check = ucsRun:checkTiming(guipar,0,pcList)
+      check = ucsRun:checkTiming(guipar,0,pcList,tEndPS)
       if(check == "abort")
          return(0)
       endif
 
+    # Set the RF phases (still need this)
+     (ppList,pAcq) = ucsRun:setPPPhase(ppList,0,pcList,pcIndex)
+   
+    # Set the parameters
+      ucsRun:updatePPParameters(ppList,guipar)
+   
     # Run the pulse program
-      status = ucsRun:runExperiment(guipar)
+      ucsRun:runExperiment(guipar)
 
-    # See if stop button/escape key pressed
-      if(status != "ok")
-         return(0)
-      endif
-      
+      tEndPS = time()
+
+   next(scan)
+    
 
 endproc("execpp") # Don't remove argument
 

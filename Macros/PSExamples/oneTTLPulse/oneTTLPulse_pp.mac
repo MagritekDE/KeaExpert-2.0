@@ -12,37 +12,26 @@ procedure(pulse_program,dir,mode,pars)
    endif
 
 # Interface description (name, label, ctrltype, vartype)
-   interface = ["b1FreqCh1",    "B1 Frequency (MHz)",   "tb",   "float,[0.5,30]";
-   #            "TTL1",         "TTL1",                 "tm",   "string,[ \"0x01\", \"0x02\", \"0x04\", \"0x08\", \"0x10\", \"0x20\", \"0x40\", \"0x80\"]";
-               "d1",           "delay (us)",          "tb",   "sdelay";
-               "repTime",      "Repetition time (ms)", "tb",   "float,[20,1e8]"]
+   interface = ["pinNr",        "TTL pin number",         "tm",   "integer,[2,3,4,5,6,7,8,9]";
+               "onTime",        "LED on time (ms)",       "tb",   "ldelayms";
+               "ieTime",        "Inter-expt. time (ms)",  "tb",   "reptime"]
 
 # Relationships to determine remaining variable values
-   relationships = [ "freqCh1   = 2",
-                #     "b1 = $TTL1$",
-                     "d1 = d1"]
-
+   relationships = [ "freqCh1 = b1FreqCh1",
+                     "w1      = onTime*1000",
+                     "b1      = ttltranslate(pinNr)"]
 
 # Define the parameter groups and their order
    groups = ["Pulse_sequence","Acquisition"]
 
 # These parameters will be changed between experiments
    variables = [""]
+  
+   initpp(dir)  
 
-#   if(gData->procType == "DSP")
-#      ttl = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]
-#   else #(FX3)
-#      ttl = [0x01, 0x20, 0x08, 0x02, 0x04, 0x10, 0x80, 0x40]
-#   endif
-            
-   initpp(dir)
-      
- #     ttlon(b1)
-      ttlon(0x01) # pin 5
-      delay(d1)
-      ttloff(0x01)
- #     ttloff(b1)
-      delay (20)
+      ttlon(b1)
+      wait(w1)
+      ttloff(b1)
 
    lst = endpp(0) # Return parameter list
 
@@ -65,9 +54,6 @@ procedure(getFactoryBasedParameters, par)
    endif
    assignlist(specPar)
 
-   par = ["rxGain         = $rxOptGaindB$",
-          "pulseLengthCh1 = $pulseLengthCh1$",
-          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
-          "b1FreqCh1      = $frequencyCh1$"]
+   par = ["rxGain         = $rxOptGaindB$"]
 
 endproc(par)
