@@ -51,11 +51,11 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
 
 
 
-10/8/2026
+10-18/8/2026
 
 
 
-* Merge all changes from Craig's 2.02.16 version to Bulat's 2.02.17
+* ~~Merge all changes from Craig's 2.02.16 version to Bulat's 2.02.17~~
 * Make sure the Prospa software is up to date wrt Spinsolve.
 * Move the Prospa code to support 64 bit.
 * ~~The Transceiver firmware folder does not include V3013.bin.~~
@@ -70,6 +70,10 @@ To Do List for KeaExpert/SpinsolveExpert/Prospa
   * Any changes to the interface should be noted and warning given when closing
 * Ensure that FX3 firmware update for the TRex5 is working.
 * Add simulators to as many experiments as possible.
-* Remove unnecessary DLLs from KeaExpert (such as Spinsolve and Terranova)
+* ~~Remove unnecessary DLLs from KeaExpert (such as Spinsolve and Terranova)~~
 * ~~Have an option to leave the RF on at the end of the sequence. (Both DSP and FX3)~~
+* Add an example experiment which uses linear prediction.
+* It should be possible to not include an acquisition tab for some experiments. In this case just define some defaults.
+* The end commands in an FX3 sequence should be documented.
+* ttlon/off seem to be missing from the documentation.
 

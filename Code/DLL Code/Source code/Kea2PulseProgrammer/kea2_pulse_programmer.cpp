@@ -2703,9 +2703,9 @@ short ShapedRFPulse1(DLLParameters* par, char* args)
    if (duration[0] == 'd')
       InsertUniqueStringIntoList(duration.Str(), &parList, szList);
 
-   ErrorMessage("ShapedRFPulse1 not implemented yet on DSP\n");
+   TextMessage("ShapedRFPulse1 not implemented yet on DSP\n");
 
-   return(ERR);
+   return(OK);
 }
 
 /*
@@ -8036,16 +8036,16 @@ short ChirpedRF(DLLParameters* par, char *args)
 short DualShapedRFPulse1(DLLParameters* par, char* args)
 {
    short nrArgs;
-   CText blanking, aptables, size, phase1, phase2, duration, freq;
+   CText blanking, atable, size, phase1, phase2, duration, freq;
 
-   if ((nrArgs = ArgScan(par->itfc, args, 5, "atables, phase1, phase2, table_size, table_step, blanking", "eeeeee", "qqqqqq", &blanking ,&aptables, &phase1, &phase2, &size, &duration, &blanking)) < 0)
+   if ((nrArgs = ArgScan(par->itfc, args, 5, "atables, phase1, phase2, table_size, table_step, blanking", "eeeeee", "qqqqqq", &atable, &phase1, &phase2, &size, &duration, &blanking)) < 0)
       return(nrArgs);
    if (!parList)
    {
       ErrorMessage("Pulse sequence not initialised");
       return(ERR);
    }
-   InsertUniqueStringIntoList(aptables.Str(), &parList, szList);
+   InsertUniqueStringIntoList(atable.Str(), &parList, szList);
    if (phase1[0] == 'p' || phase1[0] == 'n')
       InsertUniqueStringIntoList(phase1.Str(), &parList, szList);
    if (phase2[0] == 'p' || phase2[0] == 'n')
