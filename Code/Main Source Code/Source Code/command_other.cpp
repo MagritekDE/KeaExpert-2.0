@@ -393,7 +393,7 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("errorstr",           MakeErrorString,         STRING_CMD,                           "STR result = errorstr(FLOAT number, FLOAT error, [INT resolution , [INT power [,STR destination]]])");
    prospaCommandRegistry->add("escapechar",         ProcessEscapeCharacters, STRING_CMD,                           "escapechar(STR \"true/false\"))");
    prospaCommandRegistry->add("eval",               EvaluateExpression,      STRING_CMD,                           "VARIANT result = eval(STR/LIST expression [, STR \"real/double/complex\"])");
-   prospaCommandRegistry->add("evalhex",            EvaluateHexString,       STRING_CMD,                           "VARIANT result = evalhex(STR/LIST expression [, INT nrBits, STR \"signed/unisigned\"])");
+   prospaCommandRegistry->add("evalhex",            EvaluateHexString,       STRING_CMD,                           "INTEGER result = evalhex(STR hexValue)");
    prospaCommandRegistry->add("evalsubexp",         EvaluateSubExpression,   STRING_CMD,                           "VARIANT result = evalsubexp(STR expression)");                           
    prospaCommandRegistry->add("ex",                 CloseApplication,        CONTROL_COMMAND,                      "ex([INT 0/1])");
    prospaCommandRegistry->add("exec",               ExecuteFile,             GENERAL_COMMAND,                      "exec(STR file_name, [STR arguments])");
@@ -4379,41 +4379,76 @@ int CopyToClipBoard(Interface *itfc, char args[])
 
 }
 
+/************************************************************************************************
+   Convert a hex number as a string into a float. The number of digits reflects the underlying
+   number of bits in the containing word. So "0x7f" -> 127 and "0x80" -> -128 but "0x080" -> 128
+   If the first visible bit is a 1 (as in 0x80) this will be seen as a negative number ie
+   "0x80" -> 0xFFFFFFFFFFFFFF80. Note that the maximum input number is limited to  64 bits.
+   Note because of the large possible size the returned value is a double. 
+************************************************************************************************/
 int EvaluateHexString(Interface *itfc, char args[])
 {
-   CText mode = "signed";
    CText data;
    short nrArgs;
-   char temp1[100];
-   char temp2[100];
-   int result;
+   char temp1[50];
+   char temp2[50];
+   unsigned long long result;
    bool isNeg = false;
    int off = 0;
-   int bits = 16;
+   const int HEX_DIGITS = 16;
 
-   if((nrArgs = ArgScan(itfc,args,1,"string, bits, mode","eee","tdt",&data, &bits, &mode)) < 0)
+   if((nrArgs = ArgScan(itfc,args,1,"string","e","t",&data)) < 0)
       return(nrArgs);
 
    strcpy(temp1,data.Str());
 
-   if(temp1[0] == '0' && temp1[1] == 'x')
+   int sz = strlen(data.Str());
+
+   // Check for too few digits
+   if (sz == 0)
    {
+      ErrorMessage("Empty string provided!");
+      return(ERR);
+   }
+
+   if (temp1[0] == '-')
+   {
+      ErrorMessage("Signed inputs not accepted");
+      return(ERR);
+   }
+
+   // Check for too many digits
+   if(sz >= 2 && temp1[0] == '0' && temp1[1] == 'x')
+   {
+      if (sz > 18)
+      {
+         ErrorMessage("Too many hex digits provided (0x + max 16)");
+         return(ERR);
+      }
       off = 2;
       strcpy(temp2,"0x");
    }
+   else
+   {
+      if (sz > 16)
+      {
+         ErrorMessage("Too many hex digits provided (max 16)");
+         return(ERR);
+      }
+   }
 
+   // Work out the sign
    char c = temp1[off];
    if(c == '8' || c == '9' || c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F' ||
       c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f')
        isNeg = true;
 
-   int sz = strlen(temp1);
 
-   if(isNeg && sz <= 8+off)
+   if(isNeg && sz <= HEX_DIGITS + off)
    {
       int i,j;
 
-      for(i = off; i < 8-sz+off+off; i++)
+      for(i = off; i < HEX_DIGITS - sz + off + off; i++)
       {
          temp2[i] = 'F';
       }
@@ -4421,7 +4456,7 @@ int EvaluateHexString(Interface *itfc, char args[])
       {
          temp2[j+i] = temp1[j+off];
       }
-      temp2[j+i ] = '\0';
+      temp2[j+i] = '\0';
    }
    else
    {
@@ -4436,11 +4471,12 @@ int EvaluateHexString(Interface *itfc, char args[])
    else
       strcpy(temp1,temp2);
 
-    sscanf(temp1,"%x",&result);
+   sscanf(temp1, "%llx", &result);
 
-   itfc->retVar[1].MakeAndSetFloat((float)result);
+   itfc->retVar[1].MakeAndSetDouble((double)((signed long long)result));
    itfc->nrRetValues = 1;
 
    return(OK);
 
 }
+
