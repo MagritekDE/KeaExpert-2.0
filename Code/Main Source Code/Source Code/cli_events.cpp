@@ -829,7 +829,7 @@ int PrintToString(Interface* itfc, char args[])
   Stop sending text to a print file and instead send it to the CLI
 ******************************************************************************/
 
-int ClosePrintFile(Interface* itfc, char args[])
+int ClosePrintTo(Interface* itfc, char args[])
 {
    if (printFile)
    {

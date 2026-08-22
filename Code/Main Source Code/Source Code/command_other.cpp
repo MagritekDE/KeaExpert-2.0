@@ -324,7 +324,7 @@ void InitializeProspaCommandList()
    prospaCommandRegistry->add("clonearray",         CloneArray,              MATRIX_CMD,                           "MAT m = clonearray(VEC v, INT w, int h)");
 // prospaCommandRegistry->add("copyfolder",         CopyAFolder,             FILE_CMD,                             "copyfolder(STR source, STR destination)");
    prospaCommandRegistry->add("closedialog",        CloseDialog,             GUI_CMD,                              "closedialog(var1, var2 ...)");  
-   prospaCommandRegistry->add("closeprint",         ClosePrintFile,          FILE_CMD,                             "closeprint()");  
+   prospaCommandRegistry->add("closeprint",         ClosePrintTo,          FILE_CMD,                             "closeprint()");  
    prospaCommandRegistry->add("closewindow",        DestroyMyWindow,         GUI_CMD,                              "closewindow(INT window_nr)");                           
    prospaCommandRegistry->add("cmap",               SetColorMap,             TWOD_CMD,                             "cmap(STR colormap)");                           
    prospaCommandRegistry->add("cmap3d",             Draw3DColorScale,        THREED_CMD,                           "cmap3d(MAT scale, VEC range, VEC font-color, FLOAT font-size)");

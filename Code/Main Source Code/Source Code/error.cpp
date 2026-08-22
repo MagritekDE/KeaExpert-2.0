@@ -57,7 +57,7 @@ EXPORT void ErrorMessage(const char * const text,...)
 	if(printFile)
 	{
 		Interface itfc;
-		ClosePrintFile(&itfc,"");
+		ClosePrintTo(&itfc,"");
 	}
 
 	// Make a beep to alert the user
@@ -104,7 +104,7 @@ EXPORT void Error(Interface *itfc, char *text,...)
 	if(printFile)
 	{
 		Interface itfc;
-		ClosePrintFile(&itfc,"");
+		ClosePrintTo(&itfc,"");
 	}
 
 	va_start(ap,text);

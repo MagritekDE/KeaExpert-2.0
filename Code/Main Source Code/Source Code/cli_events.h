@@ -14,7 +14,7 @@ class Interface;
 // Locally define functions
 LRESULT CALLBACK CLIEditEventsProc(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 int CLIFunctions(Interface* itfc ,char args[]);
-int ClosePrintFile(Interface* itfc ,char args[]);
+int ClosePrintTo(Interface* itfc ,char args[]);
 int PrintToFile(Interface* itfc, char args[]);
 void SendTextToCLI(char *message);
 int SetOrGetCurrentCLI(Interface *itfc, char args[]);
