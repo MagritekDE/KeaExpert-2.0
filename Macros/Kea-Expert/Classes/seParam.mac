@@ -353,7 +353,7 @@ procedure(listCurrentParameters, self)
       pr("\n\n--------------------------------------------------------------\n\n")
    endif
 
-endproc()
+endproc(par)
 
 
 ##############################################
@@ -931,7 +931,7 @@ endproc()
 # current experiment
 ##############################################
 
-procedure(saveToDefaults, self)
+procedure(saveToDefaults, self, queries = "yes")
 
    if(gData->curExpt == null)
       message("Error","Please select an experiment","error")
@@ -942,8 +942,10 @@ procedure(saveToDefaults, self)
 
    protocol = curExpt->protocol
 
-   if(query("Warning","This will overwrite the current default parameter file\rfor the experiment: $protocol$.\r\rContinue?") == "no")
-      return
+   if (queries == "yes")
+      if(query("Warning","This will overwrite the current default parameter file\rfor the experiment: $protocol$.\r\rContinue?") == "no")
+         return
+      endif
    endif
 
 # The data directory
@@ -997,7 +999,7 @@ procedure(saveToDefaults, self)
 
    if(error)
       message("Error","Problems copying to '$protocol$' default parameter file .","error")
-   else
+   elseif(queries == "yes")
       message("Success","Default parameter file for '$protocol$' updated.","info")
    endif
 
