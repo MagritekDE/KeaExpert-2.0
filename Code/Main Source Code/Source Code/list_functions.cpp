@@ -24,7 +24,7 @@ using std::vector;
 
 int Convert2DListTo1D(Interface* itfc ,char arg[]);
 int Convert1DListTo2D(Interface* itfc ,char arg[]);
-int SortListBySubstring(char** list, long size, long start, long end, int *indicies);
+//int SortListBySubstring(char** list, long size, long start, long end, int *indicies);
 void SortListInReverse(char** list, long size, short mode, int *indicies);
 short CompareHexStrings(char *str1, char* str2);
 int FixListFaults(Interface *itfc, char args[]);
@@ -452,7 +452,6 @@ int InsertStringIntoListCLI(Interface* itfc ,char arg[])
 *  Sort a list alphanumerically by list names or part of list names
 * 
 * Syntax: result = sort(list,[mode]) or
-*         result = sort(list, start, end)
 *
 * mode = forward (alphabetic sort)
 *        reverse (alphabetic sort)
@@ -460,7 +459,7 @@ int InsertStringIntoListCLI(Interface* itfc ,char arg[])
 *        reverse_numeric (numerical sort or alphabetical sort)
 *
 * The numeric options check to see if there is a leading number and if
-* there is then the sort numerically on that.
+* there is then the list is sorted numerically on that.
 *
 ******************************************************************************/
 
@@ -468,134 +467,46 @@ int InsertStringIntoListCLI(Interface* itfc ,char arg[])
 int SortList(Interface* itfc ,char arg[])
 { 
    short r;               // Function return flag
-   Variable var;          // Variable containing copy of list
-   long first=-1,last=-1;      // Range of indicies to compare
-	Variable varFirst, varLast;
+   Variable varList;          // Variable containing copy of list
 	CText direction = "forward_numeric";
-	float *reorderArray = 0;
-	char **outList = 0;
-	int reorderArraySize = 0;
 
 // Get list name, and sublist range to sort by   
-   if((r = ArgScan(itfc,arg,1,"list, (first,last)/mode","eee","vvv",&var,&varFirst,&varLast)) < 0)
+   if((r = ArgScan(itfc,arg,1,"list, mode","ee","vt",&varList,&direction)) < 0)
       return(r); 
 
 // Check for errors 
-   if(VarType(&var) != LIST)
+   if(varList.GetType() != LIST)
    {
       ErrorMessage("argument is not a list");
       return(ERR);
    }
 
-   char **list = var.GetList();
-   long size = var.GetDimX();
+   char **list = varList.GetList();
+   long size = varList.GetDimX();
 
-	if(r == 3)
+	if(direction != "forward_numeric" && direction != "reverse_numeric" && direction != "forward" && direction != "reverse" &&
+		direction != "forward_embedded_numeric" && direction != "reverse_embedded_numeric")
 	{
-		if(varFirst.GetType() == FLOAT32 && varLast.GetType() == FLOAT32)
-		{
-			first = nint(varFirst.GetReal());
-			last = nint(varLast.GetReal());
-		}
-	}
-
-	if(r == 2)
-	{
-		if(varFirst.GetType() == UNQUOTED_STRING)
-		{
-			direction = varFirst.GetString();
-			if(direction != "forward_numeric" && direction != "reverse_numeric" && direction != "forward" && direction != "reverse" &&
-				direction != "forward_embedded_numeric" && direction != "reverse_embedded_numeric")
-			{
-				ErrorMessage("second argument should be forward/reverse/forward_numeric/reverse_numeric/forward_embedded_numeric/reverse_embedded_numeric");
-				return(ERR);
-			}
-		}
-		else if(varFirst.GetType() == MATRIX2D && varFirst.GetDimY() == 1)
-		{
-			reorderArray = varFirst.GetMatrix2D()[0];
-			reorderArraySize = varFirst.GetDimX();
-			if(reorderArraySize != var.GetDimX())
-			{
-				ErrorMessage("Reorder array size must match size of input list");
-				return(ERR);
-			}
-		}
-		else
-		{
-			ErrorMessage("invalid second argument");
-			return(ERR);
-		}
+		ErrorMessage("second argument should be forward/reverse/forward_numeric/reverse_numeric/forward_embedded_numeric/reverse_embedded_numeric");
+		return(ERR);
 	}
 
 
-	if(first >= size || last < first)
-   {
-      ErrorMessage("first must be <= last and smaller than list size");
-      return(ERR);
-   }
-	int* indicies;
-
-	if(first < 0)
-	{
-		if(reorderArray) // User has supplied a reorder array
-		{
-			int index;
-			for(int i = 0; i < reorderArraySize; i++)
-			{
-				// Check for invalid sort array indicies
-				index = reorderArray[i];
-				if(index <  0 || index >= reorderArraySize)
-				{
-					ErrorMessage("reorder array indices my be in size range of input list");
-					return(ERR);
-				}
-			}
-
-		// Make new list which will contain sorted version                              
-			char **outList = new char*[reorderArraySize];
-			char **inList = var.GetList();
-			for(int i = 0; i < reorderArraySize; i++)
-			{
-				index = reorderArray[i];
-				char *str = inList[index];
-			   outList[i] = new char[strlen(str)+1];
-				strcpy(outList[i],str);
-			}
-			itfc->retVar[1].AssignList(outList,reorderArraySize);
-			itfc->nrRetValues = 1;
-			return(OK);
-		}
-		else
-		{
-			indicies = new int[size];
-			for(int i = 0; i < size; i++)
-				indicies[i] = i;
-			if(direction == "forward")
-				SortList(list,size,1,indicies);
-			else if(direction== "forward_numeric")
-				SortList(list,size,0,indicies);
-			else if(direction== "forward_embedded_numeric")
-				SortList(list,size,2,indicies);
-			else if(direction== "reverse")
-				SortListInReverse(list,size,1,indicies);
-			else if(direction== "reverse_embedded_numeric")
-				SortListInReverse(list,size,2,indicies);
-			else
-				SortListInReverse(list,size,0,indicies);
-		}
-	}
-	else
-	{
-		indicies = new int[size];
-		for(int i = 0; i < size; i++)
-			indicies[i] = i;
-		if(SortListBySubstring(list,size,first,last,indicies))
-		{
-			ErrorMessage("invalid first and.or last parameters");
-			return(ERR);
-		}
-	}
+   int* indicies = new int[size];
+   for(int i = 0; i < size; i++)
+	   indicies[i] = i;
+   if(direction == "forward")
+	   SortList(list,size,1,indicies);
+   else if(direction== "forward_numeric")
+	   SortList(list,size,0,indicies);
+   else if(direction== "forward_embedded_numeric")
+	   SortList(list,size,2,indicies);
+   else if(direction== "reverse")
+	   SortListInReverse(list,size,1,indicies);
+   else if(direction== "reverse_embedded_numeric")
+	   SortListInReverse(list,size,2,indicies);
+   else
+	   SortListInReverse(list,size,0,indicies);
 
    itfc->retVar[1].MakeAndSetList(list, size);
    itfc->nrRetValues = 1;
@@ -608,8 +519,8 @@ int SortList(Interface* itfc ,char arg[])
 /******************************************************************************
 *  Sort a list alphanumerically by list names or part of list names
 *
-* Syntax: result = sort(list,[mode]) or
-*         result = sort(list, start, end)
+* Syntax: (result, indicies) = sort2(list,[mode]) or
+*         (result, indicies) = sort2(list, start, end)
 *
 * mode = forward (alphabetic sort)
 *        reverse (alphabetic sort)
@@ -618,49 +529,41 @@ int SortList(Interface* itfc ,char arg[])
 *
 * The numeric options check to see if there is a leading number and if
 * there is then the sort numerically on that.
+* A second parameter 'indices' is also returned which contains the new
+* location of the original list elements. This can be used to sort
+* other related lists
 *
 ******************************************************************************/
 
 
 int SortList2(Interface* itfc, char arg[])
 {
-   short r;               // Function return flag
-   Variable var;          // Variable containing copy of list
-   long first = -1, last = -1;      // Range of indicies to compare
-   Variable varFirst, varLast;
+   short r; 
+   Variable varList, varOption;
    CText direction = "forward_numeric";
    float* reorderArray = 0;
    char** outList = 0;
    int reorderArraySize = 0;
 
    // Get list name, and sublist range to sort by   
-   if ((r = ArgScan(itfc, arg, 1, "list, (first,last)/mode", "eee", "vvv", &var, &varFirst, &varLast)) < 0)
+   if ((r = ArgScan(itfc, arg, 1, "list, indices/mode", "ee", "vv", &varList, &varOption)) < 0)
       return(r);
 
    // Check for errors 
-   if (VarType(&var) != LIST)
+   if (VarType(&varList) != LIST)
    {
       ErrorMessage("argument is not a list");
       return(ERR);
    }
 
-   char** list = var.GetList();
-   long size = var.GetDimX();
-
-   if (r == 3)
-   {
-      if (varFirst.GetType() == FLOAT32 && varLast.GetType() == FLOAT32)
-      {
-         first = nint(varFirst.GetReal());
-         last = nint(varLast.GetReal());
-      }
-   }
+   char** list = varList.GetList();
+   long size = varList.GetDimX();
 
    if (r == 2)
    {
-      if (varFirst.GetType() == UNQUOTED_STRING)
+      if (varOption.GetType() == UNQUOTED_STRING)
       {
-         direction = varFirst.GetString();
+         direction = varOption.GetString();
          if (direction != "forward_numeric" && direction != "reverse_numeric" && direction != "forward" && direction != "reverse" &&
             direction != "forward_embedded_numeric" && direction != "reverse_embedded_numeric")
          {
@@ -668,11 +571,11 @@ int SortList2(Interface* itfc, char arg[])
             return(ERR);
          }
       }
-      else if (varFirst.GetType() == MATRIX2D && varFirst.GetDimY() == 1)
+      else if (varOption.GetType() == MATRIX2D && varOption.GetDimY() == 1)
       {
-         reorderArray = varFirst.GetMatrix2D()[0];
-         reorderArraySize = varFirst.GetDimX();
-         if (reorderArraySize != var.GetDimX())
+         reorderArray = varOption.GetMatrix2D()[0];
+         reorderArraySize = varOption.GetDimX();
+         if (reorderArraySize != varList.GetDimX())
          {
             ErrorMessage("Reorder array size must match size of input list");
             return(ERR);
@@ -685,74 +588,55 @@ int SortList2(Interface* itfc, char arg[])
       }
    }
 
-
-   if (first >= size || last < first)
-   {
-      ErrorMessage("first must be <= last and smaller than list size");
-      return(ERR);
-   }
    int* indicies;
 
-   if (first < 0)
+   if (reorderArray) // User has supplied a reorder array
    {
-      if (reorderArray) // User has supplied a reorder array
+      int index;
+      for (int i = 0; i < reorderArraySize; i++)
       {
-         int index;
-         for (int i = 0; i < reorderArraySize; i++)
+         // Check for invalid sort array indicies
+         index = reorderArray[i];
+         if (index < 0 || index >= reorderArraySize)
          {
-            // Check for invalid sort array indicies
-            index = reorderArray[i];
-            if (index < 0 || index >= reorderArraySize)
-            {
-               ErrorMessage("reorder array indices my be in size range of input list");
-               return(ERR);
-            }
+            ErrorMessage("reorder array indices my be in size range of input list");
+            return(ERR);
          }
+      }
 
-         // Make new list which will contain sorted version                              
-         char** outList = new char* [reorderArraySize];
-         char** inList = var.GetList();
-         for (int i = 0; i < reorderArraySize; i++)
-         {
-            index = reorderArray[i];
-            char* str = inList[index];
-            outList[i] = new char[strlen(str) + 1];
-            strcpy(outList[i], str);
-         }
-         itfc->retVar[1].AssignList(outList, reorderArraySize);
-         itfc->nrRetValues = 1;
-         return(OK);
-      }
-      else
+      // Make new list which will contain sorted version                              
+      char** outList = new char* [reorderArraySize];
+      char** inList = varList.GetList();
+      for (int i = 0; i < reorderArraySize; i++)
       {
-         indicies = new int[size];
-         for (int i = 0; i < size; i++)
-            indicies[i] = i;
-         if (direction == "forward")
-            SortList(list, size, 1, indicies);
-         else if (direction == "forward_numeric")
-            SortList(list, size, 0, indicies);
-         else if (direction == "forward_embedded_numeric")
-            SortList(list, size, 2, indicies);
-         else if (direction == "reverse")
-            SortListInReverse(list, size, 1, indicies);
-         else if (direction == "reverse_embedded_numeric")
-            SortListInReverse(list, size, 2, indicies);
-         else
-            SortListInReverse(list, size, 0, indicies);
+         index = reorderArray[i];
+         char* str = inList[index];
+         outList[i] = new char[strlen(str) + 1];
+         strcpy(outList[i], str);
       }
+      itfc->retVar[1].AssignList(outList, reorderArraySize);
+      itfc->nrRetValues = 1;
+      return(OK);
    }
    else
    {
       indicies = new int[size];
       for (int i = 0; i < size; i++)
          indicies[i] = i;
-      if (SortListBySubstring(list, size, first, last, indicies))
-      {
-         ErrorMessage("invalid first and.or last parameters");
-         return(ERR);
-      }
+      if (direction == "forward")
+         SortList(list, size, 1, indicies);
+      else if (direction == "forward_numeric")
+         SortList(list, size, 0, indicies);
+      else if (direction == "forward_embedded_numeric")
+         SortList(list, size, 2, indicies);
+      else if (direction == "reverse")
+         SortListInReverse(list, size, 1, indicies);
+      else if (direction == "reverse_embedded_numeric")
+         SortListInReverse(list, size, 2, indicies);
+      else
+         SortListInReverse(list, size, 0, indicies);
    }
+
    float* findicies = new float[size];
    for (int i = 0; i < size; i++)
       findicies[i] = indicies[i];
@@ -824,40 +708,40 @@ void SortListInReverse(char** list, long size, short mode, int *indicies)
 		indicies[i+1] = tempIndex;
    }
 }
-
-int SortListBySubstring(char** list, long size, long start, long end, int *indicies)
-{
-   long i,j,tempIndex;
-   char temp[MAX_STR];
-   char sub1[MAX_STR];
-   char sub2[MAX_STR];
-
-   // Do a simple insertion sort
-   for(j = 1; j < size; j++)
-   {
-		int sz = strlen(list[j]);
-		if(start >= sz || end >= sz || start > end)
-			return(0);
-      strncpy_s(temp,MAX_STR,list[j],_TRUNCATE);
-		tempIndex = indicies[j];
-      strncpy_s(sub1,end-start+2,list[j]+start,_TRUNCATE);
-		sub1[end-start+2] = '\0';
-      i = j-1;
-	   strncpy_s(sub2,end-start+2,list[i]+start,_TRUNCATE);
-		sub2[end-start+2] = '\0';
-      while(i >= 0 && CompareHexStrings(sub1,sub2) == -1)
-      {
-         ReplaceStringInList(list[i], &list, size, i+1);
-			indicies[i+1] = indicies[i];
-         i--;
-		  strncpy_s(sub2,end-start+2,list[i]+start,_TRUNCATE);
-		  sub2[end-start+2] = '\0';
-      }
-      ReplaceStringInList(temp, &list, size, i+1);
-		indicies[i+1] = tempIndex;
-   }
-	return(1);
-}
+//
+//int SortListBySubstring(char** list, long size, long start, long end, int *indicies)
+//{
+//   long i,j,tempIndex;
+//   char temp[MAX_STR];
+//   char sub1[MAX_STR];
+//   char sub2[MAX_STR];
+//
+//   // Do a simple insertion sort
+//   for(j = 1; j < size; j++)
+//   {
+//		int sz = strlen(list[j]);
+//		if(start >= sz || end >= sz || start > end)
+//			return(0);
+//      strncpy_s(temp,MAX_STR,list[j],_TRUNCATE);
+//		tempIndex = indicies[j];
+//      strncpy_s(sub1,end-start+2,list[j]+start,_TRUNCATE);
+//		sub1[end-start+2] = '\0';
+//      i = j-1;
+//	   strncpy_s(sub2,end-start+2,list[i]+start,_TRUNCATE);
+//		sub2[end-start+2] = '\0';
+//      while(i >= 0 && CompareHexStrings(sub1,sub2) == -1)
+//      {
+//         ReplaceStringInList(list[i], &list, size, i+1);
+//			indicies[i+1] = indicies[i];
+//         i--;
+//		  strncpy_s(sub2,end-start+2,list[i]+start,_TRUNCATE);
+//		  sub2[end-start+2] = '\0';
+//      }
+//      ReplaceStringInList(temp, &list, size, i+1);
+//		indicies[i+1] = tempIndex;
+//   }
+//	return(1);
+//}
 
 /**************************************************************
    Compare strings str1 and str2 alphanumerically returning 
@@ -884,10 +768,10 @@ short CompareStrings(char *str1, char* str2, short mode)
       int isNum2 = 0;
 
       if (isdigit(str1[0])) // Prevent inf* and nan* from being interpreted as integers
-         isNum1 = sscanf(str1, "%f", &num1);
+         isNum1 = sscanf(str1, "%d", &num1);
 
       if (isdigit(str2[0]))
-         isNum2 = sscanf(str2, "%f", &num2);
+         isNum2 = sscanf(str2, "%d", &num2);
    
 		if(isNum1 == 1 && isNum2 == 1)
 		{
@@ -909,7 +793,7 @@ short CompareStrings(char *str1, char* str2, short mode)
 		{
 			if(isdigit(str1[k]))
 			{
-		     isNum1 = sscanf(str1+k,"%f",&num1);
+		     isNum1 = sscanf(str1+k,"%d",&num1);
 			  break;
 			}
 		}
@@ -917,7 +801,7 @@ short CompareStrings(char *str1, char* str2, short mode)
 		{
 			if(isdigit(str2[k]))
 			{
-		     isNum2 = sscanf(str2+k,"%f",&num2);
+		     isNum2 = sscanf(str2+k,"%d",&num2);
 			  break;
 			}
 		}   
