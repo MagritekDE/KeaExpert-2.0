@@ -1594,7 +1594,7 @@ int RemoveSelectionRect(Interface* itfc ,char args[])
 
 //
 // This allows the double click, move, scroll-wheel actions in 1D plots to be overridden
-// Just pass a macro to use instead. An empty string will revert to the defaul action
+// Just pass a macro to use instead. An empty string will revert to the default action
 //
 int DefinePlotCallback(Interface* itfc, char args[])
 {
