@@ -1,10 +1,17 @@
 #####################################################################
-# This example script sets pin 3 (AD1) on the TTL trigger box
-# to high and then returns. 
-# It could be used to trigger a batch process.
-#####################################################################
+# Runs SSE experiment for set up in the list depths
+#
+# Copyright (c) Magritek GmbH 2013
+# 
+#
+# Release version for FX3 PM systems
+#
+# Based on the macros from Prospa version for DSP
+#
+# Last update: Bulat Gizatullin 24.08.2026
+####################################################################
 
-procedure(CPMGFastAuto, parameters=null) 
+procedure(SEAuto, parameters=null) 
  
    if(EditIfShiftPressed(getmacropath(),getmacroname()))
       return
@@ -33,6 +40,12 @@ procedure(CPMGFastAuto, parameters=null)
                        "depths      =4500",
                        "maxDepth    =5500",
                #        "position = """,
+                       "DEst = 2",
+                       "tauMin = 0.02",
+                       "tauMax = 0.2", 
+                       "DELTA = 10",
+                       "nrPntsTau = 8", 
+                       "index       = \"exp\"",
 
 # parametesr for processing tab of CPMGFast
                       "alpha          = 1",
@@ -94,7 +107,16 @@ procedure(interface)
                  "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
                  "nrScans",      "Number of scans",         "tb",       "integer",   "",
                  "nrEchoes",     "Number of echoes",        "tb",       "integer",   "[1,8192]",
+                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
                  "refSignal",    "Normalization",           "tb",       "float",     "",
+                  "",            "SSE",                   "dv",       "",          "",
+                 "DEst",         "D estimation (10-9m^2/s)","tb",       "float",     "", 
+                 "tauMin",       "Min. tau (ms)",           "tb",       "float",     "",
+                 "tauMax",       "Max. tau (ms)",           "tb",       "float",     "",
+      #           "DELTA",        "DELTA (ms)",              "tb",       "float",     "",
+                 "nrPntsTau",    "Number of tau. steps",    "tb",       "integer",   "",
+                 "index",        "Time increment",          "tm",       "readonly_string",    "[\"lin\",\"exp\"]",
+
                   "",            "Depths",                  "dv",       "",          "",
                  "enableLift",    "Enable lift",              "cb",       "string",    "no,yes",
 #                 "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
@@ -105,22 +127,22 @@ procedure(interface)
                  "",             "Update depth list",      "bt",       "string",    "updateDepths()"]
           #       "position",     "Current position (um)",   "tb",       "readonly_string",  ""]
 
-   processingInterface = [
-                 "",             "Processing",              "dv",       "",          "",
-                 "fitMode",      "Fit mode?",               "tm",       "readonly_string",    "[\"realTime\"]",
-                 "autoPhase",    "Auto phase?",             "cb",       "string",    "no,yes",
-                 "phaseMethod",  "Phase method?",           "tm",       "readonly_string",    "[\"minsd\",\"maxreal\",\"minimag\"]",
-                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
-                 "ignoreFirstPnt","Ignore first point?",    "cb",       "string",    "no,yes",
-                 "fitType",      "Type of fit",             "tm",       "readonly_string",    "[\"exp\",\"biexp\",\"nnls\",\"none\"]",
-#                 "fit",          "Manual Fit",              "bt",       "string",    "ManualFit()",
-                 "x_minimum",    "Min. relax. time (ms)",   "tb",       "float",     "[0.001,100]",
-                 "x_maximum",    "Max. relax. time (ms)",   "tb",       "float",     "[0.001,10000]",
-                 "alpha",        "Alpha",                   "tb",       "float",     "[0.0001,1000]"
-                        ]
+#   processingInterface = [
+#                 "",             "Processing",              "dv",       "",          "",
+#         #        "fitMode",      "Fit mode?",               "tm",       "readonly_string",    "[\"realTime\"]",
+#           #      "autoPhase",    "Auto phase?",             "cb",       "string",    "no,yes",
+#        #         "phaseMethod",  "Phase method?",           "tm",       "readonly_string",    "[\"minsd\",\"maxreal\",\"minimag\"]",
+#                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
+#          #       "ignoreFirstPnt","Ignore first point?",    "cb",       "string",    "no,yes",
+#           #      "fitType",      "Type of fit",             "tm",       "readonly_string",    "[\"exp\",\"biexp\",\"nnls\",\"none\"]",
+##                 "fit",          "Manual Fit",              "bt",       "string",    "ManualFit()",
+#          #       "x_minimum",    "Min. relax. time (ms)",   "tb",       "float",     "[0.001,100]",
+#         #        "x_maximum",    "Max. relax. time (ms)",   "tb",       "float",     "[0.001,10000]",
+#          #       "alpha",        "Alpha",                   "tb",       "float",     "[0.0001,1000]"
+#                        ]
    
    
-   ctrlLayout = ctrlLayout + processingInterface
+#   ctrlLayout = ctrlLayout + processingInterface
    
 
    procLayout =   struct(
@@ -131,7 +153,7 @@ procedure(interface)
 
  #  "Select row data\tCtrl+Shift+H", "select_row", func2d("select row"),
 
-   plotLayout = ["pt1","pt2";"im1"]
+   plotLayout = ["pt1","pt2","pt3";"im1"]
 #   plotLayout = ["im1"]
 
 #   :updateDepths()
@@ -146,9 +168,10 @@ endproc(ctrlLayout, plotLayout,procLayout)
 
 procedure(getPlotInfo, plotRegion)
 
-   info = ["pt1","cpmg.pt1",
-           "pt2","fit.pt1",
-           "im1","cpmg2d.pt2"          
+   info = ["pt1","echo.pt1",
+           "pt2","sseLin.pt1",
+           "pt3","sseLog.pt1",
+           "im1","sse2d.pt2"          
             ]
 
    if(plotRegion == "all")
@@ -174,7 +197,7 @@ procedure(backdoor, parameters)
 #pr parameters
 #   pr "in BD\n"
 #
-   (pt1,pt2,im1) = InitPlot(["pt1","pt2";"im1"])
+   (pt1,pt2,pt3,im1) = InitPlot(["pt1","pt2","pt3";"im1"])
 
    cd(getmacropath())
    cd("ProbeHeads")
@@ -242,6 +265,16 @@ procedure(backdoor, parameters)
      return
    endif
 
+
+   result = struct()
+   result->tauArray = matrix(nrPntsTau)
+   result->qAxis = matrix(nrPntsTau)
+   result->ampAxis = matrix(nrPntsTau)
+   result->E0 = 0
+   result->T1 = 0
+
+
+
    parameters = list(parameters)
    newPar = mergelists(parameters,selectedProbeHead)
    newPar = mergelists(newPar,loadedPars)
@@ -275,7 +308,6 @@ pr newPar
 #   if(refSignalCheck == "no")
 #      newPar = setlistvalue(newPar,"refSignal","1")
 #   endif
-
 
 ##   cd(getmacropath())
 ##   cd("ProbeHeads")
@@ -322,7 +354,7 @@ pr "moved -70\n"
 #################################################################################
 
    nrSteps = size(depthList)
-   data2D   = matrix(nrEchoes,nrSteps)
+   data2D   = matrix(nrPntsTau,nrSteps)
    resultsFit = list(nrSteps)
    stats = list(nrSteps)
 
@@ -348,11 +380,11 @@ pr "====Moved $moveOffset$\n"
 #      oldDepth = newDepth
      depth = newDepth
 
-     result =  RunExpt("CPMGFastPM", newPar)
+     result =  RunExpt("SEpm", newPar)
 
-
-   tauArray = result->tx
-   ampArray = result->ty
+   qAxis = result->qAxis
+   tauArray = result->tauArray
+   ampArray = result->ampAxis
 
    depthStr = depthList[k]
 
@@ -383,9 +415,10 @@ pr "====Moved $moveOffset$\n"
 #
     ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),newPar,"simpleReport")
     ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),newPar,"simpleReport")
+    ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),newPar,"simpleReport")
     ucsFiles:saveImage(im1,:getPlotInfo("im1"),newPar,"simpleReport")
 
-   :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit,stats)
+   :saveData(newPar,tauArray,qAxis,ampArray,depthStr,data2D,resultsFit,stats)
 
 
 
@@ -555,7 +588,7 @@ procedure(editDepths)
    bak = getcwd() 
    cd(getmacropath())
    EditorWin()
-   edit("depthListCPMGFastAuto.lst")
+   edit("depthListSEAuto.lst")
    cd(bak)
 
 endproc()
@@ -569,7 +602,7 @@ procedure(updateDepths)
 
    bak = getcwd()
    cd(getmacropath())
-   depthListPar = load("depthListCPMGFastAuto.lst","list")
+   depthListPar = load("depthListSEAuto.lst","list")
    obj = findobj(0,"name","depths")
    setpar(0,obj,"menu",depthListPar)
    setpar(0,obj,"text",depthListPar[0])
@@ -582,7 +615,7 @@ endproc(depthListPar)
 # Save data and parameters rleated to CPMGFast, fitting and depth
 ###########################################################
 
-procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit,stats)
+procedure(saveData,newPar,totalTime,qAxis,data1D,depthStr,data2D,resultsFit,stats)
 
    guipar = getctrlvalues(0)
    assignlist(guipar)
@@ -615,15 +648,15 @@ procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit,stats)
    save("GUI.par",guipar)              # Save acq. parameters
    save("acq.par",newPar)              # Save acq. parameters
    
-   if(fitType=="biexp" | fitType =="exp")
+  # if(fitType=="biexp" | fitType =="exp")
       save("resultsFit.par",resultsFit)  # Save results of the fit
-   endif
+ #  endif
 
 
-   if(fitType != "none")
+  # if(fitType != "none")
       save("stats.par",stats)  # Save results of the fit
-   endif
-
+ #  endif
+#
    n = size(data1D)
    m = matrix(3,n)
    m[0,~] = (totalTime/1000)'
@@ -639,7 +672,8 @@ procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit,stats)
       export2d(m,"data-$depthStr$um.dat")  # Save data for origin
      
       export1dpar("ab", "ascii",  "xyrc", "real")
-      export1d(totalTime, "T2Axis.dat")
+      export1d(totalTime, "TauAxis.dat")
+      export1d(qAxis, "QAxis.dat")
 
       export2dpar("ab","ascii","xyrc","real","delimiter","tab")
       export2d(data2D,"data2D.dat")  # Save data for origin

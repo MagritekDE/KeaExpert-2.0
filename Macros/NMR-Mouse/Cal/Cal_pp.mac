@@ -1,0 +1,168 @@
+########################################################
+#
+# CPMG pulse sequence in which each echo is summed to 
+# return a single complex number per echo.
+# The duration of the RF pulses is then stepped to find
+# the optimal 90/180 combination
+#
+# 90 - delay - {180 - delay - acq}
+#
+########################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name,   label, ctrlType, varType)
+  interface = ["b1FreqCh1",      "B1 Frequency (MHz)",     "tb",  "freq";
+               "90AmplitudeCh1", "90 amplitude (dB)",      "tb",  "float,[-85,-6]";
+               "180AmplitudeCh1","180 amplitude (dB)",     "tb",  "float,[-85,0]";
+               "minWidth",       "Min. pulse length (us)", "tb",  "float,[0.5,100]";
+               "widthStep",      "Pulse width step (us)",  "tb",  "float,[0.1,100]";
+               "nrSteps",        "Number of steps",        "tb",  "integer,[2,100]";
+               "echoTime",       "Echotime (us)",          "tb",  "sdelay";
+               "nrEchoes",       "Number of echoes",       "tb",  "integer,[0,50000]";
+               "echoShift",      "Echo shift",             "tb",   "float,[-50,50]";
+        #       "intWidth",       "Integration width (Hz)", "tb",  "integer,[1,100000]";
+               "repTime",        "Repetition time (ms)",   "tb",  "reptime"]
+
+
+# Relationships to determine remaining variable values
+   relationships = ["nxShim = 0", #xcal*xshim/1000", # x shim value
+                    "nyShim = 0", #ycal*yshim/1000", # y shim value
+                    "nzShim = 0", #zcal*zshim/1000", # z shim value
+                    "noShim = 0", #ocal*oshim/1000", # o shim value
+                    "a90      = 90AmplitudeCh1",
+                    "a180     = 180AmplitudeCh1",
+                    "dRF      = minWidth",
+                    "d90_180  = echoTime/2-dRF/2-pgo-2",
+                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
+                    "dAcq     = echoTime-dRF-pgo-d180_acq-2",
+                    "nEchoes  = nrEchoes",
+                    "nPnts    = nrPnts",
+                #    "totPnts  = nrEchoes",
+                    "totPnts  = nrPnts",
+                    "totTime  = acqTime"]
+
+# Define the tabs and their order
+   tabs = ["Pulse_sequence","Progress","Acquisition","Processing_Autophase","File_Settings"]
+
+# These parameter(s) will be changed between experiments
+   variables = ["dRF","d90_180","d180_acq","dAcq"]
+
+# Pulse sequence
+   initpp(dir) # Reset internal parameter list
+
+   gradon(x,nxShim)                    # Set x shim
+   gradon(y,nyShim)                    # Set y shim
+   gradon(z,nzShim)                    # Set z shim 
+   gradon(o,noShim)                    # Set o shim 
+
+   cleardata(nEchoes)                  # Number of points collected
+   pulse(mode,a90,p1,dRF)              # 90 RF pulse
+   delay(d90_180)                      # 90 - 180 delay
+   loop(l1,nEchoes)
+      pulse(mode,a180,p2,dRF)          # 180 RF pulse
+      delay(d180_acq)                  # 180 - acq delay
+      acquire("sum",nPnts,dAcq)  # Acquire echo and wait
+   endloop(l1)
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle
+   phaseList = [2,0,2,0; # -x,x,-x,x : 90 phase
+                3,1,1,3; # -y,y,y,-y : 180 phase
+                2,0,2,0] # -x,x,-x,x : Acquire phase
+
+endproc(lst,tabs,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   probeHeadPars = Cal:loadProbeHeadPars()
+   assignlist(probeHeadPars)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+
+
+   par = ["rxGain          = 31",
+          "pulseLengthCh1  = $pulseLength$",
+          "90AmplitudeCh1  = $90Amplitude$",
+          "180AmplitudeCh1 = $180Amplitude$",
+          "echoShift       = $echoShift$",
+          "rxPhase         = $rxPhase$",
+          "b1FreqCh1       = $b1Freq$"]
+
+endproc(par)
+
+
+
+#####################################################
+# Generate some simulated CPMGFast data based on the
+# values stored in SimulationInfo and the UI
+#####################################################
+
+procedure(simulateNMR, dataSize)
+
+   assignstruct(SimulationInfo) # Get spectrometer parameters
+
+
+   pulseAmp         = ppValues->a90
+   pulseLength      = ppValues->dRF
+   pulseIntegral    = pulseAmp*pulseLength
+
+   pulseInt = pulseIntegral
+   pulse90Int = pulse90Integral
+
+   p90 = round(ppValues->p1/(2*pi)*4)
+   p180 = round(ppValues->p2/(2*pi)*4)
+
+   nrPnts    = exptPar->nrPnts
+   nrEchoes  = exptPar->nrEchoes
+   echoTime  = exptPar->echoTime
+   dwellTime = exptPar->dwellTime
+
+# Non-experiment specific parameters
+   DW = dwellTime*1e-6 #  This is the dwell time
+   off = single(1e6*(b1Freq-b0Freq)) #  This is the offset (b1Freq - f0)
+   sigAmp = signalAmplitude*receiverGain*nrPnts #  the signal amplitude
+   sigAmp = sigAmp *sin(pulseInt*pi/(2*pulse90Int))
+   ph = receiverPhase #  the receiver phase
+
+   if(p90 == 2 & (p180 == 3 | p180 == 1)) # Phase cycling changes the detected phase
+      ph = ph - 180
+   endif
+
+   nl = noiseAmplitude*receiverGain*sqrt(1.0/dwellTime)*sqrt(nrPnts) # Generate some noise
+
+   cd(getmacropath())
+   cd("$appdir$\\Macros\\KeaExpert\\SimulatorMacros\\Simulated Samples")
+
+   result = sample() # Get sample T2
+   T2 = result->T2
+
+   tAxis = (([0:1:nrEchoes-1]/nrEchoes)*nrEchoes*echoTime + echoTime)*1e-6
+
+   cmat = cmatrix(nrEchoes)
+
+   cmat = sigAmp*exp(-tAxis/T2)*exp(i*ph/180*pi)
+
+   mat = ctor(cmat)
+
+   mat = mat + nl*noise(nrEchoes*2)
+
+endproc(mat)
+
+
+

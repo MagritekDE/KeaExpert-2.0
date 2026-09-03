@@ -1,0 +1,233 @@
+#####################################################################
+# Update information about current probehead, spacer, etc.
+#
+# Based on corresponding macro from PMXX MOUSE Prospa folder
+#
+# Initial version
+#
+# - added callback to set up the lists in the interface
+# - it uses the "selectedProbeHEad.par" file to fill in parameters
+#
+# Bulat Gizatullin
+# August 2026
+#
+# Copyright (c) Magritek Ltd 2025
+#####################################################################
+
+procedure(selectProbeHead, parameters=null) 
+ 
+   if(EditIfShiftPressed(getmacropath(),getmacroname()))
+      return
+   else # Add the experiment with interface
+      :updateParameterUI(parameters)
+   endif
+
+endproc()
+
+###########################################################
+# The interface control(s) required by Expert when loading
+# data from a experimental result
+###########################################################
+
+procedure(interface)
+
+   try
+     (sensorList, probeList, spacerList) = :getHardwareLists() # lists are for the menus, values from that list are in updateUI procedure
+#pr "here in try\n"
+#pr(sensorList, probeList, spacerList)
+   catch
+     (sensorList, probeList, spacerList) = :getSelectedHardwareLists() # if selected from the menu and there is another protocol in the gui
+
+   endtry
+
+   ctrlLayout = ["",             "Hardware configuration","dv",        "",                   "",
+                 "Sensor",       "Sensor",               "tm,proc",   "readonly_string",    "$sensorList$", 
+                 "Probe",        "Probe",                "tm,proc",   "readonly_string",    "$probeList$", 
+                 "Spacer",       "Spacer",               "tm,proc",   "readonly_string",    "$spacerList$", 
+                 "",             "Edit parameters list", "bt",        "string",             "editProbeHead()"
+                  ]
+
+   plotLayout = ["pt1"]
+
+endproc(ctrlLayout, plotLayout)
+
+
+########################################################
+# Parameter callback - called when protocol or parameter
+# to change menu selected
+########################################################
+
+procedure(parameterCallBack)
+
+   parameters = getctrlvalues(0)
+   assignlist(parameters)
+
+  if(parentCtrl->event == "enter" | parentCtrl->event == "undefined")
+
+      bak = getcwd()
+      try
+         :upDateParameterUI(parameters)
+      catch
+         pr lasterror()
+      endtry
+      cd(bak)
+
+   endif
+
+  
+endproc()
+
+
+########################################################
+# Regenerate the UI 
+#######################################################
+
+procedure (upDateParameterUI,parameters)
+
+      macroLocation = getmacropath()
+
+      cd(getmacropath())
+      cd("ProbeHeads")
+      selectedProbeHead = load("selectedProbeHead.par")
+      assignlist(selectedProbeHead)
+
+      if(parameters == null)
+         parameters = [
+                       "Sensor  = \"$Sensor$\"",
+                       "Probe   = \"$Probe$\"",
+                       "Spacer  = \"$Spacer$\""
+                      ] 
+
+      endif
+           
+      gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
+
+endproc()
+
+
+
+################################################################
+# Come here when the run button is pressed
+################################################################
+
+procedure(backdoor, parameters)
+
+   assignstruct(parameters)
+
+   bak = getcwd() 
+   
+   macroDir = getmacropath()
+   spacerDir = macroDir + "\probeHeads" + "\\$Sensor$" + "\\$Probe$"
+   cd(spacerDir)     
+  
+   newProbeHead = load(Spacer)
+   macroDir = getmacropath()
+   sensorDir = macroDir + "\probeHeads"
+   setcwd(sensorDir)   
+   save("selectedProbeHead.par", newProbeHead)
+
+   message("info","The probeHead has been updated")
+   print ("The parameters for the probehead $Sensor$/$Probe$/$Spacer$ are set up. \n")
+
+   cd(bak)
+
+endproc()
+
+
+
+###########################################################
+# Edit probe head file in the current editor window
+###########################################################
+
+procedure(editProbeHead)
+
+   obj = findobj(0,"name","Spacer")
+   Spacer = getpar(0, obj,"text")
+
+   obj = findobj(0,"name","Probe")
+   Probe = getpar(0, obj,"text")
+
+   obj = findobj(0,"name","Sensor")
+   Sensor = getpar(0, obj,"text")
+
+
+   bak = getcwd() 
+   macroDir = getmacropath()
+
+   spacerDir = macroDir + "\probeHeads" + "\\$Sensor$" + "\\$Probe$"
+   cd (spacerDir)
+   edit(Spacer)
+   cd(bak)
+
+endproc()
+
+
+###########################################################
+# Get the hardware parameters to the interface
+# when selected from the menu
+###########################################################
+
+procedure(getSelectedHardwareLists)
+
+   bak = getcwd() 
+
+   cd(getmacropath())
+   cd("ProbeHeads")
+   selectedProbeHead = load("selectedProbeHead.par")
+   assignlist(selectedProbeHead)
+
+   obj = findobj(0,"name","Sensor")
+
+   macroDir = getmacropath()
+   sensorDir = macroDir+"\\probeHeads"
+   cd(sensorDir)
+   sensorList = getdirlist(".")
+
+   obj = findobj(0,"name","Probe")
+   probeDir = sensorDir + "\\$Sensor$"
+   cd(probeDir)
+   probeList = getdirlist(".")
+
+
+   obj = findobj(0,"name","Spacer")
+   spacerDir = probeDir + "\\$Probe$"
+   cd(spacerDir)
+   spacerList = getfilelist(".")
+
+   cd(bak)
+
+endproc(sensorList, probeList, spacerList)
+
+
+###########################################################
+# Get the hardware parameters to the interface
+# after callback
+###########################################################
+
+procedure(getHardwareLists)
+
+   bak = getcwd() 
+
+   obj = findobj(0,"name","Sensor")
+   Sensor = getpar(0, obj,"text")
+
+   macroDir = getmacropath()
+   sensorDir = macroDir+"\\probeHeads"
+   cd(sensorDir)
+   sensorList = getdirlist(".")
+
+   obj = findobj(0,"name","Probe")
+   Probe = getpar(0, obj,"text")
+   probeDir = sensorDir + "\\$Sensor$"
+   cd(probeDir)
+   probeList = getdirlist(".")
+
+   obj = findobj(0,"name","Spacer")
+   Spacer = getpar(0, obj,"text")
+   spacerDir = probeDir + "\\$Probe$"
+   cd(spacerDir)
+   spacerList = getfilelist(".")
+
+   cd(bak)
+
+endproc(sensorList, probeList, spacerList)
