@@ -51,6 +51,7 @@ procedure(editorWin, n, m)
    
    menu(m+3,"File",
                 "Open macro\tCtrl+O",funcedit("open macro"),
+                "Open startup macro\tCtrl+Shift+O",editorWin:openStartUpMacro(),
                 "Save macro\tCtrl+S",:saveMacro(),
                 "Save macro as ...",:saveMacroAs(),
                 "Separator", ,  
@@ -154,6 +155,7 @@ procedure(hide)
    
    menu(m+3,"File",
                 "Open macro\tCtrl+O",funcedit("open macro"),
+                "Open startup macro\tCtrl+Shift+O",:openStartUpMacro(),
                 "Save macro\tCtrl+S",funcedit("save macro"),
                 "Save macro as ...",funcedit("save macro as"),
                 "Separator", ,  
@@ -281,6 +283,19 @@ procedure(openCurrentEditFolder)
       cd(path)
       exec("explorer",getcwd())
    endif
+
+endproc()
+
+procedure(openStartUpMacro)
+
+   edObj = cureditor()
+   path = "$appdir$\Macros\Windows_Layout"
+   file = "original.mac"
+   cd(path)
+   edObj->pathname(path)
+   edObj->filename(file)
+   txt = load(file,"text")
+   edObj->text(txt)
 
 endproc()
 
