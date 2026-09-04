@@ -40,11 +40,11 @@ procedure(interface)
 
    endtry
 
-   ctrlLayout = ["",             "Hardware configuration","dv",        "",                   "",
-                 "Sensor",       "Sensor",               "tm,proc",   "readonly_string",    "$sensorList$", 
-                 "Probe",        "Probe",                "tm,proc",   "readonly_string",    "$probeList$", 
-                 "Spacer",       "Spacer",               "tm,proc",   "readonly_string",    "$spacerList$", 
-                 "",             "Edit parameters list", "bt",        "string",             "editProbeHead()"
+   ctrlLayout = ["",             "Hardware configuration","dv",            "",                   "",
+                 "Sensor",       "Sensor",               "tm_wide,proc",   "readonly_string",    "$sensorList$", 
+                 "Probe",        "Probe",                "tm_wide,proc",   "readonly_string",    "$probeList$", 
+                 "Spacer",       "Spacer",               "tm_wide,proc",   "readonly_string",    "$spacerList$", 
+                 "",             "Edit parameters list", "bt",             "string",             "editProbeHead()"
                   ]
 
    plotLayout = ["pt1"]
@@ -87,7 +87,7 @@ procedure (upDateParameterUI,parameters)
       macroLocation = getmacropath()
 
       cd(getmacropath())
-      cd("ProbeHeads")
+      cd(".ProbeHeads")
       selectedProbeHead = load("selectedProbeHead.par")
       assignlist(selectedProbeHead)
 
@@ -156,7 +156,12 @@ procedure(editProbeHead)
 
    spacerDir = macroDir + "\probeHeads" + "\\$Sensor$" + "\\$Probe$"
    cd (spacerDir)
-   edit(Spacer)
+   try
+      edit(Spacer)
+   catch
+      editorWin()
+      edit(Spacer)
+   endtry
    cd(bak)
 
 endproc()
@@ -172,7 +177,7 @@ procedure(getSelectedHardwareLists)
    bak = getcwd() 
 
    cd(getmacropath())
-   cd("ProbeHeads")
+   cd(".ProbeHeads")
    selectedProbeHead = load("selectedProbeHead.par")
    assignlist(selectedProbeHead)
 
