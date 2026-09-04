@@ -35,9 +35,9 @@ procedure(pulse_program,dir,mode,pars)
    relationships = ["a1  = 90AmplitudeCh1",
                     "a2  = 180AmplitudeCh1",
                     "d1  = pulseLengthCh1",
-                    "d2  = echoTime/2-d1-pgo-1",
-                    "d3  = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift",
-                    "d4  = echoTime-d1-pgo-d3-1",
+                    "d2  = echoTime/2-d1-pgo-1", #d90_180
+                    "d3  = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift", #d180_acq
+                    "d4  = echoTime-d1-pgo-d3-1", #dAcq
                     "d10 = 750-pgo",
                     "d9  = 500-pgo",
                     "d8  = 350-pgo",
@@ -56,7 +56,7 @@ procedure(pulse_program,dir,mode,pars)
 # Pulse sequence
    initpp(dir) # Reset internal parameter list
 
-   cleardata(64000)
+   cleardata(n2,n1)            # Intialise data for sum/stack mode
 
 # Saturation sequence
    pulse(mode,a1,p1,d1)    # 90 pulse
@@ -87,6 +87,14 @@ procedure(pulse_program,dir,mode,pars)
       delay(d3)            # 180 - acq delay
       acquire("sum",n2,d4) # Sum echo and wait d4
    endloop(l1)
+################################
+#   delay(d90_180)
+#   loop(l1,nEchoes)
+#      pulse(mode,a180,p2,dRF)          # 180 RF pulse
+#      delay(d180_acq)                  # 180 - acq delay
+#      acquire("sum",nPnts,dAcq)  # Acquire echo and wait
+#   endloop(l1)
+#################################
 
    lst = endpp() # Return parameter list
 

@@ -38,9 +38,9 @@ procedure(pulse_program,dir,mode,pars)
                     "a90      = 90AmplitudeCh1",
                     "a180     = 180AmplitudeCh1",
                     "dRF      = minWidth",
-                    "d90_180  = echoTime/2-dRF/2-pgo-2",
-                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
-                    "dAcq     = echoTime-dRF-pgo-d180_acq-2",
+                    "d90_180        = echoTime/2-(pgo+dRF+1)",
+                    "d180_acq       = echoTime/2-acqTime*500-(dRF/2+1)+rxLat+echoShift",
+                    "dAcq           = echoTime-d180_acq-(pgo+dRF+1)",
                     "nEchoes  = nrEchoes",
                     "nPnts    = nrPnts",
                 #    "totPnts  = nrEchoes",
@@ -61,7 +61,7 @@ procedure(pulse_program,dir,mode,pars)
    gradon(z,nzShim)                    # Set z shim 
    gradon(o,noShim)                    # Set o shim 
 
-   cleardata(nEchoes)                  # Number of points collected
+   cleardata(nPnts,nEchoes)            # Intialise data for sum/stack mode
    pulse(mode,a90,p1,dRF)              # 90 RF pulse
    delay(d90_180)                      # 90 - 180 delay
    loop(l1,nEchoes)
