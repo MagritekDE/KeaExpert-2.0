@@ -21,7 +21,7 @@ procedure(profiles, parameters=null)
    else # Add the experiment with interface
 
       cd(getmacropath())
-      cd("ProbeHeads")
+      cd(".ProbeHeads")
 
     if(isfile("selectedProbeHead.par"))   
       selectedProbeHead = load("selectedProbeHead.par")
@@ -215,11 +215,6 @@ endproc(null)
 
 procedure(backdoor, parameters)
 
-
-
-
-
-
    assignstruct(parameters)
 
    if (nrExp > 1)
@@ -245,8 +240,6 @@ procedure(backdoor, parameters)
    endif
 
    :saveLastPar(acquProfiles)################### hacked due to the quotes missing... also doe snot take into account further checks
-
-
 
 # calculates nrPnts and echoTime based on resolution (user) and gradient (probehead) parameters
    dwell = 0.5
@@ -492,7 +485,6 @@ newPar = list(parameters)
          else
             print("Depth: $depth$ um")
          endif      
-
 
 ###################### Runnign CPMGFast #############################
          result =  RunExpt("CPMGFastPM", newPar)
@@ -825,7 +817,7 @@ procedure(checkInterfaceHardwareConfig,parameters)
    assignlist(parameters)
 
    cd(getmacropath())
-   cd("ProbeHeads")
+   cd(".ProbeHeads")
    selectedProbeHead = load("selectedProbeHead.par")
 
    if ((Sensor!=(getlistvalue(selectedProbeHead,"Sensor")))|(Probe!=(getlistvalue(selectedProbeHead,"Probe")))|(Spacer!=(getlistvalue(selectedProbeHead,"Spacer"))))
