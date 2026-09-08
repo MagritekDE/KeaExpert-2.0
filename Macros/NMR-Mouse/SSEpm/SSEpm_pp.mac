@@ -41,7 +41,7 @@ procedure(pulse_program,dir,mode,pars)
                     "d2 = 1000*tauMin+echoTime/2-d1-pgo-1",
                     "d3 = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift",
                     "d4 = echoTime-d1-pgo-d3-1",
-                    "d5 = 1000*tauMin-d1-pgo",
+                    "d5 = 1000*tauMin-d1-pgo-1",
                     "w1 = 1000*DELTA",
                     "n1 = nrEchoes",
                     "n2 = nrPnts",
@@ -54,7 +54,7 @@ procedure(pulse_program,dir,mode,pars)
 # Pulse sequence
    initpp(dir) # Reset internal parameter list
 
-   cleardata(n2)
+   cleardata(n2,n1)            # Intialise data for sum/stack mode
 
    pulse(mode,a1,p1,d1)        # 90 pulse
    delay(d5)                   # small delta

@@ -82,15 +82,15 @@ procedure(getseqpar)
           "a90      = 90AmplitudeCh1",
           "a180     = 180AmplitudeCh1",
           "dRF      = minWidth",
-          "d90_180  = echoTime/2-dRF/2-pgo-2",
-          "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
-          "dAcq     = echoTime-dRF-pgo-d180_acq-2",
+          "d90_180        = echoTime/2-(pgo+dRF+1)",
+          "d180_acq       = echoTime/2-acqTime*500-(dRF/2+1)+rxLat+echoShift",
+          "dAcq           = echoTime-d180_acq-(pgo+dRF+1)",
           "nEchoes  = nrEchoes",
           "nPnts    = nrPnts",
           "totPnts  = nrPnts",
           "totTime  = acqTime"]
    var = ["dRF","d90_180","d180_acq","dAcq"]
-   pp_list = ["nxShim","nyShim","nzShim","noShim","nEchoes","a90","p1","dRF","d90_180","l1","a180","p2","d180_acq","nPnts","dAcq"]
+   pp_list = ["nxShim","nyShim","nzShim","noShim","nPnts","a90","p1","dRF","d90_180","nEchoes","l1","a180","p2","d180_acq","dAcq"]
    pp_name = "Cal.p"
    phase_list = [2,0,2,0;3,1,1,3;2,0,2,0]
 
@@ -175,9 +175,14 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    #  Update the various delays as the pulse length is modified
       dRF      = minWidth + stp*widthStep
-      d90_180  = echoTime/2-dRF/2-pgo-2
-      d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift
-      dAcq     = echoTime-dRF-pgo-d180_acq-2
+#      d90_180  = echoTime/2-dRF/2-pgo-2
+#      d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift
+#      dAcq     = echoTime-dRF-pgo-d180_acq-2
+
+      d90_180        = echoTime/2-(pgo+dRF+1)
+      d180_acq       = echoTime/2-acqTime*500-(dRF/2+1)+rxLat+echoShift
+      dAcq           = echoTime-d180_acq-(pgo+dRF+1)
+
       
       ppList = ucsRun:setPPDelay(ppList,varIndex[0],dRF)
       ppList = ucsRun:setPPDelay(ppList,varIndex[1],d90_180)
@@ -256,12 +261,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    next(pulseStep)
 
-   (P90,P1800) = :calNodes(durationAxis,real(echoInt))
+ #  (P90,P1800) = :calNodes(durationAxis,real(echoInt))
 
-   if (P90 != 0)
-      titleT= "$pt2->title->text$"
-      pt2->title->text("$titleT$ with P90=$P90$ us")
-   endif
+#   if (P90 != 0)
+#      titleT= "$pt2->title->text$"
+#      pt2->title->text("$titleT$ with P90=$P90$ us")
+#   endif
 
 # Save the data
   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"simpleReport")
@@ -270,7 +275,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    result = struct()
    result->x = durationAxis
    result->y = echoInt
-   result->P90 = P90
+#   result->P90 = P90
 
    return(result)
 
