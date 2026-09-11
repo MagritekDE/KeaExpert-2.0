@@ -104,8 +104,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    assignlist(guipar)
 
 
-# Save parameter 
-   gParam->saveToDefaults(queries = "no")
+# Save parameters if run from the interface 
+
+   if isvar("gData->curExpt->subProtocol")
+   else
+      gParam->saveToDefaults(queries = "no")
+   endif
 
 # Allocate space for output data
    sumData = cmatrix(totPnts)
@@ -284,7 +288,13 @@ procedure(loadProbeHeadPars)
 
    cd(getparentpath(getmacropath()))
    cd(".ProbeHeads")
-   probeHeadPars = load("selectedProbeHead.par")
+
+   if(isfile("selectedProbeHead.par"))   
+         probeHeadPars = load("selectedProbeHead.par")
+   else
+         message("Error","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","error")
+         return(null)
+   endif
+
 
 endproc(probeHeadPars)
-

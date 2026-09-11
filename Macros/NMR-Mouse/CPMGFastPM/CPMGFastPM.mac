@@ -124,8 +124,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    Sensor = getlistvalue(probeHeadPars,"Sensor")
 
-# Save parameter 
-   gParam->saveToDefaults(queries = "no")
+# Save parameters if run from the interface 
+
+   if isvar("gData->curExpt->subProtocol")
+   else
+      gParam->saveToDefaults(queries = "no")
+   endif
 
 # Do some safety checks
    if(d90_180 < 1 | d180_acq < 1 | dAcq < 1)
@@ -146,7 +150,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
        message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
-    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10"))) 
+    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
        message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
@@ -529,7 +533,14 @@ procedure(loadProbeHeadPars)
 
    cd(getparentpath(getmacropath()))
    cd(".ProbeHeads")
-   probeHeadPars = load("selectedProbeHead.par")
+
+   if(isfile("selectedProbeHead.par"))   
+         probeHeadPars = load("selectedProbeHead.par")
+   else
+         message("Error","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","error")
+         return(null)
+   endif
+
 
 endproc(probeHeadPars)
 
