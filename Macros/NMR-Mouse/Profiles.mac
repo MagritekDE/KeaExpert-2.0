@@ -109,6 +109,7 @@ procedure(interface)
 
                  "",             "Main",                    "dv",       "",          "",    #MAIN
                  "resolution",       "Resolution (um)",           "tb",   "float",     "",
+                 "",             "Print res.pars to CLI",         "bt",       "string",    "printResPars()",
                  "repTime",          "Repetition time (ms)",      "tb",   "float",     "",
                  "nrEchoes",         "Number of echoes",          "tb",   "integer",   "",
                  "nrScans",          "Number of scans",           "tb",   "integer",   "",
@@ -292,7 +293,7 @@ procedure(backdoor, parameters)
     message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
     return(0)
 # for PM5----------------------------------------------
-    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10"))) 
+    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
     message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
     return(0)
     endif
@@ -1125,3 +1126,34 @@ procedure(fillDataForExport,depthAxis,contrast1Axis,contrast2Axis,contrast3Axis,
 
 endproc(tempData)
 
+
+########################################################################################
+# Print echotime and number of points to CLI
+#########################################################################################
+
+procedure (printResPars)
+
+      parameters = getctrlvalues(0)
+      assignlist(parameters)
+
+   if not((isvar("gradient"))|(isvar("echoTime0"))|(isvar("pulseLength")))
+   
+      cd(getmacropath())
+      cd(".ProbeHeads")
+   
+       if(isfile("selectedProbeHead.par"))   
+         selectedProbeHead = load("selectedProbeHead.par")
+       else
+         message("Error!","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","info")
+         return()
+       endif
+
+         assignlist(selectedProbeHead)
+   endif
+
+      dwell = 0.5
+      nrPnts   = round(1e6/(gradient*dwell*resolution))
+      echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
+      print("For resolution $resolution$ um the corresponding parameters are:\n   Echotime (us):     $echoTime$\n   Number of points:  $nrPnts$\n")
+
+endproc()

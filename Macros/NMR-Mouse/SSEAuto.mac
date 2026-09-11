@@ -94,16 +94,32 @@ endproc()
 procedure(interface)
 
   
-#   bak = getcwd()
-#   cd(getmacropath())
-#   depthList = load("depthListCPMGFastAuto.lst","list")
-#   pr depthList
+   try # try to update depth list according to the data if selected from the history
+      if (gData->curExpt->source == "history")
+#         pr "loaded history file\n"
+         bak = getcwd()
+         cd(gData->curExpt->dataPath)  
+         depthList = load("depthList.par","list")
+         cd(bak)
+      else       # or load saved file 
+
+#         pr "loaded default file\n"
+         bak = getcwd()
+         cd(getmacropath())
+         depthList = load("depthListSSEAuto.lst","list")
+#         pr depthList
+      endif
+   catch
+      #pr lasterror()   
+      depthList = ""
+   endtry
 
    ctrlLayout = ["",             "Main",                    "dv",       "",          "",
                  "Sensor",       "Sensor",                  "tb",     "readonly_string",    "", 
                  "Probe",        "Probe",                   "tb",     "readonly_string",    "", 
                  "Spacer",       "Spacer",                  "tb",     "readonly_string",    "", 
                  "resolution",   "Resolution (um)",         "tb",       "float",     "", 
+                 "",             "Print res.pars to CLI",         "bt",       "string",    "printResPars()",
                  "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
                  "nrScans",      "Number of scans",         "tb",       "integer",   "",
                  "nrEchoes",     "Number of echoes",        "tb",       "integer",   "[1,8192]",
@@ -119,8 +135,8 @@ procedure(interface)
 
                   "",            "Depths",                  "dv",       "",          "",
                  "enableLift",    "Enable lift",              "cb",       "string",    "no,yes",
-#                 "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
-                 "depths",       "Depth list (um)",         "tm",       "integer",   "",
+                "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
+     #            "depths",       "Depth list (um)",         "tm",       "integer",   "",
                  "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
                  "",             "Edit depth list",         "bt",       "string",    "editDepths()",
 
@@ -229,6 +245,8 @@ procedure(backdoor, parameters)
       return()
    endif
 
+
+   depthList = getobj(0,findobj(0,"name","depths"))->menu
    :saveDepthList(depthList)#############
    :saveLastPar(acquAuto)###################
 
@@ -246,7 +264,7 @@ procedure(backdoor, parameters)
     message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
     return(0)
 # for PM5----------------------------------------------
-    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10"))) 
+    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
     message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
     return(0)
     endif
@@ -533,11 +551,24 @@ procedure(checkDepthList,depthListPar)
    depthList = getobj(0,findobj(0,"name","depths"))->menu
 #pr depthList
 
+
    if ((depthList!=depthListPar)|(depthList == null)|(depthListPar == null))
-     message("Error!!!","Depth lists are differnet or empty!\rUpdate and check the depth list first!","error")
-  #   print("\n Depth lists are differnet or empty! Update and check the depth list first!\n")
-     return(1)     
-#     lstDepths =:updateDepths()
+
+     print("\n Depth lists are differnet or empty! \n")
+
+      try
+        if(gData->curExpt->source == "batch")
+           depthList =:updateDepths()
+   
+        else
+           message("Error!!!","Depth lists are differnet or empty!\rUpdate and check the depth list first!","error")
+           return(1)
+        endif
+      catch
+        pr lasterror()
+        return(1)     
+      endtry
+
    endif
 
   nrDepths = size(depthList)
@@ -687,3 +718,35 @@ procedure(saveData,newPar,totalTime,qAxis,data1D,depthStr,data2D,resultsFit,stat
    cd(bak)
 
 endproc("saveData")
+
+
+########################################################################################
+# Print echotime and number of points to CLI
+#########################################################################################
+
+procedure (printResPars)
+
+      parameters = getctrlvalues(0)
+      assignlist(parameters)
+
+   if not((isvar("gradient"))|(isvar("echoTime0"))|(isvar("pulseLength")))
+   
+      cd(getmacropath())
+      cd(".ProbeHeads")
+   
+       if(isfile("selectedProbeHead.par"))   
+         selectedProbeHead = load("selectedProbeHead.par")
+       else
+         message("Error!","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","info")
+         return()
+       endif
+
+         assignlist(selectedProbeHead)
+   endif
+
+      dwell = 0.5
+      nrPnts   = round(1e6/(gradient*dwell*resolution))
+      echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
+      print("For resolution $resolution$ um the corresponding parameters are:\n   Echotime (us):     $echoTime$\n   Number of points:  $nrPnts$\n")
+
+endproc()
