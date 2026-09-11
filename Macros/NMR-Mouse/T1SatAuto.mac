@@ -599,8 +599,8 @@ procedure(checkDepthList,depthListPar)
 
 endproc(0)
 
-###########################################################
-# Edit deprths
+##########################################################
+# Edit depths
 ###########################################################
 
 procedure(editDepths)
@@ -608,8 +608,23 @@ procedure(editDepths)
 #   editorWin()
    bak = getcwd() 
    cd(getmacropath())
-   EditorWin()
-   edit("depthListT1SatAuto.lst")
+
+    if(isfile("depthListT1SatAuto.lst"))   
+      EditorWin()
+      edit("depthListT1SatAuto.lst")
+    else
+      message("Error!","File with depth values is not found!","error")
+
+      if(query("Warning","File with depth values is not found!\rDo you want create new depth file?","no") == "yes")
+         lst = ""
+         save("depthListT1SatAuto.lst",lst)
+         EditorWin()
+         edit("depthListT1SatAuto.lst")
+      endif
+
+      return()
+    endif
+
    cd(bak)
 
 endproc()
@@ -623,13 +638,30 @@ procedure(updateDepths)
 
    bak = getcwd()
    cd(getmacropath())
-   depthListPar = load("depthListT1SatAuto.lst","list")
-   obj = findobj(0,"name","depths")
-   setpar(0,obj,"menu",depthListPar)
-   setpar(0,obj,"text",depthListPar[0])
+
+    if(isfile("depthListT1SatAuto.lst"))   
+      depthListPar = load("depthListT1SatAuto.lst","list")
+      obj = findobj(0,"name","depths")
+      setpar(0,obj,"menu",depthListPar)
+      setpar(0,obj,"text",depthListPar[0])
+    else
+      message("Error!","File with depth values is not found!","error")
+
+      if(query("Warning","File with depth values is not found!\rDo you want create new depth file?","no") == "yes")
+         lst = ""
+         save("depthListT1SatAuto.lst",lst)
+         EditorWin()
+         edit("depthListT1SatAuto.lst")
+      endif
+
+      return()
+    endif
+
    cd(bak)
 
 endproc(depthListPar)
+
+
 
 
 ###########################################################

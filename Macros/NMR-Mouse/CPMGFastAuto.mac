@@ -573,7 +573,7 @@ procedure(checkDepthList,depthListPar)
 endproc(0)
 
 ###########################################################
-# Edit deprths
+# Edit depths
 ###########################################################
 
 procedure(editDepths)
@@ -581,8 +581,23 @@ procedure(editDepths)
 #   editorWin()
    bak = getcwd() 
    cd(getmacropath())
-   EditorWin()
-   edit("depthListCPMGFastAuto.lst")
+
+    if(isfile("depthListCPMGFastAuto.lst"))   
+      EditorWin()
+      edit("depthListCPMGFastAuto.lst")
+    else
+      message("Error!","File with depth values is not found!","error")
+
+      if(query("Warning","File with depth values is not found!\rDo you want create new depth file?","no") == "yes")
+         lst = ""
+         save("depthListCPMGFastAuto.lst",lst)
+         EditorWin()
+         edit("depthListCPMGFastAuto.lst")
+      endif
+
+      return()
+    endif
+
    cd(bak)
 
 endproc()
@@ -596,10 +611,25 @@ procedure(updateDepths)
 
    bak = getcwd()
    cd(getmacropath())
-   depthListPar = load("depthListCPMGFastAuto.lst","list")
-   obj = findobj(0,"name","depths")
-   setpar(0,obj,"menu",depthListPar)
-   setpar(0,obj,"text",depthListPar[0])
+
+    if(isfile("depthListCPMGFastAuto.lst"))   
+      depthListPar = load("depthListCPMGFastAuto.lst","list")
+      obj = findobj(0,"name","depths")
+      setpar(0,obj,"menu",depthListPar)
+      setpar(0,obj,"text",depthListPar[0])
+    else
+      message("Error!","File with depth values is not found!","error")
+
+      if(query("Warning","File with depth values is not found!\rDo you want create new depth file?","no") == "yes")
+         lst = ""
+         save("depthListCPMGFastAuto.lst",lst)
+         EditorWin()
+         edit("depthListCPMGFastAuto.lst")
+      endif
+
+      return()
+    endif
+
    cd(bak)
 
 endproc(depthListPar)
