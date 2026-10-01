@@ -24,6 +24,7 @@ procedure(init, self)
    self->saveMinimumVisibility      = "seParam:saveMinimumVisibility"
    self->saveParameterVisibility    = "seParam:saveParameterVisibility"
    self->saveToDefaults             = "seParam:saveToDefaults"
+   self->saveLastPars               = "seParam:saveLastPars"
    self->toggleParameterVisibility  = "seParam:toggleParameterVisibility"
    self->updateBWandAcq             = "seParam:updateBWandAcq"
    self->updateDispRange            = "seParam:updateDispRange"
@@ -1001,6 +1002,68 @@ procedure(saveToDefaults, self, queries = "yes")
       message("Error","Problems copying to '$protocol$' default parameter file .","error")
    elseif(queries == "yes")
       message("Success","Default parameter file for '$protocol$' updated.","info")
+   endif
+
+endproc()
+
+
+
+##############################################
+# Save the last parameters to the file for the 
+# current experiment
+##############################################
+
+procedure(saveLastPars, self)
+
+   if(gData->curExpt == null)
+      message("Error","Please select an experiment","error")
+      return
+   endif
+     
+   curExpt = gData->curExpt
+
+   protocol = curExpt->protocol
+
+
+# The data directory
+   srcDir = curExpt->dataPath
+
+# The pulse program folder
+   dstDir = curExpt->ppPath
+
+
+   error = 1
+   if(isdir(srcDir))
+      cd(srcDir)
+      if(isfile("acqu.par"))
+         par = load("acqu.par","truedoubles")
+      # Remove some parameters needed by MNova but not Expert
+         par = rmfromlist(par,"b1Freq")
+         par = rmfromlist(par,"b1FreqCh2")
+         par = rmfromlist(par,"lowestFrequency")
+         par = rmfromlist(par,"lowestFrequency2")
+         par = rmfromlist(par,"rxChannel2")
+         par = rmfromlist(par,"position")
+         par = rmfromlist(par,"windowSize")
+
+      cd(prefdir)
+      ppPrefdir = "KeaParameters\\Experiments\\$gData->curExpt->protocol$"
+      mkdir(ppPrefdir)
+  
+         if(isdir(ppPrefdir))
+            cd(ppPrefdir)
+       # Save the data 
+            save("$protocol$LastPars.par",sortlist(par))
+            error = 0
+         endif
+      endif
+   else
+      message("Error","Current data set not found for '$protocol$' - aborting.","error")
+      return
+   endif
+
+   if(error)
+      message("Error","Problems copying to '$protocol$' last parameter file .","error")
    endif
 
 endproc()
