@@ -9,8 +9,18 @@ procedure(MouseMoveKea, parameters=null)
    if(EditIfShiftPressed(getmacropath(),getmacroname()))
       return
    else # Add the experiment with interface
+
       if(parameters == null)
-         parameters = ["distance=0","position=0"] 
+         if isvar("gData->currentLiftPosition")
+            curPos =    gData->currentLiftPosition
+         else
+            curPos  = 0
+         endif
+
+         parameters = [ "distance = 0",
+                        "position = $curPos$",
+                        "moveMode = \"distance\""
+                        ] 
       endif
       gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
    endif
@@ -81,7 +91,7 @@ procedure(serviceBD)
 
    twoTTLpulses:backdoor(guipar)
 
-   pause(45)
+   pause(45) # too long, need to be recalculated
 
 endproc()
 
@@ -121,6 +131,7 @@ procedure(homeBD)
    n = findobj(0,"name","position")
    if(n > 0)
       setpar(0,n,"text","0")
+      gData->currentLiftPosition = 0
    endif
 
    pr "\n   Moving home\n"
@@ -161,6 +172,8 @@ procedure(moveBD, distance=null, position=null)
       :moveUp(slowSteps,n,position)
       position = position + 10*slowSteps
 
+      gData->currentLiftPosition = position
+
    else # Move down
 
       slowSteps = trunc((y-50*trunc(y/50))/10)
@@ -168,6 +181,8 @@ procedure(moveBD, distance=null, position=null)
       position = position - 50*trunc(y/50)
       :moveDown(slowSteps,n,position)
       position = position - 10*slowSteps
+
+      gData->currentLiftPosition = position
 
   endif
 
