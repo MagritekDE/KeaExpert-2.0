@@ -1,0 +1,68 @@
+############################################################
+#
+# Pulse program to control NMR MOUSE lift
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrltype, vartype)
+   interface = ["b1Freq1H",    "B1 Frequency (MHz)",   "tb",   "float,[0.5,30]";
+               "TTL1",         "TTL1",                 "tb",   "integer,[ 1,128]";
+               "TTL2",         "TTL2",                 "tb",   "integer,[ 1,128]";
+               "d1",           "delay 1(us)",          "tb",   "sdelay";
+               "d2",           "delay 2(us)",          "tb",   "sdelay";
+               "repTime",      "Repetition time (ms)", "tb",   "float,[20,1e8]"]
+
+# Relationships to determine remaining variable values
+   relationships = ["b1FreqCh1 = b1Freq1H",
+                    "b1  = TTL1",
+                    "b2  = TTL1 | TTL2"]
+
+
+# Define the parameter groups and their order
+   groups = ["Pulse_sequence","Acquisition"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+            
+   initpp(dir)
+      
+      ttlon(b1)
+      delay(d1)
+      ttlon(b2)
+      delay(d2)
+      ttloff(b2)
+
+   lst = endpp(0) # Return parameter list
+
+# Phase cycle list
+  phaseList  = [0]   # Acquire phase
+
+endproc(lst,groups,interface,relationships,variables,0,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)
