@@ -128,9 +128,10 @@ procedure(interface)
 
                   "",            "Depths",                  "dv",       "",          "",
                  "enableLift",    "Enable lift",              "cb",       "string",    "no,yes",
-#                 "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
-                 "depths",       "Depth list (um)",         "tm",       "integer",   "",
-                 "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
+                 "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
+#                 "depths",       "Depth list (um)",         "tm",       "integer",   "",
+#                 "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
+                 "maxDepth",     "Maximum depth (um)",      "tb",       "readonly_string",     "",
                  "",             "Edit depth list",         "bt",       "string",    "editDepths()",
 
                  "",             "Update depth list",      "bt",       "string",    "updateDepths()"]
@@ -341,6 +342,7 @@ pr newPar
 
 #   oldDepth = 0
    depth = 0
+   maxDepth = eval(maxDepth)
    if(enableLift == "yes")
 
       MouseMoveKea:MoveBD(-100,depth)
@@ -415,7 +417,13 @@ pr "====Moved $moveOffset$\n"
 
    data2D[~,k] = real(ampArray)
    
-   im1->image(data2D)
+   im1->draw("false")
+   im1->axes->ydirection("reversed")
+   im1->image(data2D) # 2D image plot of all CPMGs
+   im1->ylabel("Depth index")
+   im1->xlabel("Recovery time index")
+   im1->title("T1Sat 2D map")
+   im1->draw("true")
 
 
 #   :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit)
@@ -577,7 +585,7 @@ procedure(checkDepthList,depthListPar)
        return(1) 
     endif()
 
-    if(depthArray[m] > maxDepth)
+    if(depthArray[m] > eval(maxDepth))
        message("Error!!!","List of depths contains a value > $maxDepth$ um.","error")
        return(1) 
     endif()
