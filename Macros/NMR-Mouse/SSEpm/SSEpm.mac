@@ -73,10 +73,10 @@ procedure(getseqpar)
    rel = ["a1 = 90AmplitudeCh1",
           "a2 = 180AmplitudeCh1",
           "d1 = pulseLengthCh1",
-          "d2 = 1000*tauMin+echoTime/2-d1-pgo-1",
-          "d3 = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift",
-          "d4 = echoTime-d1-pgo-d3-1",
-          "d5 = 1000*tauMin-d1-pgo",
+          "d2 = 1000*tauMin+echoTime/2-d1-pgo-2",
+          "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift-2",
+          "d4 = echoTime-d1-pgo-d3-2",
+          "d5 = 1000*tauMin-d1-pgo-2",
           "w1 = 1000*DELTA",
           "n1 = nrEchoes",
           "n2 = nrPnts",
@@ -209,10 +209,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
   # Loop over the tau values to form a 2D data set
    for(m = 0 to nrPntsTau-1)
       
-   # Calculate the new delays
+   ########################### Calculate the new delays
+
       tauD = 1000*tauAxis[m]
-      d5 = tauD - d1 - pgo - 1 
-      d2 = tauD + echoTime/2 - d1 - pgo - 1
+      d5 = tauD - d1 - pgo - 2 
+      d2 = tauD + echoTime/2 - d1 - pgo - 2
+
    # Check for errors
       if((d2 < 0.5) | (d2 > 10000))
           pr "\n delay (d2 = $d2$ us) is out of range \n" 

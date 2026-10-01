@@ -73,9 +73,9 @@ procedure(getseqpar)
    rel = ["a1  = 90AmplitudeCh1",
           "a2  = 180AmplitudeCh1",
           "d1  = pulseLengthCh1",
-          "d2  = echoTime/2-d1-pgo-1",
-          "d3  = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift",
-          "d4  = echoTime-d1-pgo-d3-1",
+          "d2  = echoTime/2-d1-pgo-2",
+          "d3  = echoTime/2-acqTime*500-d1/2+rxLat+echoShift-2",
+          "d4  = echoTime-d1-pgo-d3-2",
           "d10 = 750-pgo",
           "d9  = 500-pgo",
           "d8  = 350-pgo",
@@ -282,12 +282,22 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    next(m)
 # Fit the data
-  (fit,E0,T1,E0err,T1err,stats,results) = :T1SatPMFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+   try
+     (fit,E0,T1,E0err,T1err,stats,results) = :T1SatPMFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+   catch
+      stats = "error, no fit results\n"
+      results = "error, no fit results\n"
+      E0 = 0
+      T1 = 0
+   endtry
 
 # Save the data
    ucsFiles:savePlot(prn,:getPlotInfo("pt2"),guipar,"noReport")
 # Save the statistics
-   ucsFiles:saveToNotes(stats, guipar)
+
+   if isvar("stats")
+      ucsFiles:saveToNotes(stats, guipar)
+   endif
 
 # Pack the data into a structure  
    result = struct()
@@ -467,10 +477,16 @@ procedure(T1SatPMFitOffset,t,data,prn,nrScans,guipar)
       result = errorstr(T1,T1err,1)
       pr "\n\n   T1 = $result$ ms\n"  
    catch
-      result = ""
+      fit = null
+      E0 = 0
+      T1 = 0
+      E0err = 0
+      T1err = 0
+      stats = "error, no fit results\n"
+      result = "error, no fit results\n"
    endtry
 
-   if(result != "")
+   if(result != "error, no fit results\n")
       prn->draw("false") 
       prn->plot(t,fit*sf,
               "tracetype", "lines",

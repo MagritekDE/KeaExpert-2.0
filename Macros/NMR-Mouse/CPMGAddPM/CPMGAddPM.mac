@@ -80,11 +80,11 @@ procedure(getseqpar)
           "a90            = 90AmplitudeCh1",
           "a180           = 180AmplitudeCh1",
           "dRF            = pulseLengthCh1",
-          "d90_180        = echoTime/2-(pgo+dRF+1)",
-          "d180_acq       = echoTime/2-acqTime*500-(dRF/2+1)+rxLat+echoShift",
-          "dAcq           = echoTime-d180_acq-(pgo+dRF+1)",
+          "d90_180        = echoTime/2-dRF-pgo-2",
+          "d180_acq       = echoTime/2-acqTime*500-dRF/2+rxLat-2+echoShift",
+          "dAcq           = echoTime-dRF-pgo-d180_acq-2",
           "dAcq2          = dAcq+1",
-          "dDummy         = echoTime-(pgo+dRF+1)",
+          "dDummy         = echoTime-dRF-pgo-2",
           "nEchoes        = nrEchoes",
           "nPnts          = nrPnts",
           "nZeroDummy     = (dummyEchoes==0)",
@@ -96,7 +96,7 @@ procedure(getseqpar)
    var = [""]
    pp_list = ["nxShim","nyShim","nzShim","noShim","nPnts","nZeroDummy","s1","a90","p1","dRF","d90_180","nEchoes","l1","a180","p2","d180_acq","dAcq","nOneDummy","s2","l2","dAcq2","dDummy","nManyDummies","s3","l3","nDummies","l4"]
    pp_name = "CPMGAddPM.p"
-   phase_list = [2,0,2,0;3,1,1,3;2,0,2,0]
+   phase_list = [0,2,0,2;1,1,3,3;0,2,0,2]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
 

@@ -73,16 +73,16 @@ procedure(getseqpar)
    rel = ["a1 = 90AmplitudeCh1",
           "a2 = 180AmplitudeCh1",
           "d1 = pulseLengthCh1",
-          "d2 = 1000*tauMin+echoTime/2-d1-pgo-1",
-          "d3 = echoTime/2-acqTime*500-d1/2-1+rxLat+echoShift",
-          "d4 = echoTime-d1-pgo-1-d3",
-          "d5 = 1000*tauMin-d1-pgo-1",
+          "d2 = 1000*tauMin+echoTime/2-d1-pgo-2",
+          "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift-2",
+          "d4 = echoTime-d1-pgo-2-d3",
+          "d5 = 1000*tauMin-d1-pgo-2",
           "n1 = nrEchoes",
           "n2 = nrPnts",
           "totPnts = nrPnts",
           "totTime = acqTime"]
    var = ["d5","d2"]
-   pp_list = ["a1","p1","d1","d5","a2","p2","d2","n1","l1","p3","d3","n2","d4"]
+   pp_list = ["n2","a1","p1","d1","d5","a2","p2","d2","n1","l1","p3","d3","d4"]
    pp_name = "SEpm.p"
    phase_list = [0,2,0,2;1,1,3,3;1,1,1,1;0,2,0,2]
 
@@ -209,8 +209,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
       
       tauD = 1000*tauAxis[m]
   
-      d5 = tauD -d1-pgo
-      d2 = tauD +echoTime/2-d1-pgo
+      d5 = tauD - d1 - pgo - 2
+      d2 = tauD + echoTime/2 - d1 - pgo - 2
 
       if((d2<0.5)|(d2>25000))
          pr "\n delay (d2 = $d2$ us) is out of range \n" 
