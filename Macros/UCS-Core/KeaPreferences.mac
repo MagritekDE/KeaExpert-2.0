@@ -813,7 +813,13 @@ procedure(loadDefaults)
    if(query("Warning","This will overwrite the Kea preferences with the default values - continue?") == "yes")
       cd(prefdir)
       mkdir("KeaParameters\\Preferences")
-      src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPreferences.par"
+
+      if (gView->PM)
+         src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPrefPM.par"
+      else
+         src = "$appdir$\\Macros\\UCS-Core\\ucsDefaultPreferences.par"
+      endif
+         
       dst = "$prefdir$\\KeaParameters\\Preferences\\ucsPreferences.par"
       copyfile(src,dst)
    endif

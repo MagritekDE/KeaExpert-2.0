@@ -341,7 +341,13 @@ procedure(loadPref)
    endif
 
 # Load the default preferences
-   file2 = "$getmacropath()$\\ucsDefaultPreferences.par"
+
+   if(gView->PM)
+      file2 = "$getmacropath()$\\ucsDefaultPrefPM.par"
+   else
+      file2 = "$getmacropath()$\\ucsDefaultPreferences.par"
+   endif
+
    if(isfile(file2))
       lst2 = load(file2) 
    endif
@@ -845,7 +851,13 @@ procedure(saveCommonPar,parList)
 
    else # Load default list of common par
       if(isfile("ucsDefaultPreferences.par"))
-         lst = load("ucsDefaultPreferences.par")
+
+         if(gView->PM)
+            lst = load("ucsDefaultPrefPM.par")
+         else
+            lst = load("ucsDefaultPreferences.par")
+         endif
+
          commonFull = getsublist(lst,"commonPar_")
          common = list(0)
          for(k = 0 to size(commonFull)-1)
