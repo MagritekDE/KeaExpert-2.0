@@ -124,6 +124,7 @@ procedure(init, self)
    self->batchRange          = [-1,-1]    # Range of controls in batch group
    self->lastBatchDividerPos = "wh*0.4"
    self->tester              = 0          # Is this the tester or full expert version
+   self->PM                  = 1          # Is this the MOUSE or full expert version
 
 # Initialise member variables
    self->cn = 0                        # Control number counter
@@ -224,6 +225,15 @@ procedure(addPPMenus, self, cnt)
 # First time so add default experiment menus based on the instrument
    if(addedMenus == 0)
    
+      if (gView->PM)
+         location = "$appdir$\\Macros\\NMR-Mouse"
+         locationName = "<standard_experiments>\\Macros\\NMR-Mouse"
+         menuName = "NMR-Mouse"
+         menu(cnt, menuName, "user folder menu", "")  
+         setpar(self->wn,cnt,"procedure",location)
+         defaultList = ["$locationName$|$menuName$"]
+         cnt = cnt + 1
+      else  
       location = "$appdir$\\Macros\\Kea-NMR"
       locationName = "<standard_experiments>\\Macros\\Kea-NMR"
       menuName = "Kea-NMR"
@@ -231,6 +241,8 @@ procedure(addPPMenus, self, cnt)
       setpar(self->wn,cnt,"procedure",location)
       defaultList = ["$locationName$|$menuName$"]
       cnt = cnt + 1
+      endif
+
 
       cd(prefdir)
       mkdir("KeaParameters")
