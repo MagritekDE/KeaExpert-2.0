@@ -38,7 +38,7 @@ procedure(pulse_program,dir,mode,pars)
                     "a180     = minAmp+6",
                     "dRF      = pulseLengthCh1",
                     "d90_180  = echoTime/2-dRF/2-pgo-2",
-                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-1+echoShift",
+                    "d180_acq = echoTime/2-acqTime*500-dRF/2+rxLat-2+echoShift",
                     "dAcq     = echoTime-dRF-pgo-d180_acq-2",
                     "nEchoes  = nrEchoes",
                     "nPnts    = nrPnts",
@@ -71,9 +71,9 @@ procedure(pulse_program,dir,mode,pars)
    lst = endpp(0) # Return parameter list
 
 # Phase cycle
-   phaseList = [2,0,2,0; # -x,x,-x,x : 90 phase
-                3,1,1,3; # -y,y,y,-y : 180 phase
-                2,0,2,0] # -x,x,-x,x : Acquire phase
+  phaseList = [0,2,0,2; # x,-x,x,-x : 90 phase
+               1,1,3,3; # y,y,-y,-y : 180 phase
+               0,2,0,2] # x,-x,x,-x  : Acquire phase
 
 endproc(lst,tabs,interface,relationships,variables,0,phaseList)
 

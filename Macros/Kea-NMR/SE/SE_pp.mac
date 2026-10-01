@@ -8,16 +8,21 @@
 
 
 
-procedure(pulse_program,dir,mode)
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
 
 
 # Interface description (name, label, x, y, ctrlType, varType)
-   interface = ["b1Freq",      "B1 Frequency (MHz)",       "tb",   "freq";
+   interface = ["b1FreqCh1",      "B1 Frequency (MHz)",       "tb",   "freq";
                "repTime",      "Repetition time (ms)",    "tb",   "float,[20,1e8]";
 
-               "90Amplitude",  "90 amplitude (dB)",         "tb",     "float,[-72,-6]";
-               "180Amplitude", "180 amplitude (dB)",        "tb",     "pulseamp";
-               "pulseLength",  "Pulse length (us)",       "tb",     "float,[1,500]";
+               "90AmplitudeCh1",  "90 amplitude (dB)",         "tb",     "float,[-72,-6]";
+               "180AmplitudeCh1", "180 amplitude (dB)",        "tb",     "pulseamp";
+               "pulseLengthCh1",  "Pulse length (us)",       "tb",     "float,[1,500]";
 
                "echoTime",     "Echotime (us)",           "tb",     "sdelay";
                "nrEchoes",     "Number of echoes",         "tb",     "integer,[1,16000]";
@@ -36,10 +41,10 @@ procedure(pulse_program,dir,mode)
    relationships = ["a1 = 90Amplitude",
                     "a2 = 180Amplitude",
                     "d1 = pulseLength",
-                    "d2 = 1000*tauMin+echoTime/2-d1-pgo",
-                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift",
-                    "d4 = echoTime-d1-pgo-d3",
-                    "d5 = 1000*tauMin-d1-pgo",
+                    "d2 = 1000*tauMin+echoTime/2-d1-pgo-2",
+                    "d3 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift-2",
+                    "d4 = echoTime-d1-pgo-d3-2",
+                    "d5 = 1000*tauMin-d1-pgo-2",
                     "n1 = nrEchoes",
                     "n2 = nrPnts",
                     "totPnts = nrPnts",
@@ -48,14 +53,13 @@ procedure(pulse_program,dir,mode)
 # These parameters will be changed between experiments
    variables = ["d5","d2"]
 
-# x and y spacing between controls
-   dim = [155,26]
+## x and y spacing between controls
+#   dim = [155,26]
 
 # Pulse sequence
    initpp(dir) # Reset internal parameter list
 
-   cleardata(64000)
-
+   cleardata(n2,n1)            # Intialise data for sum/stack mode
    pulse(mode,a1,p1,d1)    # 90 pulse
    delay(d5)               # tau
    pulse(mode,a2,p2,d1)    # 90 pulse
@@ -75,4 +79,26 @@ procedure(pulse_program,dir,mode)
                1,1,1,1;
                0,2,0,2]
 
-endproc(lst,tabs,interface,relationships,variables,dim,phaseList)
+endproc(lst,tabs,interface,relationships,variables,null,phaseList)
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain          = $rxOptGaindB$",
+          "pulseLengthCh1  = $pulseLengthCh1$",
+          "90AmplitudeCh1  = $pulseAmplitudeCh1$",
+          "180AmplitudeCh1 = $pulseAmplitudeCh1+ 6 $",
+          "b1FreqCh1       = $frequencyCh1$"]
+
+endproc(par)

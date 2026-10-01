@@ -29,6 +29,7 @@ procedure(pulse_program,dir,mode,pars)
                "maxDelay",        "Max. delay (ms)",      "tb",     "ldelayms";
                "nrSteps",         "Number of steps",      "tb",     "integer";
                "echoTime",        "Echo-time (us)",       "tb",     "sdelay";
+                "echoShift",       "Echo shift (us)",       "tb",  "float,[-20,20]";
                "nrEchoes",        "Number of echoes",     "tb",     "integer";
                "delaySpacing",    "Log. spacing",         "cb",     "lin,log";
                "ieTime",          "Inter-expt time (ms)", "tb",     "reptime"]
@@ -44,9 +45,9 @@ procedure(pulse_program,dir,mode,pars)
                     "a1 = 90AmplitudeCh1",
                     "a2 = 180AmplitudeCh1",
                     "d1 = pulseLengthCh1",
-                    "d3 = echoTime/2-d1-pgo",
-                    "d4 = echoTime/2-acqTime*500-d1/2+rxLat",
-                    "d5 = echoTime-d1-pgo-d4",
+                    "d3 = echoTime/2-d1-pgo-2",
+                    "d4 = echoTime/2-acqTime*500-d1/2+rxLat+echoShift-2",
+                    "d5 = echoTime-d1-pgo-d4-2",
                     "w1 = minDelay*1000-d1",
                     "n6 = nrPnts",
                     "totPnts = nrPnts",
@@ -63,7 +64,10 @@ procedure(pulse_program,dir,mode,pars)
    gradon(z,n4)             # Set z shim 
    gradon(o,n5)             # Set o shim 
 
-   cleardata(n6)
+
+   cleardata(nPnts,nrEchoes)            # Intialise data for sum/stack mode
+
+
    pulse(mode,a2,p1,d1)     # 180 RF pulse
    wait(w1)                 # 180 - 90 delay
    pulse(mode,a1,p2,d1)     # 90 RF pulse
@@ -78,10 +82,14 @@ procedure(pulse_program,dir,mode,pars)
    lst = endpp() # Return parameter list
 
 # Phase cycle
-  phaseList = [0,0,0,0; # +x,+x,+x,+x : 180 phase
-               2,0,2,0; # -x,+x,-x,+x : 90 phase
-               3,1,1,3; # -y,+y,+y,-y : 180 phase
-               2,0,2,0] # -x,+x,-x,+x : Acquire phase
+#  phaseList = [0,0,0,0; # +x,+x,+x,+x : 180 phase
+#               2,0,2,0; # -x,+x,-x,+x : 90 phase
+#               3,1,1,3; # -y,+y,+y,-y : 180 phase
+#               2,0,2,0] # -x,+x,-x,+x : Acquire phase
+    phaseList = [0,2,0,2;
+                 0,0,2,2;
+                 1,1,1,1;
+                 0,0,2,2]
 
 endproc(lst,tabs,interface,relationships,variables,null,phaseList)
 
@@ -100,9 +108,9 @@ procedure(getFactoryBasedParameters, par)
    assignlist(specPar)
 
    par = ["rxGain           = $rxOptGaindB$",
-          "pulseLengthCh1   = $pulseLengthCh1*2$",
+          "pulseLengthCh1   = $pulseLengthCh1$",
           "90AmplitudeCh1   = $pulseAmplitudeCh1$",
-          "180AmplitudeCh1  = $pulseAmplitudeCh1$",
+          "180AmplitudeCh1  = $pulseAmplitudeCh1+6$",
           "b1FreqCh1        = $frequencyCh1$"]
 
 endproc(par)
