@@ -72,7 +72,7 @@ procedure(profiles, parameters=null)
                     "90Amplitude      = -7",   
                     "180Amplitude      = 0",   
                     "echoShift      = 0",  
-                    "echoTime      = 50",    
+                 #   "echoTime      = 50",    
                     "echoTime0      = 30", 
                     "rxPhase      = 54"
                      ]
@@ -166,7 +166,7 @@ procedure(interface)
                  "90Amplitude",      "90 pulse amp. (dB)",          "tb",   "float",   "",
                  "180Amplitude",      "180 pulse amp. (dB)",          "tb",   "float",   "",
                  "echoShift",        "Echo shift (us)",           "tb",   "float",     "",
-                 "echoTime",         "Echo time (us)",            "tb",   "float",     "",
+             #    "echoTime",         "Echo time (us)",            "tb",   "float",     "",
                  "echoTime0",        "Echo time 0 (us)",          "tb",   "float",     "",
                  "rxPhase",          "Receiver phase",            "tb",   "float",     ""
 
@@ -488,219 +488,239 @@ newPar = list(parameters)
             print("Depth: $depth$ um")
          endif      
 
-###################### Runnign CPMGFast #############################
-         result =  RunExpt("CPMGFastPM", newPar)
 
-#### format some data ############
-         totalTime = result->tx
-         data1D    = result->ty
-
-         data2D[~,z] = real(data1D)
-         data2Dtrans[0,~]= trans(totalTime)
-         
-         data2Dtrans[z+1,~]= trans(real(data1D))
-
-         im1->image(data2D) # 2D image plot of all CPMGs
-
-############   Calculates Contrast and weightning data###################
-
-         echoTokens  = parse(parContrast1, ",") # extract initial and final echoes according to contrast
-         echoIni= eval(echoTokens[0])
-         echoFin= eval(echoTokens[1])
-
-         contrast1Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
-
-         if(enableContrast2=="yes") 
-            echoTokens  = parse(parContrast2, ",") # extract initial and final echoes according to contrast 2
-            echoIni= eval(echoTokens[0])
-            echoFin= eval(echoTokens[1])
-            contrast2Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
-         endif 
-         
-         if(enableContrast3=="yes") 
-            echoTokens  = parse(parContrast3, ",") # extract initial and final echoes according to contrast 3
-            echoIni= eval(echoTokens[0])
-            echoFin= eval(echoTokens[1])
-            contrast3Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
-         endif
-
-         if(enableW=="yes") 
-            echoTokens  = parse(parAmpIni, ",") # extract initial and final echoes according to weightning
-            echoIni= eval(echoTokens[0])
-            echoFin= eval(echoTokens[1])
-
-            ampIni = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+         if(wvExpStatus == "running")
+   
+   
+   ###################### Runnign CPMGFast #############################
+            result =  RunExpt("CPMGFastPM", newPar)
+   
+   #### format some data ############
+            totalTime = result->tx
+            data1D    = result->ty
+   
+            data2D[~,z] = real(data1D)
+            data2Dtrans[0,~]= trans(totalTime)
             
-            echoTokens  = parse(parAmpFin, ",") # extract initial and final echoes according to contrast
+            data2Dtrans[z+1,~]= trans(real(data1D))
+   
+            im1->draw("false")
+            im1->axes->ydirection("reversed")
+            im1->image(data2D) # 2D image plot of all CPMGs
+            im1->ylabel("Depth index")
+            im1->xlabel("Echoes")
+            im1->title("CPMGs 2D map")
+            im1->draw("true")
+      
+   ############   Calculates Contrast and weightning data###################
+   
+            echoTokens  = parse(parContrast1, ",") # extract initial and final echoes according to contrast
             echoIni= eval(echoTokens[0])
             echoFin= eval(echoTokens[1])
-
-            ampFin = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
-
-            wAxis[z] = ampFin/ampIni
-
-            if((wAxis[z]>1)|(wAxis[z])<0)
-               wAxis[z]=0
+   
+            contrast1Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+   
+            if(enableContrast2=="yes") 
+               echoTokens  = parse(parContrast2, ",") # extract initial and final echoes according to contrast 2
+               echoIni= eval(echoTokens[0])
+               echoFin= eval(echoTokens[1])
+               contrast2Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+            endif 
+            
+            if(enableContrast3=="yes") 
+               echoTokens  = parse(parContrast3, ",") # extract initial and final echoes according to contrast 3
+               echoIni= eval(echoTokens[0])
+               echoFin= eval(echoTokens[1])
+               contrast3Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
             endif
-
-         endif 
-
-# Plot something
-
-         traceNum = 0      
-         pt2->draw("false")
-         
-         pt2->plot(depthAxis,contrast1Axis)            # Contrast 1
-         pt2->trace(traceNum)->tracetype("lines")
-         pt2->trace(traceNum)->color([0,0,255])
-         pt2->trace(traceNum)->symbolshape("opensquare")
-
-         traceNum = traceNum + 1  
-
-        pt2->hold("on")
-
-        if(enableContrast2=="yes")
-            traceNum = 1
-            pt2->plot(depthAxis,contrast2Axis)      #Contrast 2
+   
+            if(enableW=="yes") 
+               echoTokens  = parse(parAmpIni, ",") # extract initial and final echoes according to weightning
+               echoIni= eval(echoTokens[0])
+               echoFin= eval(echoTokens[1])
+   
+               ampIni = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+               
+               echoTokens  = parse(parAmpFin, ",") # extract initial and final echoes according to contrast
+               echoIni= eval(echoTokens[0])
+               echoFin= eval(echoTokens[1])
+   
+               ampFin = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
+   
+               wAxis[z] = ampFin/ampIni
+   
+               if((wAxis[z]>1)|(wAxis[z])<0)
+                  wAxis[z]=0
+               endif
+   
+            endif 
+   
+   # Plot something
+   
+            traceNum = 0      
+            pt2->draw("false")
+            
+            pt2->plot(depthAxis,contrast1Axis)            # Contrast 1
             pt2->trace(traceNum)->tracetype("lines")
-            pt2->trace(traceNum)->color([0,255,0])
+            pt2->trace(traceNum)->color([0,0,255])
             pt2->trace(traceNum)->symbolshape("opensquare")
+            pt2->trace(traceNum)->realsymbolcolor([0,0,255])
+   
             traceNum = traceNum + 1  
-        endif
-
-        if(enableContrast3=="yes")
-            pt2->plot(depthAxis,contrast3Axis)      #Contrast 3
-            pt2->trace(traceNum)->tracetype("lines")
-            pt2->trace(traceNum)->color([255,0,0])
-            pt2->trace(traceNum)->symbolshape("opensquare")
-        endif
-
-
-        pt2->xlabel("Depth (um)") 
-        pt2->ylabel("Amplitude")
-        pt2->title("Contrast plot, depth ($(z+1)$/$nrSteps$)")
-
-        pt2->hold("off")
-        pt2->showlegend("true")
-        pt2->draw("true")
-
-
-        if(enableW=="yes")    # Weightning
-
-           pt3->draw("false")
-           pt3->plot(depthAxis,wAxis)
-           pt3->trace(0)->color([0,128,255])
-           pt3->trace(0)->symbolshape("opensquare")
-           pt3->xlabel("Depth (um)") 
-           pt3->ylabel("Weightning with [($parAmpIni$),($parAmpFin$)]")
-           pt3->title("Weightning plot, depth ($(z+1)$/$nrSteps$)")
-           pt3->draw("true")
-        endif
-
-
-############# SAVING THE RAW CPMG DATA ###################
-
-
-        tempData = :fillDataForExport(depthAxis,contrast1Axis,contrast2Axis,contrast3Axis,wAxis,parameters,nrSteps)
-  
-        cd(gData->curExpt->dataPath) 
-
-        export2dpar("ab","ascii","xyrc","real","delimiter","tab")
-       
-        if(nrExp==1)
-          export2d(tempData,"$expName$.dat")
-          export2d(data2Dtrans,"$expName$-decays.dat")
-          save("$expName$.2d",data2D)
-          save("$expName$-position.1d",depthAxis)
-          pt2->save("$expName$profile.pt1")
-          im1->save("$expName$profile.pt2")
-           
-        else
-            if(ne<9)
-             export2d(tempData,"$expName$0$ne+1$.dat")
-             save("$expName$0$ne+1$.2d",data2D)
-               export2d(data2Dtrans,"$expName$0$ne+1$-decays.dat")
-             save("$expName$0$ne+1$-position.1d",depthAxis)
-             pt2->save("$expName$0$ne+1$profile.pt1")
-             im1->save("$expName$0$ne+1$profile.pt2")
-           else   
-             export2d(tempData,"$expName$$ne+1$.dat")
-             save("$expName$$ne+1$.2d",data2D)
-             export2d(data2Dtrans,"$expName$$ne+1$-decays.dat")
-             save("$expName$$ne+1$-position.1d",depthAxis)
-             pt2->save("$expName$$ne+1$profile.pt1")
-             im1->save("$expName$0$ne+1$profile.pt2")
-
+   
+           pt2->hold("on")
+   
+           if(enableContrast2=="yes")
+               traceNum = 1
+               pt2->plot(depthAxis,contrast2Axis)      #Contrast 2
+               pt2->trace(traceNum)->tracetype("lines")
+               pt2->trace(traceNum)->color([0,255,0])
+               pt2->trace(traceNum)->symbolshape("opensquare")
+               pt2->trace(traceNum)->realsymbolcolor([0,255,0])
+               traceNum = traceNum + 1  
            endif
-        endif
-
-
-############# SAVING THE PROFILE DATA for multiple experiments ###################
-
-
-
-      if nrExp>1
-
-         if(enableContrast1=="yes")
+   
+           if(enableContrast3=="yes")
+               pt2->plot(depthAxis,contrast3Axis)      #Contrast 3
+               pt2->trace(traceNum)->tracetype("lines")
+               pt2->trace(traceNum)->color([255,0,0])
+               pt2->trace(traceNum)->symbolshape("opensquare")
+               pt2->trace(traceNum)->realsymbolcolor([255,0,0])
+           endif
+   
+   
+           pt2->xlabel("Depth (um)") 
+           pt2->ylabel("Amplitude")
+           pt2->title("Contrast plot, depth ($(z+1)$/$nrSteps$)")
+   
+           pt2->hold("off")
+           pt2->showlegend("true")
+           pt2->draw("true")
+   
+   
+           if(enableW=="yes")    # Weightning
+   
+              pt3->draw("false")
+              pt3->plot(depthAxis,wAxis)
+              pt3->trace(0)->color([0,128,255])
+              pt3->trace(0)->symbolshape("opensquare")
+              pt3->trace(0)->realsymbolcolor([0,128,255])
+              pt3->xlabel("Depth (um)") 
+              pt3->ylabel("Weightning with [($parAmpIni$),($parAmpFin$)]")
+              pt3->title("Weightning plot, depth ($(z+1)$/$nrSteps$)")
+              pt3->draw("true")
+           endif
+   
+   
+   ############# SAVING THE RAW CPMG DATA ###################
+   
+   
+           tempData = :fillDataForExport(depthAxis,contrast1Axis,contrast2Axis,contrast3Axis,wAxis,parameters,nrSteps)
+     
+           cd(gData->curExpt->dataPath) 
+   
+           export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+          
+           if(nrExp==1)
+             export2d(tempData,"$expName$.dat")
+             export2d(data2Dtrans,"$expName$-decays.dat")
+             save("$expName$.2d",data2D)
+             save("$expName$-position.1d",depthAxis)
+             pt2->save("$expName$profile.pt1")
+             im1->save("$expName$profile.pt2")
+              
+           else
+               if(ne<9)
+                export2d(tempData,"$expName$0$ne+1$.dat")
+                save("$expName$0$ne+1$.2d",data2D)
+                  export2d(data2Dtrans,"$expName$0$ne+1$-decays.dat")
+                save("$expName$0$ne+1$-position.1d",depthAxis)
+                pt2->save("$expName$0$ne+1$profile.pt1")
+                im1->save("$expName$0$ne+1$profile.pt2")
+              else   
+                export2d(tempData,"$expName$$ne+1$.dat")
+                save("$expName$$ne+1$.2d",data2D)
+                export2d(data2Dtrans,"$expName$$ne+1$-decays.dat")
+                save("$expName$$ne+1$-position.1d",depthAxis)
+                pt2->save("$expName$$ne+1$profile.pt1")
+                im1->save("$expName$0$ne+1$profile.pt2")
+   
+              endif
+           endif
+   
+   
+   ############# SAVING THE PROFILE DATA for multiple experiments ###################
+   
+   
+   
+         if nrExp>1
+   
+            if(enableContrast1=="yes")
+            
+               contrast1matrix[~,ne]=contrast1Axis
+   
+               im2->draw("false")
+               im2->axes->xdirection("reversed")
+               im2->image(contrast1matrix) # 2D image plot of all contrast plot 1          
+               im2->ylabel("Experiment index")
+               im2->xlabel ("Depth index")
+               im2->title("Contrast 2D map")
+               im2->draw("true")
+   
+   
+               im2->save("$expName$-contrast1matrix.pt2")
+               save("$expName$-contrast1matrix.2d",contrast1matrix)
+               contrast1matrixb[~,ne+1]=contrast1Axis
+               contrast1matrixb=contrast1matrixb'
+               export2d(contrast1matrixb,"$expName$contrast1matrix.dat")
+               contrast1matrixb=contrast1matrixb'
+            endif
          
-            contrast1matrix[~,ne]=contrast1Axis
-            im2->image(contrast1matrix) # 2D image plot of all contrast plot 1          
-           
-            im2->ylabel("Experiment No.")
-            im2->xlabel ("Depth")
-            im2->save("$expName$-contrast1matrix.pt2")
-            save("$expName$-contrast1matrix.2d",contrast1matrix)
-            contrast1matrixb[~,ne+1]=contrast1Axis
-            contrast1matrixb=contrast1matrixb'
-            export2d(contrast1matrixb,"$expName$contrast1matrix.dat")
-            contrast1matrixb=contrast1matrixb'
-         endif
-      
-      
-         if(enableContrast2=="yes")
-            contrast2matrix[~,ne]=contrast2Axis
-            save("$expName$-contrast2matrix.2d",contrast2matrix)
-            contrast2matrixb[~,ne+1]=contrast2Axis
-            contrast2matrixb=contrast2matrixb'
-            export2d(contrast2matrixb,"$expName$contrast2matrix.dat")
-            contrast2matrixb=contrast2matrixb'
-      
-         endif
-      
-         if(enableContrast3=="yes")
-            contrast3matrix[~,ne]=contrast3Axis
-            save("$expName$-contrast3matrix.2d",contrast3matrix)
-            contrast3matrixb[~,ne+1]=contrast3Axis
-            contrast3matrixb=contrast3matrixb'
-            export2d(contrast3matrixb,"$expName$contrast3matrix.dat")
-            contrast3matrixb=contrast3matrixb'
-      
-      
-         endif
-      
-         if(enableW=="yes")
-            wmatrix[~,ne]=wAxis
-            save("$expName$-wmatrix.2d",wmatrix)
-            wmatrixb[~,ne+1]=wAxis
-            wmatrixb=wmatrixb'
-            export2d(wmatrixb,"$expName$wmatrix.dat")
-            wmatrixb=wmatrixb'    
-         endif
-      
-      
-      endif    
-
-
-# Save the data
-   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),parameters,"simpleReport")
-   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),parameters,"simpleReport")
-   ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters,"simpleReport")
-   ucsFiles:saveImage(im1,:getPlotInfo("im1"),parameters,"simpleReport")
-
-
-########## END OF DATA SAVING ################
-
-
+         
+            if(enableContrast2=="yes")
+               contrast2matrix[~,ne]=contrast2Axis
+               save("$expName$-contrast2matrix.2d",contrast2matrix)
+               contrast2matrixb[~,ne+1]=contrast2Axis
+               contrast2matrixb=contrast2matrixb'
+               export2d(contrast2matrixb,"$expName$contrast2matrix.dat")
+               contrast2matrixb=contrast2matrixb'
+         
+            endif
+         
+            if(enableContrast3=="yes")
+               contrast3matrix[~,ne]=contrast3Axis
+               save("$expName$-contrast3matrix.2d",contrast3matrix)
+               contrast3matrixb[~,ne+1]=contrast3Axis
+               contrast3matrixb=contrast3matrixb'
+               export2d(contrast3matrixb,"$expName$contrast3matrix.dat")
+               contrast3matrixb=contrast3matrixb'
+         
+         
+            endif
+         
+            if(enableW=="yes")
+               wmatrix[~,ne]=wAxis
+               save("$expName$-wmatrix.2d",wmatrix)
+               wmatrixb[~,ne+1]=wAxis
+               wmatrixb=wmatrixb'
+               export2d(wmatrixb,"$expName$wmatrix.dat")
+               wmatrixb=wmatrixb'    
+            endif
+         
+         
+         endif    
+   
+   
+   # Save the data
+      ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),parameters,"simpleReport")
+      ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),parameters,"simpleReport")
+      ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters,"simpleReport")
+      ucsFiles:saveImage(im1,:getPlotInfo("im1"),parameters,"simpleReport")
+   
+   
+   ########## END OF DATA SAVING ################
+   
+      endif #      checking(wvExpStatus == "running"))
 
 # Move to next position
          depth = depth + stepSize
@@ -733,10 +753,14 @@ newPar = list(parameters)
         pt3->hold("on")
         pt3->plot(depthAxis,wAxisCorr)
 
-        pt3->trace(1)->color([0,255,0])
+        pt3->trace(1)->color([128,255,0])
+
         pt3->trace(1)->symbolshape("opencircle")
+        pt3->trace(1)->realsymbolcolor([128,255,0])
         pt3->hold("off")
         pt3->showlegend("true")
+
+         ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters,"simpleReport")
       endif
 
 
