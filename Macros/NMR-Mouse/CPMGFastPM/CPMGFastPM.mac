@@ -212,9 +212,15 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
           # Autophase if desired
             if(autoPhase == "yes")
                (ph,sumDataAP) = ucsRun:autoPhase(sumData/nrPnts,phaseMethod)
-               print(ph)
+            #   print(ph)
             else
                sumDataAP = sumData/nrPnts
+            endif
+
+
+            if (normalize == "yes")
+               # Normalize to reference signal
+               sumDataAP=sumDataAP/refSignal
             endif
 
             results = null
@@ -242,6 +248,12 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
                else
                   sumDataAP = sumData/nrPnts
                endif
+
+            if (normalize == "yes")
+               # Normalize to reference signal
+               sumDataAP=sumDataAP/refSignal
+            endif
+
    
             # Plot the integral data 
                ucsPlot:graphTime(pt1,tAxis/1000,sumDataAP,scan,guipar,
