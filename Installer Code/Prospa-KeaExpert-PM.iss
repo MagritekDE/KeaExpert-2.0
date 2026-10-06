@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Prospa
-AppVerName=Prospa V3.128 + KeaExpert V2.02.18.PM (30-September-2026)
+AppVerName=Prospa V3.128 + KeaExpert V2.02.19 PM (05-October-2026)
 AppPublisher=Magritek
 AppPublisherURL=http://www.magritek.com
 AppSupportURL=http://www.magritek.com
@@ -20,7 +20,7 @@ WizardImageFile=..\largeIcon.bmp
 WizardImageStretch=no
 WizardSmallImageFile=..\smallIcon.bmp
 OutputDir="..\Installer Output\KeaExpert"
-OutputBaseFilename="KeaExpert V2.02.18.PM (30-September-2026)"
+OutputBaseFilename="KeaExpert V2.02.19 PM (05-October-2026)"
 
 UsePreviousAppDir=no
 ;InfoBeforeFile="KeaExpertInfoBeforeInstall.txt"
