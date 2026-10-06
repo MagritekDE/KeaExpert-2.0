@@ -28,6 +28,7 @@ procedure(init, self)
    self->toggleParameterVisibility  = "seParam:toggleParameterVisibility"
    self->updateBWandAcq             = "seParam:updateBWandAcq"
    self->updateDispRange            = "seParam:updateDispRange"
+   self->hideMaxdepth               = "seParam:hideMaxdepth"
 
    self->variableList = "============================================="
 
@@ -106,6 +107,9 @@ procedure(createScriptCtrls, self, ctrlLayout, plotLayout)
 
 # Make the parameter list interface
    self->makeUIFromParList(ctrlLayout, gData->curExpt)
+
+# Hide/deactivate maximum depth paramaeter
+   self->hideMaxdepth()
 
 # Update the U.I. scrollable panel
    gView->exptPanel->panelupdate("")
@@ -215,6 +219,9 @@ procedure(createParameterCtrls, self)
 
      # Update the U.I. control values from the parameter list
          setctrlvalues(n,parList)
+
+     # Hide/deactivate maximum depth paramaeter
+         self->hideMaxdepth()
 
      # Change the display state of the range controls based on the ppm/Hz selection
          self->updateDispRange()
@@ -597,6 +604,11 @@ procedure(makeUIFromParList,self,itfc,exptInfo,showFlags=0,showList=null)
             if(name == "acqTime" | name == "bandwidth")
               setpar(n,q+1,"enable","false","tag","disabled")
             endif
+         endif
+
+       # Disable maxDepth
+         if(name == "maxDepth")
+           setpar(n,q+1,"enable","false","tag","disabled")
          endif
 
         # Toggle enable on display range controls
@@ -1251,7 +1263,7 @@ procedure(updateBWandAcq, self, lst)
       endtry
 
    endif
-   
+
 # Update the batch list if relevant
    if(isvar("parentCtrl") & nrArgs == 1)
       self->parameterChanged()
@@ -1259,6 +1271,18 @@ procedure(updateBWandAcq, self, lst)
 
 endproc(lst)
 
+
+##############################################
+# Maximum depth field is grey, inactive
+##############################################
+
+procedure(hideMaxdepth, self)
+   mx = findobj(0,"name","maxDepth")
+   # Disable maxDepth
+   if(mx > 0)
+      setpar(0,mx,"enable","false","tag","disabled")
+   endif
+endproc()
 
 ##############################################
 # The display ppm scale check has been 
