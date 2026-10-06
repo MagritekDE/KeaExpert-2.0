@@ -113,6 +113,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Allocate space for output data
    sumData = cmatrix(totPnts)
+   rmsData = cmatrix(nrScans)
+   rmsAxis = [1:1:nrScans]
 
 # Calculate suitable time and frequency axes
    tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000   # (us)
@@ -126,9 +128,10 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    endif
 
 # Get plot regions
-   (prt,prf) = ucsPlot:getPlotReferences()
+   (prt,prf,prh) = ucsPlot:getPlotReferences()
    prt->showimag("false")
    prf->showimag("false")
+   prh->showimag("false")
 
 # Work out frequency axis scale, label and range
    (fAxisDisp,fAxisLabel,fRange) = ucsPlot:generate1DFrequencyAxis(prf, fAxis, b1FreqCh1, 0, 0, guipar)
@@ -162,8 +165,14 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
     # Filter the data
       data = data .* flt
 
+
     # Accumulate the data
       sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
+
+      if (normalize == "yes")
+         # Normalize to reference signal
+         sumData=sumData/refLevel
+      endif
 
     # Calculate and display noise level
       if(accumulate == "yes")
@@ -172,17 +181,25 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          rmsNoise = sd(real(sumData))
       endif
 
+      rmsData[scan] = rmsNoise 
+
       expNoise = sqrt(4*1.38e-23*290*bandwidth*1000*50)
 
-      if(wvUnits == "uV")
-         txtTm = "RMS noise = $rmsNoise,1.2f$ \G(m)V"
-         txtFreq = "Spectrum: RMS noise = $rmsNoise,1.2f$ \G(m)V"
-      elseif(wvUnits == "mV")
-         txtTm = "RMS noise = $rmsNoise,1.4f$ mV"
-         txtFreq = "Spectrum: RMS noise = $rmsNoise,1.2f$ mV"
+      if (normalize == "yes")
+         normStr = "(normalized) "
       else
-         txtTm = "RMS noise = $rmsNoise,1.2f$"
-         txtFreq = "Spectrum: RMS noise = $rmsNoise,1.2f$"
+         normStr = ""
+      endif
+
+      if(wvUnits == "uV")
+         txtTm = "RMS noise $normStr$= $rmsNoise,1.2f$ \G(m)V"
+         txtFreq = "Spectrum: RMS noise $normStr$= $rmsNoise,1.2f$ \G(m)V"
+      elseif(wvUnits == "mV")
+         txtTm = "RMS noise $normStr$= $rmsNoise,1.4f$ mV"
+         txtFreq = "Spectrum: RMS noise $normStr$= $rmsNoise,1.2f$ mV"
+      else
+         txtTm = "RMS noise $normStr$= $rmsNoise,1.2f$"
+         txtFreq = "Spectrum: RMS noise $normStr$= $rmsNoise,1.2f$"
       endif
 
     # Process data
@@ -199,6 +216,15 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       endif
       prt->parent->draw("true")
 
+    # Plot rms data
+
+      prh->plot(rmsAxis,rmsData)
+      prh->title("RMS monitor $normStr$")
+      prh->xlabel("Scan number")
+      prh->ylabel("RMS $normStr$")
+      prh->trace(0)->symbolcolor([128,0,0])
+      prh->trace(0)->symbolshape("square")
+
     # Check if complete button pressed
       if(check == "finish")
          scan = scan+1
@@ -209,13 +235,15 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Save the data
    ucsFiles:savePlot(prt,:getPlotInfo("pt1"),guipar,"noReport")
-   ucsFiles:savePlot(prf,:getPlotInfo("pt2"),guipar,"simpleReport")
+   ucsFiles:savePlot(prf,:getPlotInfo("pt2"),guipar,"noReport")
+   ucsFiles:savePlot(prh,:getPlotInfo("pt3"),guipar,"simpleReport")
 
 # Add noise level result
    result = struct()
    result->tx = tAxis
    result->ty = sumData/scan
    result->noise = rmsNoise
+   result->rmsData = rmsData
 
 # Return result structure when called from backdoor
    return(result)
@@ -229,7 +257,9 @@ endproc("execpp")
 
 procedure(getPlotInfo,plotRegion)
 
-   info = ["pt1","fid.pt1","pt2","spectrum.pt1"]
+   info = ["pt1","fid.pt1",
+           "pt2","spectrum.pt1",
+           "pt3","history.pt1"]
 
    if(plotRegion == "all")
       return(info)
