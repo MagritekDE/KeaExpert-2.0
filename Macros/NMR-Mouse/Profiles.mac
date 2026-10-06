@@ -29,7 +29,8 @@ procedure(profiles, parameters=null)
       message("Error!","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","info")
       return()
     endif
-   
+ 
+#                 "arrayExp      = \"[1:1:10]\"",  
       defParameters = [
                     "resolution      = 90",   
                     "repTime         = 500",  
@@ -44,13 +45,13 @@ procedure(profiles, parameters=null)
                     "enableContrast2      = \"yes\"", 
                     "enableContrast3      = \"yes\"", 
    
-                    "parContrast1      = \"2,8\"",  
-                    "parContrast2      = \"2,32\"",  
-                    "parContrast3      = \"2,64\"",  
+                    "parContrast1      = \"2;8\"",  
+                    "parContrast2      = \"2;32\"",  
+                    "parContrast3      = \"2;64\"",  
    
                     "enableW      = \"yes\"", 
-                    "parAmpIni      = \"2,16\"",  
-                    "parAmpFin      = \"16,64\"",  
+                    "parAmpIni      = \"2;16\"",  
+                    "parAmpFin      = \"16;64\"",  
    
                     "refSignalCheck      =  \"no\"",  
                     "refSignal      = 1",  
@@ -109,7 +110,7 @@ procedure(interface)
 
                  "",             "Main",                    "dv",       "",          "",    #MAIN
                  "resolution",       "Resolution (um)",           "tb",   "float",     "",
-                 "",             "Print res.pars to CLI",         "bt",       "string",    "printResPars()",
+                 "",             "Print res.pars to CLI",         "btm",       "string",    "printResPars()",
                  "repTime",          "Repetition time (ms)",      "tb",   "float",     "",
                  "nrEchoes",         "Number of echoes",          "tb",   "integer",   "",
                  "nrScans",          "Number of scans",           "tb",   "integer",   "",
@@ -134,7 +135,7 @@ procedure(interface)
                  "parContrast2",     "Contrast 2",             "tb",   "string",  "",
                  "parContrast3",     "Contrast 3",             "tb",   "string",   "",
 
-                 "enableW",          "Weightning",             "cb",   "string",  "no,yes",
+                 "enableW",          "Weighting",             "cb",   "string",  "no,yes",
                  "parAmpIni",        "Amp. ini.",              "tb",   "string",   "",
                  "parAmpFin",        "Amp. fin.",              "tb",   "string",   "",
 
@@ -195,7 +196,7 @@ procedure(getPlotInfo, plotRegion)
 
            "im1","data2D.pt2",
            "pt2","profileContrast.pt1",
-           "pt3","profileWeightning.pt1"]
+           "pt3","profileWeighting.pt1"]
 
    if(plotRegion == "all")
       return(info)
@@ -298,6 +299,10 @@ procedure(backdoor, parameters)
     return(0)
     endif
 
+###############################################################################################################################################
+
+
+
    if(:setParContrast (1, parameters) == 1)
       return()
    endif
@@ -378,9 +383,9 @@ newPar = list(parameters)
    ########################################################
       time_per_profile = 0
 
-   #  loop number of experiments
-   time(0)
-   currenttime=0
+#   #  loop number of experiments
+#   time(0)
+#   currenttime=0
 
    exptime           = matrix(nrExp)
    contrast1matrix   = matrix(nrSteps,nrExp)
@@ -432,9 +437,9 @@ newPar = list(parameters)
     # Move to lift into position
       if((enableLift == "yes")&(wvExpStatus == "running"))
    
-         MouseMoveKea:MoveBD(-100,0)  # Move down 100 us to unblock the sensor
+         ServicePM:MoveBD(-100,0)  # Move down 100 us to unblock the sensor
          pr "moved -100\n"
-         MouseMoveKea:homeBD()   # Go home
+         ServicePM:homeBD()   # Go home
          pr "moved to home\n"
         
          if(ne == 0)
@@ -456,10 +461,10 @@ newPar = list(parameters)
 
 
       if((enableLift == "yes")&(wvExpStatus == "running"))
-         MouseMoveKea:MoveBD(-70,0) # moves down 70 um to avoid mechanical hyteresis
+         ServicePM:MoveBD(-70,0) # moves down 70 um to avoid mechanical hyteresis
 
 #         setpar(0,70,"text","Moving to $initDepth$ um")
-         MouseMoveKea:MoveBD(-maxDepth+initDepth, depth)  # Move to initial measurement position
+         ServicePM:MoveBD(-maxDepth+initDepth, depth)  # Move to initial measurement position
          #  wait for key input
 
          if((waitKey=="yes")&(ne>0))      
@@ -512,36 +517,36 @@ newPar = list(parameters)
             im1->title("CPMGs 2D map")
             im1->draw("true")
       
-   ############   Calculates Contrast and weightning data###################
+   ############   Calculates Contrast and weighting data###################
    
-            echoTokens  = parse(parContrast1, ",") # extract initial and final echoes according to contrast
+            echoTokens  = parse(parContrast1, ";") # extract initial and final echoes according to contrast
             echoIni= eval(echoTokens[0])
             echoFin= eval(echoTokens[1])
    
             contrast1Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
    
             if(enableContrast2=="yes") 
-               echoTokens  = parse(parContrast2, ",") # extract initial and final echoes according to contrast 2
+               echoTokens  = parse(parContrast2, ";") # extract initial and final echoes according to contrast 2
                echoIni= eval(echoTokens[0])
                echoFin= eval(echoTokens[1])
                contrast2Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
             endif 
             
             if(enableContrast3=="yes") 
-               echoTokens  = parse(parContrast3, ",") # extract initial and final echoes according to contrast 3
+               echoTokens  = parse(parContrast3, ";") # extract initial and final echoes according to contrast 3
                echoIni= eval(echoTokens[0])
                echoFin= eval(echoTokens[1])
                contrast3Axis[z] = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
             endif
    
             if(enableW=="yes") 
-               echoTokens  = parse(parAmpIni, ",") # extract initial and final echoes according to weightning
+               echoTokens  = parse(parAmpIni, ";") # extract initial and final echoes according to weighting
                echoIni= eval(echoTokens[0])
                echoFin= eval(echoTokens[1])
    
                ampIni = sum(submatrix(real(data1D),echoIni-1,echoFin-1))/(echoFin-echoIni+1)
                
-               echoTokens  = parse(parAmpFin, ",") # extract initial and final echoes according to contrast
+               echoTokens  = parse(parAmpFin, ";") # extract initial and final echoes according to contrast
                echoIni= eval(echoTokens[0])
                echoFin= eval(echoTokens[1])
    
@@ -598,7 +603,7 @@ newPar = list(parameters)
            pt2->draw("true")
    
    
-           if(enableW=="yes")    # Weightning
+           if(enableW=="yes")    # Weighting
    
               pt3->draw("false")
               pt3->plot(depthAxis,wAxis)
@@ -606,8 +611,8 @@ newPar = list(parameters)
               pt3->trace(0)->symbolshape("opensquare")
               pt3->trace(0)->realsymbolcolor([0,128,255])
               pt3->xlabel("Depth (um)") 
-              pt3->ylabel("Weightning with [($parAmpIni$),($parAmpFin$)]")
-              pt3->title("Weightning plot, depth ($(z+1)$/$nrSteps$)")
+              pt3->ylabel("Weighting with [($parAmpIni$),($parAmpFin$)]")
+              pt3->title("Weighting plot, depth ($(z+1)$/$nrSteps$)")
               pt3->draw("true")
            endif
    
@@ -712,10 +717,10 @@ newPar = list(parameters)
    
    
    # Save the data
-      ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),parameters,"simpleReport")
-      ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),parameters,"simpleReport")
-      ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters,"simpleReport")
-      ucsFiles:saveImage(im1,:getPlotInfo("im1"),parameters,"simpleReport")
+      ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),parameters,"noReport")
+      ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),parameters,"noReport")
+      ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),parameters,"noReport")
+      ucsFiles:saveImage(im1,:getPlotInfo("im1"),parameters,"noReport")
    
    
    ########## END OF DATA SAVING ################
@@ -726,7 +731,7 @@ newPar = list(parameters)
          depth = depth + stepSize
          if(z<(nrSteps-1))
             if((enableLift == "yes")&(wvExpStatus == "running"))
-               MouseMoveKea:MoveBD(stepSize, depth)  
+               ServicePM:MoveBD(stepSize, depth)  
             elseif((enableLift == "no")&(wvExpStatus == "running"))
                if(query("Positioning","Set position to: $depth$ um") == "no")
                return
@@ -764,11 +769,11 @@ newPar = list(parameters)
       endif
 
 
-   currenttime=currenttime+time()
-   exptime[ne]=currenttime
-
-   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
-   export2d(exptime,"$expName$exptime.dat") #Save experimental time for origin
+#   currenttime=currenttime+time()
+#   exptime[ne]=currenttime
+#
+#   export2dpar("ab","ascii","xyrc","real","delimiter","tab")
+#   export2d(exptime,"$expName$exptime.dat") #Save experimental time for origin
 
 
    next(ne)                    # number of experiments
@@ -780,11 +785,6 @@ newPar = list(parameters)
    save("acquCombined.par",acquCombined)
    save("acqu.par",acquProfiles)
    save("acquCPMG.par",acquCPMG)
-
-
-
-
-
 
 endproc()
 
@@ -933,7 +933,7 @@ procedure(setParContrast, contrastNum, parameters)
 
       parContrast = eval("parContrast$contrastNum$")
 
-      echoTokens  = parse(parContrast, ",") # extract initial and final echoes according to contrast
+      echoTokens  = parse(parContrast, ";") # extract initial and final echoes according to contrast
       echoIni= eval(echoTokens[0])
       echoFin= eval(echoTokens[1])
 
@@ -949,7 +949,7 @@ procedure(setParContrast, contrastNum, parameters)
      if(echoIni > nrEchoes)
        message("Error!!!","Initial echo > total number of echoes.","error")
        echoIni = 1 
-       templist = ["parContrast$contrastNum$ = 1,$echoFin$"]
+       templist = ["parContrast$contrastNum$ = 1;$echoFin$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -957,7 +957,7 @@ procedure(setParContrast, contrastNum, parameters)
      if(echoFin > nrEchoes)
        message("Error!!!","Final echo > total number of echoes.","error")
        echoFin = nrEchoes
-       templist = ["parContrast$contrastNum$  = $echoIni$,$nrEchoes$"]
+       templist = ["parContrast$contrastNum$  = $echoIni$;$nrEchoes$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -965,7 +965,7 @@ procedure(setParContrast, contrastNum, parameters)
      if(echoIni > echoFin)
        message("Error!!!","Final echo < initial echo.","error")
        echoIni = 1
-       templist = ["parContrast$contrastNum$  = 1,$echoFin$"]
+       templist = ["parContrast$contrastNum$  = 1;$echoFin$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -974,7 +974,7 @@ endproc(0)
 
 
 ###############################################
-# Check the weightning parameters
+# Check the weighting parameters
 ###############################################
 
 procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
@@ -986,7 +986,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
 
       parWeight = eval("parAmp$weightStr$")
 
-      echoTokens  = parse(parWeight, ",") # extract initial and final echoes according to contrast
+      echoTokens  = parse(parWeight, ";") # extract initial and final echoes according to contrast
       echoIni= eval(echoTokens[0])
       echoFin= eval(echoTokens[1])
 
@@ -1002,7 +1002,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
      if(echoIni > nrEchoes)
        message("Error with Amp.$weightStr$!!!","Initial echo > total number of echoes.","error")
        echoIni = 1 
-       templist = ["parAmp$weightStr$ = 1,$echoFin$"]
+       templist = ["parAmp$weightStr$ = 1;$echoFin$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -1010,7 +1010,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
      if(echoFin > nrEchoes)
        message("Error with Amp.$weightStr$!!!","Final echo > total number of echoes.","error")
        echoFin = nrEchoes
-       templist = ["parAmp$weightStr$  = $echoIni$,$nrEchoes$"]
+       templist = ["parAmp$weightStr$  = $echoIni$;$nrEchoes$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -1018,7 +1018,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
      if(echoIni > echoFin)
        message("Error with Amp.$weightStr$!!!","Final echo < initial echo.","error")
        echoIni = 1
-       templist = ["parAmp$weightStr$  = 1,$echoFin$"]
+       templist = ["parAmp$weightStr$  = 1;$echoFin$"]
        setctrlvalues(0,templist)
        return(1)
      endif
@@ -1029,7 +1029,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
       
       parWeightOpp = eval("parAmpFin")
 
-      echoTokensOpp  = parse(parWeightOpp, ",") # extract initial and final echoes according to contrast
+      echoTokensOpp  = parse(parWeightOpp, ";") # extract initial and final echoes according to contrast
 
       echoIniOpp= eval(echoTokensOpp[0])
       echoFinOpp= eval(echoTokensOpp[1])
@@ -1038,7 +1038,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
          message("Error with Amp.$weightStr$!!!","Wrong range for weight function.\n Amp. ini. final > Amp. fin. initial","error")
 
          echoFin = echoIniOpp
-         templist = ["parAmp$weightStr$ = $echoIni$,$echoFin$"]
+         templist = ["parAmp$weightStr$ = $echoIni$;$echoFin$"]
          setctrlvalues(0,templist)
 
          return(1)
@@ -1051,7 +1051,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
       parAmpIni = getpar(0,obj,"text") # update parAmpIni after prevoius check
 
       parWeightOpp = eval("parAmpIni")
-      echoTokensOpp  = parse(parWeightOpp, ",") # extract initial and final echoes according to contrast
+      echoTokensOpp  = parse(parWeightOpp, ";") # extract initial and final echoes according to contrast
       echoIniOpp= eval(echoTokensOpp[0])
       echoFinOpp= eval(echoTokensOpp[1])
 
@@ -1059,7 +1059,7 @@ procedure(setParW, weightStr, parameters) # Ini or Fin for weightStr
          message("Error with Amp.$weightStr$!!!","Wrong range for weight function.\n Amp. ini. final > Amp. fin. initial","error")
 
          echoIni = echoFinOpp
-         templist = ["parAmp$weightStr$ = $echoIni$,$echoFin$"]
+         templist = ["parAmp$weightStr$ = $echoIni$;$echoFin$"]
          setctrlvalues(0,templist)
 
          return(1)

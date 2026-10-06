@@ -30,6 +30,7 @@ procedure(T1SatAuto, parameters=null)
                        "nrScans     =4",
                        "nrEchoes    =16", 
                        "repTime     =500", 
+                       "ieTime     = 500", 
                        "resolution  =90", 
                        "refSignal   =5",
                        "depths      =4500",
@@ -88,38 +89,39 @@ endproc()
 
 procedure(interface)
 
-  
-   try # try to update depth list according to the data if selected from the history
-      if (gData->curExpt->source == "history")
-#         pr "loaded history file\n"
-         bak = getcwd()
-         cd(gData->curExpt->dataPath)  
-         depthList = load("depthList.par","list")
-         cd(bak)
-      else       # or load saved file 
-
-#         pr "loaded default file\n"
-         bak = getcwd()
-         cd(getmacropath())
-         depthList = load("depthListT1SatAuto.lst","list")
-#         pr depthList
-      endif
-   catch
-      #pr lasterror()   
-      depthList = ""
-   endtry
+#  
+#   try # try to update depth list according to the data if selected from the history
+#      if (gData->curExpt->source == "history")
+##         pr "loaded history file\n"
+#         bak = getcwd()
+#         cd(gData->curExpt->dataPath)  
+#         depthList = load("depthList.par","list")
+#         cd(bak)
+#      else       # or load saved file 
+#
+##         pr "loaded default file\n"
+#         bak = getcwd()
+#         cd(getmacropath())
+#         depthList = load("depthListT1SatAuto.lst","list")
+##         pr depthList
+#      endif
+#   catch
+#      #pr lasterror()   
+#      depthList = ""
+#   endtry
 
    ctrlLayout = ["",             "Main",                    "dv",       "",          "",
                  "Sensor",       "Sensor",                  "tb",     "readonly_string",    "", 
                  "Probe",        "Probe",                   "tb",     "readonly_string",    "", 
                  "Spacer",       "Spacer",                  "tb",     "readonly_string",    "", 
                  "resolution",   "Resolution (um)",         "tb",       "float",     "", 
-                 "",             "Print res.pars to CLI",         "bt",       "string",    "printResPars()",
+                 "",             "Print res.pars to CLI",   "btm",       "string",    "printResPars()",
                  "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
+                 "ieTime",      "Interexperiment time (ms)",    "tb",       "float",     "",
                  "nrScans",      "Number of scans",         "tb",       "integer",   "",
                  "nrEchoes",     "Number of echoes",        "tb",       "integer",   "[1,8192]",
-                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
-                 "refSignal",    "Normalization",           "tb",       "float",     "",
+#                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
+#                 "refSignal",    "Normalization",           "tb",       "float",     "",
                   "",            "T1Sat",                   "dv",       "",          "",
                  "t1Est",        "T1 estimation (ms)",      "tb",       "float",     "", 
                  "tMax",         "Max. recovery time (ms)", "tb",       "float",     "",
@@ -128,14 +130,9 @@ procedure(interface)
 
                   "",            "Depths",                  "dv",       "",          "",
                  "enableLift",    "Enable lift",              "cb",       "string",    "no,yes",
-                 "depths",       "Depth list (um)",         "tm",       "integer",   "$depthList$",
-#                 "depths",       "Depth list (um)",         "tm",       "integer",   "",
-#                 "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
                  "maxDepth",     "Maximum depth (um)",      "tb",       "readonly_string",     "",
-                 "",             "Edit depth list",         "bt",       "string",    "editDepths()",
-
-                 "",             "Update depth list",      "bt",       "string",    "updateDepths()"]
-          #       "position",     "Current position (um)",   "tb",       "readonly_string",  ""]
+                 "",             "Print depth list in CLI", "btm",       "string",    "printDepths(toCLI = 1)",
+                 "",             "Edit depth list",         "btm",       "string",    "editDepths()"]
 
 #   processingInterface = [
 #                 "",             "Processing",              "dv",       "",          "",
@@ -232,13 +229,13 @@ procedure(backdoor, parameters)
       return()
    endif
 
-   depthList = getobj(0,findobj(0,"name","depths"))->menu
+   depthList = :printDepths()
    
    if(:checkDepthList(depthList) == 1)
       return()
    endif
 
-   depthList = getobj(0,findobj(0,"name","depths"))->menu
+   depthList = :printDepths()
 
    :saveDepthList(depthList)#############
    :saveLastPar(acquAuto)###################
@@ -250,7 +247,7 @@ procedure(backdoor, parameters)
    echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
 
 ############ Check for total RF duty cycle################################################################################################
-   TDC=pulseLength*nrEchoes/repTime
+   TDC=pulseLengthCh1*nrEchoes/(ieTime+tMax/3)
 
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
@@ -312,8 +309,8 @@ procedure(backdoor, parameters)
  #  newPar = setlistvalue(newPar,"saveData","\"false\"")
 #   newPar = setlistvalue(newPar,"excecutedBackdoor","\"yes\"")
 
-pr "newPar before load \n"
-pr newPar
+#pr "newPar before load \n"
+#pr newPar
    assignlist(newPar)
 #   if(refSignalCheck == "no")
 #      newPar = setlistvalue(newPar,"refSignal","1")
@@ -343,26 +340,28 @@ pr newPar
 #   oldDepth = 0
    depth = 0
    maxDepth = eval(maxDepth)
-   if(enableLift == "yes")
 
-      MouseMoveKea:MoveBD(-100,depth)
-pr "moved -100\n"
-  #    :Move(-100)   # Move down 100 us to unblock the sensor
 
-  #    MoveHome(-1) # Go home
-      MouseMoveKea:homeBD()   # Go home
-pr "moved to home\n"
-pr maxDepth
-      pr "\nMouse going home...\n"
+ # Move to lift into position
+   if((enableLift == "yes")&(wvExpStatus == "running"))
+
+   # Move down 100 us to unblock the sensor
+      ServicePM:MoveBD(-100,depth)
+      print ("Lift moved -100\n") 
+   # Go home
+      ServicePM:homeBD()  
+
       pause(0.0035*(maxDepth)+ 12)  # Wait for home completion
+      print ("Lift Moved to home position\n")
     # :Move(-70)   # Move down 70 um
-      MouseMoveKea:MoveBD(-70,depth)
-pr "moved -70\n"
-#   
-#      oldDepth = maxDepth
+      ServicePM:MoveBD(-70,depth)
+      print ("Lift moved -70\n") 
       depth = maxDepth
-   endif
+   elseif((enableLift == "yes")&(wvExpStatus != "running"))
+      return()
+   endif # enLift
 #################################################################################
+
 
    nrSteps = size(depthList)
    data2D   = matrix(nrPntsT1,nrSteps)
@@ -373,70 +372,74 @@ pr "moved -70\n"
 #################### Start depth changes and data acq.###########################
    for(k = 0 to nrSteps-1)
 
-pr depth
+
 
       newDepth = eval(depthList[k])
 #      offset = oldDepth-newDepth
       moveOffset = - (depth - newDepth)
 
-   if(enableLift == "yes")   
-      MouseMoveKea:MoveBD(moveOffset,depth)
-   else
-        if(query("Positioning","Set initial position to: $depthList[k]$ um") == "no")
-        return
-        endif
-   endif 
+      if((enableLift == "yes")&(wvExpStatus == "running")) 
+         ServicePM:MoveBD(moveOffset,depth)
+      elseif ((enableLift == "no")&(wvExpStatus == "running"))
+           if(query("Positioning","Set initial position to: $depthList[k]$ um") == "no")
+              return
+           endif
+      else
+         return()
+      endif 
 pr "====Moved $moveOffset$\n"
 
 #      oldDepth = newDepth
      depth = newDepth
 
-     result =  RunExpt("T1SatPM", newPar)
+      if(wvExpStatus == "running")
+         
+         result =  RunExpt("T1SatPM", newPar)
+         
+         
+         tauArray = result->t1Axis
+         ampArray = result->ampAxis
+         
+         depthStr = depthList[k]
+         
+         if(result->stats != null)
+            stats[k] = "Depth = $depthStr$ um:\n" + result->stats
+         else
+            stats[k] = ""
+         endif
+         
+         if(result->results != null)
+            resultsFit[k] = "Depth = $depthStr$ um:\n" + result->results
+         else
+            resultsFit[k] = ""
+         endif
+         
+         #   resultsFit[k] = "Depth = $depthStr$ um:\n" + result->results
+         
+         
+         
+         data2D[~,k] = real(ampArray)
+         
+         im1->draw("false")
+         im1->axes->ydirection("reversed")
+         im1->image(data2D) # 2D image plot of all CPMGs
+         im1->ylabel("Depth index")
+         im1->xlabel("Recovery time index")
+         im1->title("T1Sat 2D map")
+         im1->draw("true")
+         
+         
+         #   :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit)
+         
+         
+         #
+          ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),newPar,"simpleReport")
+          ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),newPar,"simpleReport")
+          ucsFiles:saveImage(im1,:getPlotInfo("im1"),newPar,"simpleReport")
+         
+         :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit,stats)
 
-
-   tauArray = result->t1Axis
-   ampArray = result->ampAxis
-
-   depthStr = depthList[k]
-
-   if(result->stats != null)
-      stats[k] = "Depth = $depthStr$ um:\n" + result->stats
-   else
-      stats[k] = ""
-   endif
-
-   if(result->results != null)
-      resultsFit[k] = "Depth = $depthStr$ um:\n" + result->results
-   else
-      resultsFit[k] = ""
-   endif
-
-   #   resultsFit[k] = "Depth = $depthStr$ um:\n" + result->results
-
-
-
-   data2D[~,k] = real(ampArray)
-   
-   im1->draw("false")
-   im1->axes->ydirection("reversed")
-   im1->image(data2D) # 2D image plot of all CPMGs
-   im1->ylabel("Depth index")
-   im1->xlabel("Recovery time index")
-   im1->title("T1Sat 2D map")
-   im1->draw("true")
-
-
-#   :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit)
-
-
-#
-    ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),newPar,"simpleReport")
-    ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),newPar,"simpleReport")
-    ucsFiles:saveImage(im1,:getPlotInfo("im1"),newPar,"simpleReport")
-
-   :saveData(newPar,tauArray,ampArray,depthStr,data2D,resultsFit,stats)
-
-
+      endif #      checking(wvExpStatus == "running"))   
 
    next(k)
 
@@ -546,7 +549,7 @@ procedure(checkDepthList,depthListPar)
 
 #pr depthListPar
 
-   depthList = getobj(0,findobj(0,"name","depths"))->menu
+   depthList = :printDepths()
 #pr depthList
 
 
@@ -684,7 +687,9 @@ procedure(saveData,newPar,totalTime,data1D,depthStr,data2D,resultsFit,stats)
 #   obj = findobj(0,"name","depths")
 #pr obj
 #   depthListValues = getpar(0,obj,"list")
-   depthListValues = getobj(0,findobj(0,"name","depths"))->menu
+
+   depthListValues =  :printDepths()
+
    guipar = setlistvalue(guipar,"depthListValues","$depthListValues$")
 
 
@@ -779,3 +784,35 @@ procedure (printResPars)
       print("For resolution $resolution$ um the corresponding parameters are:\n   Echotime (us):     $echoTime$\n   Number of points:  $nrPnts$\n")
 
 endproc()
+
+
+###########################################################
+# Print depths to CLI and return the list
+###########################################################
+
+procedure(printDepths, toCLI = 0)
+
+   bak = getcwd()
+   cd(getmacropath())
+
+    if(isfile("depthListT1SatAuto.lst"))   
+      depthListPar = load("depthListT1SatAuto.lst","list")
+      if (toCLI==1)
+         print (depthListPar)
+      endif
+    else
+      message("Error!","File with depth values is not found!","error")
+
+      if(query("Warning","File with depth values is not found!\rDo you want create new depth file?","no") == "yes")
+         lst = ""
+         save("depthListT1SatAuto.lst",lst)
+         EditorWin()
+         edit("depthListT1SatAuto.lst")
+      endif
+
+      return()
+    endif
+
+   cd(bak)
+
+endproc(depthListPar)
