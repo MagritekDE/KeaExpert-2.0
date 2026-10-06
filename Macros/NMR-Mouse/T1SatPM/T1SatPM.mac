@@ -130,7 +130,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    endif
 
 ############ Check for total RF duty cycle################################################################################################
-   TDC=pulseLengthCh1*nrEchoes/repTime
+   TDC=pulseLengthCh1*nrEchoes/(ieTime+tMax/3)
 #pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
@@ -217,6 +217,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       flt = matrix(totPnts)+1
    endif
 
+# First time we put the ieTime at the start
+   tEndPS = time()
+
   # Loop over the t1-axis values to form a 2D data set
    for(m = nrPntsT1-1 to 0 step -1)
       
@@ -236,8 +239,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
        # Send all parameter values to spectrometer (DSP)/generate event table (FX3)
          ucsRun:updatePPParameters(ppList,guipar)
 
-       # Wait for the repetition time to complete
-         check = ucsRun:checkTiming(guipar,scan,pcList)
+       # Wait for the inter-experiment time to complete
+         check = ucsRun:checkTiming(guipar,scan,pcList,tEndPS)
          if(check == "abort")
             return(0)
          endif
@@ -245,6 +248,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
        # Run the p.p. and collect the data
          (status,data) = ucsRun:getData(totPnts,guipar)
          data = data/nrEchoes
+
+       # Record when the ps finishes
+         tEndPS = time()
 
        # See if stop button/escape key pressed
          if(status != "ok")
@@ -565,17 +571,7 @@ procedure(checkDelays, dxNames, dxValues, dxLimits)
 
 endproc(0)
 
-########################################################
-# Return expected experiment duration in seconds
-########################################################
 
-procedure(expectedDuration, guipar)
-
-   assignstruct(guipar)
-   totScans = nrScans*nrPntsT1
-   duration = (totScans*repTime)/1000
-
-endproc(duration)
 
 ########################################################
 # Load selected Probe Head parameters
@@ -594,3 +590,54 @@ procedure(loadProbeHeadPars)
 
 
 endproc(probeHeadPars)
+
+
+
+#########################################################
+## Return expected experiment duration in seconds
+#########################################################
+#
+#procedure(expectedDuration, guipar)
+#
+#   assignstruct(guipar)
+#   totScans = nrScans*nrPntsT1
+#   duration = (totScans*repTime)/1000
+#
+#endproc(duration)
+
+
+########################################################
+# Return expected experiment duration
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignstruct(guipar)
+
+# Generate the t1 axis to work out the total delay
+   amax   = 0.95
+   amin   = exp(-tMax/t1Est)
+   astep  = (amax-amin)/(nrPntsT1-1)
+   t1Axis = matrix(nrPntsT1)
+
+   for(m = 0 to nrPntsT1-1)
+    # Linear time increment
+      if(index == "lin")
+        t1Axis[m] = (m+1)*tMax/(nrPntsT1) 
+      endif 
+    # Logarithmic time increment
+      if(index == "exp")
+         t1Axis[m] = t1Est*(-loge(amax-astep*(m)))^(1/1)
+      endif
+   next(m)
+
+   dArray = t1Axis*1000
+   totDelayTime = sum(dArray) 
+   psTime = GetPulseProgramDuration("T1Sat-ie",1,guipar)*1000
+   psTime = psTime - t1Axis[-1]*1000 # Base ps duration
+   psTime = psTime + nrPnts*10 # Data collection time estimate
+   totScans = nrPntsT1*nrScans
+   duration = (totScans*(psTime+ieTime*1000) + nrScans*totDelayTime)/1e6
+
+
+endproc(duration)
