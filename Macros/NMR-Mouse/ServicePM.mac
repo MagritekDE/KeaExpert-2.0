@@ -4,7 +4,7 @@
 # It could be used to trigger a batch process.
 #####################################################################
 
-procedure(MouseMoveKea, parameters=null) 
+procedure(ServicePM, parameters=null) 
  
    if(EditIfShiftPressed(getmacropath(),getmacroname()))
       return
@@ -19,6 +19,7 @@ procedure(MouseMoveKea, parameters=null)
 
          parameters = [ "distance = 0",
                         "position = $curPos$",
+                        "setDepth = 0",
                         "moveMode = \"distance\""
                         ] 
       endif
@@ -35,6 +36,8 @@ procedure(backdoor, parameters)
       :serviceBD()
    elseif(moveMode == "home")
       :homeBD()
+   elseif(moveMode == "depth")
+      :moveToDepth(setDepth)
    else
       :moveBD(position)
    endif
@@ -50,10 +53,11 @@ endproc()
 procedure(interface)
 
    ctrlLayout = ["exptDiv",      "Move mode",                 "dv",  "",                 "",
-                 "moveMode",     "Move to",                   "rb",  "string", "18,home,service,distance,home,service,distance",
+                 "moveMode",     "Move to",                   "rb",  "string", "18,home,service,depth,distance,home,service,depth,distance",
                  "exptDiv",      "Distance control/feedback", "dv",  "",                 "",
                  "distance",     "Distance to move",          "tb",  "float",            "",
-                 "position",     "Current position (um)",     "tb",  "readonly_string",  ""]
+                 "position",     "Current position (um)",     "tb",  "readonly_string",  "",
+                 "setDepth",     "Depth to move (um)",     "tb",     "float",  ""]
 
    plotLayout = listto2d(["pt1"])
 
@@ -91,7 +95,14 @@ procedure(serviceBD)
 
    twoTTLpulses:backdoor(guipar)
 
-   pause(45) # too long, need to be recalculated
+   pause(5) # too long, need to be recalculated
+
+   n = findobj(0,"name","position")
+   if(n > 0)
+      setpar(0,n,"text","null")
+      gData->currentLiftPosition = null
+   endif
+
 
 endproc()
 
@@ -340,3 +351,42 @@ procedure(expectedDuration, guipar)
    d = 0.1
 
 endproc(d)
+
+
+####################################################
+# Move the lift to the defined position
+###################################################
+
+
+procedure(moveToDepth, setDepth)
+
+   cd(getmacropath())
+   cd(".ProbeHeads")
+   if(isfile("selectedProbeHead.par"))   
+      selectedProbeHead = load("selectedProbeHead.par")
+   else
+      message("Error!","File with selected probe head parameters is not found!\rPlease run SelectProbeHead first!","info")
+      return(1)
+   endif
+
+   maxDepth = eval(getlistvalue(selectedProbeHead,"maxDepth"))
+
+    if((setDepth < -1000)|(setDepth>maxDepth))
+      message("Warning !!!","Set depth out of range: -1000 to $maxDepth$","info")
+      return(0)
+    endif
+
+   ServicePM:MoveBD(-100,0)  # Move down 100 us to unblock the sensor
+   pr "moved -100\n"
+   ServicePM:homeBD()   # Go home
+   pr "moved to home\n"
+
+   pause(0.0035*(maxDepth)+ 15)  # Wait for home completion 
+
+   depth = maxDepth
+
+   ServicePM:MoveBD(-70,0) # moves down 70 um to avoid mechanical hyteresis
+
+   ServicePM:MoveBD(-maxDepth+setDepth, depth)  # Move to initial measurement position
+
+endproc()
