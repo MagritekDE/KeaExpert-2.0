@@ -83,7 +83,12 @@ procedure(PulseProgramCompiler, parentWinNr, exptDirList=null, exptPath=null, ex
    windowvar(wvParWinNr,wvThisWinNr,wvExptDirList,wvASMLoaded)
    wvASMLoaded = 0
    idx = getlistindex(exptDirList,"----")
-   wvExptDirList = exptDirList[0:idx-1]
+
+   if (size(exptDirList) == 1)
+      wvExptDirList = exptDirList
+   else
+      wvExptDirList = exptDirList[0:idx-1]
+   endif
 
    assignctrls(n)
    if(nrArgs == 4)
