@@ -695,15 +695,15 @@ procedure(displayParameterList, self, s=null)
    cd(gData->curExpt->dataPath)
    if(isfile("acqu.par"))
       par = load("acqu.par")
-      if(par != null)
-         try
-            par = eval(par) # Allows variables or expression in batch parameter list
-         catch
-            pr lasterror()
-            cd(bak)
-            return(0)
-         endtry
-      endif
+#      if(par != null)
+#         try
+#            par = eval(par) # Allows variables or expression in batch parameter list
+#         catch
+#            pr lasterror()
+#            cd(bak)
+#            return(0)
+#         endtry
+#      endif
       gData->curExpt->parameters = struct(par)
    else
       message("Error","Can't find batch acqu.par file for '$protocol$'.","error")
@@ -2577,7 +2577,7 @@ procedure(updateProtocol, self, update=1, idx=null)
 # Remove the change flag and restore the update icon color
    gParam->parChangedFlag = 0
    bak = getcwd()
-   cd("$appdir$\\Macros\\Spinsolve-Expert\\Other Macros\\BitMaps")
+   cd("$appdir$\\Macros\\Kea-Expert\\Other Macros\\BitMaps")
    gView->upDateParametersButton->icon("check.png")
    cd(bak)
 
@@ -2610,6 +2610,7 @@ procedure(updateProtocol, self, update=1, idx=null)
    self->saveCurrentParameters(protocol,comment,exptNr)
    gView->batch->zindex(self->currentBatchExptIdx)
    setfocus(0,gView->batch->ctrlnr)
+
 
 endproc()
 
