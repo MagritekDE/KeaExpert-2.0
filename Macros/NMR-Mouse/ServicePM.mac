@@ -20,7 +20,7 @@ procedure(ServicePM, parameters=null)
          parameters = [ "distance = 0",
                         "position = $curPos$",
                         "setDepth = 0",
-                        "moveMode = \"distance\""
+                        "moveMode = \"depth\""
                         ] 
       endif
       gExpt->addExperiment(getmacropath(),rmext(getmacroname()),parameters)
@@ -30,6 +30,7 @@ endproc()
 
 procedure(backdoor, parameters)
 
+   position = 0
    assignstruct(parameters)
 
    if(moveMode == "service")
@@ -55,9 +56,11 @@ procedure(interface)
    ctrlLayout = ["exptDiv",      "Move mode",                 "dv",  "",                 "",
                  "moveMode",     "Move to",                   "rb",  "string", "18,home,service,depth,distance,home,service,depth,distance",
                  "exptDiv",      "Distance control/feedback", "dv",  "",                 "",
+                 "setDepth",     "Depth to move (um)",     "tb",     "float",  "",
                  "distance",     "Distance to move",          "tb",  "float",            "",
-                 "position",     "Current position (um)",     "tb",  "readonly_string",  "",
-                 "setDepth",     "Depth to move (um)",     "tb",     "float",  ""]
+                 "exptDiv",      "Service parameters", "dv",  "",                 "",
+                 "position",     "Current position (um)",     "tb",  "readonly_string",  ""
+                  ]
 
    plotLayout = listto2d(["pt1"])
 
@@ -381,7 +384,7 @@ procedure(moveToDepth, setDepth)
    ServicePM:homeBD()   # Go home
    pr "moved to home\n"
 
-   pause(0.0035*(maxDepth)+ 15)  # Wait for home completion 
+   pause(0.001*(maxDepth)+ 12)  # Wait for home completion 
 
    depth = maxDepth
 

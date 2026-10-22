@@ -131,19 +131,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 ############ Check for total RF duty cycle################################################################################################
    TDC=pulseLengthCh1*nrEchoes/(ieTime+tMax/3)
-#pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
 
 ###############################################################################################################################################
-
 
 # Check that p.s. duty cycle <= 25%
    if(d1/echoTime > 0.25)
@@ -633,7 +631,7 @@ procedure(expectedDuration, guipar)
 
    dArray = t1Axis*1000
    totDelayTime = sum(dArray) 
-   psTime = GetPulseProgramDuration("T1Sat-ie",1,guipar)*1000
+   psTime = GetPulseProgramDuration("T1SatPM",1,guipar)*1000
    psTime = psTime - t1Axis[-1]*1000 # Base ps duration
    psTime = psTime + nrPnts*10 # Data collection time estimate
    totScans = nrPntsT1*nrScans

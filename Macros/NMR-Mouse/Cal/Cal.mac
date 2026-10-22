@@ -142,19 +142,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 ############ Check for total RF duty cycle################################################################################################
    TDC=(minWidth + (nrSteps-1)*widthStep)*nrEchoes/repTime
-#pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes, nrSteps or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes, nrSteps or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
 
 ###############################################################################################################################################
-
 
 # # Check RF duty cycle
 #   if(ucsRun:highDutyCycle(dRF*nEchoes,nEchoes*echoTime,guipar))
@@ -224,7 +222,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          if(autoPhase == "yes")
             (ph,sumDataAP) = ucsRun:autoPhase(sumData/nrPnts,"minsd")
          else
-            sumDataAP = sumData/nrPnts
+            sumDataAP = sumData/nrEchoes
          endif
 
        # Process the data
@@ -250,7 +248,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
      # Integrate the spectrum to get the initial CPMG amplitude
 #      echoInt[stp]  = integvector(fAxis,real(sumDataAP)/nrScans,-intWidth/2,intWidth/2)
-      echoInt[stp]  =sum(sumDataAP)/nrScans
+      echoInt[stp]  =sum(sumDataAP)/nrPnts/nrScans
 
      # Plot the integrals
       ucsPlot:graphXY(pt2,durationAxis,echoInt,null,stp+1,
@@ -273,6 +271,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 #   endif
 
 # Save the data
+  ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"noReport")
   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"simpleReport")
 
 # Return result structure when called from backdoor
@@ -292,7 +291,8 @@ endproc("execpp") # Don't remove argument
 
 procedure(getPlotInfo,plotRegion)
 
-   info = ["pt2","CPMGDurSweep.pt1"]
+   info = ["pt1","CPMG.pt1",
+           "pt2","CPMGDurSweep.pt1"]
 
    if(plotRegion == "all")
       return(info)

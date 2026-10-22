@@ -111,12 +111,14 @@ procedure(interface)
                  "",             "Main",                    "dv",       "",          "",    #MAIN
                  "resolution",       "Resolution (um)",           "tb",   "float",     "",
                  "",             "Print res.pars to CLI",         "btm",       "string",    "printResPars()",
+
                  "repTime",          "Repetition time (ms)",      "tb",   "float",     "",
                  "nrEchoes",         "Number of echoes",          "tb",   "integer",   "",
                  "nrScans",          "Number of scans",           "tb",   "integer",   "",
                  "nrExp",         "Number of experiments",          "tb",   "integer",   "",
-                 "expDelay",         "Delay (s)",              "tb",   "float",   "",
-                 "waitKey",          "Wait for keyinput",      "cb",   "string",  "no,yes",
+                 "expDelay",         "Delay (s)",                  "tb",   "float",   "",
+                 "",             "Print estim.exp.time to CLI",    "btm",       "string",    "printEstTime()",
+                 "waitKey",          "Wait for keyinput",         "cb",   "string",  "no,yes",
 
 
                  "",             "Processing",                    "dv",       "",          "",    #PROCESSING
@@ -160,8 +162,8 @@ procedure(interface)
                  "Spacer",       "Spacer",                  "tb",     "readonly_string",    "", 
 
 
-                 "bestResol",         "Best resoluiton (um)",  "tb",   "float",   "",
-                 "gradient",         "Gradient",               "tb",   "float",   "",
+                 "bestResol",         "Best resoluiton (um)",  "tb",   "readonly_string",   "",
+                 "gradient",         "Gradient",               "tb",   "readonly_string",   "",
                  "b1Freq",           "B1 frequency (MHz)",        "tb",   "float",     "",
                  "pulseLength",      "Pulse length (us)",          "tb",   "float",   "",
                  "90Amplitude",      "90 pulse amp. (dB)",          "tb",   "float",   "",
@@ -246,25 +248,45 @@ procedure(backdoor, parameters)
 
 # calculates nrPnts and echoTime based on resolution (user) and gradient (probehead) parameters
    dwell = 0.5
-   nrPnts   = round(1e6/(gradient*dwell*resolution))
+   nrPnts   = round(1e6/(eval(gradient)*dwell*resolution))
    echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
 
 
 
 ###############################################################################################################################################
 
+
+
+############ Check for total RF duty cycle################################################################################################
+   TDC=pulseLength*nrEchoes/repTime
+
+# for PM25----------------------------------------------
+    if ((TDC>1.6)&(Sensor == "PM25")) 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       return(0)
+# for PM5----------------------------------------------
+    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       return(0)
+    endif
+
+###############################################################################################################################################
+
+
+
+
 ### some other checks, e.g. resoluiton
 
    obj = findobj(0,"name","resolution")
 
-   if(resolution < bestResol)
+   if(resolution < eval(bestResol))
       message("Error!","Resolution < resolution limit ($bestResol$ um)","error")
       templist = [" resolution = $bestResol$"]
       setctrlvalues(0,templist)
       return()
    endif
 
-   sliceThickness = 10*round(1e6/(pulseLength*gradient)/10)
+   sliceThickness = 10*round(1e6/(pulseLength*eval(gradient))/10)
 
    if (resolution > sliceThickness)
        message("Warning !!!","Resolution > excited slice thickness ($sliceThickness$ um).","info")
@@ -286,20 +308,6 @@ procedure(backdoor, parameters)
    endif
 
 
-############ Check for total RF duty cycle################################################################################################
-   TDC=pulseLength*nrEchoes/repTime
-
-# for PM25----------------------------------------------
-    if ((TDC>1.6)&(Sensor == "PM25")) 
-    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
-    return(0)
-# for PM5----------------------------------------------
-    elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
-    return(0)
-    endif
-
-###############################################################################################################################################
 
 
 
@@ -443,16 +451,16 @@ newPar = list(parameters)
          pr "moved to home\n"
         
          if(ne == 0)
-            pause(0.0035*(maxDepth)+ 15)  # Wait for home completion 
+            pause(0.001*(maxDepth)+ 12)  # Wait for home completion 
          else # depth is already defined
-            pause(0.0035*(maxDepth-depth)+ 15) # Wait for home completion 
+            pause(0.001*(maxDepth-depth)+ 12) # Wait for home completion 
          endif
 
          depth = maxDepth
       elseif((enableLift == "yes")&(wvExpStatus != "running"))
         return()
       endif # enLift
-   
+
 
       if ((nrExp>1)&(waitKey=="no")&(expDelay!=0)& ne>0 & (expDelay!=""))
             pr "Waiting for experiment no.$ne+1$ \r" 
@@ -481,7 +489,6 @@ newPar = list(parameters)
       endif
    
 
-
       depth = initDepth           # measuring depth 
 
    
@@ -492,7 +499,6 @@ newPar = list(parameters)
          else
             print("Depth: $depth$ um")
          endif      
-
 
          if(wvExpStatus == "running")
    
@@ -798,8 +804,15 @@ endproc()
 
 procedure(expectedDuration, guipar)
 
+   assignlist(guipar)
 
-endproc(-5)
+   nrSteps = round(finalDepth - initDepth)/stepSize +1 
+
+   moveWait = (0.001*(maxDepth)+ 12) + nrSteps*3
+
+   duration = (nrScans*(repTime/1000)*nrSteps + moveWait)*nrExp + expDelay*(nrExp - 1)
+
+endproc(-duration)
 
 
 
@@ -1176,8 +1189,23 @@ procedure (printResPars)
    endif
 
       dwell = 0.5
-      nrPnts   = round(1e6/(gradient*dwell*resolution))
+      nrPnts   = round(1e6/(eval(gradient)*dwell*resolution))
       echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
       print("For resolution $resolution$ um the corresponding parameters are:\n   Echotime (us):     $echoTime$\n   Number of points:  $nrPnts$\n")
+
+endproc()
+
+
+########################################################################################
+# Print approximate estimated experiment time to CLI
+#########################################################################################
+
+procedure (printEstTime)
+
+      parameters = getctrlvalues(0)
+      assignlist(parameters)
+
+      expTime = :expectedDuration(parameters)
+      print("Estimated experiment time:  $-expTime$ s\n")
 
 endproc()

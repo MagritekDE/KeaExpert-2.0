@@ -92,7 +92,7 @@ procedure(getseqpar)
           "nManyDummies   = (dummyEchoes>1)",
           "nDummies       = dummyEchoes-1",
           "totPnts        = nrPnts",
-          "totTime        = nrEchoes*echoTime*(dummyEchoes+1)"]
+          "totTime        = acqTime"]
    var = [""]
    pp_list = ["nxShim","nyShim","nzShim","noShim","nPnts","nZeroDummy","s1","a90","p1","dRF","d90_180","nEchoes","l1","a180","p2","d180_acq","dAcq","nOneDummy","s2","l2","dAcq2","dDummy","nManyDummies","s3","l3","nDummies","l4"]
    pp_name = "CPMGAddPM.p"
@@ -135,16 +135,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 ############ Check for total RF duty cycle################################################################################################
    TDC=pulseLengthCh1*nrEchoes/repTime
-#pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
+
+###############################################################################################################################################
 
 # Do some safety checks
    if(d90_180 < 1 | d180_acq < 1 | dAcq < 1 | dDummy < 1)
@@ -168,9 +169,14 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       return(0)
    endif
 
-# Calculate a suitable time axis
-   tAxis = [0:1:nrPnts-1]/(nrPnts)*acqTime
-   totalTime = ([0:1:totPnts-1]/totPnts)*totTime + echoTime
+# Calculate suitable time and frequency axes
+   tAxis = ([0:1:totPnts-1]/totPnts)*totTime*1000   # (us)
+   fAxis = ([0:1:totPnts-1]-totPnts/2)/totTime*1000 # (Hz)
+
+
+## Calculate a suitable time axis
+#   tAxis = [0:1:nrPnts-1]/(nrPnts)*acqTime
+#   totalTime = ([0:1:totPnts-1]/totPnts)*totTime + echoTime
 
 # Allocate memory for outputs
    echoData   = cmatrix(totPnts)
@@ -193,8 +199,10 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    endif
 
 
-# Get the plot references
-   pt1 = ucsPlot:getPlotReferences()
+# Get plot regions
+   (pt1,pt2) = ucsPlot:getPlotReferences()
+#   pt1->showimag("false")
+#   pt2->showimag("false")
 
 # Intialise phase
    ph = 0
@@ -239,10 +247,20 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
               ph = ph*pi/180
             endif
          endif
+
+    # FT the data
+      (phasedTimeData,spectrum) = ucsRun:transformData(echoData,fAxis,guipar, mode = "echo")
+
+    # Plot the FID and spectrum 
+      ucsPlot:graphTimeAndFreq(pt1,pt2,tAxis,phasedTimeData,fAxis,spectrum,scan,guipar)
+
+
+
+
     
-      # Display full time domain data
-         ucsPlot:graphTime(pt1,tAxis*1000,echoData.*fltTot*exp(i*ph)/nrEchoes,scan,guipar,
-                           "CPMGAddPM echo SCANS","Acquisition time (\G(m)s)")
+#      # Display full time domain data
+#         ucsPlot:graphTime(pt1,tAxis*1000,echoData.*fltTot*exp(i*ph)/nrEchoes,scan,guipar,
+#                           "CPMGAddPM echo SCANS","Acquisition time (\G(m)s)")
 
        endif # Dummy scans
 
@@ -266,11 +284,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    endif
 
 # Save the data
-   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"noReport")
+   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"simpleReport")
+   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"noReport")
 
 # Return the data
    result = struct()
    result->echo = 1000*echoData*exp(i*ph)/nrScans
+
+   result->tx = tAxis
+   result->ty = echoData/scan
+   result->fx = fAxis
+   result->fy = spectrum/scan
 
 # Return result structure when called from backdoor
    return(result)
@@ -285,7 +309,7 @@ endproc("execpp")
 
 procedure(getPlotInfo,plotRegion)
 
-   info = ["pt1","rawCPMGAddPM.pt1","pt2","summedCPMGAddPM.pt1","im1","CPMGAddPMEchoes.pt2"]
+   info = ["pt1","CPMGAddPM.pt1","pt2","spectrum.pt1","pt2"]
 
    if(plotRegion == "all")
       return(info)
@@ -429,7 +453,7 @@ procedure(updateProgress, scans, guipar)
       repTime = ieTime + nrEchoes*echoTime/1000
 
    # Define progress/timing expressions
-      totTime = (nrScans+dummies)*repTime/1000
+    #  totTime = (nrScans+dummies)*repTime/1000
       expTime = (scans+1)*repTime/1000
       remTime = totTime - expTime
       progress = 100*expTime/totTime

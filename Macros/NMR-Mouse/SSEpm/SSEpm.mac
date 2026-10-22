@@ -126,16 +126,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex,ext)
 
 ############ Check for total RF duty cycle################################################################################################
    TDC=pulseLengthCh1*nrEchoes/repTime
-#pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
+
+###############################################################################################################################################
 
 
 # Check that p.s. duty cycle <= 25%
@@ -460,9 +461,9 @@ endproc(t2Diff)
 ##########################################################
 
 procedure(checkDelays, dxNames, dxValues, dxLimits)
- 
+
    for(k = 0 to size(dxNames)-1)
-      if (dxValues[k] <= dxLimits[k])
+      if ((dxValues[k] <= dxLimits[k]))
          message("Error","Pulse sequence timing error. Delay $dxNames[k]$ is <= $dxLimits[k]$","error")
          return(1)
       endif 

@@ -90,7 +90,7 @@ procedure(getseqpar)
    var = [""]
    pp_list = ["nEchoes","a90","p1","dRF","d90_180","l1","a180","p2","d180_acq","nPnts","dAcq"]
    pp_name = "CPMGFastPM.p"
-   phase_list = [2,0,2,0;3,1,1,3;2,0,2,0]
+   phase_list = [0,2,0,2;1,1,3,3;0,2,0,2]
 
    seqInfo = struct(rel,var,pp_list,pp_name,phase_list)
 
@@ -144,18 +144,17 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 ############ Check for total RF duty cycle################################################################################################
    TDC=pulseLengthCh1*nrEchoes/repTime
-#pr Sensor
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
        return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-       message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
        return(0)
     endif
 
-###############################################################################################################################################
+###########################################################################################################################################################################################################################################################################################
 
 # # Check RF duty cycle
 #   if(ucsRun:highDutyCycle(dRF*nEchoes,nEchoes*echoTime,guipar))
@@ -259,7 +258,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
                ucsPlot:graphTime(pt1,tAxis/1000,sumDataAP,scan,guipar,
                                 "Echo integrals SCANS","Time (ms)","Average echo amplitude (\G(m)V)")
  
-            if(scan >= 0  & ((scan+1) % size(pcList) == 0))  
+            if(scan >= 0  & ((scan+1) % (size(pcList)/2) == 0))  
             # Apply the requested fit
               (pt2, results, stats) = :DisplayFit(pt1,pt2,tAxis/1000,sumDataAP/(scan+1),nrEchoes,guipar,scan)
   

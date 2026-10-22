@@ -116,13 +116,14 @@ procedure(interface)
                  "Spacer",       "Spacer",                  "tb",     "readonly_string",    "", 
                  "resolution",   "Resolution (um)",         "tb",       "float",     "", 
                  "",             "Print res.pars to CLI",   "btm",       "string",    "printResPars()",
-                 "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
+          #       "repTime",      "Repetition time (ms)",    "tb",       "float",     "",
                  "ieTime",      "Interexperiment time (ms)",    "tb",       "float",     "",
                  "nrScans",      "Number of scans",         "tb",       "integer",   "",
                  "nrEchoes",     "Number of echoes",        "tb",       "integer",   "[1,8192]",
+                 "",             "Print estim.exp.time to CLI",    "btm",       "string",    "printEstTime()",
 #                 "normalize",    "Normalize?",              "cb",       "string",    "no,yes",
 #                 "refSignal",    "Normalization",           "tb",       "float",     "",
-                  "",            "T1Sat",                   "dv",       "",          "",
+                  "",            "T1Sat parameters",                   "dv",       "",          "",
                  "t1Est",        "T1 estimation (ms)",      "tb",       "float",     "", 
                  "tMax",         "Max. recovery time (ms)", "tb",       "float",     "",
                  "nrPntsT1",     "Number of rec. steps",    "tb",       "integer",   "",
@@ -130,7 +131,7 @@ procedure(interface)
 
                   "",            "Depths",                  "dv",       "",          "",
                  "enableLift",    "Enable lift",              "cb",       "string",    "no,yes",
-                 "maxDepth",     "Maximum depth (um)",      "tb",       "readonly_string",     "",
+                 "maxDepth",     "Maximum depth (um)",      "tb",       "float",     "",
                  "",             "Print depth list in CLI", "btm",       "string",    "printDepths(toCLI = 1)",
                  "",             "Edit depth list",         "btm",       "string",    "editDepths()"]
 
@@ -247,26 +248,36 @@ procedure(backdoor, parameters)
    echoTime = echoTime0 + round(dwell*nrPnts)-pulseLength
 
 ############ Check for total RF duty cycle################################################################################################
-   TDC=pulseLengthCh1*nrEchoes/(ieTime+tMax/3)
-
+   TDC=pulseLength*nrEchoes/(ieTime+tMax/3)
+pr pulseLength
+pr TDC
 # for PM25----------------------------------------------
     if ((TDC>1.6)&(Sensor == "PM25")) 
-    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
-    return(0)
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 1.6","error") 
+       return(0)
 # for PM5----------------------------------------------
     elseif ((TDC>3) & ((Sensor == "PM5")|(Sensor == "PM10")|(Sensor == "PM2"))) 
-    message("Error","RF duty cycle is too high, reduce nrEchoes or increase repTime. Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
-    return(0)
+       message("Error","RF duty cycle is too high!\r- reduce nrEchoes\r- increase repTime\r- check pulseLength\r Total duty cycle is currently $TDC$. Maximum allowed is 3","error") 
+       return(0)
     endif
 
 ###############################################################################################################################################
 
-
-
    if(resolution < bestResol)
-     message("ERROR","resolution < bestResol\n increase resolution","error")
-     return
+      message("Error!","Resolution < resolution limit ($bestResol$ um)","error")
+      templist = [" resolution = $bestResol$"]
+      setctrlvalues(0,templist)
+      return()
    endif
+
+   sliceThickness = 10*round(1e6/(pulseLength*gradient)/10)
+   if (resolution > sliceThickness)
+       message("Warning !!!","Resolution > excited slice thickness ($sliceThickness$ um).","info")
+       templist = [" resolution = $sliceThickness$"]
+       setctrlvalues(0,templist)
+       return()
+   endif
+
 
    if(nrPnts/2 < pulseLength)
      message("ERROR","resolution > excited slice\n decrease resolution","error")
@@ -339,8 +350,6 @@ procedure(backdoor, parameters)
 
 #   oldDepth = 0
    depth = 0
-   maxDepth = eval(maxDepth)
-
 
  # Move to lift into position
    if((enableLift == "yes")&(wvExpStatus == "running"))
@@ -351,7 +360,7 @@ procedure(backdoor, parameters)
    # Go home
       ServicePM:homeBD()  
 
-      pause(0.0035*(maxDepth)+ 12)  # Wait for home completion
+      pause(0.001*(maxDepth)+ 12)  # Wait for home completion
       print ("Lift Moved to home position\n")
     # :Move(-70)   # Move down 70 um
       ServicePM:MoveBD(-70,depth)
@@ -588,7 +597,7 @@ procedure(checkDepthList,depthListPar)
        return(1) 
     endif()
 
-    if(depthArray[m] > eval(maxDepth))
+    if(depthArray[m] > maxDepth)
        message("Error!!!","List of depths contains a value > $maxDepth$ um.","error")
        return(1) 
     endif()
@@ -816,3 +825,38 @@ procedure(printDepths, toCLI = 0)
    cd(bak)
 
 endproc(depthListPar)
+
+########################################################################################
+# Print approximate estimated experiment time to CLI
+#########################################################################################
+
+procedure (printEstTime)
+
+      parameters = getctrlvalues(0)
+      assignlist(parameters)
+
+      expTime = :expectedDuration(parameters)
+      print("Estimated experiment time:  $-expTime$ s\n")
+
+endproc()
+
+########################################################
+# Return expected experiment duration in seconds. The
+# negative number here means it will take 5 seconds
+# to cover the bar but will repeat indefinitely since
+# we don't know how long the experiment will take.
+########################################################
+
+procedure(expectedDuration, guipar)
+
+   assignlist(guipar)
+
+   depthList = :printDepths()
+
+   nrSteps = size(depthList)
+
+   moveWait = (0.001*(maxDepth)+ 12) + nrSteps*3
+
+   duration = (nrScans*((ieTime+tMax/3)/1000)*nrPntsT1*nrSteps + moveWait)
+
+endproc(-duration)
