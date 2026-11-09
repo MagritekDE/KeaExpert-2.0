@@ -1,0 +1,126 @@
+############################################################
+#  
+# Checks the functionality of the TTL trigger input
+# and the TTL out pulse.
+#
+# Note: only for Spinsolves with this hardware upgrade.
+#
+############################################################
+
+procedure(pulse_program,dir,mode,pars)
+
+# Expose parameters for FX3 implementation
+   if(nrArgs == 3)
+      assignlist(pars)
+   endif
+
+# Interface description (name, label, ctrl, vartype)
+  interface = ["b1FreqCh1",        "B1 frequency (MHz)",        "tb",  "freq";
+               "trigMode",         "Trigger mode",              "tm",  "string,[\"low\",\"high\",\"rising\",\"falling\"]";
+               "repTime",         "Repetition time (ms)",      "tb",  "reptime"]
+
+# Define the tab groups and their order
+   groups = ["Pulse_sequence","Acquisition"]#,
+#             "Processing_Std","Display_PPM_Range","File_Settings"]
+
+# Relationships to determine remaining variable values
+   relationships = [#"b1FreqCh1 = b1Freq1H",
+                     "freqCh1   = 2",
+                    "smode      = trigMode"]#,
+          #           "d1 = 2"]
+
+# These parameters will be changed between experiments
+   variables = [""]
+
+# Pulse sequence
+
+   initpp(dir)                      # Define compile directory and clear parameter list
+
+    #  delay(d1) 
+      trigger(smode)                # Wait for rising input pulse
+
+   parList = endpp()                # Combine commands and return parameter list
+
+# Phase cycle list
+   phaseList  = [0]   # pA : Acquire phase
+
+
+endproc(parList,groups,interface,relationships,variables,null,phaseList)
+
+
+#####################################################
+# Assign those parameters which should take their 
+# values from the factory defaults when making a 
+# new experiment
+#####################################################
+
+procedure(getFactoryBasedParameters, par)
+
+   specPar = gData->specParameters
+   if(specPar == null)
+      return(null)
+   endif
+   assignlist(specPar)
+
+   par = ["rxGain         = $rxOptGaindB$",
+          "pulseLengthCh1 = $pulseLengthCh1$",
+          "90AmplitudeCh1 = $pulseAmplitudeCh1$",
+          "b1FreqCh1      = $frequencyCh1$"]
+
+endproc(par)
+
+######################################################
+## Generate some simulated 1Pulse data based on the
+## values stored in SimulationInfo
+######################################################
+#
+#procedure(simulateNMR, dataSize)
+#
+#   assignstruct(SimulationInfo)
+#
+#   pulseAmp         = ppValues->a90Amp
+#   pulseLength      = ppValues->d90Dur
+#   pulseIntegral    = pulseAmp*pulseLength
+#   pulsePhase       = ppValues->p1
+#   acquisitionDelay = ppValues->dAcqDelay
+#
+## Non-experiment specific parameters
+#   DW = dwellTime*1e-6 # <= This is the dwell time
+#   off = single(1e6*(b1Freq-b0Freq)) # <= This is the offset (b1Freq - f0)
+#   sigAmp = signalAmplitude*receiverGain
+#   
+#   ph = receiverPhase - pulsePhase 
+#   pulseInt = pulseIntegral
+#   pulse90Int = pulse90Integral
+#   sigAmp = sigAmp *sin(pulseInt*pi/(2*pulse90Int))
+#   nl = noiseAmplitude*receiverGain*sqrt(1.0/dwellTime)
+#   acqDelay = acquisitionDelay*1e-6
+#   startDelay = acqDelay + DW # Simulate the delay on Proton channel
+#   
+#   cd(getmacropath())
+#   cd("$appdir$\\Macros\\KeaExpert\\SimulatorMacros\\Simulated Samples")
+#
+#   result = sample()
+#   assignstruct(result)
+#
+#   nrPeaks = size(peakList)
+#   nrSplits = size(splittingAmpList)
+#   
+#   t = linspace(startDelay,(dataSize/2-1)*DW+startDelay, dataSize/2)
+#   cmat = cmatrix(dataSize/2)
+#
+#   for(p = 0 to nrPeaks-1) # Loop over main peaks
+#      freq0 = peakList[p]*b0Freq
+#      for(s = 0 to nrSplits-1) # Loop over multiplets
+#         amp = splittingAmpList[s,p]     
+#         if(amp > 0)
+#            freq = off - freq0 + splittingFreqList[s,p]
+#            cmat = cmat + amp*exp(i*(2*pi*freq*t + ph)).*exp(-t/T2-t/T2Star)  
+#         endif       
+#      next(s)
+#   next(p)      
+#   mat = ctor(cmat)
+#   mat = sigAmp*mat/max(mag(mat))
+#   mat = mat + nl*noise(dataSize)
+#
+#endproc(mat)
