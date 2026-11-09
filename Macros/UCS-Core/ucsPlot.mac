@@ -855,7 +855,9 @@ procedure(fitAndGraph,prg,
    endif
 
    if(N < 2)
-     return("")
+     resultOut = ""
+     r = struct()
+     return(resultOut,r)
    endif
 
 # If insufficent arguments then make some up
@@ -915,6 +917,18 @@ procedure(fitAndGraph,prg,
         r->E0err = E0err
         r->T1err = Terr
         r->fit = fit
+     elseif(fitType == "T1SRoffset")
+        (fit,E0,T,offset,E0err,Terr,Offseterr) = expofffit(abscissa,real(E))
+        result = errorstr(T,Terr,1)
+        resultOut = result
+        r->E0 = E0
+        r->T1 = T
+        r->offset = offset
+        r->E0err = E0err
+        r->T1err = Terr
+        r->OffError = Offseterr
+        r->fit = fit
+
      elseif(fitType == "exp")
         (fit,E0,T,E0err,Terr) = t2fit(abscissa,real(E))
         result = "(E_(0) = $E0,2.1f$: T = $T,2.1f$)" 
