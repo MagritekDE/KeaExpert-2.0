@@ -204,19 +204,19 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
          else # Real-time fit
 
+          # Autophase if desired
+            if(autoPhase == "yes")
+               (ph,sumDataAP) = ucsRun:autoPhase(sumData/nrPnts,phaseMethod)
+            else
+               sumDataAP = sumData/nrPnts
+            endif
+
+         # Plot the integral data 
+            ucsPlot:graphTime(pt1,tAxis/1000,sumDataAP,scan,guipar,
+                             "Echo integrals SCANS","Time (ms)","Average echo amplitude (\G(m)V)")
+
           # Only display fit after full phase cycle
             if(scan >= 0  & ((scan+1) % size(pcList) == 0))
-
-             # Autophase if desired
-               if(autoPhase == "yes")
-                  (ph,sumDataAP) = ucsRun:autoPhase(sumData/nrPnts,phaseMethod)
-               else
-                  sumDataAP = sumData/nrPnts
-               endif
-   
-            # Plot the integral data 
-               ucsPlot:graphTime(pt1,tAxis/1000,sumDataAP,scan,guipar,
-                                "Echo integrals SCANS","Time (ms)","Average echo amplitude (\G(m)V)")
    
             # Apply the requested fit
               (pt2, result, stats) = :DisplayFit(pt1,pt2,tAxis/1000,sumDataAP/(scan+1),nrEchoes,guipar,scan)
@@ -234,6 +234,18 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       endif
 
    next(scan)
+
+# Update Rx Phase textbox in GUI
+   if(autoPhase == "yes")
+      try
+         n = findobj(0,"name","rxPhase")
+         phOld = getpar(0,n,"value")
+         phNew = ((ph)+phOld)%360
+         setpar(0,n,"text",phNew)
+      catch
+      endtry
+   endif
+ 
 
 # Save the data
   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"simpleReport")

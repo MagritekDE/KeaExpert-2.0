@@ -192,6 +192,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
 # Allocate memory for outputs
    ampAxis  = matrix(nrPntsT1)
+   error  = matrix(nrPntsT1)
 
 # Load the apodization filter ilter
    if(filter == "yes")
@@ -201,7 +202,7 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    endif
 
   # Loop over the t1-axis values to form a 2D data set
-   for(m = nrPntsT1-1 to 0 step -1)
+   for(m = 0 to nrPntsT1-1)
       
       w1 = t1Axis[m]  
 
@@ -241,9 +242,9 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
          sumData = ucsRun:accumulate(accumulate,pAcq,sumData,data)
 
        # Process the data
-        if(showFreqDomain=="yes")
+#        if(showFreqDomain=="yes")
          (sumData,spectrum) = ucsRun:transformData(sumData,fAxis,guipar,"echo")
-        endif
+#        endif
         titleTxt = "EchoSum: $scan+1$/$nrScans$"
         ucsPlot:graphTimeAndFreq(prt,prf,tAxis,sumData/refSignal,fAxis,spectrum/refSignal,scan,guipar,titleTxt)
      
@@ -255,8 +256,16 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
       next(scan)
 
       ampAxis[m] = sum(real(sumData))/(nrPnts*refSignal)
+      error[m]  = 0
 
-      :graphBuildUp(t1Axis,ampAxis,prn,m,nrScans,guipar)      
+#      :graphBuildUp(t1Axis,ampAxis,prn,m,nrScans,guipar)      
+  # Plot the integrals
+
+      (resultOut,r) = ucsPlot:fitAndGraph(prn,t1Axis,ampAxis,m+1,"T1SRoffset",error,
+                         "Recovery delay (ms)","Average echo amplitude",
+                         "T_(1) attenuation data",
+                         "T_(1) = RESULT ms",guipar)
+
   
     # Check if complete button pressed
       if(check == "finish")
@@ -265,19 +274,40 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
 
    next(m)
 # Fit the data
-  (fit,E0,T1,E0err,T1err,stats) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+
+# Save the statistics
+   if isvar("resultOut")
+      ucsFiles:saveToNotes(resultOut, guipar)
+   endif
+
+#   try
+#     (fit,E0,T1,E0err,T1err,stats,results) = :T1SatFitOffset(t1Axis,ampAxis,prn,nrScans,guipar)
+#   catch
+#      stats = "error, no fit results\n"
+#      results = "error, no fit results\n"
+#      E0 = 0
+#      T1 = 0
+#      
+#   endtry
 
 # Save the data
+   ucsFiles:savePlot(prt,:getPlotInfo("pt1"),guipar,"noReport")
+   ucsFiles:savePlot(prf,:getPlotInfo("pt2"),guipar,"noReport")
    ucsFiles:savePlot(prn,:getPlotInfo("pt3"),guipar,"noReport")
-# Save the statistics
-   ucsFiles:saveToNotes(stats, guipar)
+## Save the statistics
+#   if isvar("stats")
+#      ucsFiles:saveToNotes(stats, guipar)
+#   endif
 
 # Pack the data into a structure  
    result = struct()
    result->t1Axis = t1Axis
    result->ampAxis = ampAxis/nrScans
-   result->E0 = E0
-   result->T1 = T1
+   result->fitting = r
+
+#   result->T1 = T1
+#   result->stats = stats
+#   result->results = results
    return(result)
 
 endproc("execpp")
@@ -289,7 +319,10 @@ endproc("execpp")
 
 procedure(getPlotInfo,plotRegion)
 
-   info = ["pt3","t1AmpData.pt1"]
+   info = [
+            "pt1","echo.pt1",
+            "pt2","spectrum.pt1",
+            "pt3","t1AmpData.pt1"]
 
    if(plotRegion == "all")
       return(info)
@@ -448,10 +481,17 @@ procedure(T1SatFitOffset,t,data,prn,nrScans,guipar)
       result = errorstr(T1,T1err,1)
       pr "\n\n   T1 = $result$ ms\n"  
    catch
-      result = ""
+#      result = ""
+      fit = null
+      E0 = 0
+      T1 = 0
+      E0err = 0
+      T1err = 0
+      stats = "error, no fit results\n"
+      result = "error, no fit results\n"
    endtry
 
-   if(result != "")
+   if(result != "error, no fit results\n")
       prn->draw("false") 
       prn->plot(t,fit*sf,
               "tracetype", "lines",
@@ -501,7 +541,7 @@ procedure(T1SatFitOffset,t,data,prn,nrScans,guipar)
 
    endif 
 
-endproc(fit,E0,T1,E0err,T1err,stats)
+endproc(fit,E0,T1,E0err,T1err,stats,result)
 
 ##########################################################
 # 

@@ -225,6 +225,8 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    next(s)
 
 # Save the data
+   ucsFiles:savePlot(pt1,:getPlotInfo("pt1"),guipar,"noReport")
+   ucsFiles:savePlot(pt2,:getPlotInfo("pt2"),guipar,"noReport")
    ucsFiles:savePlot(pt3,:getPlotInfo("pt3"),guipar,"simpleReport")
 
 # Pack the data into a structure
@@ -244,7 +246,10 @@ endproc("execpp") # Don't remove argument
 
 procedure(getPlotInfo,plotRegion)
 
-   info = ["pt3","ampSweep.pt1"]
+   info = [
+         "pt1","fid.pt1",
+         "pt2","spectrum.pt1",
+         "pt3","ampSweep.pt1"]
 
    if(plotRegion == "all")
       return(info)

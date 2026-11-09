@@ -76,8 +76,8 @@ endproc(r)
 procedure(getseqpar)
 
    rel = ["nDataPnts = nrPnts",
-          "a90Amp    = 90Amplitude",
-          "d90Dur    = pulseLength",
+          "a90Amp    = 90AmplitudeCh1",
+          "d90Dur    = pulseLengthCh1",
           "dShim     = shimDelay",
           "dAcqDelay = acqDelay",
           "nxShim    = xShim",
@@ -187,11 +187,13 @@ procedure(execpp,guipar,ppList,pcList,pcIndex,varIndex)
    peakPositionPPM = 4.74
    b1FreqCh1 = b1FreqCh1 + (fAxis[x] - (peakPositionPPM-4.74)*b1FreqCh1)/1e6d
 
+
 # Update the common parameters locally and in the file
    gData->commonPar->b1FreqCh1 = b1FreqCh1
    par = struct(ucsFiles:loadCommonPar())
    par->b1FreqCh1 = b1FreqCh1
    ucsFiles:saveCommonPar(par)
+   print("Common parameters are updated with b1Freq = $b1FreqCh1,1.8f$ MHz\n")
 
 # Update the user interface with the new frequency
    n = findobj(0,"name","b1FreqCh1")
